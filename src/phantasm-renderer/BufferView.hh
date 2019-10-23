@@ -1,4 +1,0 @@
-#ifndef BUFFERVIEW_HH
-#define BUFFERVIEW_HH
-
-#endif // BUFFERVIEW_HH

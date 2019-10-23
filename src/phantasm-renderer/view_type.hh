@@ -2,7 +2,7 @@
 
 namespace pr
 {
-enum class image_view_type
+enum class view_type
 {
     image_1D,
     image_2D,
@@ -10,6 +10,7 @@ enum class image_view_type
     image_cube,
     image_1D_array,
     image_2D_array,
-    image_cube_array
+    image_cube_array,
+    buffer
 };
 }
