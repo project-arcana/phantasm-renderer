@@ -32,14 +32,14 @@ public:
     shared_com_ptr& operator=(shared_com_ptr const& rhs) { return *this = rhs._pointer; }
 
     /// Move ctor
-    shared_com_ptr(shared_com_ptr&& rhs)
+    shared_com_ptr(shared_com_ptr&& rhs) noexcept
     {
         _pointer = rhs._pointer;
         rhs._pointer = nullptr;
     }
 
     /// Move assign
-    shared_com_ptr& operator=(shared_com_ptr&& rhs)
+    shared_com_ptr& operator=(shared_com_ptr&& rhs) noexcept
     {
         if (this != &rhs)
         {
@@ -70,7 +70,7 @@ public:
 
     /// Safely release possibly stored pointer, then return a pointer to the inner T* for reassignemnt
     /// Regularly used in D3D12 API interop, T** arguments are common
-    T** erase_and_get_inner()
+    [[nodiscard]] T** override()
     {
         *this = nullptr;
         return &_pointer;
@@ -78,7 +78,7 @@ public:
         // If the API call fails to assign, this object's state remains valid as well
     }
 
-    T* get() const { return _pointer; }
+    [[nodiscard]] T* get() const { return _pointer; }
 
     bool is_valid() const { return _pointer != nullptr; }
 
@@ -92,3 +92,6 @@ bool operator==(shared_com_ptr<T> const& lhs, shared_com_ptr<T> const& rhs)
     return lhs.get() == rhs.get();
 }
 }
+
+/// Shorthand for the commonly occuring IID_PPV_ARGS(my_com_ptr.override()) argument in D3D12 APIs
+#define PR_COM_WRITE(_com_ptr_) IID_PPV_ARGS(_com_ptr_.override())
