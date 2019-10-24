@@ -47,6 +47,4 @@ template <class T>
 using ImageViewCube = View<view_type::image_cube, T>;
 template <class T>
 using ImageViewCubeArray = View<view_type::image_cube_array, T>;
-template <class T>
-using BufferView = View<view_type::buffer, T>;
 }

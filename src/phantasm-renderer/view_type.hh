@@ -11,6 +11,7 @@ enum class view_type
     image_1D_array,
     image_2D_array,
     image_cube_array,
-    buffer
+
+    // for now no buffer
 };
 }
