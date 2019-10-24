@@ -45,7 +45,7 @@ else()
     message(STATUS "[phantasm renderer] Vulkan backend disabled")
 endif()
 
-if (WIN32)
+if (MSVC)
     message(STATUS "[phantasm renderer] D3D12 backend enabled")
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
     target_link_libraries(phantasm-renderer PRIVATE "d3d12.lib" "dxgi.lib" "d3dcompiler.lib")
