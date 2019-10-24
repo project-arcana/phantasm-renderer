@@ -1,4 +1,11 @@
-#ifndef IMAGEVIEW_HH
-#define IMAGEVIEW_HH
+#pragma once
 
-#endif // IMAGEVIEW_HH
+#include <phantasm-renderer/fwd.hh>
+
+namespace pr
+{
+template <view_type Type, class T>
+class View
+{
+};
+}

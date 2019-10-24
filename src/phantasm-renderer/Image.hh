@@ -1,4 +1,11 @@
-#ifndef IMAGE_HH
-#define IMAGE_HH
+#pragma once
 
-#endif // IMAGE_HH
+#include <phantasm-renderer/fwd.hh>
+
+namespace pr
+{
+template <int D, class T, bool IsFrameLocal>
+class Image
+{
+};
+}

@@ -1,4 +1,11 @@
-#ifndef BUFFER_HH
-#define BUFFER_HH
+#pragma once
 
-#endif // BUFFER_HH
+#include <phantasm-renderer/fwd.hh>
+
+namespace pr
+{
+template <class T>
+class Buffer
+{
+};
+}

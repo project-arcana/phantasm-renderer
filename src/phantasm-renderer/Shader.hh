@@ -1,4 +1,24 @@
-#ifndef SHADER_HH
-#define SHADER_HH
+#pragma once
 
-#endif // SHADER_HH
+#include <phantasm-renderer/fwd.hh>
+
+namespace pr
+{
+template <class VertexT>
+class VertexShader
+{
+};
+template <class FragmentT>
+class FragmentShader
+{
+};
+class GeometryShader
+{
+};
+class TessellationControlShader
+{
+};
+class TessellationEvaluationShader
+{
+};
+}
