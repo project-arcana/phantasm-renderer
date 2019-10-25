@@ -7,16 +7,10 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 
+#include "d3d12_config.hh"
+
 namespace pr::backend::d3d12
 {
-enum class adapter_preference
-{
-    highest_vram,
-    first,
-    integrated,
-    highest_feature_level
-};
-
 enum class adapter_vendor
 {
     amd,

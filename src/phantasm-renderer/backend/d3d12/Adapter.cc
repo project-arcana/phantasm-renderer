@@ -1,6 +1,9 @@
 #include "Adapter.hh"
 #ifdef PR_BACKEND_D3D12
 
+#include <clean-core/assert.hh>
+
+#include "adapter_choice_util.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
@@ -13,8 +16,11 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
 
     // Adapter init
     {
+        auto const chosen_adapter_index = get_preferred_adapter_index(get_adapter_candidates(), config.adapter_preference);
+        CC_ASSERT(chosen_adapter_index != uint32_t(-1));
+
         shared_com_ptr<IDXGIAdapter> temp_adapter;
-        mDXGIFactory->EnumAdapters(0, temp_adapter.override());
+        mDXGIFactory->EnumAdapters(chosen_adapter_index, temp_adapter.override());
         PR_D3D12_VERIFY(temp_adapter->QueryInterface(PR_COM_WRITE(mDXGIAdapter)));
     }
 
