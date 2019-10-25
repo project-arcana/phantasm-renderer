@@ -1,5 +1,3 @@
-/// Helper to track unique layers and extensions
-// TODO: Implement this with a future cc hashmap and vector / iteration helper
 #pragma once
 #ifdef PR_BACKEND_VULKAN
 
@@ -19,6 +17,7 @@ enum class vk_name_type
     extension
 };
 
+/// Helper to track unique names of layers and extensions
 template <vk_name_type T>
 struct unique_name_set
 {
@@ -42,6 +41,7 @@ public:
     [[nodiscard]] std::vector<std::string> to_vector() const { return std::vector<std::string>(_names.begin(), _names.end()); }
 
 private:
+    // TODO: Implement this with a future cc hashmap and vector / iteration helper
     std::unordered_set<std::string> _names;
 };
 }
