@@ -5,6 +5,7 @@
 #include <dxgi1_6.h>
 
 #include "common/shared_com_ptr.hh"
+#include "d3d12_config.hh"
 
 namespace pr::backend::d3d12
 {
@@ -19,7 +20,7 @@ class Adapter
 {
 public:
     Adapter() = default;
-    void initialize();
+    void initialize(d3d12_config const& config);
 
     adapter_capabilities const& getCapabilities() const { return mCapabilities; }
 

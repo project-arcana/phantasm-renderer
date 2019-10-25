@@ -3,7 +3,7 @@
 
 #include "common/verify.hh"
 
-void pr::backend::d3d12::Adapter::initialize()
+void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
 {
     // Factory init
     {
@@ -18,8 +18,8 @@ void pr::backend::d3d12::Adapter::initialize()
         PR_D3D12_VERIFY(temp_adapter->QueryInterface(PR_COM_WRITE(mDXGIAdapter)));
     }
 
-    // Debug layer
-    if (true /* TODO: Config (enable debug layers?) */)
+    // Debug layer init
+    if (config.enable_validation)
     {
         shared_com_ptr<ID3D12Debug> debug_controller;
         bool const debug_init_success = SUCCEEDED(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));
@@ -28,7 +28,7 @@ void pr::backend::d3d12::Adapter::initialize()
         {
             debug_controller->EnableDebugLayer();
 
-            if (true /* TODO: Config (enable GPU validation?) */)
+            if (config.enable_gpu_validation)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
                 PR_D3D12_VERIFY(debug_controller->QueryInterface(PR_COM_WRITE(debug_controller_v3)));
@@ -45,7 +45,7 @@ void pr::backend::d3d12::Adapter::initialize()
     // Root device init
     {
         // TODO: Feature level
-        PR_D3D12_VERIFY(::D3D12CreateDevice(mDXGIAdapter, D3D_FEATURE_LEVEL_12_1, PR_COM_WRITE(mRootDevice)));
+        PR_D3D12_VERIFY(::D3D12CreateDevice(mDXGIAdapter, config.feature_level, PR_COM_WRITE(mRootDevice)));
 
         // Check for Shader Model 6.0 wave intrinsics support
         {
@@ -59,6 +59,7 @@ void pr::backend::d3d12::Adapter::initialize()
         }
 
         // Check for DXR raytracing support
+        if (config.enable_dxr)
         {
             D3D12_FEATURE_DATA_D3D12_OPTIONS5 feature_data;
             bool const feature_check_success = SUCCEEDED(mRootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feature_data, sizeof(feature_data)));
