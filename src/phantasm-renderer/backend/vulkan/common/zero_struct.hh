@@ -18,6 +18,13 @@ void zero_info_struct(T& val, VkStructureType type)
     std::memset(reinterpret_cast<char*>(&val) + sizeof(VkStructureType), 0, sizeof(T) - sizeof(VkStructureType));
 }
 
+template <class T>
+void zero_struct(T& val)
+{
+    static_assert(!std::is_pointer_v<T>, "Argument must not be a pointer");
+    std::memset(reinterpret_cast<char*>(&val), 0, sizeof(T));
+}
+
 }
 
 #endif

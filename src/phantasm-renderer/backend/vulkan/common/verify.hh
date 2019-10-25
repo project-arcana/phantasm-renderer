@@ -47,4 +47,5 @@ namespace pr::backend::vk::detail
             ::pr::backend::vk::detail::vk_verify_failure_handler(op_res, #_expr_, __FILE__, __LINE__);   \
         }                                                                                                \
     } while (0)
+
 #endif
