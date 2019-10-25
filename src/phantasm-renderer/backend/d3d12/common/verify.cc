@@ -12,10 +12,6 @@ namespace
 #define CASE_STRINGIFY_RETURN(_val_) \
     case _val_:                      \
         return #_val_
-#define CASE_STRINGIFY_ASSIGN(_target_, _val_) \
-    case _val_:                                \
-        _target_ = #_val_;                     \
-        break
 
 char const* get_device_error_literal(HRESULT hr)
 {
@@ -26,27 +22,41 @@ char const* get_device_error_literal(HRESULT hr)
         CASE_STRINGIFY_RETURN(DXGI_ERROR_DEVICE_RESET);
         CASE_STRINGIFY_RETURN(DXGI_ERROR_DRIVER_INTERNAL_ERROR);
         CASE_STRINGIFY_RETURN(DXGI_ERROR_INVALID_CALL);
+    default:
+        return "Unknown Device Error";
     }
-    return "Unknown Device Error";
 }
+
+char const* get_general_error_literal(HRESULT hr)
+{
+    switch (hr)
+    {
+        CASE_STRINGIFY_RETURN(S_OK);
+        CASE_STRINGIFY_RETURN(D3D11_ERROR_FILE_NOT_FOUND);
+        CASE_STRINGIFY_RETURN(D3D11_ERROR_TOO_MANY_UNIQUE_STATE_OBJECTS);
+        CASE_STRINGIFY_RETURN(E_FAIL);
+        CASE_STRINGIFY_RETURN(E_INVALIDARG);
+        CASE_STRINGIFY_RETURN(E_OUTOFMEMORY);
+        CASE_STRINGIFY_RETURN(DXGI_ERROR_INVALID_CALL);
+        CASE_STRINGIFY_RETURN(E_NOINTERFACE);
+        CASE_STRINGIFY_RETURN(DXGI_ERROR_DEVICE_REMOVED);
+    default:
+        return nullptr;
+    }
+}
+
+#undef CASE_STRINGIFY_RETURN
 
 std::string get_error_string(HRESULT hr, ID3D12Device* device)
 {
     std::string res = "";
-    switch (hr)
-    {
-        CASE_STRINGIFY_ASSIGN(res, S_OK);
-        CASE_STRINGIFY_ASSIGN(res, D3D11_ERROR_FILE_NOT_FOUND);
-        CASE_STRINGIFY_ASSIGN(res, D3D11_ERROR_TOO_MANY_UNIQUE_STATE_OBJECTS);
-        CASE_STRINGIFY_ASSIGN(res, E_FAIL);
-        CASE_STRINGIFY_ASSIGN(res, E_INVALIDARG);
-        CASE_STRINGIFY_ASSIGN(res, E_OUTOFMEMORY);
-        CASE_STRINGIFY_ASSIGN(res, DXGI_ERROR_INVALID_CALL);
-        CASE_STRINGIFY_ASSIGN(res, E_NOINTERFACE);
-        CASE_STRINGIFY_ASSIGN(res, DXGI_ERROR_DEVICE_REMOVED);
-    default:
+
+    auto const general_error_literal = get_general_error_literal(hr);
+
+    if (general_error_literal != nullptr)
+        res = general_error_literal;
+    else
         res = std::to_string(static_cast<int>(hr));
-    }
 
     if (hr == DXGI_ERROR_DEVICE_REMOVED && device)
     {
@@ -56,9 +66,6 @@ std::string get_error_string(HRESULT hr, ID3D12Device* device)
 
     return res;
 }
-
-#undef CASE_STRINGIFY_ASSIGN
-#undef CASE_STRINGIFY_RETURN
 }
 
 
