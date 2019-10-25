@@ -8,8 +8,8 @@ class Device;
 class Context;
 class Queue;
 
-class Frame;
-class CompiledFrame;
+class Backend;
+class VulkanBackend;
 
 template <class VertexT>
 class VertexShader;
@@ -47,4 +47,16 @@ template <class T>
 using ImageViewCube = View<view_type::image_cube, T>;
 template <class T>
 using ImageViewCubeArray = View<view_type::image_cube_array, T>;
+
+class Frame;
+class CompiledFrame;
+
+template <class... Resources>
+class resource_list;
+using empty_resource_list = resource_list<>;
+
+template <class FragmentT, class BoundResourceList = empty_resource_list>
+class Pass;
+template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
+class PrimitivePipeline;
 }

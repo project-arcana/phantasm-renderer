@@ -2,16 +2,10 @@
 
 #include <phantasm-renderer/fwd.hh>
 
+// TODO: move in own files
+
 namespace pr
 {
-template <class VertexT>
-class VertexShader
-{
-};
-template <class FragmentT>
-class FragmentShader
-{
-};
 class GeometryShader
 {
 };
