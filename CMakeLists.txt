@@ -39,8 +39,8 @@ find_package(Vulkan)
 if (Vulkan_FOUND)
     message(STATUS "[phantasm renderer] Vulkan backend enabled")
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_VULKAN)
-    target_link_libraries(phantasm-renderer PRIVATE ${Vulkan_LIBRARY})
-    target_include_directories(phantasm-renderer PRIVATE ${Vulkan_INCLUDE_DIRS})
+    target_link_libraries(phantasm-renderer PUBLIC ${Vulkan_LIBRARY})
+    target_include_directories(phantasm-renderer PUBLIC ${Vulkan_INCLUDE_DIRS})
 
     if (NOT MSVC)
         # Non-windows targets require libdl to load Vulkan
