@@ -1,6 +1,9 @@
 #pragma once
 #ifdef PR_BACKEND_VULKAN
 
+#include "loader/volk.hh"
+#include "vulkan_config.hh"
+
 namespace pr::backend::vk
 {
 class Device
@@ -11,10 +14,15 @@ public:
     Device& operator=(Device const&) = delete;
     Device& operator=(Device&&) noexcept = delete;
 
-    Device() = default;
+    Device(VkPhysicalDevice physical);
 
+    void initialize(vulkan_config const& config);
+
+    ~Device();
 
 private:
+    VkPhysicalDevice const mPhysicalDevice;
+    VkDevice mDevice = VK_NULL_HANDLE;
 };
 }
 
