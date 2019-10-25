@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 #include <clean-core/assert.hh>
 
@@ -70,7 +71,7 @@ void pr::backend::d3d12::detail::d3d12_verify_failure_handler(HRESULT hr, const 
 
     // TODO: Proper logging
     fprintf(stderr, "[pr][backend][d3d12] backend verify on `%s' failed.\n", expression);
-    fprintf(stderr, "  error %s\n", error_string.c_str());
+    fprintf(stderr, "  error: %s\n", error_string.c_str());
     fprintf(stderr, "  file %s:%d\n", filename, line);
     fflush(stderr);
 

@@ -41,6 +41,11 @@ if (Vulkan_FOUND)
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_VULKAN)
     target_link_libraries(phantasm-renderer PRIVATE ${Vulkan_LIBRARY})
     target_include_directories(phantasm-renderer PRIVATE ${Vulkan_INCLUDE_DIRS})
+
+    if (NOT MSVC)
+        # Non-windows targets require libdl to load Vulkan
+        target_link_libraries(phantasm-renderer PRIVATE -ldl)
+    endif()
 else()
     message(STATUS "[phantasm renderer] Vulkan backend disabled")
 endif()

@@ -7,6 +7,8 @@ namespace pr::backend::vk
 {
 class BackendVulkan final : public BackendInterface
 {
+public:
+    void initialize();
 };
 }
 

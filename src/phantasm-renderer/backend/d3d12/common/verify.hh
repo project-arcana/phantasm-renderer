@@ -1,8 +1,6 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <string>
-
 #include <d3d12.h>
 
 #include <clean-core/macros.hh>
