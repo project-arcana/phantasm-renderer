@@ -44,7 +44,6 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
 
     // Root device init
     {
-        // TODO: Feature level
         PR_D3D12_VERIFY(::D3D12CreateDevice(mDXGIAdapter, config.feature_level, PR_COM_WRITE(mRootDevice)));
 
         // Check for Shader Model 6.0 wave intrinsics support
