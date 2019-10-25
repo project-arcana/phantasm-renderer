@@ -11,9 +11,9 @@ class BackendInterface
     // reference type
 public:
     BackendInterface(BackendInterface const&) = delete;
-    BackendInterface(BackendInterface&&) = delete;
+    BackendInterface(BackendInterface&&) noexcept = delete;
     BackendInterface& operator=(BackendInterface const&) = delete;
-    BackendInterface& operator=(BackendInterface&&) = delete;
+    BackendInterface& operator=(BackendInterface&&) noexcept = delete;
     virtual ~BackendInterface() = default;
 
 protected:

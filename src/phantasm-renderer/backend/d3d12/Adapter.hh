@@ -18,8 +18,14 @@ struct adapter_capabilities
 /// Represents a IDXGIAdapter, the uppermost object in the D3D12 hierarchy
 class Adapter
 {
+    // reference type
 public:
     Adapter() = default;
+    Adapter(Adapter const&) = delete;
+    Adapter(Adapter&&) noexcept = delete;
+    Adapter& operator=(Adapter const&) = delete;
+    Adapter& operator=(Adapter&&) noexcept = delete;
+
     void initialize(d3d12_config const& config);
 
     adapter_capabilities const& getCapabilities() const { return mCapabilities; }
@@ -36,8 +42,6 @@ private:
     adapter_capabilities mCapabilities;
 
 private:
-    Adapter(Adapter const&) = delete;
-    Adapter& operator=(Adapter const&) = delete;
 };
 
 }
