@@ -39,7 +39,7 @@ int pr::backend::d3d12::test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL mi
         {
             D3D12_FEATURE_DATA_FEATURE_LEVELS feature_data;
             feature_data.pFeatureLevelsRequested = all_feature_levels.data();
-            feature_data.NumFeatureLevels = all_feature_levels.size();
+            feature_data.NumFeatureLevels = unsigned(all_feature_levels.size());
 
             if (SUCCEEDED(test_device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &feature_data, sizeof(feature_data))))
             {
@@ -115,8 +115,6 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
 
     switch (preference)
     {
-    case adapter_preference::first:
-        return candidates[0].index;
     case adapter_preference::integrated:
     {
         for (auto const& cand : candidates)
@@ -151,5 +149,9 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
 
         return candidates[highest_feature_index].index;
     }
+    case adapter_preference::first:
+        return candidates[0].index;
     }
+
+    return candidates[0].index;
 }
