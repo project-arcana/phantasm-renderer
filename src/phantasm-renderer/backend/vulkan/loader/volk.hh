@@ -6,6 +6,7 @@
  *
  * This library is distributed under the MIT License. See notice at the end of this file.
  */
+#ifdef PR_BACKEND_VULKAN
 #ifndef VOLK_H_
 #define VOLK_H_
 
@@ -1050,6 +1051,8 @@ extern "C"
 // macros from detecting a cyclic dependency.
 #define VOLK_SOURCE "volk.c"
 #include VOLK_SOURCE
+#endif
+
 #endif
 
 /**

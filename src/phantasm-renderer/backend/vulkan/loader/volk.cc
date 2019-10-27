@@ -1,5 +1,6 @@
 /* This file is part of volk library; see volk.h for version/license details */
 #include "volk.hh"
+#ifdef PR_VULKAN_BACKEND
 
 #ifdef _WIN32
 typedef const char* LPCSTR;
@@ -1686,4 +1687,6 @@ extern "C"
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

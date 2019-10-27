@@ -105,8 +105,6 @@ std::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapt
     return res;
 }
 
-#endif
-
 uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::backend::d3d12::adapter_candidate>& candidates,
                                                          pr::backend::d3d12::adapter_preference preference)
 {
@@ -155,3 +153,6 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
 
     return candidates[0].index;
 }
+
+
+#endif
