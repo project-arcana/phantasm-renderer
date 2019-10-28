@@ -1,3 +1,4 @@
+#pragma once
 /**
  * volk
  *
@@ -6,9 +7,9 @@
  *
  * This library is distributed under the MIT License. See notice at the end of this file.
  */
-#ifdef PR_BACKEND_VULKAN
 #ifndef VOLK_H_
 #define VOLK_H_
+#ifdef PR_BACKEND_VULKAN
 
 #include "platform_defines.hh"
 
@@ -1052,7 +1053,6 @@ extern "C"
 #define VOLK_SOURCE "volk.c"
 #include VOLK_SOURCE
 #endif
-
 #endif
 
 /**
