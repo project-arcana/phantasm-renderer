@@ -7,6 +7,8 @@
 
 #include <clean-core/assert.hh>
 
+#include "d3d12_sanitized.hh"
+
 namespace
 {
 #define CASE_STRINGIFY_RETURN(_val_) \
