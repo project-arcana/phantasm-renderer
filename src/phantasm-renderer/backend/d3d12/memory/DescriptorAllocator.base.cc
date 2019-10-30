@@ -7,12 +7,12 @@
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-pr::backend::d3d12::DescriptorAllocator::DescriptorAllocator(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned heap_size)
+pr::backend::d3d12::DescriptorAllocator::DescriptorAllocator(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int heap_size)
   : mDevice(device), mType(type), mHeapSize(heap_size)
 {
 }
 
-pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::DescriptorAllocator::allocate(unsigned num_descriptors)
+pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::DescriptorAllocator::allocate(int num_descriptors)
 {
     std::lock_guard lg(mMutex);
 

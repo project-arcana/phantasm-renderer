@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 
+#include <clean-core/assert.hh>
 #include <clean-core/typedefs.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
@@ -21,37 +22,73 @@ namespace pr::backend::d3d12
 /// Internally synchronized
 class DescriptorAllocator
 {
+private:
+    struct heap;
+
 public:
     struct allocation
     {
-        void* cpu_ptr;
-        D3D12_GPU_VIRTUAL_ADDRESS gpu_ptr;
+        /// null-allocation ctor
+        explicit allocation() = default;
 
-        [[nodiscard]] bool is_valid();
+        explicit allocation(D3D12_CPU_DESCRIPTOR_HANDLE handle, int num_handles, int descriptor_size, heap* parent);
+
+        /// copy deleted
+        allocation(allocation const&) = delete;
+        allocation& operator=(allocation const&) = delete;
+
+        /// move
+        allocation(allocation&&) noexcept;
+        allocation& operator=(allocation&&) noexcept;
+
+        ~allocation();
+
+    public:
+        /// Returns true iff this allocation is valid
+        [[nodiscard]] bool is_valid() const { return _handle.ptr != 0; }
+
+        /// Returns the handle at the given index
+        [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE get_handle(int i = 0) const
+        {
+            CC_ASSERT(i >= 0 && i < _num_handles);
+            return {_handle.ptr + size_t(_handle_size * i)};
+        }
+
+        /// Returns the amount of handles
+        [[nodiscard]] int get_num_handles() const { return _num_handles; }
+
+    private:
+        void free();
+        void invalidate();
+
+        heap* _parent_heap = nullptr;
+        D3D12_CPU_DESCRIPTOR_HANDLE _handle = {0};
+        int _num_handles = -1; ///< Amount of contiguous handles in this allocation
+        int _handle_size = -1; ///< Size of each individual handle in bytes
     };
 
 
 public:
     /// Page size should fit all allocations of a single command list
-    explicit DescriptorAllocator(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned heap_size = 256u);
+    explicit DescriptorAllocator(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int heap_size = 256);
 
     DescriptorAllocator(DescriptorAllocator const&) = delete;
     DescriptorAllocator(DescriptorAllocator&&) noexcept = delete;
     DescriptorAllocator& operator=(DescriptorAllocator const&) = delete;
     DescriptorAllocator& operator=(DescriptorAllocator&&) noexcept = delete;
 
-    /// Allocates the given amount of descriptors
-    [[nodiscard]] allocation allocate(unsigned num_descriptors = 1);
+    /// Allocates the given amount of descriptors, can be called from any thread, internally synchronized
+    [[nodiscard]] allocation allocate(int num_descriptors = 1);
 
-    /// Frees descriptors that are no longer in flight
+    /// Frees descriptors from or from before the given generation, can be called from any thread, internally synchronized
     void cleanUp(cc::uint64 frame_generation);
 
 private:
     struct heap
     {
-        explicit heap(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size);
+        explicit heap(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int size);
 
-        [[nodiscard]] allocation allocate(unsigned num_descriptors);
+        [[nodiscard]] allocation allocate(int num_descriptors);
 
         void free(allocation&& alloc, cc::uint64 frame_generation);
 
@@ -59,23 +96,23 @@ private:
 
         [[nodiscard]] D3D12_DESCRIPTOR_HEAP_TYPE get_type() const { return _type; }
 
-        [[nodiscard]] bool can_fit(unsigned num_descriptors) const;
+        [[nodiscard]] bool can_fit(int num_descriptors) const;
 
-        [[nodiscard]] unsigned get_num_free_handles() const;
+        [[nodiscard]] int get_num_free_handles() const { return _num_free_handles; }
 
     private:
         /// Computes the offset of the descriptor handle from the start of the heap
-        unsigned compute_offset(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        int compute_offset(D3D12_CPU_DESCRIPTOR_HANDLE const& handle) const;
 
         /// Adds a new block to the free list
-        void add_block(unsigned offset, unsigned num_descriptors);
+        void add_block(int offset, int num_descriptors);
 
         /// Frees a block of descriptors
-        void free_block(unsigned offset, unsigned num_descriptors);
+        void free_block(int offset, int num_descriptors);
 
     private:
-        using heap_offset_t = unsigned;
-        using heap_size_t = unsigned;
+        using heap_offset_t = int;
+        using heap_size_t = int;
 
         struct free_block_info;
 
@@ -85,12 +122,14 @@ private:
 
         struct free_block_info
         {
+            free_block_info(heap_size_t s) : size(s) {}
             heap_size_t size;
             free_blocks_by_size::iterator iterator;
         };
 
         struct stale_descriptor_info
         {
+            stale_descriptor_info(heap_offset_t off, heap_size_t s, cc::uint64 gen) : offset(off), size(s), frame_generation(gen) {}
             heap_offset_t offset;
             heap_size_t size;
             cc::uint64 frame_generation;
@@ -107,9 +146,9 @@ private:
         D3D12_DESCRIPTOR_HEAP_TYPE const _type;
         CD3DX12_CPU_DESCRIPTOR_HANDLE _base_descriptor;
 
-        unsigned _increment_size;
-        unsigned _num_descriptors;
-        unsigned _num_free_handles;
+        cc::uint32 _increment_size;
+        int _num_descriptors;
+        int _num_free_handles;
 
         std::mutex _mutex;
     };
@@ -127,7 +166,7 @@ private:
     D3D12_DESCRIPTOR_HEAP_TYPE const mType;
 
     /// The amount of descriptors in each heap
-    unsigned mHeapSize;
+    int mHeapSize;
 
     pool_t mPool;
 
