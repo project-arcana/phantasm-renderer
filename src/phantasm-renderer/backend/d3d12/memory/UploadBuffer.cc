@@ -1,18 +1,26 @@
 #include "UploadBuffer.hh"
 #ifdef PR_BACKEND_D3D12
 
+#include <clean-core/allocate.hh>
 #include <clean-core/assert.hh>
+#include <clean-core/typedefs.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 pr::backend::d3d12::UploadBuffer::UploadBuffer(ID3D12Device& device, size_t page_size) : mDevice(device), mPageSize(page_size) {}
 
+pr::backend::d3d12::UploadBuffer::~UploadBuffer()
+{
+    for (auto const& ptr : mPagePool)
+        cc::free<page>(ptr);
+}
+
 pr::backend::d3d12::UploadBuffer::allocation pr::backend::d3d12::UploadBuffer::alloc(size_t size, size_t align)
 {
     CC_ASSERT(size <= mPageSize);
 
-    if (!mCurrentPage || !mCurrentPage->can_fit_alloc(size, align))
+    if (mCurrentPage == nullptr || !mCurrentPage->can_fit_alloc(size, align))
         mCurrentPage = requestPage();
 
     return mCurrentPage->alloc(size, align);
@@ -20,34 +28,31 @@ pr::backend::d3d12::UploadBuffer::allocation pr::backend::d3d12::UploadBuffer::a
 
 void pr::backend::d3d12::UploadBuffer::reset()
 {
-    // Clear the current page pointer (shared_ptr::reset)
-    mCurrentPage.reset();
+    // Clear the current page pointer
+    mCurrentPage = nullptr;
 
     // Make the entire pool available
     mAvailablePages = mPagePool;
 
-    // Reset all available pages (page::reset)
+    // Reset all available pages
     for (auto const& page : mAvailablePages)
         page->reset();
 }
 
-pr::backend::d3d12::UploadBuffer::shared_page_t pr::backend::d3d12::UploadBuffer::requestPage()
+pr::backend::d3d12::UploadBuffer::page* pr::backend::d3d12::UploadBuffer::requestPage()
 {
-    shared_page_t page;
-
     if (!mAvailablePages.empty())
     {
         // Return available pages
-        page = (mAvailablePages.front()); // TODO: cc::move
-        mAvailablePages.pop_front();
+        auto const res = mAvailablePages.back();
+        mAvailablePages.pop_back();
+        return res;
     }
     else
     {
-        page = std::make_shared<UploadBuffer::page>(mDevice, mPageSize);
-        mPagePool.push_back(page);
+        mPagePool.push_back(cc::alloc<page>(mDevice, mPageSize));
+        return mPagePool.back();
     }
-
-    return page;
 }
 
 
@@ -84,7 +89,7 @@ pr::backend::d3d12::UploadBuffer::allocation pr::backend::d3d12::UploadBuffer::p
     _offset = mem::align_up(_offset, align);
 
     allocation res;
-    res.cpu_ptr = static_cast<uint8_t*>(_cpu_ptr) + _offset;
+    res.cpu_ptr = static_cast<cc::byte*>(_cpu_ptr) + _offset;
     res.gpu_ptr = _gpu_ptr + _offset;
 
     _offset += size_aligned;

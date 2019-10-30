@@ -141,6 +141,7 @@ private:
 
         std::mutex _mutex;
     };
+    // TODO: These can become raw pointers without any concessions (just iterate and delete mPool elements in dtor)
     using shared_heap_t = std::shared_ptr<heap>;
     using pool_t = std::vector<shared_heap_t>;
 

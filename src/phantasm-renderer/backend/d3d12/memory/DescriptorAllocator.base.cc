@@ -26,6 +26,7 @@ pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::Descript
 
         if (heap->get_num_free_handles() == 0)
         {
+            // This heap is no longer free
             it = mFreeHeapIndices.erase(it);
         }
 

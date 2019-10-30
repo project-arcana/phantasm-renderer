@@ -1,7 +1,6 @@
 #pragma once
 
-#include <deque>  // TODO: custom
-#include <memory> // TODO: cc::shared_ptr
+#include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
@@ -30,6 +29,8 @@ public:
     UploadBuffer(UploadBuffer&&) noexcept = delete;
     UploadBuffer& operator=(UploadBuffer const&) = delete;
     UploadBuffer& operator=(UploadBuffer&&) noexcept = delete;
+
+    ~UploadBuffer();
 
     /// Perform an allocation, size must be <= page size
     [[nodiscard]] allocation alloc(size_t size, size_t align);
@@ -70,21 +71,17 @@ private:
         size_t const _page_size;
         size_t _offset = 0;
     };
-    // TODO: These can be unique (semantically, complicates some things internally)
-    // possibly dont use smart pointers at all here
-    using shared_page_t = std::shared_ptr<page>;
-    using page_pool_t = std::deque<shared_page_t>;
 
 private:
     /// Returns a pooled page, or creates a new one
-    [[nodiscard]] shared_page_t requestPage();
+    [[nodiscard]] page* requestPage();
 
 private:
     ID3D12Device& mDevice;
     size_t const mPageSize;
-    page_pool_t mPagePool;
-    page_pool_t mAvailablePages;
-    shared_page_t mCurrentPage; // TODO: This can be a raw pointer
+    cc::vector<page*> mPagePool;
+    cc::vector<page*> mAvailablePages;
+    page* mCurrentPage = nullptr;
 };
 
 }
