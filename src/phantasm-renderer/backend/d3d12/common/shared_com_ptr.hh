@@ -2,7 +2,8 @@
 
 namespace pr::backend::d3d12
 {
-/// A wrapper for WIN32 COM reference counted pointers
+/// A wrapper for WIN32 COM reference counted pointers (custom WRL::ComPtr)
+/// Does not incur additional overhead as the refcounting part is already implemented d3d12-side
 template <class T>
 class shared_com_ptr
 {
@@ -21,7 +22,7 @@ public:
     }
 
     /// Copy ctor
-    shared_com_ptr(shared_com_ptr const& rhs)
+    shared_com_ptr(shared_com_ptr const& rhs) noexcept
     {
         _pointer = rhs._pointer;
         if (_pointer)
@@ -29,7 +30,7 @@ public:
     }
 
     /// Copy assign
-    shared_com_ptr& operator=(shared_com_ptr const& rhs) { return *this = rhs._pointer; }
+    shared_com_ptr& operator=(shared_com_ptr const& rhs) noexcept { return *this = rhs._pointer; }
 
     /// Move ctor
     shared_com_ptr(shared_com_ptr&& rhs) noexcept
@@ -53,7 +54,7 @@ public:
         return *this;
     }
 
-    shared_com_ptr& operator=(T* ptr)
+    shared_com_ptr& operator=(T* ptr) noexcept
     {
         T* const old_ptr = _pointer;
         _pointer = ptr;
@@ -70,7 +71,7 @@ public:
 
     /// Safely release possibly stored pointer, then return a pointer to the inner T* for reassignemnt
     /// Regularly used in D3D12 API interop, T** arguments are common
-    [[nodiscard]] T** override()
+    [[nodiscard]] T** override() noexcept
     {
         *this = nullptr;
         return &_pointer;
@@ -78,10 +79,10 @@ public:
         // If the API call fails to assign, this object's state remains valid as well
     }
 
-    [[nodiscard]] T* get() const { return _pointer; }
+    [[nodiscard]] T* get() const noexcept { return _pointer; }
 
-    template<class U>
-    [[nodiscard]] auto get_interface(shared_com_ptr<U>& rhs) const
+    template <class U>
+    [[nodiscard]] auto get_interface(shared_com_ptr<U>& rhs) const noexcept
     {
         return _pointer->QueryInterface(IID_PPV_ARGS(rhs.override()));
     }

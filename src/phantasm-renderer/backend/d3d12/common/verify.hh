@@ -1,11 +1,12 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <d3d12.h>
-
 #include <clean-core/macros.hh>
 
 #include <phantasm-renderer/backend/detail/value_category.hh>
+
+//#include <d3d12.h>
+#include "d3d12_sanitized.hh"
 
 namespace pr::backend::d3d12::detail
 {

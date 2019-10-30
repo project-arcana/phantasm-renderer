@@ -1,9 +1,7 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <clean-core/native/win32_sanitized.hh>
-
-#include <delayimp.h>
+typedef struct _EXCEPTION_POINTERS* PEXCEPTION_POINTERS;
 
 namespace pr::backend::d3d12::detail
 {
@@ -18,7 +16,7 @@ void perform_safe_seh_call(Ft&& f_try)
     {
         f_try();
     }
-    __except (is_delay_load_exception(GetExceptionInformation()))
+    __except (is_delay_load_exception(static_cast<_EXCEPTION_POINTERS*>(_exception_info())))
     {
     }
 }

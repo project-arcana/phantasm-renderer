@@ -9,11 +9,12 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
+// Adapted from original
 
 #ifndef __D3DX12_H__
 #define __D3DX12_H__
 
-#include <d3d12.h>
+#include "d3d12_sanitized.hh"
 
 #if defined(__cplusplus)
 
