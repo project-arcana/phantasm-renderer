@@ -22,7 +22,7 @@ public:
     Swapchain& operator=(Swapchain const&) = delete;
     Swapchain& operator=(Swapchain&&) noexcept = delete;
 
-    void initialize(IDXGIFactory4& factory, HWND handle);
+    void initialize(IDXGIFactory4& factory, ID3D12CommandQueue& queue, HWND handle);
 
     [[nodiscard]] IDXGISwapChain3& getSwapchain() const { return *mSwapchain.get(); }
     [[nodiscard]] shared_com_ptr<IDXGISwapChain3> const& getSwapchainShared() const { return mSwapchain; }
