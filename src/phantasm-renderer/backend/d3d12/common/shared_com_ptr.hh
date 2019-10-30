@@ -80,6 +80,12 @@ public:
 
     [[nodiscard]] T* get() const { return _pointer; }
 
+    template<class U>
+    [[nodiscard]] auto get_interface(shared_com_ptr<U>& rhs) const
+    {
+        return _pointer->QueryInterface(IID_PPV_ARGS(rhs.override()));
+    }
+
     bool is_valid() const { return _pointer != nullptr; }
 
 private:

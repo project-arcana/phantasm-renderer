@@ -10,18 +10,21 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
 {
     // Factory init
     {
-        PR_D3D12_VERIFY(::CreateDXGIFactory(PR_COM_WRITE(mDXGIFactory)));
-        PR_D3D12_VERIFY(mDXGIFactory->QueryInterface(PR_COM_WRITE(mDXGIFactoryV2)));
+        shared_com_ptr<IDXGIFactory> temp_factory;
+        PR_D3D12_VERIFY(::CreateDXGIFactory(PR_COM_WRITE(temp_factory)));
+        PR_D3D12_VERIFY(temp_factory.get_interface(mFactory));
     }
 
     // Adapter init
     {
-        auto const chosen_adapter_index = get_preferred_adapter_index(get_adapter_candidates(), config.adapter_preference);
+        auto const chosen_adapter_index = config.adapter_preference == adapter_preference::explicit_index
+                                              ? config.explicit_adapter_index
+                                              : get_preferred_adapter_index(get_adapter_candidates(), config.adapter_preference);
         CC_ASSERT(chosen_adapter_index != uint32_t(-1));
 
         shared_com_ptr<IDXGIAdapter> temp_adapter;
-        mDXGIFactory->EnumAdapters(chosen_adapter_index, temp_adapter.override());
-        PR_D3D12_VERIFY(temp_adapter->QueryInterface(PR_COM_WRITE(mDXGIAdapter)));
+        mFactory->EnumAdapters(chosen_adapter_index, temp_adapter.override());
+        PR_D3D12_VERIFY(temp_adapter.get_interface(mAdapter));
     }
 
     // Debug layer init
@@ -37,7 +40,7 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
             if (config.enable_gpu_validation)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
-                PR_D3D12_VERIFY(debug_controller->QueryInterface(PR_COM_WRITE(debug_controller_v3)));
+                PR_D3D12_VERIFY(debug_controller.get_interface(debug_controller_v3));
                 debug_controller_v3->SetEnableGPUBasedValidation(true);
             }
         }
@@ -45,38 +48,6 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
         {
             // TODO: Log that the D3D12 SDK is missing
             // refer to https://docs.microsoft.com/en-us/windows/uwp/gaming/use-the-directx-runtime-and-visual-studio-graphics-diagnostic-features
-        }
-    }
-
-    // Root device init
-    {
-        PR_D3D12_VERIFY(::D3D12CreateDevice(mDXGIAdapter, config.feature_level, PR_COM_WRITE(mRootDevice)));
-
-        // Check for Shader Model 6.0 wave intrinsics support
-        {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS1 feature_data;
-            bool const feature_check_success = SUCCEEDED(mRootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feature_data, sizeof(feature_data)));
-
-            if (feature_check_success && feature_data.WaveOps)
-            {
-                mCapabilities.has_sm6_wave_intrinsics = true;
-            }
-        }
-
-        // Check for DXR raytracing support
-        if (config.enable_dxr)
-        {
-            D3D12_FEATURE_DATA_D3D12_OPTIONS5 feature_data;
-            bool const feature_check_success = SUCCEEDED(mRootDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feature_data, sizeof(feature_data)));
-
-            if (feature_check_success && feature_data.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0)
-            {
-                mRootDevice->QueryInterface(PR_COM_WRITE(mRootDeviceV5));
-                if (mRootDeviceV5.is_valid())
-                {
-                    mCapabilities.has_raytracing = true;
-                }
-            }
         }
     }
 }

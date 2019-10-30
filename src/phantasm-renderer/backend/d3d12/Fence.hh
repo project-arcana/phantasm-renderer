@@ -29,17 +29,6 @@ private:
     HANDLE mEvent;
 };
 
-class FencePool
-{
-public:
-    FencePool();
-
-    FencePool(FencePool const&) = delete;
-    FencePool& operator=(FencePool const&) = delete;
-
-private:
-};
-
 }
 
 #endif

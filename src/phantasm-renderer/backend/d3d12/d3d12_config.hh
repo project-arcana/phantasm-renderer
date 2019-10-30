@@ -3,6 +3,8 @@
 
 #include <d3dcommon.h>
 
+#include <clean-core/typedefs.hh>
+
 namespace pr::backend::d3d12
 {
 enum class adapter_preference : char
@@ -10,7 +12,8 @@ enum class adapter_preference : char
     highest_vram,
     first,
     integrated,
-    highest_feature_level
+    highest_feature_level,
+    explicit_index
 };
 
 /**
@@ -24,6 +27,7 @@ struct d3d12_config
     bool enable_dxr = true; ///< Enable DXR features if available
 
     adapter_preference adapter_preference = adapter_preference::highest_vram;
+    cc::uint32 explicit_adapter_index = cc::uint32(-1);
 
     D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_12_0; ///< The feature level to query in ::D3D12CreateDevice
 };

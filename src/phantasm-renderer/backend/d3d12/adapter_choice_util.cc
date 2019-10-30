@@ -149,6 +149,8 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
     }
     case adapter_preference::first:
         return candidates[0].index;
+    case adapter_preference::explicit_index:
+        return uint32_t(-1);
     }
 
     return candidates[0].index;
