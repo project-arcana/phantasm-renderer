@@ -17,6 +17,7 @@ pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::Descript
     std::lock_guard lg(mMutex);
 
     allocation res;
+    CC_ASSERT(!res.is_valid());
 
     for (auto it = mFreeHeapIndices.begin(); it != mFreeHeapIndices.end(); ++it)
     {
@@ -36,7 +37,7 @@ pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::Descript
     mHeapSize = cc::max(mHeapSize, num_descriptors);
     auto const new_heap = createHeap();
     res = new_heap->allocate(num_descriptors);
-
+    CC_ASSERT(res.is_valid());
     return res;
 }
 

@@ -13,6 +13,8 @@ pr::backend::d3d12::DescriptorAllocator::heap::heap(ID3D12Device& device, D3D12_
     CC_ASSERT(_num_descriptors > 0);
 
     D3D12_DESCRIPTOR_HEAP_DESC heap_desc;
+    heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    heap_desc.NodeMask = 0;
     heap_desc.Type = _type;
     heap_desc.NumDescriptors = UINT(_num_descriptors);
 
@@ -39,7 +41,7 @@ pr::backend::d3d12::DescriptorAllocator::allocation pr::backend::d3d12::Descript
     if (it_smallest_block == _free_blocks_by_size.end())
         return allocation{}; // no blocks can satisfy the allocation, return a null-allocation
 
-    auto const& it_offset = it_smallest_block->second;
+    auto const it_offset = it_smallest_block->second;
 
     auto const block_size = it_smallest_block->first;
     auto const block_offset = it_offset->first;
@@ -99,7 +101,7 @@ void pr::backend::d3d12::DescriptorAllocator::heap::add_block(int offset, int si
     auto const it_offset = _free_blocks_by_offset.emplace(offset, size);
 
     // add its iterator into the size map
-    auto const it_size = _free_blocks_by_size.emplace(offset, it_offset.first);
+    auto const it_size = _free_blocks_by_size.emplace(size, it_offset.first);
 
     // amend the size map iterator to the created block
     it_offset.first->second.iterator = it_size;

@@ -30,18 +30,7 @@ public:
     {
         /// null-allocation ctor
         explicit allocation() = default;
-
         explicit allocation(D3D12_CPU_DESCRIPTOR_HANDLE handle, int num_handles, int descriptor_size, heap* parent);
-
-        /// copy deleted
-        allocation(allocation const&) = delete;
-        allocation& operator=(allocation const&) = delete;
-
-        /// move
-        allocation(allocation&&) noexcept;
-        allocation& operator=(allocation&&) noexcept;
-
-        ~allocation();
 
     public:
         /// Returns true iff this allocation is valid
@@ -57,11 +46,11 @@ public:
         /// Returns the amount of handles
         [[nodiscard]] int get_num_handles() const { return _num_handles; }
 
-    private:
-        void free();
-        void invalidate();
+        /// Explicit free
+        void free(cc::uint64 current_frame_gen);
 
         heap* _parent_heap = nullptr;
+    private:
         D3D12_CPU_DESCRIPTOR_HANDLE _handle = {0};
         int _num_handles = -1; ///< Amount of contiguous handles in this allocation
         int _handle_size = -1; ///< Size of each individual handle in bytes

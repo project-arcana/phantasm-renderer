@@ -13,38 +13,10 @@ pr::backend::d3d12::DescriptorAllocator::allocation::allocation(D3D12_CPU_DESCRI
 {
 }
 
-pr::backend::d3d12::DescriptorAllocator::allocation::allocation(pr::backend::d3d12::DescriptorAllocator::allocation&& rhs) noexcept
-  : _parent_heap(rhs._parent_heap), _handle(rhs._handle), _num_handles(rhs._num_handles), _handle_size(rhs._handle_size)
+void pr::backend::d3d12::DescriptorAllocator::allocation::free(cc::uint64 current_frame_gen)
 {
-    rhs.invalidate();
+    CC_ASSERT(_parent_heap != nullptr);
+    _parent_heap->free(cc::move(*this), current_frame_gen);
 }
-
-pr::backend::d3d12::DescriptorAllocator::allocation& pr::backend::d3d12::DescriptorAllocator::allocation::operator=(pr::backend::d3d12::DescriptorAllocator::allocation&& rhs) noexcept
-{
-    this->free();
-
-    _parent_heap = rhs._parent_heap;
-    _handle = rhs._handle;
-    _num_handles = rhs._num_handles;
-    _handle_size = rhs._handle_size;
-
-    rhs.invalidate();
-
-    return *this;
-}
-
-pr::backend::d3d12::DescriptorAllocator::allocation::~allocation() { this->free(); }
-
-void pr::backend::d3d12::DescriptorAllocator::allocation::free()
-{
-    if (is_valid())
-    {
-        CC_ASSERT(_parent_heap != nullptr);
-        _parent_heap->free(cc::move(*this), 0u); // TODO: framegen
-        invalidate();
-    }
-}
-
-void pr::backend::d3d12::DescriptorAllocator::allocation::invalidate() { _handle.ptr = 0; }
 
 #endif
