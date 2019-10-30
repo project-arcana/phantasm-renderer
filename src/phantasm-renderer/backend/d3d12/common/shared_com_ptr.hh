@@ -1,7 +1,7 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <guiddef.h> // for __uuidof
+#include <guiddef.h> // for __uuido; this header is tame, only other include is string.h
 #undef FAR
 #undef _far
 
