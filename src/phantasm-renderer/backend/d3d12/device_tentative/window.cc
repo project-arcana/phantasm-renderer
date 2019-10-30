@@ -16,18 +16,18 @@ pr::backend::d3d12::Window::event_proxy sEventProxy;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT res = 0;
     switch (msg)
     {
     case WM_QUIT:
     case WM_CLOSE:
         sEventProxy.delegateEventOnClose();
-        break;
+        return 0;
+    case WM_DESTROY:
+        ::PostQuitMessage(0);
+        return 0;
     default:
-        res = DefWindowProc(hWnd, msg, wParam, lParam);
-        break;
+        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
-    return res;
 }
 
 }
@@ -35,6 +35,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 pr::backend::d3d12::Window::~Window()
 {
     CC_ASSERT(sEventProxy.window == this);
+    ::DestroyWindow(mHandle);
     sEventProxy.window = nullptr;
 }
 
