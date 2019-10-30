@@ -9,11 +9,9 @@
 
 #include "byte_util.hh"
 
-// cc
-
 namespace pr::backend::d3d12
 {
-/// Paged linear allocator for generic data upload
+/// Paged linear allocator for generic data upload memory
 /// Adapted from https://www.3dgep.com/learning-directx-12-3/#UploadBuffer_Class
 /// Thread-agnostic, unsynchronized
 class UploadBuffer
