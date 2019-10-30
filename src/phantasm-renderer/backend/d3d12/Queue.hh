@@ -1,8 +1,7 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <d3d12.h>
-#include <dxgi1_6.h>
+#include "common/d3d12_sanitized.hh"
 
 #include "common/shared_com_ptr.hh"
 

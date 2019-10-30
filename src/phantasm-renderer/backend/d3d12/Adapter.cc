@@ -3,6 +3,8 @@
 
 #include <clean-core/assert.hh>
 
+#include "common/d3d12_sanitized.hh"
+
 #include "adapter_choice_util.hh"
 #include "common/verify.hh"
 

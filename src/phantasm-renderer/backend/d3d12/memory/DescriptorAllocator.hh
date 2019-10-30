@@ -5,12 +5,10 @@
 #include <set>
 #include <vector>
 
-#include <d3d12.h>
-
 #include <clean-core/typedefs.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
-//#include <phantasm-renderer/backend/d3d12/common/sanitized_d3d12.hh>
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 
 #include "byte_util.hh"
 

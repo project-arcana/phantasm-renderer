@@ -1,4 +1,9 @@
 #pragma once
+#ifdef PR_BACKEND_D3D12
+
+#include <guiddef.h> // for __uuidof
+#undef FAR
+#undef _far
 
 namespace pr::backend::d3d12
 {
@@ -84,7 +89,7 @@ public:
     template <class U>
     [[nodiscard]] auto get_interface(shared_com_ptr<U>& rhs) const noexcept
     {
-        return _pointer->QueryInterface(IID_PPV_ARGS(rhs.override()));
+        return _pointer->QueryInterface(__uuidof(U), reinterpret_cast<void**>(rhs.override()));
     }
 
     bool is_valid() const { return _pointer != nullptr; }
@@ -102,3 +107,5 @@ bool operator==(shared_com_ptr<T> const& lhs, shared_com_ptr<T> const& rhs)
 
 /// Shorthand for the commonly occuring IID_PPV_ARGS(my_com_ptr.override()) argument in D3D12 APIs
 #define PR_COM_WRITE(_com_ptr_) IID_PPV_ARGS(_com_ptr_.override())
+
+#endif

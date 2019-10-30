@@ -2,7 +2,7 @@
 #ifdef PR_BACKEND_D3D12
 
 #include <clean-core/assert.hh>
-#include <clean-core/utility.hh>
+//#include <clean-core/utility.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>

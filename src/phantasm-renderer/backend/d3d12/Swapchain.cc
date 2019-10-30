@@ -1,6 +1,8 @@
 #include "Swapchain.hh"
 #ifdef PR_BACKEND_D3D12
 
+#include "common/d3d12_sanitized.hh"
+
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, ID3D12CommandQueue& queue, HWND handle)

@@ -3,9 +3,8 @@
 #include <deque>  // TODO: custom
 #include <memory> // TODO: cc::shared_ptr
 
-#include <d3d12.h>
-
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
+#include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
 
 #include "byte_util.hh"
 

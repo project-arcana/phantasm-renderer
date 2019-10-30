@@ -3,7 +3,7 @@
 
 #include "common/verify.hh"
 
-void pr::backend::d3d12::Device::initialize(IDXGIAdapter &adapter, const pr::backend::d3d12::d3d12_config &config)
+void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const pr::backend::d3d12::d3d12_config& config)
 {
     PR_D3D12_VERIFY(::D3D12CreateDevice(&adapter, config.feature_level, PR_COM_WRITE(mDevice)));
 

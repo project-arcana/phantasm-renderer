@@ -1,13 +1,8 @@
 #pragma once
 #ifdef PR_BACKEND_D3D12
 
-#include <d3d12.h>
-#include <dxgi1_6.h>
-
 #include "common/shared_com_ptr.hh"
-
-// Win32 HWND forward declaration
-typedef struct HWND__* HWND;
+#include "common/d3d12_fwd.hh"
 
 namespace pr::backend::d3d12
 {

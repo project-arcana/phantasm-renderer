@@ -35,7 +35,7 @@ namespace pr::backend::d3d12::detail
 
 /// Executes the given expression and terminates with a detailed error message if the HRESULT indicates failure
 #define PR_D3D12_VERIFY(_expr_)                                                                                       \
-    static_assert(PR_IS_PRVALUE_EXPRESSION(_expr_), "Use PR_D3D12_ASSERT for lvalue expressions");                    \
+    static_assert(PR_IS_PRVALUE_EXPRESSION(1), "Use PR_D3D12_ASSERT for lvalue expressions");                    \
     do                                                                                                                \
     {                                                                                                                 \
         ::HRESULT const op_res = (_expr_);                                                                            \
@@ -47,7 +47,7 @@ namespace pr::backend::d3d12::detail
 
 /// Executes the given expression and terminates with a detailed error message if the HRESULT indicates failure, takes the current ID3D12 Device for further information
 #define PR_D3D12_VERIFY_FULL(_expr_, _device_ptr_)                                                                         \
-    static_assert(PR_IS_PRVALUE_EXPRESSION(_expr_), "Use PR_D3D12_VERIFY_FULL for lvalue expressions");                    \
+    static_assert(PR_IS_PRVALUE_EXPRESSION(1), "Use PR_D3D12_VERIFY_FULL for lvalue expressions");                    \
     do                                                                                                                     \
     {                                                                                                                      \
         ::HRESULT const op_res = (_expr_);                                                                                 \

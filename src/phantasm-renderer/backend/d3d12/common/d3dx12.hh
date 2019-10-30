@@ -1,4 +1,6 @@
 #pragma once
+#ifdef PR_BACKEND_D3D12
+
 //*********************************************************
 //
 // Copyright (c) Microsoft. All rights reserved.
@@ -15,6 +17,7 @@
 #define __D3DX12_H__
 
 #include "d3d12_sanitized.hh"
+#define D3DX12_NO_STATE_OBJECT_HELPERS
 
 #if defined(__cplusplus)
 
@@ -2968,3 +2971,5 @@ private:
 #endif // defined( __cplusplus )
 
 #endif //__D3DX12_H__
+
+#endif // PR_BACKEND_D3D12

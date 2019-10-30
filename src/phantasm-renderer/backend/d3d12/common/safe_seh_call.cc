@@ -1,7 +1,8 @@
 #include "safe_seh_call.hh"
 #ifdef PR_BACKEND_D3D12
 
-#include <Windows.h>
+#include <clean-core/native/win32_sanitized.hh>
+
 #include <delayimp.h>
 
 bool pr::backend::d3d12::detail::is_delay_load_exception(PEXCEPTION_POINTERS e)

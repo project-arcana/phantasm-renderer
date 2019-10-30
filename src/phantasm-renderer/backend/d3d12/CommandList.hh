@@ -3,9 +3,9 @@
 
 #include <atomic>
 
-#include <d3d12.h>
-
 #include <clean-core/move.hh>
+
+#include "common/d3d12_sanitized.hh"
 
 #include "common/shared_com_ptr.hh"
 #include "common/verify.hh"

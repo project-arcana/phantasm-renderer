@@ -1,9 +1,9 @@
 #pragma once
-#ifdef PR_BACKEND_VULKAN
-
-#include <d3dcommon.h>
+#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/typedefs.hh>
+
+#include "common/d3d12_sanitized.hh"
 
 namespace pr::backend::d3d12
 {
