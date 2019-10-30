@@ -3,8 +3,8 @@
 #include <deque>  // TODO: custom
 #include <memory> // TODO: cc::shared_ptr
 
-#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 
 #include "byte_util.hh"
 
@@ -33,6 +33,12 @@ public:
 
     /// Perform an allocation, size must be <= page size
     [[nodiscard]] allocation alloc(size_t size, size_t align);
+
+    template <class T>
+    [[nodiscard]] allocation alloc()
+    {
+        return alloc(sizeof(T), alignof(T));
+    }
 
     /// Release all allocated memory
     void reset();
