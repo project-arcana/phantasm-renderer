@@ -43,6 +43,8 @@ private:
     cc::array<ID3D12DescriptorHeap*, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> mDescriptorHeaps;
 };
 
+/// Ring buffer of command allocators, each with N command lists
+/// Unsynchronized
 class CommandListRing
 {
 public:

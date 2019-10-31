@@ -64,4 +64,10 @@ T divide_by_multiple(T value, size_t alignment)
 {
     return (T)((value + alignment - 1) / alignment);
 }
+
+template <typename T>
+T align_offset(T offset, size_t alignment)
+{
+    return ((offset + (alignment - 1)) & ~(alignment - 1));
+}
 }
