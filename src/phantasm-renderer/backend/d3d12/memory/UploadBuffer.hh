@@ -74,7 +74,7 @@ private:
 
 private:
     /// Returns a pooled page, or creates a new one
-    [[nodiscard]] page* requestPage();
+    [[nodiscard]] page* acquirePage();
 
 private:
     ID3D12Device& mDevice;

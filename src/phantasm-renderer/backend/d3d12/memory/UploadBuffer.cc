@@ -21,7 +21,7 @@ pr::backend::d3d12::UploadBuffer::allocation pr::backend::d3d12::UploadBuffer::a
     CC_ASSERT(size <= mPageSize);
 
     if (mCurrentPage == nullptr || !mCurrentPage->can_fit_alloc(size, align))
-        mCurrentPage = requestPage();
+        mCurrentPage = acquirePage();
 
     return mCurrentPage->alloc(size, align);
 }
@@ -39,7 +39,7 @@ void pr::backend::d3d12::UploadBuffer::reset()
         page->reset();
 }
 
-pr::backend::d3d12::UploadBuffer::page* pr::backend::d3d12::UploadBuffer::requestPage()
+pr::backend::d3d12::UploadBuffer::page* pr::backend::d3d12::UploadBuffer::acquirePage()
 {
     if (!mAvailablePages.empty())
     {
