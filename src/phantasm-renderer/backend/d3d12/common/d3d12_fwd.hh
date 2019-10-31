@@ -14,6 +14,7 @@ struct ID3D12Device5;
 struct ID3D12Fence;
 struct ID3D12Resource;
 struct ID3D12CommandQueue;
+struct ID3D12DescriptorHeap;
 
 struct IDXGIAdapter;
 struct IDXGIFactory4;

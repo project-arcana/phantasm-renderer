@@ -8,6 +8,7 @@ struct pr::backend::d3d12::Window::event_proxy
 {
     pr::backend::d3d12::Window* window = nullptr;
     void delegateEventOnClose() const { window->onCloseEvent(); }
+    void delegateEventResize(int w, int h, bool minimized) const { window->onResizeEvent(w, h, minimized); }
 };
 
 namespace
@@ -25,6 +26,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         ::PostQuitMessage(0);
         return 0;
+    case WM_SIZE:
+    {
+        RECT client_rect;
+        ::GetClientRect(hWnd, &client_rect);
+        sEventProxy.delegateEventResize(client_rect.right - client_rect.left, client_rect.bottom - client_rect.top, (::IsIconic(hWnd) == TRUE));
+        return 0;
+    }
     default:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -70,5 +78,13 @@ void pr::backend::d3d12::Window::pollEvents()
 }
 
 void pr::backend::d3d12::Window::onCloseEvent() { mIsRequestingClose = true; }
+
+void pr::backend::d3d12::Window::onResizeEvent(int w, int h, bool minimized)
+{
+    mWidth = w;
+    mHeight = h;
+    mIsMinimized = minimized;
+    mPendingResize = true;
+}
 
 #endif
