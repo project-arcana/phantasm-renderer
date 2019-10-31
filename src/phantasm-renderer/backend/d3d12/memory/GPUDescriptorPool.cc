@@ -3,6 +3,7 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-renderer/backend/d3d12/RootSignature.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 pr::backend::d3d12::GPUDescriptorPool::GPUDescriptorPool(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, int numDescriptorsPerHeap)
@@ -22,33 +23,33 @@ pr::backend::d3d12::GPUDescriptorPool::~GPUDescriptorPool()
         heap->Release();
 }
 
-void pr::backend::d3d12::GPUDescriptorPool::parseRootSignature(const RootSignature& rootSignature)
+void pr::backend::d3d12::GPUDescriptorPool::parseRootSignature(RootSignature const& rootSignature)
 {
     // If the root signature changes, all descriptors must be (re)bound to the
     // command list.
     mStaleDescriptorTableBitMask = 0;
 
-    auto const& rootSignatureDesc = rootSignature.GetRootSignatureDesc();
+    auto const root_sig_num_params = rootSignature.getDescription().NumParameters;
 
     // Get a bit mask that represents the root parameter indices that match the
     // descriptor heap type for this dynamic descriptor heap.
-    mDescriptorTableBitMask = rootSignature.GetDescriptorTableBitMask(mDescriptorHeapType);
-    auto descriptorTableBitMask = mDescriptorTableBitMask;
+    auto desc_table_bit_mask = rootSignature.getBitmask(mDescriptorHeapType);
+    mDescriptorTableBitMask = desc_table_bit_mask;
 
     auto currentOffset = 0;
-    DWORD rootIndex;
-    while (_BitScanForward(&rootIndex, descriptorTableBitMask) && rootIndex < rootSignatureDesc.NumParameters)
+    DWORD root_index;
+    while (_BitScanForward(&root_index, desc_table_bit_mask) && root_index < root_sig_num_params)
     {
-        auto const numDescriptors = rootSignature.GetNumDescriptors(rootIndex);
+        auto const numDescriptors = rootSignature.getNumDescriptors(root_index);
 
-        descriptor_table_cache& descriptorTableCache = mDescriptorTableCache[rootIndex];
-        descriptorTableCache.size = numDescriptors;
+        descriptor_table_cache& descriptorTableCache = mDescriptorTableCache[root_index];
+        descriptorTableCache.size = int(numDescriptors);
         descriptorTableCache.base_descriptor = mDescriptorHandleCache.data() + currentOffset;
 
         currentOffset += numDescriptors;
 
         // Flip the descriptor table bit so it's not scanned again for the current index.
-        descriptorTableBitMask ^= (1 << rootIndex);
+        desc_table_bit_mask ^= (1 << root_index);
     }
 
     // Make sure the maximum number of descriptors per descriptor heap has not been exceeded.
@@ -109,7 +110,7 @@ bool pr::backend::d3d12::GPUDescriptorPool::prepareDescriptorCommit(CommandList&
             mCurrentGPUDescriptorHandle = mCurrentDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
             mNumFreeHandles = mNumDescriptorsPerHeap;
 
-            commandList.SetDescriptorHeap(mDescriptorHeapType, mCurrentDescriptorHeap);
+            commandList.setDescriptorHeap(mDescriptorHeapType, mCurrentDescriptorHeap);
 
             // When updating the descriptor heap on the command list, all descriptor
             // tables must be (re)recopied to the new descriptor heap (not just
@@ -153,7 +154,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE pr::backend::d3d12::GPUDescriptorPool::copyDescripto
         mCurrentGPUDescriptorHandle = mCurrentDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
         mNumFreeHandles = mNumDescriptorsPerHeap;
 
-        commandList.SetDescriptorHeap(mDescriptorHeapType, mCurrentDescriptorHeap);
+        commandList.setDescriptorHeap(mDescriptorHeapType, mCurrentDescriptorHeap);
 
         // When updating the descriptor heap on the command list, all descriptor
         // tables must be (re)recopied to the new descriptor heap (not just

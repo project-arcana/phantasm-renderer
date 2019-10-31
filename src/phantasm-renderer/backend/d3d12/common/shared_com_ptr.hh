@@ -59,6 +59,7 @@ public:
         return *this;
     }
 
+    /// Raw pointer assign
     shared_com_ptr& operator=(T* ptr) noexcept
     {
         T* const old_ptr = _pointer;
@@ -67,6 +68,15 @@ public:
             _pointer->AddRef();
         if (old_ptr)
             old_ptr->Release();
+        return *this;
+    }
+
+    /// Optimization for nullptr literals
+    shared_com_ptr& operator=(decltype(nullptr)) noexcept
+    {
+        if (_pointer)
+            _pointer->Release();
+        _pointer = nullptr;
         return *this;
     }
 

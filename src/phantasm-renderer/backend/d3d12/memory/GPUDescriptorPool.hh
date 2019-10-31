@@ -3,7 +3,7 @@
 
 /*
  *  Adapted from DynamicDescriptorHeap.h, in turn based on MS MiniEngine
- *  See: https://github.com/Microsoft/DirectX-Graphics-Samples
+ *  See: https://www.3dgep.com/learning-directx-12-3/#Dynamic_Descriptor_Heap
  *  Original license:
  *
  *  Copyright(c) 2018 Jeremiah van Oosten
@@ -31,25 +31,14 @@
 #include <clean-core/typedefs.hh>
 #include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/d3d12/CommandList.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 
 namespace pr::backend::d3d12
 {
-class CommandList
-{
-public:
-    void SetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE, ID3D12DescriptorHeap*);
-    ID3D12GraphicsCommandList& GetGraphicsCommandList() const;
-};
-
-class RootSignature
-{
-public:
-    cc::uint32 GetDescriptorTableBitMask(D3D12_DESCRIPTOR_HEAP_TYPE heapType) const;
-    int GetNumDescriptors(DWORD rootIndex) const;
-    D3D12_ROOT_SIGNATURE_DESC const& GetRootSignatureDesc() const;
-};
+class CommandList;
+class RootSignature;
 
 /// GPU visible descriptor heap that allows for staging of CPU visible descriptors that need
 /// to be uploaded before a Draw or Dispatch command is executed
@@ -64,24 +53,13 @@ public:
     GPUDescriptorPool& operator=(GPUDescriptorPool&&) noexcept = delete;
 
     ~GPUDescriptorPool();
-    /**
-     * Stages a contiguous range of CPU visible descriptors.
-     * Descriptors are not copied to the GPU visible descriptor heap until
-     * the CommitStagedDescriptors function is called.
-     */
+
+    /// Stages a contiguous range of CPU visible descriptors.
+    /// Descriptors are not copied to the GPU visible descriptor heap until commit
     void stageDescriptors(unsigned rootParameterIndex, int offset, int numDescriptors, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptors);
 
-    /**
-     * Copy all of the staged descriptors to the GPU visible descriptor heap and
-     * bind the descriptor heap and the descriptor tables to the command list.
-     * The passed-in function object is used to set the GPU visible descriptors
-     * on the command list. Two possible functions are:
-     *   * Before a draw    : ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable
-     *   * Before a dispatch: ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-     *
-     * Since the DynamicDescriptorHeap can't know which function will be used, it must
-     * be passed as an argument to the function.
-     */
+    /// Copy  the staged descriptors to the GPU visible descriptor heap and
+    /// bind the descriptor heap and the descriptor tables to the command list.
     void commitStagedDescriptorsForDraw(CommandList& commandList) { return commitStagedDescriptors<false>(commandList); }
     void commitStagedDescriptorsForDispatch(CommandList& commandList) { return commitStagedDescriptors<true>(commandList); }
 
@@ -189,7 +167,7 @@ void pr::backend::d3d12::GPUDescriptorPool::commitStagedDescriptors(pr::backend:
 {
     if (prepareDescriptorCommit(commandList))
     {
-        auto& graphics_command_list = commandList.GetGraphicsCommandList();
+        auto& graphics_command_list = commandList.getCommandList();
 
         DWORD root_index;
         // Scan from LSB to MSB for a bit set in staleDescriptorsBitMask

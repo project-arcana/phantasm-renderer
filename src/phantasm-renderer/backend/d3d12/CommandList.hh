@@ -3,6 +3,7 @@
 
 #include <atomic>
 
+#include <clean-core/array.hh>
 #include <clean-core/move.hh>
 
 #include "common/d3d12_sanitized.hh"
@@ -16,7 +17,30 @@ class CommandAllocator;
 
 struct CommandList
 {
-    shared_com_ptr<ID3D12CommandList> ptr;
+    CommandList() { cc::fill(mDescriptorHeaps, nullptr); }
+
+    void initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator& allocator);
+
+    void setDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
+
+    void close();
+
+public:
+    [[nodiscard]] D3D12_COMMAND_LIST_TYPE const& getType() const { return mType; }
+
+    [[nodiscard]] ID3D12GraphicsCommandList4& getCommandList() const { return *mCommandList.get(); }
+    [[nodiscard]] shared_com_ptr<ID3D12GraphicsCommandList4> const& getCommandListShared() const { return mCommandList; }
+
+private:
+    void rebindDescriptorHeaps();
+
+private:
+    /// The type of this command list
+    D3D12_COMMAND_LIST_TYPE mType;
+    shared_com_ptr<ID3D12GraphicsCommandList4> mCommandList;
+
+    /// Weak references to the descriptor heaps that are currently bound
+    cc::array<ID3D12DescriptorHeap*, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> mDescriptorHeaps;
 };
 
 /// Represents a ID3D12CommandAllocator
@@ -35,7 +59,7 @@ public:
     [[nodiscard]] CommandList createCommandList()
     {
         CommandList res;
-        PR_D3D12_VERIFY(mParentDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, mCommandAllocator, nullptr, PR_COM_WRITE(res.ptr)));
+        res.initialize(*mParentDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, *mCommandAllocator);
         return res;
     }
 
