@@ -39,11 +39,12 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
         {
             debug_controller->EnableDebugLayer();
 
-            if (config.enable_gpu_validation)
+            if (config.enable_validation_extended)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
                 PR_D3D12_VERIFY(debug_controller.get_interface(debug_controller_v3));
                 debug_controller_v3->SetEnableGPUBasedValidation(true);
+                debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
             }
         }
         else

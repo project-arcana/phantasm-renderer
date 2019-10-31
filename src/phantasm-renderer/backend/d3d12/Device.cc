@@ -31,4 +31,5 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const pr::bac
     }
 }
 
+
 #endif

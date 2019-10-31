@@ -21,4 +21,6 @@ namespace pr::backend::detail
     return res;
 }
 
+[[nodiscard]] std::string formatted_stl_string(char const* format, ...);
+
 }
