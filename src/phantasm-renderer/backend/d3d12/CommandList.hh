@@ -13,7 +13,7 @@
 
 namespace pr::backend::d3d12
 {
-class CommandAllocator;
+class BackendD3D12;
 
 struct CommandList
 {
@@ -43,37 +43,30 @@ private:
     cc::array<ID3D12DescriptorHeap*, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> mDescriptorHeaps;
 };
 
-/// Represents a ID3D12CommandAllocator
-class CommandAllocator
+class CommandListRing
 {
-    // reference type
 public:
-    CommandAllocator(shared_com_ptr<ID3D12Device> parent_device) : mParentDevice(cc::move(parent_device))
-    {
-        PR_D3D12_VERIFY(mParentDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, PR_COM_WRITE(mCommandAllocator)));
-    }
+    void initialize(BackendD3D12& backend, unsigned num_allocators, unsigned num_command_lists_per_allocator, D3D12_COMMAND_QUEUE_DESC const& queue_desc);
 
-    CommandAllocator(CommandAllocator const&) = delete;
-    CommandAllocator& operator=(CommandAllocator const&) = delete;
+    /// Steps forward in the ring, resetting the next allocator
+    void onBeginFrame();
 
-    [[nodiscard]] CommandList createCommandList()
-    {
-        CommandList res;
-        res.initialize(*mParentDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, *mCommandAllocator);
-        return res;
-    }
-
-    void reset()
-    {
-        // This fails if any command list created by this allocator is still alive
-        PR_D3D12_VERIFY(mCommandAllocator->Reset());
-    }
+    /// Acquires a command list
+    [[nodiscard]] ID3D12GraphicsCommandList* acquireCommandList();
 
 private:
-    shared_com_ptr<ID3D12Device> const mParentDevice;
-    shared_com_ptr<ID3D12CommandAllocator> mCommandAllocator;
+    struct ring_entry
+    {
+        shared_com_ptr<ID3D12CommandAllocator> command_allocator;
+        cc::array<shared_com_ptr<ID3D12GraphicsCommandList>> command_lists;
+        int num_command_lists_in_flight = 0;
 
-private:
+        [[nodiscard]] ID3D12GraphicsCommandList* acquire_list();
+    };
+
+    cc::array<ring_entry> mRing;
+    int mRingIndex = 0;
+    ring_entry* mActiveEntry = nullptr;
 };
 }
 
