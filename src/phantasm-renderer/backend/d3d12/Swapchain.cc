@@ -88,12 +88,16 @@ void pr::backend::d3d12::Swapchain::waitForSwapchain()
     mFences[backbuffer_i].waitOnCPU(0);
 }
 
-pr::backend::d3d12::shared_com_ptr<ID3D12Resource> pr::backend::d3d12::Swapchain::getCurrentBackbufferResource() const
+DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return s_backbuffer_format; }
+
+ID3D12Resource* pr::backend::d3d12::Swapchain::getCurrentBackbufferResource() const
 {
     auto const backbuffer_i = mSwapchain->GetCurrentBackBufferIndex();
 
-    shared_com_ptr<ID3D12Resource> res;
-    PR_D3D12_VERIFY(mSwapchain->GetBuffer(backbuffer_i, PR_COM_WRITE(res)));
+    ID3D12Resource* res;
+    PR_D3D12_VERIFY(mSwapchain->GetBuffer(backbuffer_i, IID_PPV_ARGS(&res)));
+    // NOTE: This is correct, based on AMD utils implementation
+    res->Release();
     return res;
 }
 

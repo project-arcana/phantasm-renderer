@@ -18,6 +18,8 @@ target_include_directories(phantasm-renderer PUBLIC src/)
 
 target_link_libraries(phantasm-renderer PUBLIC
     clean-core
+    typed-geometry
+    reflector
 )
 
 

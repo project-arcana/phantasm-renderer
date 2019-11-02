@@ -29,8 +29,10 @@ public:
 
     void waitForSwapchain();
 
+    [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const;
+
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE& getCurrentBackbufferRTV();
-    [[nodiscard]] shared_com_ptr<ID3D12Resource> getCurrentBackbufferResource() const;
+    [[nodiscard]] ID3D12Resource* getCurrentBackbufferResource() const;
 
     [[nodiscard]] unsigned getNumBackbuffers() const { return mNumBackbuffers; }
 

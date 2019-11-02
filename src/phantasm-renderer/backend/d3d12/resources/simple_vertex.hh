@@ -1,0 +1,85 @@
+#pragma once
+
+#include <typed-geometry/tg-lean.hh>
+
+#include <clean-core/capped_vector.hh>
+#include <clean-core/vector.hh>
+
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/common/to_dxgi_format.hh>
+
+namespace pr::backend::d3d12
+{
+struct simple_vertex
+{
+    tg::pos3 position;
+    tg::color3 color;
+    tg::vec3 unused = tg::vec3::one;
+};
+
+template <class I>
+constexpr void introspect(I&& i, simple_vertex& v)
+{
+    i(v.position, "position");
+    i(v.color, "color");
+    i(v.unused, "unused");
+}
+
+template <class VertT>
+struct VertexVisitor
+{
+    // TODO: Eventually, this will work once the 19.23 bug is fixed
+    // static constexpr auto num_attributes = rf::member_count<VertT>;
+    // cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, num_attributes> attributes;
+    cc::vector<D3D12_INPUT_ELEMENT_DESC> attributes;
+
+    template <class T>
+    void operator()(T const& ref, char const* name)
+    {
+        auto& attr = attributes.emplace_back();
+        attr.SemanticName = name;
+        attr.SemanticIndex = 0;
+        attr.InputSlot = 0;
+        attr.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+        attr.InstanceDataStepRate = 0;
+        attr.Format = util::dxgi_format<T>;
+
+        // This call assumes that the original VertT& in get_vertex_attributes is a dereferenced nullptr
+        attr.AlignedByteOffset = reinterpret_cast<unsigned>(&ref);
+    }
+};
+
+template <class VertT>
+[[nodiscard]] auto get_vertex_attributes()
+{
+    VertexVisitor<VertT> visitor;
+    VertT* volatile dummyPointer = nullptr; // Volatile to avoid UB-based optimization
+    introspect(visitor, *dummyPointer);
+    return visitor.attributes;
+}
+
+// cc::vector<Vertex> load_polymesh(char const* path)
+//{
+//    pm::Mesh m;
+//    auto pos = m.vertices().make_attribute<tg::pos3>();
+//    pm::load(path, m, pos);
+
+//    CC_ASSERT(pm::is_triangle_mesh(m));
+//    auto const numFaces = unsigned(m.faces().size());
+//    cc::vector<Vertex> res;
+//    res.reserve(numFaces);
+
+////    tg::rng rng;
+////    for (auto face : m.faces())
+////    {
+////        auto const face_verts = face.vertices().to_array<3>(pos);
+////        for (auto const& v : face_verts)
+////            res.push_back(Vertex{tg::pos3(v.x, v.y, v.z), tg::uniform<tg::color3>(rng), tg::vec3::one});
+
+////        // auto const t = tg::triangle3(a, b, c);
+////        // res.emplace_back(t, normal(t));
+////    }
+
+//    return res;
+//}
+}
