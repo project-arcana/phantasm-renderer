@@ -1,19 +1,17 @@
 #pragma once
 
-#include <typed-geometry/tg-lean.hh>
-
 #include <clean-core/capped_vector.hh>
 #include <clean-core/vector.hh>
-
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/to_dxgi_format.hh>
+#include <typed-geometry/tg-lean.hh>
 
 namespace pr::backend::d3d12
 {
 struct simple_vertex
 {
     tg::pos3 position;
-    tg::color3 color;
+    tg::dir3 normal;
     tg::vec3 unused = tg::vec3::one;
 };
 
@@ -21,7 +19,7 @@ template <class I>
 constexpr void introspect(I&& i, simple_vertex& v)
 {
     i(v.position, "position");
-    i(v.color, "color");
+    i(v.normal, "normal");
     i(v.unused, "unused");
 }
 
@@ -36,7 +34,7 @@ struct VertexVisitor
     template <class T>
     void operator()(T const& ref, char const* name)
     {
-        auto& attr = attributes.emplace_back();
+        D3D12_INPUT_ELEMENT_DESC& attr = attributes.emplace_back();
         attr.SemanticName = name;
         attr.SemanticIndex = 0;
         attr.InputSlot = 0;
@@ -45,7 +43,7 @@ struct VertexVisitor
         attr.Format = util::dxgi_format<T>;
 
         // This call assumes that the original VertT& in get_vertex_attributes is a dereferenced nullptr
-        attr.AlignedByteOffset = reinterpret_cast<unsigned>(&ref);
+        attr.AlignedByteOffset = UINT(reinterpret_cast<size_t>(&ref));
     }
 };
 
@@ -58,28 +56,11 @@ template <class VertT>
     return visitor.attributes;
 }
 
-// cc::vector<Vertex> load_polymesh(char const* path)
-//{
-//    pm::Mesh m;
-//    auto pos = m.vertices().make_attribute<tg::pos3>();
-//    pm::load(path, m, pos);
+struct simple_mesh_data
+{
+    cc::vector<int> indices;
+    cc::vector<simple_vertex> vertices;
+};
 
-//    CC_ASSERT(pm::is_triangle_mesh(m));
-//    auto const numFaces = unsigned(m.faces().size());
-//    cc::vector<Vertex> res;
-//    res.reserve(numFaces);
-
-////    tg::rng rng;
-////    for (auto face : m.faces())
-////    {
-////        auto const face_verts = face.vertices().to_array<3>(pos);
-////        for (auto const& v : face_verts)
-////            res.push_back(Vertex{tg::pos3(v.x, v.y, v.z), tg::uniform<tg::color3>(rng), tg::vec3::one});
-
-////        // auto const t = tg::triangle3(a, b, c);
-////        // res.emplace_back(t, normal(t));
-////    }
-
-//    return res;
-//}
+[[nodiscard]] simple_mesh_data load_polymesh(char const* path);
 }
