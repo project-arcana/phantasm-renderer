@@ -31,20 +31,20 @@ void DynamicBufferRing::initialize(ID3D12Device& pDevice, uint32_t numberOfBackB
 // AllocConstantBuffer
 //
 //--------------------------------------------------------------------------------------
-bool DynamicBufferRing::allocConstantBuffer(uint32_t size, void** data, D3D12_GPU_VIRTUAL_ADDRESS* buffer_view_desc)
+bool DynamicBufferRing::allocConstantBuffer(uint32_t size, void*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_buffer_view_desc)
 {
     size = mem::align_offset(size, 256);
 
     uint32_t memOffset;
-    if (mMemoryRing.Alloc(size, &memOffset) == false)
+    if (mMemoryRing.alloc(size, &memOffset) == false)
     {
         // Trace("Ran out of mem for 'dynamic' buffers, please increase the allocated size\n");
         return false;
     }
 
-    *data = (void*)(mData + memOffset);
+    out_data = static_cast<void*>(mData + memOffset);
 
-    *buffer_view_desc = mResource->GetGPUVirtualAddress() + memOffset;
+    out_buffer_view_desc = mResource->GetGPUVirtualAddress() + memOffset;
 
     return true;
 }
@@ -54,37 +54,36 @@ bool DynamicBufferRing::allocConstantBuffer(uint32_t size, void** data, D3D12_GP
 // AllocVertexBuffer
 //
 //--------------------------------------------------------------------------------------
-bool DynamicBufferRing::allocVertexBuffer(uint32_t num_vertices, uint32_t stride_in_bytes, void** data, D3D12_VERTEX_BUFFER_VIEW* view)
+bool DynamicBufferRing::allocVertexBuffer(uint32_t num_vertices, uint32_t stride_in_bytes, void*& out_data, D3D12_VERTEX_BUFFER_VIEW& out_view)
 {
     auto const size = mem::align_offset(num_vertices * stride_in_bytes, 256);
 
     uint32_t memOffset;
-    if (mMemoryRing.Alloc(size, &memOffset) == false)
+    if (mMemoryRing.alloc(size, &memOffset) == false)
         return false;
 
-    *data = (void*)(mData + memOffset);
+    out_data = static_cast<void*>(mData + memOffset);
 
-
-    view->BufferLocation = mResource->GetGPUVirtualAddress() + memOffset;
-    view->StrideInBytes = stride_in_bytes;
-    view->SizeInBytes = size;
+    out_view.BufferLocation = mResource->GetGPUVirtualAddress() + memOffset;
+    out_view.StrideInBytes = stride_in_bytes;
+    out_view.SizeInBytes = size;
 
     return true;
 }
 
-bool DynamicBufferRing::allocIndexBuffer(uint32_t num_indices, uint32_t stride_in_bytes, void** data, D3D12_INDEX_BUFFER_VIEW* view)
+bool DynamicBufferRing::allocIndexBuffer(uint32_t num_indices, uint32_t stride_in_bytes, void*& out_data, D3D12_INDEX_BUFFER_VIEW& out_view)
 {
     auto const size = mem::align_offset(num_indices * stride_in_bytes, 256);
 
     uint32_t memOffset;
-    if (mMemoryRing.Alloc(size, &memOffset) == false)
+    if (mMemoryRing.alloc(size, &memOffset) == false)
         return false;
 
-    *data = (void*)(mData + memOffset);
+    out_data = static_cast<void*>(mData + memOffset);
 
-    view->BufferLocation = mResource->GetGPUVirtualAddress() + memOffset;
-    view->Format = (stride_in_bytes == 4) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
-    view->SizeInBytes = size;
+    out_view.BufferLocation = mResource->GetGPUVirtualAddress() + memOffset;
+    out_view.Format = (stride_in_bytes == 4) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
+    out_view.SizeInBytes = size;
 
     return true;
 }
@@ -94,5 +93,5 @@ bool DynamicBufferRing::allocIndexBuffer(uint32_t num_indices, uint32_t stride_i
 // OnBeginFrame
 //
 //--------------------------------------------------------------------------------------
-void DynamicBufferRing::onBeginFrame() { mMemoryRing.OnBeginFrame(); }
+void DynamicBufferRing::onBeginFrame() { mMemoryRing.onBeginFrame(); }
 }

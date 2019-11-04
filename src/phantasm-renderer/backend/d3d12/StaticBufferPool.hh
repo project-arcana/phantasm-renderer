@@ -29,10 +29,12 @@ public:
     bool allocConstantBuffer(uint32_t size, void* pData, D3D12_CONSTANT_BUFFER_VIEW_DESC* pViewDesc);
 
     void uploadData(ID3D12GraphicsCommandList* pCmdList);
+
+    /// Frees the internal heap used to upload resources, can no longer be used after this call, but
+    /// resources already uploaded remain alive
     void freeUploadHeap();
 
 private:
-    shared_com_ptr<ID3D12Resource> mBufferMemory;
     shared_com_ptr<ID3D12Resource> mBufferSystemMemory;
     shared_com_ptr<ID3D12Resource> mBufferVideoMemory;
     char* mData = nullptr;

@@ -3,7 +3,7 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/vector.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
-#include <phantasm-renderer/backend/d3d12/common/to_dxgi_format.hh>
+#include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <typed-geometry/tg-lean.hh>
 
 namespace pr::backend::d3d12
@@ -11,7 +11,7 @@ namespace pr::backend::d3d12
 struct simple_vertex
 {
     tg::pos3 position;
-    tg::dir3 normal;
+    tg::vec3 normal;
     tg::vec3 unused = tg::vec3::one;
 };
 

@@ -28,9 +28,9 @@ public:
 
     void onBeginFrame();
 
-    bool allocIndexBuffer(uint32_t numbeOfIndices, uint32_t strideInBytes, void** pData, D3D12_INDEX_BUFFER_VIEW* pView);
-    bool allocVertexBuffer(uint32_t numbeOfVertices, uint32_t strideInBytes, void** pData, D3D12_VERTEX_BUFFER_VIEW* pView);
-    bool allocConstantBuffer(uint32_t size, void** pData, D3D12_GPU_VIRTUAL_ADDRESS* pBufferViewDesc);
+    bool allocIndexBuffer(uint32_t numbeOfIndices, uint32_t strideInBytes, void*& pData, D3D12_INDEX_BUFFER_VIEW& pView);
+    bool allocVertexBuffer(uint32_t numbeOfVertices, uint32_t strideInBytes, void*& pData, D3D12_VERTEX_BUFFER_VIEW& pView);
+    bool allocConstantBuffer(uint32_t size, void*& pData, D3D12_GPU_VIRTUAL_ADDRESS& pBufferViewDesc);
 
 private:
     shared_com_ptr<ID3D12Resource> mResource;

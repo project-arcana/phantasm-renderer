@@ -98,28 +98,28 @@ bool StaticBufferPool::allocIndexBuffer(uint32_t numbeOfIndices, uint32_t stride
     return false;
 }
 
-bool StaticBufferPool::allocConstantBuffer(uint32_t size, void** pData, D3D12_CONSTANT_BUFFER_VIEW_DESC* pViewDesc)
+bool StaticBufferPool::allocConstantBuffer(uint32_t size, void** data, D3D12_CONSTANT_BUFFER_VIEW_DESC* pViewDesc)
 {
-    allocBuffer(size, 1, pData, &pViewDesc->BufferLocation, &pViewDesc->SizeInBytes);
+    allocBuffer(size, 1, data, &pViewDesc->BufferLocation, &pViewDesc->SizeInBytes);
     return true;
 }
 
-bool StaticBufferPool::allocConstantBuffer(uint32_t size, void* pInitData, D3D12_CONSTANT_BUFFER_VIEW_DESC* pOut)
+bool StaticBufferPool::allocConstantBuffer(uint32_t size, void* init_data, D3D12_CONSTANT_BUFFER_VIEW_DESC* pOut)
 {
     void* data;
     if (allocConstantBuffer(size, &data, pOut))
     {
-        ::memcpy(data, pInitData, size);
+        ::memcpy(data, init_data, size);
         return true;
     }
     return false;
 }
 
-void StaticBufferPool::uploadData(ID3D12GraphicsCommandList* pCmdList)
+void StaticBufferPool::uploadData(ID3D12GraphicsCommandList* cmd_list)
 {
     if (mUseVideoMemory)
     {
-        pCmdList->CopyBufferRegion(mBufferVideoMemory, mMemoryInit, mBufferSystemMemory, mMemoryInit, mMemoryOffset - mMemoryInit);
+        cmd_list->CopyBufferRegion(mBufferVideoMemory, mMemoryInit, mBufferSystemMemory, mMemoryInit, mMemoryOffset - mMemoryInit);
 
         // With 'dynamic resources' we can use a same resource to hold Constant, Index and Vertex buffers.
         // That is because we dont need to use a transition.
@@ -133,7 +133,7 @@ void StaticBufferPool::uploadData(ID3D12GraphicsCommandList* pCmdList)
         // Please note that in the interest of clarity vertex buffers and constant buffers have been split into two different classes though
         auto const barrier
             = CD3DX12_RESOURCE_BARRIER::Transition(mBufferVideoMemory, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-        pCmdList->ResourceBarrier(1, &barrier);
+        cmd_list->ResourceBarrier(1, &barrier);
 
         mMemoryInit = mMemoryOffset;
     }

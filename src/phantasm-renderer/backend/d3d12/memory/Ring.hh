@@ -12,32 +12,32 @@ namespace pr::backend::d3d12
 class Ring
 {
 public:
-    ~Ring() { Free(m_AllocatedSize); }
+    ~Ring() { free(mAllocatedSize); }
 
-    void initialize(uint32_t total_size) { m_TotalSize = total_size; }
+    void initialize(uint32_t total_size) { mTotalSize = total_size; }
 
-    uint32_t GetSize() const { return m_AllocatedSize; }
-    uint32_t GetHead() const { return m_Head; }
-    uint32_t GetTail() const { return (m_Head + m_AllocatedSize) % m_TotalSize; }
+    uint32_t getSize() const { return mAllocatedSize; }
+    uint32_t getHead() const { return mHead; }
+    uint32_t getTail() const { return (mHead + mAllocatedSize) % mTotalSize; }
 
     // helper to avoid allocating chunks that wouldn't fit contiguously in the ring
-    uint32_t PaddingToAvoidCrossOver(uint32_t size) const
+    uint32_t paddingToAvoidCrossover(uint32_t size) const
     {
-        auto const tail = GetTail();
-        if ((tail + size) > m_TotalSize)
-            return (m_TotalSize - tail);
+        auto const tail = getTail();
+        if ((tail + size) > mTotalSize)
+            return (mTotalSize - tail);
         else
             return 0;
     }
 
-    bool Alloc(uint32_t size, uint32_t* pOut)
+    bool alloc(uint32_t size, uint32_t* pOut)
     {
-        if (m_AllocatedSize + size <= m_TotalSize)
+        if (mAllocatedSize + size <= mTotalSize)
         {
             if (pOut)
-                *pOut = GetTail();
+                *pOut = getTail();
 
-            m_AllocatedSize += size;
+            mAllocatedSize += size;
             return true;
         }
 
@@ -45,21 +45,21 @@ public:
         return false;
     }
 
-    bool Free(uint32_t size)
+    bool free(uint32_t size)
     {
-        if (m_AllocatedSize > size)
+        if (mAllocatedSize > size)
         {
-            m_Head = (m_Head + size) % m_TotalSize;
-            m_AllocatedSize -= size;
+            mHead = (mHead + size) % mTotalSize;
+            mAllocatedSize -= size;
             return true;
         }
         return false;
     }
 
 private:
-    uint32_t m_TotalSize = 0;
-    uint32_t m_Head = 0;
-    uint32_t m_AllocatedSize = 0;
+    uint32_t mTotalSize = 0;
+    uint32_t mHead = 0;
+    uint32_t mAllocatedSize = 0;
 };
 
 //
@@ -76,57 +76,59 @@ class RingWithTabs
 public:
     void initialize(uint32_t numberOfBackBuffers, uint32_t memTotalSize)
     {
-        m_numberOfBackBuffers = numberOfBackBuffers;
+        mNumBackbuffers = numberOfBackBuffers;
 
         // init mem per frame tracker
         for (int i = 0; i < 4; i++)
-            m_allocatedMemPerBackBuffer[i] = 0;
+            mAllocatedMemPerFrame[i] = 0;
 
-        m_mem.initialize(memTotalSize);
+        mMemory.initialize(memTotalSize);
     }
 
-    bool Alloc(uint32_t size, uint32_t* pOut)
+    bool alloc(uint32_t size, uint32_t* pOut)
     {
-        uint32_t padding = m_mem.PaddingToAvoidCrossOver(size);
+        uint32_t padding = mMemory.paddingToAvoidCrossover(size);
         if (padding > 0)
         {
-            m_memAllocatedInFrame += padding;
+            mMemAllocatedInFrame += padding;
 
-            if (m_mem.Alloc(padding, nullptr) == false) // alloc chunk to avoid crossover, ignore offset
+            if (mMemory.alloc(padding, nullptr) == false) // alloc chunk to avoid crossover, ignore offset
             {
                 return false; // no mem, cannot allocate apdding
             }
         }
 
-        if (m_mem.Alloc(size, pOut) == true)
+        if (mMemory.alloc(size, pOut) == true)
         {
-            m_memAllocatedInFrame += size;
+            mMemAllocatedInFrame += size;
             return true;
         }
         return false;
     }
 
-    void OnBeginFrame()
+    void onBeginFrame()
     {
-        m_allocatedMemPerBackBuffer[m_backBufferIndex] = m_memAllocatedInFrame;
-        m_memAllocatedInFrame = 0;
+        mAllocatedMemPerFrame[mBackbufferIndex] = mMemAllocatedInFrame;
+        mMemAllocatedInFrame = 0;
 
-        m_backBufferIndex = (m_backBufferIndex + 1) % m_numberOfBackBuffers;
+        ++mBackbufferIndex;
+        if (mBackbufferIndex >= mNumBackbuffers)
+            mBackbufferIndex -= mNumBackbuffers;
 
         // free all the entries for the oldest buffer in one go
-        uint32_t memToFree = m_allocatedMemPerBackBuffer[m_backBufferIndex];
-        m_mem.Free(memToFree);
+        uint32_t memToFree = mAllocatedMemPerFrame[mBackbufferIndex];
+        mMemory.free(memToFree);
     }
 
 private:
     // internal ring buffer
-    Ring m_mem;
+    Ring mMemory;
 
-    // this is the external ring buffer (I could have reused the Ring class though)
-    uint32_t m_backBufferIndex = 0;
-    uint32_t m_numberOfBackBuffers = 0;
+    // external ring buffer
+    uint32_t mBackbufferIndex = 0;
+    uint32_t mNumBackbuffers = 0;
 
-    uint32_t m_memAllocatedInFrame = 0;
-    uint32_t m_allocatedMemPerBackBuffer[4];
+    uint32_t mMemAllocatedInFrame = 0;
+    uint32_t mAllocatedMemPerFrame[4];
 };
 }

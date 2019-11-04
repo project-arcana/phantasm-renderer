@@ -26,86 +26,10 @@
 #include "dxgi.h"
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
+#include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 
 namespace pr::backend::d3d12
 {
-DXGI_FORMAT Translate(DXGI_FORMAT format, bool useSRGB);
-
-bool Texture::isDXT(DXGI_FORMAT format) const { return (format >= DXGI_FORMAT_BC1_TYPELESS) && (format <= DXGI_FORMAT_BC5_SNORM); }
-
-//--------------------------------------------------------------------------------------
-// return the byte size of a pixel (or block if block compressed)
-//--------------------------------------------------------------------------------------
-UINT32 Texture::getPixelSize(DXGI_FORMAT fmt) const
-{
-    switch (fmt)
-    {
-    case (DXGI_FORMAT_BC1_TYPELESS):
-    case (DXGI_FORMAT_BC1_UNORM):
-    case (DXGI_FORMAT_BC1_UNORM_SRGB):
-    case (DXGI_FORMAT_BC4_TYPELESS):
-    case (DXGI_FORMAT_BC4_UNORM):
-    case (DXGI_FORMAT_BC4_SNORM):
-    case (DXGI_FORMAT_R16G16B16A16_FLOAT):
-    case (DXGI_FORMAT_R16G16B16A16_TYPELESS):
-        return 8;
-
-    case (DXGI_FORMAT_BC2_TYPELESS):
-    case (DXGI_FORMAT_BC2_UNORM):
-    case (DXGI_FORMAT_BC2_UNORM_SRGB):
-    case (DXGI_FORMAT_BC3_TYPELESS):
-    case (DXGI_FORMAT_BC3_UNORM):
-    case (DXGI_FORMAT_BC3_UNORM_SRGB):
-    case (DXGI_FORMAT_BC5_TYPELESS):
-    case (DXGI_FORMAT_BC5_UNORM):
-    case (DXGI_FORMAT_BC5_SNORM):
-    case (DXGI_FORMAT_BC6H_TYPELESS):
-    case (DXGI_FORMAT_BC6H_UF16):
-    case (DXGI_FORMAT_BC6H_SF16):
-    case (DXGI_FORMAT_BC7_TYPELESS):
-    case (DXGI_FORMAT_BC7_UNORM):
-    case (DXGI_FORMAT_BC7_UNORM_SRGB):
-    case (DXGI_FORMAT_R32G32B32A32_FLOAT):
-    case (DXGI_FORMAT_R32G32B32A32_TYPELESS):
-        return 16;
-
-    case (DXGI_FORMAT_R10G10B10A2_TYPELESS):
-    case (DXGI_FORMAT_R10G10B10A2_UNORM):
-    case (DXGI_FORMAT_R10G10B10A2_UINT):
-    case (DXGI_FORMAT_R11G11B10_FLOAT):
-    case (DXGI_FORMAT_R8G8B8A8_TYPELESS):
-    case (DXGI_FORMAT_R8G8B8A8_UNORM):
-    case (DXGI_FORMAT_R8G8B8A8_UNORM_SRGB):
-    case (DXGI_FORMAT_R8G8B8A8_UINT):
-    case (DXGI_FORMAT_R8G8B8A8_SNORM):
-    case (DXGI_FORMAT_R8G8B8A8_SINT):
-    case (DXGI_FORMAT_B8G8R8A8_UNORM):
-    case (DXGI_FORMAT_B8G8R8X8_UNORM):
-    case (DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM):
-    case (DXGI_FORMAT_B8G8R8A8_TYPELESS):
-    case (DXGI_FORMAT_B8G8R8A8_UNORM_SRGB):
-    case (DXGI_FORMAT_B8G8R8X8_TYPELESS):
-    case (DXGI_FORMAT_B8G8R8X8_UNORM_SRGB):
-    case (DXGI_FORMAT_R16G16_TYPELESS):
-    case (DXGI_FORMAT_R16G16_FLOAT):
-    case (DXGI_FORMAT_R16G16_UNORM):
-    case (DXGI_FORMAT_R16G16_UINT):
-    case (DXGI_FORMAT_R16G16_SNORM):
-    case (DXGI_FORMAT_R16G16_SINT):
-    case (DXGI_FORMAT_R32_TYPELESS):
-    case (DXGI_FORMAT_D32_FLOAT):
-    case (DXGI_FORMAT_R32_FLOAT):
-    case (DXGI_FORMAT_R32_UINT):
-    case (DXGI_FORMAT_R32_SINT):
-        return 4;
-
-    default:
-        CC_ASSERT(0);
-        break;
-    }
-    return 0;
-}
-
 void Texture::patchFmt24To32Bit(unsigned char* pDst, unsigned char* pSrc, UINT32 pixelCount)
 {
     // copy pixel data, interleave with A
@@ -122,25 +46,25 @@ void Texture::patchFmt24To32Bit(unsigned char* pDst, unsigned char* pSrc, UINT32
 
 bool Texture::isCubemap() const { return mHeader.arraySize == 6; }
 
-INT32 Texture::initRenderTarget(ID3D12Device& device, const char* /*debug_name*/, const CD3DX12_RESOURCE_DESC* pDesc, D3D12_RESOURCE_STATES state)
+INT32 Texture::initRenderTarget(ID3D12Device& device, const char* /*debug_name*/, CD3DX12_RESOURCE_DESC const& desc, D3D12_RESOURCE_STATES state)
 {
     // Performance tip: Tell the runtime at resource creation the desired clear value.
     D3D12_CLEAR_VALUE clearValue;
-    clearValue.Format = pDesc->Format;
+    clearValue.Format = desc.Format;
     clearValue.Color[0] = 0.0f;
     clearValue.Color[1] = 0.0f;
     clearValue.Color[2] = 0.0f;
     clearValue.Color[3] = 0.0f;
 
-    bool isRenderTarget = pDesc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ? 1 : 0;
+    bool isRenderTarget = desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ? 1 : 0;
 
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, pDesc, state, isRenderTarget ? &clearValue : nullptr, PR_COM_WRITE(mResource));
+    device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &desc, state, isRenderTarget ? &clearValue : nullptr, PR_COM_WRITE(mResource));
 
-    mHeader.width = UINT32(pDesc->Width);
-    mHeader.height = pDesc->Height;
-    mHeader.mipMapCount = pDesc->MipLevels;
-    mHeader.format = pDesc->Format;
+    mHeader.width = UINT32(desc.Width);
+    mHeader.height = desc.Height;
+    mHeader.mipMapCount = desc.MipLevels;
+    mHeader.format = desc.Format;
 
     //    m_pResource->SetName(pDebugName); TODO
     //    SetName(m_pResource, pDebugName);
@@ -148,30 +72,29 @@ INT32 Texture::initRenderTarget(ID3D12Device& device, const char* /*debug_name*/
     return 0;
 }
 
-bool Texture::initBuffer(ID3D12Device& device, const char* /*debug_name*/, const CD3DX12_RESOURCE_DESC* pDesc, uint32_t structureSize, D3D12_RESOURCE_STATES state)
+bool Texture::initBuffer(ID3D12Device& device, const char* /*debug_name*/, CD3DX12_RESOURCE_DESC const& desc, uint32_t structureSize, D3D12_RESOURCE_STATES state)
 {
-    CC_ASSERT(pDesc != nullptr);
-    CC_ASSERT(pDesc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && pDesc->Height == 1 && pDesc->MipLevels == 1);
+    CC_ASSERT(desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && desc.Height == 1 && desc.MipLevels == 1);
 
-    D3D12_RESOURCE_DESC desc = *pDesc;
+    D3D12_RESOURCE_DESC desc_copy = desc;
 
-    if (pDesc->Format != DXGI_FORMAT_UNKNOWN)
+    if (desc_copy.Format != DXGI_FORMAT_UNKNOWN)
     {
         // Formatted buffer
         CC_ASSERT(structureSize == 0);
         mStructuredBufferStride = 0;
-        mHeader.width = UINT32(pDesc->Width);
-        mHeader.format = pDesc->Format;
+        mHeader.width = UINT32(desc_copy.Width);
+        mHeader.format = desc_copy.Format;
 
         // Fix up the D3D12_RESOURCE_DESC to be a typeless buffer.  The type/format will be associated with the UAV/SRV
-        desc.Format = DXGI_FORMAT_UNKNOWN;
-        desc.Width = getPixelSize(mHeader.format) * pDesc->Width;
+        desc_copy.Format = DXGI_FORMAT_UNKNOWN;
+        desc_copy.Width = util::get_dxgi_size(mHeader.format) * desc_copy.Width;
     }
     else
     {
         // Structured buffer
         mStructuredBufferStride = structureSize;
-        mHeader.width = UINT32(pDesc->Width) / mStructuredBufferStride;
+        mHeader.width = UINT32(desc_copy.Width) / mStructuredBufferStride;
         mHeader.format = DXGI_FORMAT_UNKNOWN;
     }
 
@@ -179,16 +102,16 @@ bool Texture::initBuffer(ID3D12Device& device, const char* /*debug_name*/, const
     mHeader.mipMapCount = 1;
 
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    HRESULT hr = device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &desc, state, nullptr, PR_COM_WRITE(mResource));
+    auto hres = device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &desc_copy, state, nullptr, PR_COM_WRITE(mResource));
 
-    // SetName(m_pResource, pDebugName);
+    // SetName(mResource, debug_name);
 
-    return hr == S_OK;
+    return hres == S_OK;
 }
 
-bool Texture::initCounter(ID3D12Device& device, const char* debug_name, const CD3DX12_RESOURCE_DESC* pCounterDesc, uint32_t counterSize, D3D12_RESOURCE_STATES state)
+bool Texture::initCounter(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, uint32_t counterSize, D3D12_RESOURCE_STATES state)
 {
-    return initBuffer(device, debug_name, pCounterDesc, counterSize, state);
+    return initBuffer(device, debug_name, desc, counterSize, state);
 }
 
 void Texture::createRTV(uint32_t index, RViewRTV& pRV, int mipLevel)
@@ -390,7 +313,7 @@ void Texture::createSRV(uint32_t index, RViewCBV_SRV_UAV& pRV, int mipLevel)
     device->CreateShaderResourceView(mResource, &srvDesc, pRV.getCPU(index));
 }
 
-void Texture::createCubeSRV(uint32_t index, RViewCBV_SRV_UAV& pRV)
+void Texture::createCubeSRV(uint32_t index, RViewCBV_SRV_UAV& out_rv)
 {
     shared_com_ptr<ID3D12Device> device;
     mResource->GetDevice(PR_COM_WRITE(device));
@@ -405,10 +328,10 @@ void Texture::createCubeSRV(uint32_t index, RViewCBV_SRV_UAV& pRV)
     srv_desc.TextureCube.MipLevels = mHeader.mipMapCount;
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    device->CreateShaderResourceView(mResource, &srv_desc, pRV.getCPU(index));
+    device->CreateShaderResourceView(mResource, &srv_desc, out_rv.getCPU(index));
 }
 
-void Texture::createDSV(uint32_t index, RViewDSV& pRV, int arraySlice)
+void Texture::createDSV(uint32_t index, RViewDSV& out_rv, int arraySlice)
 {
     shared_com_ptr<ID3D12Device> device;
     mResource->GetDevice(PR_COM_WRITE(device));
@@ -436,30 +359,30 @@ void Texture::createDSV(uint32_t index, RViewDSV& pRV, int arraySlice)
         DSViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
     }
 
-    device->CreateDepthStencilView(mResource, &DSViewDesc, pRV.getCPU(index));
+    device->CreateDepthStencilView(mResource, &DSViewDesc, out_rv.getCPU(index));
 }
 
-INT32 Texture::initDepthStencil(ID3D12Device& device, const char* /*debug_name*/, const CD3DX12_RESOURCE_DESC* pDesc)
+INT32 Texture::initDepthStencil(ID3D12Device& device, const char* /*debug_name*/, CD3DX12_RESOURCE_DESC const& desc)
 {
     // Performance tip: Tell the runtime at resource creation the desired clear value.
     D3D12_CLEAR_VALUE clear_value;
-    clear_value.Format = pDesc->Format;
+    clear_value.Format = desc.Format;
     clear_value.DepthStencil.Depth = 1.0f;
     clear_value.DepthStencil.Stencil = 0;
 
     D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
-    // if (pDesc->Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)
+    // if (desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)
     //    states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, pDesc, states, &clear_value, PR_COM_WRITE(mResource));
+    device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &desc, states, &clear_value, PR_COM_WRITE(mResource));
 
-    mHeader.width = UINT32(pDesc->Width);
-    mHeader.height = pDesc->Height;
-    mHeader.depth = pDesc->Depth();
-    mHeader.mipMapCount = pDesc->MipLevels;
-    mHeader.format = pDesc->Format;
+    mHeader.width = UINT32(desc.Width);
+    mHeader.height = desc.Height;
+    mHeader.depth = desc.Depth();
+    mHeader.mipMapCount = desc.MipLevels;
+    mHeader.format = desc.Format;
 
     //    SetName(m_pResource, pDebugName);
 
@@ -471,7 +394,7 @@ INT32 Texture::initDepthStencil(ID3D12Device& device, const char* /*debug_name*/
 //--------------------------------------------------------------------------------------
 void Texture::createTextureCommitted(ID3D12Device& device, const char* /*debug_name*/, bool useSRGB)
 {
-    mHeader.format = Translate(mHeader.format, useSRGB);
+    mHeader.format = util::translate_srgb_format(mHeader.format, useSRGB);
 
     auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(mHeader.format, mHeader.width, mHeader.height, mHeader.arraySize, mHeader.mipMapCount);
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -499,7 +422,7 @@ void Texture::loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::
     UINT32 bytePP = mHeader.bitCount / 8;
     if ((mHeader.format >= DXGI_FORMAT_BC1_TYPELESS) && (mHeader.format <= DXGI_FORMAT_BC5_SNORM))
     {
-        bytePP = getPixelSize(mHeader.format);
+        bytePP = util::get_dxgi_size(mHeader.format);
     }
 
     for (auto a = 0u; a < mHeader.arraySize; ++a)
@@ -560,32 +483,5 @@ bool Texture::initFromFile(ID3D12Device& device, UploadHeap& pUploadHeap, const 
     {
         return false;
     }
-}
-
-DXGI_FORMAT Translate(DXGI_FORMAT format, bool useSRGB)
-{
-    if (useSRGB)
-    {
-        switch (format)
-        {
-        case DXGI_FORMAT_B8G8R8A8_UNORM:
-            return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-        case DXGI_FORMAT_R8G8B8A8_UNORM:
-            return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        case DXGI_FORMAT_BC1_UNORM:
-            return DXGI_FORMAT_BC1_UNORM_SRGB;
-        case DXGI_FORMAT_BC2_UNORM:
-            return DXGI_FORMAT_BC2_UNORM_SRGB;
-        case DXGI_FORMAT_BC3_UNORM:
-            return DXGI_FORMAT_BC3_UNORM_SRGB;
-        case DXGI_FORMAT_BC7_UNORM:
-            return DXGI_FORMAT_BC7_UNORM_SRGB;
-        default:
-            CC_ASSERT(false);
-            return DXGI_FORMAT_UNKNOWN;
-        }
-    }
-
-    return format;
 }
 }

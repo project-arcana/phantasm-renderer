@@ -86,7 +86,7 @@ class StaticResourceViewHeap
 public:
     void initialize(ID3D12Device& pDevice, D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32_t descriptorCount);
 
-    bool allocDescriptor(uint32_t size, ResourceView* pRV)
+    bool allocDescriptor(uint32_t size, ResourceView& out_rv)
     {
         if ((mIndex + size) >= mNumDescriptors)
         {
@@ -102,7 +102,7 @@ public:
 
         mIndex += size;
 
-        pRV->setResourceView(size, mDescriptorSize, CPUView, GPUView);
+        out_rv.setResourceView(size, mDescriptorSize, CPUView, GPUView);
 
         return true;
     }
@@ -128,10 +128,10 @@ public:
         mHeapCBVsSRVsUAVs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_cbvs + num_srvs + num_uavs);
     }
 
-    bool allocCBV_SRV_UAV(uint32_t size, RViewCBV_SRV_UAV* pRV) { return mHeapCBVsSRVsUAVs.allocDescriptor(size, pRV); }
-    bool allocDSV(uint32_t size, RViewDSV* pRV) { return mHeapDSVs.allocDescriptor(size, pRV); }
-    bool allocRTV(uint32_t size, RViewRTV* pRV) { return mHeapRTVs.allocDescriptor(size, pRV); }
-    bool allocSampler(uint32_t size, RViewSampler* pRV) { return mHeapSamplers.allocDescriptor(size, pRV); }
+    bool allocCBV_SRV_UAV(uint32_t size, RViewCBV_SRV_UAV& out_rv) { return mHeapCBVsSRVsUAVs.allocDescriptor(size, out_rv); }
+    bool allocDSV(uint32_t size, RViewDSV& out_rv) { return mHeapDSVs.allocDescriptor(size, out_rv); }
+    bool allocRTV(uint32_t size, RViewRTV& out_rv) { return mHeapRTVs.allocDescriptor(size, out_rv); }
+    bool allocSampler(uint32_t size, RViewSampler& out_rv) { return mHeapSamplers.allocDescriptor(size, out_rv); }
 
     ID3D12DescriptorHeap* GetDSVHeap() { return mHeapDSVs.getHeap(); }
     ID3D12DescriptorHeap* GetRTVHeap() { return mHeapRTVs.getHeap(); }

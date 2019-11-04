@@ -19,10 +19,10 @@ public:
 
     // load file into heap
     bool initFromFile(ID3D12Device& device, UploadHeap& upload_heap, const char* szFilename, bool useSRGB = false, float cutOff = 1.0f);
-    INT32 initRenderTarget(ID3D12Device& device, const char* debug_name, const CD3DX12_RESOURCE_DESC* pDesc, D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_RENDER_TARGET);
-    INT32 initDepthStencil(ID3D12Device& device, const char* debug_name, const CD3DX12_RESOURCE_DESC* pDesc);
-    bool initBuffer(ID3D12Device& device, const char* debug_name, const CD3DX12_RESOURCE_DESC* pDesc, uint32_t structureSize, D3D12_RESOURCE_STATES state); // structureSize needs to be 0 if using a valid DXGI_FORMAT
-    bool initCounter(ID3D12Device& device, const char* debug_name, const CD3DX12_RESOURCE_DESC* pCounterDesc, uint32_t counterSize, D3D12_RESOURCE_STATES state);
+    INT32 initRenderTarget(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_RENDER_TARGET);
+    INT32 initDepthStencil(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc);
+    bool initBuffer(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, uint32_t structureSize, D3D12_RESOURCE_STATES state); // structureSize needs to be 0 if using a valid DXGI_FORMAT
+    bool initCounter(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, uint32_t counterSize, D3D12_RESOURCE_STATES state);
     bool initFromData(ID3D12Device& device, const char* debug_name, UploadHeap& upload_heap, const img::image_info& header, const void* data);
 
     [[nodiscard]] ID3D12Resource* getResource() const { return mResource; }
@@ -43,8 +43,6 @@ private:
     void loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::image_handle const& handle);
 
     void patchFmt24To32Bit(unsigned char* pDst, unsigned char* pSrc, UINT32 pixelCount);
-    bool isDXT(DXGI_FORMAT format) const;
-    UINT32 getPixelSize(DXGI_FORMAT fmt) const;
     bool isCubemap() const;
 
 private:
