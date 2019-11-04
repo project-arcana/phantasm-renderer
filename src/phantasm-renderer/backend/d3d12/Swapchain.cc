@@ -108,6 +108,12 @@ void pr::backend::d3d12::Swapchain::createBackbufferRTVs()
     auto const color_desc_size = mParentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     mRTVs.emplace(mNumBackbuffers);
 
+    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+    rtv_desc.Format = s_backbuffer_format;
+    rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    rtv_desc.Texture2D.MipSlice = 0;
+    rtv_desc.Texture2D.PlaneSlice = 0;
+
     for (auto i = 0u; i < mNumBackbuffers; ++i)
     {
         auto& rtv = mRTVs[i];
@@ -117,12 +123,6 @@ void pr::backend::d3d12::Swapchain::createBackbufferRTVs()
 
         shared_com_ptr<ID3D12Resource> back_buffer;
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, PR_COM_WRITE(back_buffer)));
-
-        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc;
-        rtv_desc.Format = s_backbuffer_format;
-        rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        rtv_desc.Texture2D.MipSlice = 0;
-        rtv_desc.Texture2D.PlaneSlice = 0;
 
         mParentDevice->CreateRenderTargetView(back_buffer, &rtv_desc, rtv);
     }
