@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <string>
 #include <vector>
@@ -42,5 +41,3 @@ struct adapter_candidate
 
 [[nodiscard]] uint32_t get_preferred_adapter_index(std::vector<adapter_candidate> const& candidates, adapter_preference preference);
 }
-
-#endif

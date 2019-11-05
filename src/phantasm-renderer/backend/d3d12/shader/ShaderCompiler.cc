@@ -1,5 +1,4 @@
 #include "ShaderCompiler.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <cstring>
 #include <fstream>
@@ -73,4 +72,3 @@ bool pr::backend::d3d12::compile_shader_from_file(const char* filename, const ch
     return compile_shader_from_string(file_contents.c_str(), entrypoint, target, out_bytecode);
 }
 
-#endif

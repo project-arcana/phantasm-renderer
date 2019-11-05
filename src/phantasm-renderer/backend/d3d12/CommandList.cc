@@ -1,5 +1,4 @@
 #include "CommandList.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/capped_vector.hh>
 
@@ -95,5 +94,3 @@ void pr::backend::d3d12::CommandListRing::ring_entry::reset()
     PR_D3D12_VERIFY(command_allocator->Reset());
     num_command_lists_in_flight = 0;
 }
-
-#endif

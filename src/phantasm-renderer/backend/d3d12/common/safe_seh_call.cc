@@ -1,5 +1,4 @@
 #include "safe_seh_call.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/native/win32_sanitized.hh>
 
@@ -21,5 +20,3 @@ bool pr::backend::d3d12::detail::is_delay_load_exception(PEXCEPTION_POINTERS e)
 #endif
 }
 
-
-#endif

@@ -1,5 +1,4 @@
 #include "simple_vertex.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <fstream>
 
@@ -32,6 +31,3 @@ pr::backend::d3d12::simple_mesh_data pr::backend::d3d12::load_polymesh(const cha
 
     return res;
 }
-
-
-#endif

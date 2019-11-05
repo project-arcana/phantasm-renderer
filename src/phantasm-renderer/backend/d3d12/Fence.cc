@@ -1,5 +1,4 @@
 #include "Fence.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <corecrt_wstdio.h>
 
@@ -57,5 +56,3 @@ void pr::backend::d3d12::Fence::waitOnCPU(uint64_t old_fence)
 
 void pr::backend::d3d12::Fence::waitOnGPU(ID3D12CommandQueue& queue) { PR_D3D12_VERIFY(queue.Wait(mFence, mCounter)); }
 
-
-#endif

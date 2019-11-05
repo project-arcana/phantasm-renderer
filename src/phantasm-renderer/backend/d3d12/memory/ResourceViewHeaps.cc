@@ -1,5 +1,4 @@
 #include "ResourceViewHeaps.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
@@ -25,4 +24,3 @@ void StaticResourceViewHeap::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_H
 }
 }
 
-#endif

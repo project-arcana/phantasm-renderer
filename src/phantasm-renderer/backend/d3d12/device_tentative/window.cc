@@ -1,5 +1,4 @@
 #include "window.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/assert.hh>
 #include <clean-core/native/win32_sanitized.hh>
@@ -87,4 +86,3 @@ void pr::backend::d3d12::Window::onResizeEvent(int w, int h, bool minimized)
     mPendingResize = true;
 }
 
-#endif

@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/macros.hh>
 
@@ -58,4 +57,3 @@ namespace pr::backend::d3d12::detail
     } while (0)
 
 
-#endif

@@ -1,5 +1,4 @@
 #include "Device.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include "common/verify.hh"
 
@@ -30,6 +29,3 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const pr::bac
         }
     }
 }
-
-
-#endif

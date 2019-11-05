@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 typedef struct _EXCEPTION_POINTERS* PEXCEPTION_POINTERS;
 
@@ -22,5 +21,3 @@ void perform_safe_seh_call(Ft&& f_try)
 }
 
 }
-
-#endif

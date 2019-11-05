@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 struct D3D12_SHADER_BYTECODE;
 
@@ -10,4 +9,3 @@ namespace pr::backend::d3d12
 
 }
 
-#endif

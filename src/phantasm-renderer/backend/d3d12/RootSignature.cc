@@ -1,5 +1,4 @@
 #include "RootSignature.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/assert.hh>
 
@@ -105,5 +104,3 @@ void pr::backend::d3d12::RootSignature::reset()
 
     mRootSignature = nullptr;
 }
-
-#endif

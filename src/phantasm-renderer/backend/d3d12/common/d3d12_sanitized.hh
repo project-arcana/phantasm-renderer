@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 // Check if CC win32 sanitized was included before this error
 #ifdef CC_SANITIZED_WINDOWS_H
@@ -143,4 +142,3 @@ struct IUnknown;
 #undef Yield
 #undef IMediaEventSink
 
-#endif

@@ -1,6 +1,4 @@
 #include "adapter_choice_util.hh"
-#ifdef PR_BACKEND_D3D12
-
 #include <array>
 
 #include <clean-core/assert.hh>
@@ -154,6 +152,3 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
 
     return candidates[0].index;
 }
-
-
-#endif

@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/array.hh>
 
@@ -59,5 +58,3 @@ private:
     cc::uint32 mDescriptorTableBitmask = 0;
 };
 }
-
-#endif

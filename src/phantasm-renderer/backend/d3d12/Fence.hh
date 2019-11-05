@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <atomic>
 
@@ -37,5 +36,3 @@ private:
 };
 
 }
-
-#endif

@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/typedefs.hh>
 
@@ -37,5 +36,3 @@ struct d3d12_config
     D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_12_0; ///< The feature level to query in ::D3D12CreateDevice
 };
 }
-
-#endif

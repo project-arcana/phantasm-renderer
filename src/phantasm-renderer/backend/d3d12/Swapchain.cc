@@ -1,5 +1,4 @@
 #include "Swapchain.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <iostream>
 
@@ -127,5 +126,3 @@ void pr::backend::d3d12::Swapchain::createBackbufferRTVs()
         mParentDevice->CreateRenderTargetView(back_buffer, &rtv_desc, rtv);
     }
 }
-
-#endif

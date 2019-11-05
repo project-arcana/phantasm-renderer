@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <phantasm-renderer/backend/BackendInterface.hh>
 
@@ -24,5 +23,3 @@ public:
 private:
 };
 }
-
-#endif

@@ -1,5 +1,4 @@
 #include "image_load_util.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <algorithm>
 #include <cctype>
@@ -283,4 +282,3 @@ void pr::backend::d3d12::img::copy_pixels(const pr::backend::d3d12::img::image_h
     }
 }
 
-#endif

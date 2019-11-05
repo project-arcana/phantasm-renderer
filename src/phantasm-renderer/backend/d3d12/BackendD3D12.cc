@@ -1,5 +1,4 @@
 #include "BackendD3D12.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include "common/verify.hh"
 
@@ -22,6 +21,3 @@ void pr::backend::d3d12::BackendD3D12::flushGPU()
     ::WaitForSingleObject(handle, INFINITE);
     ::CloseHandle(handle);
 }
-
-
-#endif

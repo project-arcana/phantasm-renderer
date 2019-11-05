@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/native/win32_fwd.hh>
 
@@ -30,5 +29,3 @@ struct image_handle
 void copy_pixels(image_handle const& handle, void* dest, unsigned stride, unsigned width, unsigned height);
 
 }
-
-#endif

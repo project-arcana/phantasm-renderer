@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <dxgiformat.h> // This header only contains a single enum, no includes believe it or not
 
@@ -144,5 +143,3 @@ static constexpr DXGI_FORMAT dxgi_format = get_dxgi_format<T>();
     return fmt;
 }
 }
-
-#endif

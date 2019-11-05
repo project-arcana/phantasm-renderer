@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <cstdint>
 
@@ -146,4 +145,3 @@ private:
 };
 }
 
-#endif

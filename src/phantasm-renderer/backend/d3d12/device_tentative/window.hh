@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 // Win32 HWND forward declaration
 typedef struct HWND__* HWND;
@@ -55,4 +54,3 @@ private:
 
 }
 
-#endif

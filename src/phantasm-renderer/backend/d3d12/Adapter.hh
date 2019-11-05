@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include "common/d3d12_fwd.hh"
 
@@ -35,5 +34,3 @@ private:
 };
 
 }
-
-#endif

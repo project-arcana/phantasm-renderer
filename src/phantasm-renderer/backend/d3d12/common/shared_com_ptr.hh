@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <guiddef.h> // for __uuido; this header is tame, only other include is string.h
 #undef FAR
@@ -117,5 +116,3 @@ bool operator==(shared_com_ptr<T> const& lhs, shared_com_ptr<T> const& rhs)
 
 /// Shorthand for the commonly occuring IID_PPV_ARGS(my_com_ptr.override()) argument in D3D12 APIs
 #define PR_COM_WRITE(_com_ptr_) IID_PPV_ARGS(_com_ptr_.override())
-
-#endif

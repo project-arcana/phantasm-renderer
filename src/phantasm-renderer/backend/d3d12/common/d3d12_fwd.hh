@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/native/win32_fwd.hh>
 
@@ -20,4 +19,3 @@ struct IDXGIAdapter;
 struct IDXGIFactory4;
 struct IDXGISwapChain3;
 
-#endif

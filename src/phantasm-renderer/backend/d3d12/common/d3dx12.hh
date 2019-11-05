@@ -1,5 +1,4 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 //*********************************************************
 //
@@ -2971,5 +2970,3 @@ private:
 #endif // defined( __cplusplus )
 
 #endif //__D3DX12_H__
-
-#endif // PR_BACKEND_D3D12
