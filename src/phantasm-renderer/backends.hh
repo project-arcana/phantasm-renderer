@@ -2,10 +2,10 @@
 
 #include <clean-core/fwd.hh>
 
-#include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/backend/vulkan/vulkan_config.hh>
+#include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
-cc::poly_unique_ptr<VulkanBackend> make_vulkan_backend(vulkan_config const& cfg = {});
+cc::poly_unique_ptr<backend::vk::BackendVulkan> make_vulkan_backend(backend::vk::vulkan_config const& cfg = {});
 }

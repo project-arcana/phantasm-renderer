@@ -4,11 +4,44 @@ project(PhantasmRenderer)
 # =========================================
 # global options
 
+option(PR_BACKEND_VULKAN "enable Vulkan backend" ON)
+option(PR_BACKEND_D3D12 "enable DirectX 12 backend" ON)
+
+
+# =========================================
+# post-process options
+
+find_package(Vulkan)
+
+if (NOT Vulkan_FOUND)
+    set(PR_BACKEND_VULKAN OFF)
+endif()
+
+if (NOT MSVC)
+    set(PR_BACKEND_D3D12 OFF)
+endif()
+
 
 # =========================================
 # define library
 
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.hh")
+
+# disable backends
+if (NOT PR_BACKEND_D3D12)
+    foreach(src ${SOURCES})
+        if (${src} MATCHES "phantasm-renderer/backend/d3d12/")
+            list(REMOVE_ITEM SOURCES ${src})
+        endif()
+    endforeach()
+endif()
+if (NOT PR_BACKEND_VULKAN)
+    foreach(src ${SOURCES})
+        if (${src} MATCHES "phantasm-renderer/backend/vulkan/")
+            list(REMOVE_ITEM SOURCES ${src})
+        endif()
+    endforeach()
+endif()
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
 
@@ -38,8 +71,7 @@ endif()
 # =========================================
 # optional dependencies
 
-find_package(Vulkan)
-if (Vulkan_FOUND)
+if (PR_BACKEND_VULKAN)
     message(STATUS "[phantasm renderer] Vulkan backend enabled")
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_VULKAN)
     target_link_libraries(phantasm-renderer PUBLIC ${Vulkan_LIBRARY})
@@ -53,7 +85,7 @@ else()
     message(STATUS "[phantasm renderer] Vulkan backend disabled")
 endif()
 
-if (MSVC)
+if (PR_BACKEND_D3D12)
     message(STATUS "[phantasm renderer] D3D12 backend enabled")
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
     target_link_libraries(phantasm-renderer PRIVATE "d3d12.lib" "dxgi.lib" "d3dcompiler.lib")

@@ -9,7 +9,10 @@ class Context;
 class Queue;
 
 class Backend;
-class VulkanBackend;
+namespace backend::vk
+{
+class BackendVulkan;
+}
 
 template <class VertexT>
 class VertexShader;
