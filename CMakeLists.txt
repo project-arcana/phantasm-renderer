@@ -19,6 +19,8 @@ target_include_directories(phantasm-renderer PUBLIC src/)
 target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
+    reflector
+    polymesh
 )
 
 
@@ -36,13 +38,25 @@ endif()
 # =========================================
 # optional dependencies
 
-if (TARGET volk)
-    if ("$ENV{VULKAN_SDK}" STREQUAL "")
-        message(FATAL_ERROR "VULKAN_SDK environment variable not set")
-    else()
-        message(STATUS "Using vulkan SDK at $ENV{VULKAN_SDK}")
-    endif()
+find_package(Vulkan)
+if (Vulkan_FOUND)
+    message(STATUS "[phantasm renderer] Vulkan backend enabled")
+    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_VULKAN)
+    target_link_libraries(phantasm-renderer PUBLIC ${Vulkan_LIBRARY})
+    target_include_directories(phantasm-renderer PUBLIC ${Vulkan_INCLUDE_DIRS})
 
-    target_link_libraries(typed-graphics PRIVATE volk)
-    target_compile_definitions(typed-graphics PUBLIC TG_BACKEND_VULKAN)
+    if (NOT MSVC)
+        # Non-windows targets require libdl to load Vulkan
+        target_link_libraries(phantasm-renderer PRIVATE -ldl)
+    endif()
+else()
+    message(STATUS "[phantasm renderer] Vulkan backend disabled")
+endif()
+
+if (MSVC)
+    message(STATUS "[phantasm renderer] D3D12 backend enabled")
+    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
+    target_link_libraries(phantasm-renderer PRIVATE "d3d12.lib" "dxgi.lib" "d3dcompiler.lib")
+else()
+    message(STATUS "[phantasm renderer] D3D12 backend disabled")
 endif()
