@@ -3,13 +3,15 @@
 #include <phantasm-renderer/Buffer.hh>
 #include <phantasm-renderer/FragmentShader.hh>
 #include <phantasm-renderer/Image.hh>
+#include <phantasm-renderer/PrimitivePipeline.hh>
 #include <phantasm-renderer/VertexShader.hh>
 #include <phantasm-renderer/fragment_type.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/vertex_type.hh>
 
-#include <clean-core/span.hh>
 #include <clean-core/poly_unique_ptr.hh>
+#include <clean-core/span.hh>
+#include <clean-core/string_view.hh>
 
 #include <typed-geometry/tg-lean.hh>
 
@@ -49,7 +51,10 @@ public:
         return {}; // TODO
     }
     template <class... VertexT>
-    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code);
+    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code)
+    {
+        return {}; // TODO
+    }
 
     // consumption API
 public:
@@ -62,6 +67,8 @@ public:
     Context();
     /// constructs a context with a specified backend
     Context(cc::poly_unique_ptr<Backend> backend);
+
+    ~Context();
 
     // ref type
 public:

@@ -15,9 +15,9 @@ class Pass
 {
 public:
     template <class... UnboundResources, class VertexT, class ShaderFragmentT>
-    PrimitivePipeline<VertexT, ShaderFragmentT, BoundResourceList, UnboundResources...> technique(VertexShader<VertexT> const& vs,
-                                                                                                  FragmentShader<ShaderFragmentT> const& fs,
-                                                                                                  primitive_pipeline_config const& cfg)
+    PrimitivePipeline<VertexT, ShaderFragmentT, BoundResourceList, UnboundResources...> pipeline(VertexShader<VertexT> const& vs,
+                                                                                                 FragmentShader<ShaderFragmentT> const& fs,
+                                                                                                 primitive_pipeline_config const& cfg)
     {
         static_assert(std::is_same_v<FragmentT, ShaderFragmentT>, "incompatible fragment types");
         return {}; // TODO

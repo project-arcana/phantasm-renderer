@@ -5,9 +5,12 @@
 #include <phantasm-renderer/Image.hh>
 #include <phantasm-renderer/Pass.hh>
 #include <phantasm-renderer/VertexShader.hh>
+#include <phantasm-renderer/default_config.hh>
 #include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fragment_type.hh>
 #include <phantasm-renderer/fwd.hh>
+#include <phantasm-renderer/immediate.hh>
+#include <phantasm-renderer/resources.hh>
 #include <phantasm-renderer/vertex_type.hh>
 
 #include <clean-core/span.hh>
@@ -24,21 +27,39 @@ class Frame
     // creation API
 public:
     template <class T>
-    Image<1, T, true> make_image(int width, T initialValue);
+    Image<1, T, true> make_image(int width, T initialValue)
+    {
+        return {}; // TODO
+    }
     template <class T>
-    Image<2, T, true> make_image(tg::isize2 size, T initialValue);
+    Image<2, T, true> make_image(tg::isize2 size, T initialValue)
+    {
+        return {}; // TODO
+    }
     template <class T>
-    Image<3, T, true> make_image(tg::isize3 size, T initialValue);
+    Image<3, T, true> make_image(tg::isize3 size, T initialValue)
+    {
+        return {}; // TODO
+    }
 
     template <class T>
-    Buffer<T[]> make_buffer(cc::span<T> data);
+    Buffer<T[]> make_buffer(cc::span<T> data)
+    {
+        return {}; // TODO
+    }
     template <class T, class = std::enable_if_t<std::is_trivially_copyable_v<T>>>
-    Buffer<T> make_buffer(T const& data);
+    Buffer<T> make_buffer(T const& data)
+    {
+        return {}; // TODO
+    }
     template <class T>
     Buffer<T> make_uninitialized_buffer(size_t size);
 
     template <class... FragmentT>
-    FragmentShader<fragment_type_of<FragmentT...>> make_fragment_shader(cc::string_view code);
+    FragmentShader<fragment_type_of<FragmentT...>> make_fragment_shader(cc::string_view code)
+    {
+        return {}; // TODO
+    }
     template <class FragmentT> // must be set to void!
     FragmentShader<void> make_fragment_shader()
     {
@@ -46,7 +67,10 @@ public:
         return {}; // TODO
     }
     template <class... VertexT>
-    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code);
+    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code)
+    {
+        return {}; // TODO
+    }
 
     // pass RAII API
 public:
