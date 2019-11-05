@@ -1,11 +1,11 @@
 #include "UploadHeap.hh"
 #ifdef PR_BACKEND_D3D12
 
-#include "BackendD3D12.hh"
+#include <phantasm-renderer/backend/d3d12/BackendD3D12.hh>
+#include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
+#include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-#include "common/d3dx12.hh"
-#include "common/verify.hh"
-#include "memory/byte_util.hh"
+#include "byte_util.hh"
 
 namespace pr::backend::d3d12
 {

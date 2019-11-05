@@ -1,7 +1,9 @@
 #include "ResourceViewHeaps.hh"
 #ifdef PR_BACKEND_D3D12
 
-#include "common/verify.hh"
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
+#include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 namespace pr::backend::d3d12
 {

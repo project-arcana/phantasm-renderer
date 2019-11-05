@@ -2,8 +2,8 @@
 
 #include <mutex>
 
-#include "common/d3d12_sanitized.hh"
-#include "common/shared_com_ptr.hh"
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 
 namespace pr::backend::d3d12
 {

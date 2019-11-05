@@ -17,9 +17,7 @@ class BackendD3D12;
 
 struct CommandList
 {
-    CommandList() { cc::fill(mDescriptorHeaps, nullptr); }
-
-    void initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator& allocator);
+    explicit CommandList(ID3D12GraphicsCommandList* list) : mType(D3D12_COMMAND_LIST_TYPE_DIRECT), mCommandList(list) { cc::fill(mDescriptorHeaps, nullptr); }
 
     void setDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap);
 
@@ -28,8 +26,8 @@ struct CommandList
 public:
     [[nodiscard]] D3D12_COMMAND_LIST_TYPE const& getType() const { return mType; }
 
-    [[nodiscard]] ID3D12GraphicsCommandList4& getCommandList() const { return *mCommandList.get(); }
-    [[nodiscard]] shared_com_ptr<ID3D12GraphicsCommandList4> const& getCommandListShared() const { return mCommandList; }
+    [[nodiscard]] ID3D12GraphicsCommandList& ref() const { return *mCommandList; }
+    [[nodiscard]] ID3D12GraphicsCommandList* ptr() const { return mCommandList; }
 
 private:
     void rebindDescriptorHeaps();
@@ -37,7 +35,9 @@ private:
 private:
     /// The type of this command list
     D3D12_COMMAND_LIST_TYPE mType;
-    shared_com_ptr<ID3D12GraphicsCommandList4> mCommandList;
+
+    /// Raw, non-owning pointer
+    ID3D12GraphicsCommandList* mCommandList;
 
     /// Weak references to the descriptor heaps that are currently bound
     cc::array<ID3D12DescriptorHeap*, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES> mDescriptorHeaps;
@@ -64,6 +64,7 @@ private:
         int num_command_lists_in_flight = 0;
 
         [[nodiscard]] ID3D12GraphicsCommandList* acquire_list();
+        void reset();
     };
 
     cc::array<ring_entry> mRing;

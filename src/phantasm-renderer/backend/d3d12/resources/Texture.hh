@@ -2,10 +2,10 @@
 
 #include <cstdint>
 
-#include <phantasm-renderer/backend/d3d12/ResourceViewHeaps.hh>
-#include <phantasm-renderer/backend/d3d12/UploadHeap.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
+#include <phantasm-renderer/backend/d3d12/memory/ResourceViewHeaps.hh>
+#include <phantasm-renderer/backend/d3d12/memory/UploadHeap.hh>
 
 #include "image_load_util.hh"
 

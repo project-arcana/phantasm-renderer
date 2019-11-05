@@ -5,12 +5,6 @@
 
 #include "BackendD3D12.hh"
 
-void pr::backend::d3d12::CommandList::initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator& allocator)
-{
-    mType = type;
-    PR_D3D12_VERIFY(device.CreateCommandList(0, mType, &allocator, nullptr, PR_COM_WRITE(mCommandList)));
-}
-
 void pr::backend::d3d12::CommandList::setDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, ID3D12DescriptorHeap* heap)
 {
     if (mDescriptorHeaps[type] != heap)
@@ -76,21 +70,17 @@ void pr::backend::d3d12::CommandListRing::initialize(pr::backend::d3d12::Backend
 void pr::backend::d3d12::CommandListRing::onBeginFrame()
 {
     ++mRingIndex;
-    // faster than modulo
+    // fast %
     if (mRingIndex >= int(mRing.size()))
         mRingIndex -= int(mRing.size());
 
     mActiveEntry = &mRing[unsigned(mRingIndex)];
 
     // reset the entry
-    PR_D3D12_VERIFY(mActiveEntry->command_allocator->Reset());
-    mActiveEntry->num_command_lists_in_flight = 0;
+    mActiveEntry->reset();
 }
 
-ID3D12GraphicsCommandList* pr::backend::d3d12::CommandListRing::acquireCommandList()
-{
-    return mActiveEntry->acquire_list();
-}
+ID3D12GraphicsCommandList* pr::backend::d3d12::CommandListRing::acquireCommandList() { return mActiveEntry->acquire_list(); }
 
 ID3D12GraphicsCommandList* pr::backend::d3d12::CommandListRing::ring_entry::acquire_list()
 {
@@ -98,6 +88,12 @@ ID3D12GraphicsCommandList* pr::backend::d3d12::CommandListRing::ring_entry::acqu
     auto* const res = command_lists[unsigned(num_command_lists_in_flight++)].get();
     PR_D3D12_VERIFY(res->Reset(command_allocator, nullptr));
     return res;
+}
+
+void pr::backend::d3d12::CommandListRing::ring_entry::reset()
+{
+    PR_D3D12_VERIFY(command_allocator->Reset());
+    num_command_lists_in_flight = 0;
 }
 
 #endif
