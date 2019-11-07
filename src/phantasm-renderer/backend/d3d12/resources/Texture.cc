@@ -88,7 +88,7 @@ bool Texture::initBuffer(ID3D12Device& device, const char* /*debug_name*/, CD3DX
 
         // Fix up the D3D12_RESOURCE_DESC to be a typeless buffer.  The type/format will be associated with the UAV/SRV
         desc_copy.Format = DXGI_FORMAT_UNKNOWN;
-        desc_copy.Width = util::get_dxgi_size(mHeader.format) * desc_copy.Width;
+        desc_copy.Width = util::get_dxgi_bytes_per_pixel(mHeader.format) * desc_copy.Width;
     }
     else
     {
@@ -150,9 +150,9 @@ bool Texture::initFromData(ID3D12Device& device, const char* debug_name, UploadH
     createTextureCommitted(device, debug_name, false);
 
     // Get mip footprints (if it is an array we reuse the mip footprints for all the elements of the array)
-    UINT64 UplHeapSize;
-    uint32_t num_rows = {};
-    UINT64 row_sizes_in_bytes = {};
+    UINT64 UplHeapSize = 0;
+    uint32_t num_rows = 0;
+    UINT64 row_sizes_in_bytes = 0;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placedTex2D = {};
     CD3DX12_RESOURCE_DESC RDescs = CD3DX12_RESOURCE_DESC::Tex2D((DXGI_FORMAT)mHeader.format, mHeader.width, mHeader.height, 1, 1);
     device.GetCopyableFootprints(&RDescs, 0, 1, 0, &placedTex2D, &num_rows, &row_sizes_in_bytes, &UplHeapSize);
@@ -172,9 +172,9 @@ bool Texture::initFromData(ID3D12Device& device, const char* debug_name, UploadH
 
     // copy all the mip slices into the offsets specified by the footprint structure
     //
-    for (uint32_t y = 0; y < num_rows; y++)
+    for (auto y = 0u; y < num_rows; ++y)
     {
-        memcpy(pixels + y * placedTex2D.Footprint.RowPitch, (UINT8*)data + y * placedTex2D.Footprint.RowPitch, row_sizes_in_bytes);
+        memcpy(pixels + y * placedTex2D.Footprint.RowPitch, static_cast<UINT8 const*>(data) + y * placedTex2D.Footprint.RowPitch, row_sizes_in_bytes);
     }
 
     CD3DX12_TEXTURE_COPY_LOCATION Dst(mResource, 0);
@@ -394,7 +394,10 @@ INT32 Texture::initDepthStencil(ID3D12Device& device, const char* /*debug_name*/
 //--------------------------------------------------------------------------------------
 void Texture::createTextureCommitted(ID3D12Device& device, const char* /*debug_name*/, bool useSRGB)
 {
-    mHeader.format = util::translate_srgb_format(mHeader.format, useSRGB);
+    if (useSRGB)
+    {
+        mHeader.format = util::to_srgb_format(mHeader.format);
+    }
 
     auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(mHeader.format, mHeader.width, mHeader.height, mHeader.arraySize, mHeader.mipMapCount);
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -422,7 +425,7 @@ void Texture::loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::
     UINT32 bytePP = mHeader.bitCount / 8;
     if ((mHeader.format >= DXGI_FORMAT_BC1_TYPELESS) && (mHeader.format <= DXGI_FORMAT_BC5_SNORM))
     {
-        bytePP = util::get_dxgi_size(mHeader.format);
+        bytePP = util::get_dxgi_bytes_per_pixel(mHeader.format);
     }
 
     for (auto a = 0u; a < mHeader.arraySize; ++a)
@@ -440,13 +443,13 @@ void Texture::loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::
 
         // copy all the mip slices into the offsets specified by the footprint structure
         //
-        for (auto mip = 0u; mip < mHeader.mipMapCount; mip++)
+        for (auto mip = 0u; mip < mHeader.mipMapCount; ++mip)
         {
             img::copy_pixels(handle, pixels + placed_subres_tex2d[mip].Offset, placed_subres_tex2d[mip].Footprint.RowPitch,
                              placed_subres_tex2d[mip].Footprint.Width * bytePP, num_rows[mip]);
 
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT slice = placed_subres_tex2d[mip];
-            slice.Offset += size_t(pixels - upload_heap.getBasePointer());
+            slice.Offset += (pixels - upload_heap.getBasePointer());
 
             CD3DX12_TEXTURE_COPY_LOCATION Dst(mResource, a * mHeader.mipMapCount + mip);
             CD3DX12_TEXTURE_COPY_LOCATION Src(upload_heap.getResource(), slice);
@@ -468,15 +471,16 @@ void Texture::loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::
 //--------------------------------------------------------------------------------------
 // entry function to initialize an image from a .DDS texture
 //--------------------------------------------------------------------------------------
-bool Texture::initFromFile(ID3D12Device& device, UploadHeap& pUploadHeap, const char* pFilename, bool useSRGB, float cutOff)
+bool Texture::initFromFile(ID3D12Device& device, UploadHeap& upload_heap, const char* filename, bool use_srgb)
 {
     CC_ASSERT(mResource == nullptr);
 
-    auto const res_handle = img::load_image(pFilename, mHeader);
+    auto const res_handle = img::load_image(filename, mHeader);
     if (img::is_valid(res_handle))
     {
-        createTextureCommitted(device, pFilename, useSRGB);
-        loadAndUpload(device, pUploadHeap, res_handle);
+        createTextureCommitted(device, filename, use_srgb);
+        loadAndUpload(device, upload_heap, res_handle);
+        img::free(res_handle);
         return true;
     }
     else

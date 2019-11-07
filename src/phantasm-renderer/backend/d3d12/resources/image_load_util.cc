@@ -7,16 +7,20 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-renderer/backend/detail/stb_image.hh>
+
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
+#include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 namespace
 {
-constexpr auto null_image_handle = pr::backend::d3d12::img::image_handle{nullptr};
+constexpr auto null_image_handle = pr::backend::d3d12::img::image_handle{false, nullptr, nullptr};
 
 /// Returns the last file ending of a given filename
 /// Includes the '.'
 /// e.g. returns ".png" for "/path/to/myfile.foo.png"
-inline std::string get_file_ending(std::string const& str)
+[[nodiscard]] std::string get_file_ending(std::string const& str)
 {
     auto minPosA = str.rfind('/');
     if (minPosA == std::string::npos)
@@ -38,7 +42,7 @@ inline std::string get_file_ending(std::string const& str)
     return str.substr(dotPos);
 }
 /// Converts the string to lower
-inline std::string to_lowercase(std::string const& str)
+[[nodiscard]] std::string to_lowercase(std::string const& str)
 {
     auto data = str;
     std::transform(data.begin(), data.end(), data.begin(), ::tolower);
@@ -99,7 +103,7 @@ struct dds_header
 // retrieve the GetDxGiFormat from a DDS_PIXELFORMAT
 // based on http://msdn.microsoft.com/en-us/library/windows/desktop/bb943991(v=vs.85).aspx
 //--------------------------------------------------------------------------------------
-static DXGI_FORMAT GetDxGiFormat(dds_pixelformat pixelFmt)
+[[nodiscard]] DXGI_FORMAT dds_to_dxgi_format(dds_pixelformat pixelFmt)
 {
     if (pixelFmt.flags & 0x00000004) // DDPF_FOURCC
     {
@@ -168,7 +172,7 @@ static DXGI_FORMAT GetDxGiFormat(dds_pixelformat pixelFmt)
     }
 }
 
-inline HANDLE load_dds_image(char const* filename, pr::backend::d3d12::img::image_info& out_info)
+[[nodiscard]] HANDLE load_dds_image(char const* filename, pr::backend::d3d12::img::image_info& out_info)
 {
     enum e_resource_dimension
     {
@@ -206,7 +210,7 @@ inline HANDLE load_dds_image(char const* filename, pr::backend::d3d12::img::imag
     // read the header
     char headerData[4 + sizeof(dds_header) + sizeof(dds_header_dx10)];
     DWORD dwBytesRead = 0;
-    if (ReadFile(hFile, headerData, 4 + sizeof(dds_header) + sizeof(dds_header_dx10), &dwBytesRead, nullptr))
+    if (::ReadFile(hFile, headerData, 4 + sizeof(dds_header) + sizeof(dds_header_dx10), &dwBytesRead, nullptr))
     {
         char* pByteData = headerData;
         UINT32 dwMagic = *reinterpret_cast<UINT32*>(pByteData);
@@ -231,7 +235,7 @@ inline HANDLE load_dds_image(char const* filename, pr::backend::d3d12::img::imag
         {
             // DXGI
             UINT32 arraySize = (header->dwCubemapFlags == 0xfe00) ? 6 : 1;
-            DXGI_FORMAT dxgiFormat = GetDxGiFormat(header->ddspf);
+            DXGI_FORMAT dxgiFormat = dds_to_dxgi_format(header->ddspf);
             UINT32 mipMapCount = header->dwMipMapCount ? header->dwMipMapCount : 1;
 
             out_info = {header->dwWidth, header->dwHeight,      header->dwDepth ? header->dwDepth : 1, arraySize, mipMapCount,
@@ -247,6 +251,70 @@ inline HANDLE load_dds_image(char const* filename, pr::backend::d3d12::img::imag
 
     return hFile;
 }
+
+[[nodiscard]] unsigned get_num_mips(unsigned width, unsigned height)
+{
+    auto res = 0u;
+    while (true)
+    {
+        ++res;
+        if (width > 1)
+            width >>= 1;
+        if (height > 1)
+            height >>= 1;
+        if (width == 1 && height == 1)
+            break;
+    }
+    return res;
+}
+
+[[nodiscard]] unsigned char* load_stbi_file(char const* filename, pr::backend::d3d12::img::image_info& out_info)
+{
+    int width, height, num_channels;
+    auto* const res_data = stbi_load(filename, &width, &height, &num_channels, 4);
+
+    if (!res_data)
+        return nullptr;
+
+    out_info.arraySize = 1;
+    out_info.width = unsigned(width);
+    out_info.height = unsigned(height);
+    out_info.depth = 1;
+    out_info.mipMapCount = get_num_mips(unsigned(width), unsigned(height));
+    out_info.bitCount = 32;
+    out_info.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    return res_data;
+}
+
+void compute_mip(unsigned char* data, int width, int height)
+{
+    constexpr int offsetsX[] = {0, 1, 0, 1};
+    constexpr int offsetsY[] = {0, 0, 1, 1};
+
+    auto* const image_data = reinterpret_cast<uint32_t*>(data);
+
+    auto const get_byte = [](auto color, int component) { return (color >> (8 * component)) & 0xff; };
+    auto const get_color = [&](int x, int y) { return image_data[unsigned(x + y * int(width))]; };
+    auto const set_color = [&](int x, int y, auto color) { image_data[x + y * width / 2] = color; };
+
+    for (auto y = 0; y < height; y += 2)
+    {
+        for (auto x = 0; x < width; x += 2)
+        {
+            uint32_t color = 0;
+            for (auto c = 0; c < 4; ++c)
+            {
+                uint32_t color_component = 0;
+                for (auto i = 0; i < 4; ++i)
+                    color_component += get_byte(get_color(x + offsetsX[i], y + offsetsY[i]), 3 - c);
+
+                color = (color << 8) | (color_component / 4);
+            }
+            set_color(x / 2, y / 2, color);
+        }
+    }
+}
 }
 
 
@@ -260,25 +328,49 @@ pr::backend::d3d12::img::image_handle pr::backend::d3d12::img::load_image(const 
         if (res_handle == nullptr || res_handle == INVALID_HANDLE_VALUE)
             return null_image_handle;
         else
-            return {res_handle};
+            return {true, res_handle, nullptr};
     }
-    //    else if (extension == ".wic")
-    //    {
-    //        // WIC file
-    //    }
     else
     {
-        // TODO
-        std::cerr << "Unknown image format: " << extension << std::endl;
-        return null_image_handle;
+        // Something else, assumed STBI compatible
+        auto* const res_ptr = load_stbi_file(filename, out_info);
+        if (res_ptr == nullptr)
+            return null_image_handle;
+        else
+            return {false, nullptr, res_ptr};
     }
 }
 
 void pr::backend::d3d12::img::copy_pixels(const pr::backend::d3d12::img::image_handle& handle, void* dest, unsigned stride, unsigned width, unsigned height)
 {
-    for (auto y = 0u; y < height; ++y)
+    if (handle.is_dds)
     {
-        ::ReadFile(handle.handle, static_cast<char*>(dest) + y * stride, width, nullptr, nullptr);
+        for (auto y = 0u; y < height; ++y)
+        {
+            ::ReadFile(handle.handle, static_cast<char*>(dest) + y * stride, width, nullptr, nullptr);
+        }
+    }
+    else
+    {
+        for (auto y = 0u; y < height; ++y)
+        {
+            ::memcpy(static_cast<char*>(dest) + y * stride, handle.stbi_data + y * width, width);
+        }
+
+        compute_mip(handle.stbi_data, width / 4, int(height));
     }
 }
 
+void pr::backend::d3d12::img::free(const pr::backend::d3d12::img::image_handle& handle)
+{
+    if (handle.is_dds)
+    {
+        if (handle.handle != INVALID_HANDLE_VALUE && handle.handle != nullptr)
+            ::CloseHandle(handle.handle);
+    }
+    else
+    {
+        if (handle.stbi_data)
+            ::stbi_image_free(handle.stbi_data);
+    }
+}

@@ -18,7 +18,7 @@ public:
     Texture() = default;
 
     // load file into heap
-    bool initFromFile(ID3D12Device& device, UploadHeap& upload_heap, const char* szFilename, bool useSRGB = false, float cutOff = 1.0f);
+    bool initFromFile(ID3D12Device& device, UploadHeap& upload_heap, const char* filename, bool use_srgb = false);
     INT32 initRenderTarget(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_RENDER_TARGET);
     INT32 initDepthStencil(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc);
     bool initBuffer(ID3D12Device& device, const char* debug_name, CD3DX12_RESOURCE_DESC const& desc, uint32_t structureSize, D3D12_RESOURCE_STATES state); // structureSize needs to be 0 if using a valid DXGI_FORMAT
