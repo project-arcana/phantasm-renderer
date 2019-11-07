@@ -7,21 +7,21 @@ namespace pr
 {
 // see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkGraphicsPipelineCreateInfo.html
 template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
-struct PrimitivePipeline
+class PrimitivePipeline
 {
 public:
     // TODO: multiple buffers
     template <class BufferT>
     void draw(UnboundResources const&... resources, Buffer<BufferT> const& vertexBuffer)
     {
-        static_assert(std::is_same_v<BufferT, VertexT>, "incompatible vertex types");
+        static_assert(std::is_same_v<BufferT, VertexT[]>, "incompatible vertex types");
     }
 
     // TODO: more index types
     template <class BufferT>
     void drawIndexed(UnboundResources const&... resources, Buffer<BufferT> const& vertexBuffer, Buffer<int[]> const& indexBuffer)
     {
-        static_assert(std::is_same_v<BufferT, VertexT>, "incompatible vertex types");
+        static_assert(std::is_same_v<BufferT, VertexT[]>, "incompatible vertex types");
     }
 
     template <class... NewResources>

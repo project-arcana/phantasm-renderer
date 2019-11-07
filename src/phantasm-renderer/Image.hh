@@ -18,6 +18,10 @@ public:
     tg::size<D, int> size() const { return mSize; }
     pr::format format() const { return mFormat; }
 
+    // ctor
+public:
+    Image() = default; // TODO
+
     // move-only
 private:
     Image(Image const&) = delete;
