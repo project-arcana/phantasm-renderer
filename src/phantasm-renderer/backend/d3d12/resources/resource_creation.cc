@@ -245,6 +245,11 @@ D3D12_INDEX_BUFFER_VIEW pr::backend::d3d12::make_index_buffer_view(const pr::bac
     return D3D12_INDEX_BUFFER_VIEW{res.raw->GetGPUVirtualAddress(), UINT(res.raw->GetDesc().Width), (index_size == 4) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT};
 }
 
+D3D12_CONSTANT_BUFFER_VIEW_DESC pr::backend::d3d12::make_constant_buffer_view(const pr::backend::d3d12::resource& res)
+{
+    return D3D12_CONSTANT_BUFFER_VIEW_DESC{res.raw->GetGPUVirtualAddress(), UINT(res.raw->GetDesc().Width)};
+}
+
 pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     pr::backend::d3d12::ResourceAllocator& allocator, ID3D12Device& device, pr::backend::d3d12::UploadHeap& upload_heap, const char* filename, bool use_srgb)
 {

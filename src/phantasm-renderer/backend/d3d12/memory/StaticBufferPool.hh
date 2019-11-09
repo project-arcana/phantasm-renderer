@@ -12,10 +12,10 @@ namespace pr::backend::d3d12
 // This class allows suballocating small chuncks of memory from a huge buffer that is allocated on creation
 // This class is specialized in vertex buffers.
 //
-class StaticBufferPool
+class [[deprecated("Replaced by D3D12MA resources")]] StaticBufferPool
 {
 public:
-    void initialize(ID3D12Device& pDevice, uint32_t totalMemSize, bool bUseVidMem, const char* name);
+    void initialize(ID3D12Device & pDevice, uint32_t totalMemSize, bool bUseVidMem, const char* name);
 
     bool allocBuffer(uint32_t numbeOfVertices, uint32_t strideInBytes, void** pData, D3D12_GPU_VIRTUAL_ADDRESS* pBufferLocation, uint32_t* pSize);
     bool allocBuffer(uint32_t numbeOfElements, uint32_t strideInBytes, void* pInitData, D3D12_GPU_VIRTUAL_ADDRESS* pBufferLocation, uint32_t* pSize);
@@ -28,7 +28,7 @@ public:
     bool allocIndexBuffer(uint32_t numbeOfIndices, uint32_t strideInBytes, void* pInitData, D3D12_INDEX_BUFFER_VIEW* pOut);
     bool allocConstantBuffer(uint32_t size, void* pData, D3D12_CONSTANT_BUFFER_VIEW_DESC* pViewDesc);
 
-    void uploadData(ID3D12GraphicsCommandList* pCmdList);
+    void uploadData(ID3D12GraphicsCommandList * pCmdList);
 
     /// Frees the internal heap used to upload resources, can no longer be used after this call, but
     /// resources already uploaded remain alive

@@ -43,6 +43,8 @@ void make_cube_srv(resource const& res, resource_view& srv, unsigned index);
 
 [[nodiscard]] D3D12_INDEX_BUFFER_VIEW make_index_buffer_view(resource const& res, size_t index_size = sizeof(int));
 
+[[nodiscard]] D3D12_CONSTANT_BUFFER_VIEW_DESC make_constant_buffer_view(resource const& res);
+
 //
 // create initialized resources from files or data
 // variants using an upload buffer only initiate copies, and do not flush
@@ -52,6 +54,7 @@ resource create_texture2d_from_file(ResourceAllocator& allocator, ID3D12Device& 
 
 resource create_buffer_from_data(ResourceAllocator& allocator, UploadHeap& upload_heap, size_t size, void const* data);
 
+/// must be explicitly templated due to the span deduction issue
 template <class ElementT>
 resource create_buffer_from_data(ResourceAllocator& allocator, UploadHeap& upload_heap, cc::span<ElementT const> vertices)
 {
