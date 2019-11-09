@@ -56,12 +56,12 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE mHandleGPU;
 
     friend class StaticResourceViewHeap;
-    void setResourceView(uint32_t size, uint32_t dsvDescriptorSize, D3D12_CPU_DESCRIPTOR_HANDLE CPUDescriptor, D3D12_GPU_DESCRIPTOR_HANDLE GPUDescriptor)
+    void setResourceView(uint32_t size, uint32_t descriptor_size, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu)
     {
         mSize = size;
-        mHandleCPU = CPUDescriptor;
-        mHandleGPU = GPUDescriptor;
-        mDescriptorSize = dsvDescriptorSize;
+        mHandleCPU = cpu;
+        mHandleGPU = gpu;
+        mDescriptorSize = descriptor_size;
     }
 };
 
@@ -93,15 +93,15 @@ public:
             return false;
         }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE CPUView = mHeap->GetCPUDescriptorHandleForHeapStart();
-        CPUView.ptr += mIndex * mDescriptorSize;
+        D3D12_CPU_DESCRIPTOR_HANDLE cpu_view = mHeap->GetCPUDescriptorHandleForHeapStart();
+        cpu_view.ptr += mIndex * mDescriptorSize;
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GPUView = mHeap->GetGPUDescriptorHandleForHeapStart();
-        GPUView.ptr += mIndex * mDescriptorSize;
+        D3D12_GPU_DESCRIPTOR_HANDLE gpu_view = mHeap->GetGPUDescriptorHandleForHeapStart();
+        gpu_view.ptr += mIndex * mDescriptorSize;
 
         mIndex += size;
 
-        out_rv.setResourceView(size, mDescriptorSize, CPUView, GPUView);
+        out_rv.setResourceView(size, mDescriptorSize, cpu_view, gpu_view);
 
         return true;
     }
@@ -144,4 +144,3 @@ private:
     StaticResourceViewHeap mHeapCBVsSRVsUAVs;
 };
 }
-

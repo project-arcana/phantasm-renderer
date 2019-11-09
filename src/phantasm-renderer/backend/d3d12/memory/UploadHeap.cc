@@ -15,9 +15,9 @@ void UploadHeap::initialize(BackendD3D12* backend, size_t size)
 
     auto& device = mBackend->mDevice.getDevice();
     device.CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, PR_COM_WRITE(mCommandAllocator));
-    mCommandAllocator->SetName(L"UploadHeap::m_pCommandAllocator");
+    mCommandAllocator->SetName(L"UploadHeap::mCommandAllocator");
     device.CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, mCommandAllocator, nullptr, PR_COM_WRITE(mCommandList));
-    mCommandList->SetName(L"UploadHeap::m_pCommandList");
+    mCommandList->SetName(L"UploadHeap::mCommandList");
 
     // Create buffer to suballocate
     {

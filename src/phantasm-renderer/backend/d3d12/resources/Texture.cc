@@ -457,7 +457,7 @@ void Texture::loadAndUpload(ID3D12Device& device, UploadHeap& upload_heap, img::
         }
     }
 
-    // transition to ps | non-ps state
+    // transition to (ps | non-ps) state
     D3D12_RESOURCE_BARRIER barrier_desc = {};
     barrier_desc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier_desc.Transition.pResource = mResource;
