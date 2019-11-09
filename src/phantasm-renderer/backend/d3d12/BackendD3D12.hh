@@ -18,6 +18,8 @@ public:
     /// flush all pending work on the GPU
     void flushGPU();
 
+    void resize(int w, int h);
+
 public:
     Adapter mAdapter;
     Device mDevice;

@@ -2,6 +2,8 @@
 
 #include <clean-core/capped_array.hh>
 
+#include <typed-geometry/tg-lean.hh>
+
 #include "common/d3d12_sanitized.hh"
 #include "common/shared_com_ptr.hh"
 
@@ -29,6 +31,7 @@ public:
     void waitForSwapchain();
 
     [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const;
+    [[nodiscard]] tg::ivec2 const& getBackbufferSize() const { return mBackbufferSize; }
 
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE& getCurrentBackbufferRTV();
     [[nodiscard]] ID3D12Resource* getCurrentBackbufferResource() const;
@@ -47,9 +50,12 @@ private:
     shared_com_ptr<ID3D12CommandQueue> mParentDirectQueue;                    ///< The parent device's main direct queue
     shared_com_ptr<IDXGISwapChain3> mSwapchain;                               ///< Swapchain COM ptr
     shared_com_ptr<ID3D12DescriptorHeap> mRTVHeap;                            ///< A descriptor heap exclusively for backbuffer RTVs
+
     cc::capped_array<D3D12_CPU_DESCRIPTOR_HANDLE, max_num_backbuffers> mRTVs; ///< Backbuffer RTV CPU handles
     cc::capped_array<Fence, max_num_backbuffers> mFences;                     ///< Present fences
+
     unsigned mNumBackbuffers = 0;
+    tg::ivec2 mBackbufferSize;
 };
 
 }

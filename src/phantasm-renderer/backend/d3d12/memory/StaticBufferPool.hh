@@ -44,4 +44,15 @@ private:
     bool mUseVideoMemory = true;
     std::mutex mMutex = {};
 };
+
+// upload code
+//{
+//    auto upload_cmd_list = commandListRing.acquireCommandList();
+//    staticBufferPool.uploadData(upload_cmd_list);
+//    upload_cmd_list->Close();
+
+//    ID3D12CommandList* submits[] = {upload_cmd_list};
+//    backend.mDirectQueue.getQueue().ExecuteCommandLists(1, submits);
+//    backend.flushGPU();
+//}
 }

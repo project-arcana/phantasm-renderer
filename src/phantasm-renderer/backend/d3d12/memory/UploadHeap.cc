@@ -48,6 +48,26 @@ uint8_t* UploadHeap::suballocate(size_t size, size_t align)
     return res;
 }
 
+uint8_t* UploadHeap::suballocateAllowRetry(size_t size, size_t alignment)
+{
+    auto res = suballocate(size, alignment);
+    if (res == nullptr)
+    {
+        flushAndFinish();
+        res = suballocate(size, alignment);
+        CC_ASSERT(res != nullptr);
+    }
+    return res;
+}
+
+void UploadHeap::copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* src_allocation, size_t size)
+{
+    auto offset = src_allocation - mDataBegin;
+    CC_ASSERT(offset >= 0 && offset <= (mDataEnd - mDataBegin) && "allocation not in range");
+    CC_ASSERT(src_allocation + size <= mDataEnd && "allocation copy out of bounds");
+    mCommandList->CopyBufferRegion(dest_resource, 0, mUploadHeap, UINT64(offset), size);
+}
+
 //--------------------------------------------------------------------------------------
 //
 // FlushAndFinish
@@ -70,4 +90,3 @@ void UploadHeap::flushAndFinish()
     mDataCurrent = mDataBegin;
 }
 }
-

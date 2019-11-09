@@ -6,6 +6,7 @@
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 #include <phantasm-renderer/backend/d3d12/memory/UploadHeap.hh>
+#include <phantasm-renderer/backend/d3d12/memory/byte_util.hh>
 
 #include "image_load_util.hh"
 
@@ -35,7 +36,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_render_target(pr::backen
 
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
-    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear_value);
+    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_RENDER_TARGET, &clear_value);
     res.raw->SetName(L"anon render target");
     return res;
 }
@@ -46,6 +47,15 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d(pr::backend::d
 
     auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_COMMON);
     res.raw->SetName(L"anon texture2d");
+    return res;
+}
+
+pr::backend::d3d12::resource pr::backend::d3d12::create_buffer(pr::backend::d3d12::ResourceAllocator& allocator, size_t size_bytes)
+{
+    auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
+
+    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_COMMON);
+    res.raw->SetName(L"anon buffer");
     return res;
 }
 
@@ -225,6 +235,16 @@ void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, 
     device->CreateShaderResourceView(res.raw, &srv_desc, srv.get_cpu(index));
 }
 
+D3D12_VERTEX_BUFFER_VIEW pr::backend::d3d12::make_vertex_buffer_view(const pr::backend::d3d12::resource& res, size_t vertex_size)
+{
+    return D3D12_VERTEX_BUFFER_VIEW{res.raw->GetGPUVirtualAddress(), UINT(res.raw->GetDesc().Width), UINT(vertex_size)};
+}
+
+D3D12_INDEX_BUFFER_VIEW pr::backend::d3d12::make_index_buffer_view(const pr::backend::d3d12::resource& res, size_t index_size)
+{
+    return D3D12_INDEX_BUFFER_VIEW{res.raw->GetGPUVirtualAddress(), UINT(res.raw->GetDesc().Width), (index_size == 4) ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT};
+}
+
 pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     pr::backend::d3d12::ResourceAllocator& allocator, ID3D12Device& device, pr::backend::d3d12::UploadHeap& upload_heap, const char* filename, bool use_srgb)
 {
@@ -260,14 +280,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     {
         // allocate memory for mip chain from upload heap
         //
-        auto* pixels = upload_heap.suballocate(SIZE_T(upload_heap_size), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-        if (pixels == nullptr)
-        {
-            // ran out of mem in the upload heap, flush it and try again
-            upload_heap.flushAndFinish();
-            pixels = upload_heap.suballocate(SIZE_T(upload_heap_size), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-            CC_ASSERT(pixels != nullptr);
-        }
+        auto* const pixels = upload_heap.suballocateAllowRetry(SIZE_T(upload_heap_size), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
         // copy all the mip slices into the offsets specified by the footprint structure
         //
@@ -294,6 +307,23 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     barrier_desc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
     upload_heap.getCommandList()->ResourceBarrier(1, &barrier_desc);
+
+    return res;
+}
+
+pr::backend::d3d12::resource pr::backend::d3d12::create_buffer_from_data(pr::backend::d3d12::ResourceAllocator& allocator,
+                                                                         pr::backend::d3d12::UploadHeap& upload_heap,
+                                                                         size_t size,
+                                                                         const void* data)
+{
+    auto res = create_buffer(allocator, size);
+    auto const buffer_width = res.raw->GetDesc().Width;
+    auto const buffer_align = res.raw->GetDesc().Alignment;
+
+    auto* const memory = upload_heap.suballocateAllowRetry(buffer_width, buffer_align);
+    ::memcpy(memory, data, size);
+
+    upload_heap.copyAllocationToBuffer(res.raw, memory, buffer_width);
 
     return res;
 }

@@ -67,6 +67,7 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
 
 void pr::backend::d3d12::Swapchain::onResize(int width, int height)
 {
+    mBackbufferSize = tg::ivec2(width, height);
     PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(mNumBackbuffers, UINT(width), UINT(height), s_backbuffer_format, s_swapchain_flags));
     createBackbufferRTVs();
 }

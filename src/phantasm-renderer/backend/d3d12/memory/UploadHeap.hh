@@ -27,6 +27,13 @@ public:
         return suballocate(sizeof(T), alignof(T));
     }
 
+    /// suballocate, but calls flushAndFinish internally if overcomitted
+    [[nodiscard]] uint8_t* suballocateAllowRetry(size_t size, size_t alignment);
+
+    /// copy an allocation received by suballocate() to a destination resource
+    void copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* src_allocation, size_t size);
+
+    /// flush all pending outgoing copy operations, free the internal upload heap
     void flushAndFinish();
 
     [[nodiscard]] uint8_t* getBasePointer() const { return mDataBegin; }
