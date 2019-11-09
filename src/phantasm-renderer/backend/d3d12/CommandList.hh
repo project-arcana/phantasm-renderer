@@ -14,6 +14,7 @@ namespace pr::backend::d3d12
 {
 class BackendD3D12;
 
+/// wrapper for ID3D12CommandList, unused
 struct CommandList
 {
     explicit CommandList(ID3D12GraphicsCommandList* list) : mType(D3D12_COMMAND_LIST_TYPE_DIRECT), mCommandList(list) { cc::fill(mDescriptorHeaps, nullptr); }
