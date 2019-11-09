@@ -89,7 +89,7 @@ public:
     {
         if ((mIndex + size) >= mNumDescriptors)
         {
-            CC_ASSERT(false && "StaticResourceViewHeap out of memory, increase its size");
+            CC_RUNTIME_ASSERT(false && "StaticResourceViewHeap out of memory, increase its size");
             return false;
         }
 

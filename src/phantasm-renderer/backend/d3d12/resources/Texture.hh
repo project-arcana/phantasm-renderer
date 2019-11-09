@@ -11,6 +11,7 @@
 
 namespace pr::backend::d3d12
 {
+
 // This class provides functionality to create a 2D-texture from a DDS or any texture format from WIC file.
 class Texture
 {

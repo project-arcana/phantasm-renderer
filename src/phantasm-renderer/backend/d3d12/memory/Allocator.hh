@@ -328,7 +328,7 @@ Features deliberately excluded from the scope of this library:
 // If using this library on a platform different than Windows PC, you should
 // include D3D12-compatible header before this library on your own.
 #ifdef _WIN32
-#include <d3d12.h>
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #endif
 
 /// \cond INTERNAL

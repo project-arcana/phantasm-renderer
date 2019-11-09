@@ -116,8 +116,6 @@ bool Texture::initCounter(ID3D12Device& device, const char* debug_name, CD3DX12_
 
 void Texture::createRTV(uint32_t index, RViewRTV& pRV, int mipLevel)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
     D3D12_RESOURCE_DESC texDesc = mResource->GetDesc();
 
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
@@ -136,6 +134,8 @@ void Texture::createRTV(uint32_t index, RViewRTV& pRV, int mipLevel)
         rtvDesc.Texture2D.MipSlice = mipLevel;
     }
 
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateRenderTargetView(mResource, &rtvDesc, pRV.getCPU(index));
 }
 
@@ -198,21 +198,19 @@ bool Texture::initFromData(ID3D12Device& device, const char* debug_name, UploadH
 
 void Texture::createUAV(uint32_t index, RViewCBV_SRV_UAV& pRV)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
-    D3D12_RESOURCE_DESC texDesc = mResource->GetDesc();
+    auto const resource_desc = mResource->GetDesc();
 
     D3D12_UNORDERED_ACCESS_VIEW_DESC UAViewDesc = {};
-    UAViewDesc.Format = texDesc.Format;
+    UAViewDesc.Format = resource_desc.Format;
     UAViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateUnorderedAccessView(mResource, nullptr, &UAViewDesc, pRV.getCPU(index));
 }
 
 void Texture::createBufferUAV(uint32_t index, Texture* counter_tex, RViewCBV_SRV_UAV& pRV)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
-
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
     uavDesc.Format = mHeader.format;
     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -221,20 +219,21 @@ void Texture::createBufferUAV(uint32_t index, Texture* counter_tex, RViewCBV_SRV
     uavDesc.Buffer.StructureByteStride = mStructuredBufferStride;
     uavDesc.Buffer.CounterOffsetInBytes = 0;
     uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateUnorderedAccessView(mResource, counter_tex ? counter_tex->getResource() : nullptr, &uavDesc, pRV.getCPU(index));
 }
 
 void Texture::createSRV(uint32_t index, RViewCBV_SRV_UAV& pRV, int mipLevel)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
-    D3D12_RESOURCE_DESC resourceDesc = mResource->GetDesc();
+    auto const resource_desc = mResource->GetDesc();
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 
-    if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+    if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
     {
-        srvDesc.Format = mHeader.format;
+        srvDesc.Format = resource_desc.Format;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.NumElements = mHeader.width;
@@ -243,19 +242,18 @@ void Texture::createSRV(uint32_t index, RViewCBV_SRV_UAV& pRV, int mipLevel)
     }
     else
     {
-        if (resourceDesc.Format == DXGI_FORMAT_R32_TYPELESS)
+        if (resource_desc.Format == DXGI_FORMAT_R32_TYPELESS)
         {
             srvDesc.Format = DXGI_FORMAT_R32_FLOAT; // special case for the depth buffer
         }
         else
         {
-            D3D12_RESOURCE_DESC desc = mResource->GetDesc();
-            srvDesc.Format = desc.Format;
+            srvDesc.Format = resource_desc.Format;
         }
 
-        if (resourceDesc.SampleDesc.Count == 1)
+        if (resource_desc.SampleDesc.Count == 1)
         {
-            if (resourceDesc.DepthOrArraySize == 1)
+            if (resource_desc.DepthOrArraySize == 1)
             {
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
                 if (mipLevel == -1)
@@ -276,19 +274,19 @@ void Texture::createSRV(uint32_t index, RViewCBV_SRV_UAV& pRV, int mipLevel)
                 {
                     srvDesc.Texture2DArray.MostDetailedMip = 0;
                     srvDesc.Texture2DArray.MipLevels = mHeader.mipMapCount;
-                    srvDesc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
+                    srvDesc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
                 else
                 {
                     srvDesc.Texture2DArray.MostDetailedMip = mipLevel;
                     srvDesc.Texture2DArray.MipLevels = 1;
-                    srvDesc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
+                    srvDesc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
             }
         }
         else
         {
-            if (resourceDesc.DepthOrArraySize == 1)
+            if (resource_desc.DepthOrArraySize == 1)
             {
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
             }
@@ -298,26 +296,26 @@ void Texture::createSRV(uint32_t index, RViewCBV_SRV_UAV& pRV, int mipLevel)
                 if (mipLevel == -1)
                 {
                     srvDesc.Texture2DMSArray.FirstArraySlice = 0;
-                    srvDesc.Texture2DMSArray.ArraySize = resourceDesc.DepthOrArraySize;
+                    srvDesc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
                 else
                 {
                     srvDesc.Texture2DMSArray.FirstArraySlice = 0;
-                    srvDesc.Texture2DMSArray.ArraySize = resourceDesc.DepthOrArraySize;
+                    srvDesc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
             }
         }
     }
 
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateShaderResourceView(mResource, &srvDesc, pRV.getCPU(index));
 }
 
 void Texture::createCubeSRV(uint32_t index, RViewCBV_SRV_UAV& out_rv)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
-
     auto const resource_desc = mResource->GetDesc();
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
@@ -325,23 +323,23 @@ void Texture::createCubeSRV(uint32_t index, RViewCBV_SRV_UAV& out_rv)
     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
     srv_desc.TextureCube.MostDetailedMip = 0;
     srv_desc.TextureCube.ResourceMinLODClamp = 0;
-    srv_desc.TextureCube.MipLevels = mHeader.mipMapCount;
+    srv_desc.TextureCube.MipLevels = resource_desc.MipLevels;
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateShaderResourceView(mResource, &srv_desc, out_rv.getCPU(index));
 }
 
-void Texture::createDSV(uint32_t index, RViewDSV& out_rv, int arraySlice)
+void Texture::createDSV(uint32_t index, RViewDSV& out_rv, int array_slice)
 {
-    shared_com_ptr<ID3D12Device> device;
-    mResource->GetDevice(PR_COM_WRITE(device));
-    D3D12_RESOURCE_DESC texDesc = mResource->GetDesc();
+    auto const resource_desc = mResource->GetDesc();
 
     D3D12_DEPTH_STENCIL_VIEW_DESC DSViewDesc = {};
-    DSViewDesc.Format = mHeader.format;
-    if (texDesc.SampleDesc.Count == 1)
+    DSViewDesc.Format = resource_desc.Format;
+    if (resource_desc.SampleDesc.Count == 1)
     {
-        if (texDesc.DepthOrArraySize == 1)
+        if (resource_desc.DepthOrArraySize == 1)
         {
             DSViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
             DSViewDesc.Texture2D.MipSlice = 0;
@@ -350,8 +348,8 @@ void Texture::createDSV(uint32_t index, RViewDSV& out_rv, int arraySlice)
         {
             DSViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
             DSViewDesc.Texture2DArray.MipSlice = 0;
-            DSViewDesc.Texture2DArray.FirstArraySlice = UINT(arraySlice);
-            DSViewDesc.Texture2DArray.ArraySize = 1; // texDesc.DepthOrArraySize;
+            DSViewDesc.Texture2DArray.FirstArraySlice = UINT(array_slice);
+            DSViewDesc.Texture2DArray.ArraySize = 1; // resource_desc.DepthOrArraySize;
         }
     }
     else
@@ -359,6 +357,8 @@ void Texture::createDSV(uint32_t index, RViewDSV& out_rv, int arraySlice)
         DSViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
     }
 
+    shared_com_ptr<ID3D12Device> device;
+    mResource->GetDevice(PR_COM_WRITE(device));
     device->CreateDepthStencilView(mResource, &DSViewDesc, out_rv.getCPU(index));
 }
 
@@ -370,10 +370,9 @@ INT32 Texture::initDepthStencil(ID3D12Device& device, const char* /*debug_name*/
     clear_value.DepthStencil.Depth = 1.0f;
     clear_value.DepthStencil.Stencil = 0;
 
-    D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES states = D3D12_RESOURCE_STATE_DEPTH_WRITE;
     // if (desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)
     //    states |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-    states |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     auto const heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
     device.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &desc, states, &clear_value, PR_COM_WRITE(mResource));
