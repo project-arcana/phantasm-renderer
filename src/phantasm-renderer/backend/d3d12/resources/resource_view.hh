@@ -9,6 +9,7 @@ namespace pr::backend::d3d12
 {
 struct resource_view
 {
+    resource_view() = default;
     resource_view(unsigned size, unsigned desc_size, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu)
       : size(size), _descriptor_size(desc_size), _handle_cpu(cpu), _handle_gpu(gpu)
     {
