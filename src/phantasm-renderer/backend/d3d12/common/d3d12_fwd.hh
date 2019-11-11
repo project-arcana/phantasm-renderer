@@ -7,6 +7,7 @@
 
 typedef unsigned __int64 UINT64;
 typedef UINT64 D3D12_GPU_VIRTUAL_ADDRESS;
+typedef struct ID3D10Blob ID3DBlob;
 
 struct ID3D12Device;
 struct ID3D12Device5;
@@ -19,3 +20,4 @@ struct IDXGIAdapter;
 struct IDXGIFactory4;
 struct IDXGISwapChain3;
 
+struct D3D12_SHADER_BYTECODE;

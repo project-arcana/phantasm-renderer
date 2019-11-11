@@ -29,6 +29,8 @@ struct constant_buffer
 
 }
 
+namespace detail
+{
 template <class DataT>
 struct data_visitor
 {
@@ -102,6 +104,7 @@ struct data_visitor
         //        }
     }
 };
+}
 
 [[nodiscard]] shared_com_ptr<ID3D12RootSignature> get_root_signature(ID3D12Device& device,
                                                                      cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
@@ -110,7 +113,7 @@ struct data_visitor
 template <class DataT>
 [[nodiscard]] shared_com_ptr<ID3D12RootSignature> get_root_signature(ID3D12Device& device)
 {
-    data_visitor<DataT> visitor;
+    detail::data_visitor<DataT> visitor;
     DataT* volatile dummy_pointer = nullptr; // Volatile to avoid UB-based optimization
     introspect(visitor, *dummy_pointer);
     return get_root_signature(device, visitor.root_params, visitor.samplers);
