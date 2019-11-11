@@ -12,8 +12,6 @@ namespace pr::backend::d3d12
 class Ring
 {
 public:
-    ~Ring() { free(mAllocatedSize); }
-
     void initialize(uint32_t total_size) { mTotalSize = total_size; }
 
     uint32_t getSize() const { return mAllocatedSize; }
@@ -30,12 +28,12 @@ public:
             return 0;
     }
 
-    bool alloc(uint32_t size, uint32_t* pOut)
+    bool alloc(uint32_t size, uint32_t* out_start)
     {
         if (mAllocatedSize + size <= mTotalSize)
         {
-            if (pOut)
-                *pOut = getTail();
+            if (out_start)
+                *out_start = getTail();
 
             mAllocatedSize += size;
             return true;
@@ -85,7 +83,7 @@ public:
         mMemory.initialize(memTotalSize);
     }
 
-    bool alloc(uint32_t size, uint32_t* pOut)
+    bool alloc(uint32_t size, uint32_t* out_start)
     {
         uint32_t padding = mMemory.paddingToAvoidCrossover(size);
         if (padding > 0)
@@ -94,11 +92,11 @@ public:
 
             if (mMemory.alloc(padding, nullptr) == false) // alloc chunk to avoid crossover, ignore offset
             {
-                return false; // no mem, cannot allocate apdding
+                return false; // no mem, cannot allocate padding
             }
         }
 
-        if (mMemory.alloc(size, pOut) == true)
+        if (mMemory.alloc(size, out_start) == true)
         {
             mMemAllocatedInFrame += size;
             return true;

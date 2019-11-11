@@ -35,8 +35,8 @@ namespace detail
 {
 struct root_signature_data
 {
-    cc::capped_vector<CD3DX12_ROOT_PARAMETER, 8> root_params;
-    cc::capped_vector<CD3DX12_STATIC_SAMPLER_DESC, 8> samplers;
+    cc::capped_vector<CD3DX12_ROOT_PARAMETER, 16> root_params;
+    cc::capped_vector<CD3DX12_STATIC_SAMPLER_DESC, 16> samplers;
     cc::capped_vector<CD3DX12_DESCRIPTOR_RANGE, 16> desc_ranges;
 
     unsigned register_b = 0;

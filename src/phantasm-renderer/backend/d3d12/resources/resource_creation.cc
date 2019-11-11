@@ -59,7 +59,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_buffer(pr::backend::d3d1
     return res;
 }
 
-void pr::backend::d3d12::make_rtv(const pr::backend::d3d12::resource& res, pr::backend::d3d12::resource_view& rtv, unsigned index, int mip)
+void pr::backend::d3d12::make_rtv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
 {
     auto const texDesc = res.raw->GetDesc();
 
@@ -81,66 +81,66 @@ void pr::backend::d3d12::make_rtv(const pr::backend::d3d12::resource& res, pr::b
 
     shared_com_ptr<ID3D12Device> device;
     res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateRenderTargetView(res.raw, &rtvDesc, rtv.get_cpu(index));
+    device->CreateRenderTargetView(res.raw, &rtvDesc, handle);
 }
 
-void pr::backend::d3d12::make_srv(const pr::backend::d3d12::resource& res, pr::backend::d3d12::resource_view& srv, unsigned index, int mip)
+void pr::backend::d3d12::make_srv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
 {
     auto const resource_desc = res.raw->GetDesc();
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 
     if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
     {
         CC_RUNTIME_ASSERT(false && "unimplemented, no way to recover structured buffer stride here");
-        srvDesc.Format = resource_desc.Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-        srvDesc.Buffer.FirstElement = 0;
-        srvDesc.Buffer.NumElements = UINT(resource_desc.Width);
-        srvDesc.Buffer.StructureByteStride = 0 /*mStructuredBufferStride*/; // TODO
-        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        srv_desc.Format = resource_desc.Format;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        srv_desc.Buffer.FirstElement = 0;
+        srv_desc.Buffer.NumElements = UINT(resource_desc.Width);
+        srv_desc.Buffer.StructureByteStride = 0 /*mStructuredBufferStride*/; // TODO
+        srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     }
     else
     {
         if (resource_desc.Format == DXGI_FORMAT_R32_TYPELESS)
         {
-            srvDesc.Format = DXGI_FORMAT_R32_FLOAT; // special case for the depth buffer
+            srv_desc.Format = DXGI_FORMAT_R32_FLOAT; // special case for the depth buffer
         }
         else
         {
-            srvDesc.Format = resource_desc.Format;
+            srv_desc.Format = resource_desc.Format;
         }
 
         if (resource_desc.SampleDesc.Count == 1)
         {
             if (resource_desc.DepthOrArraySize == 1)
             {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
                 if (mip == -1)
                 {
-                    srvDesc.Texture2D.MostDetailedMip = 0;
-                    srvDesc.Texture2D.MipLevels = resource_desc.MipLevels;
+                    srv_desc.Texture2D.MostDetailedMip = 0;
+                    srv_desc.Texture2D.MipLevels = resource_desc.MipLevels;
                 }
                 else
                 {
-                    srvDesc.Texture2D.MostDetailedMip = UINT(mip);
-                    srvDesc.Texture2D.MipLevels = 1;
+                    srv_desc.Texture2D.MostDetailedMip = UINT(mip);
+                    srv_desc.Texture2D.MipLevels = 1;
                 }
             }
             else
             {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
                 if (mip == -1)
                 {
-                    srvDesc.Texture2DArray.MostDetailedMip = 0;
-                    srvDesc.Texture2DArray.MipLevels = resource_desc.MipLevels;
-                    srvDesc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
+                    srv_desc.Texture2DArray.MostDetailedMip = 0;
+                    srv_desc.Texture2DArray.MipLevels = resource_desc.MipLevels;
+                    srv_desc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
                 else
                 {
-                    srvDesc.Texture2DArray.MostDetailedMip = UINT(mip);
-                    srvDesc.Texture2DArray.MipLevels = 1;
-                    srvDesc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
+                    srv_desc.Texture2DArray.MostDetailedMip = UINT(mip);
+                    srv_desc.Texture2DArray.MipLevels = 1;
+                    srv_desc.Texture2DArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
             }
         }
@@ -148,33 +148,33 @@ void pr::backend::d3d12::make_srv(const pr::backend::d3d12::resource& res, pr::b
         {
             if (resource_desc.DepthOrArraySize == 1)
             {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+                srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
             }
             else
             {
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+                srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
                 if (mip == -1)
                 {
-                    srvDesc.Texture2DMSArray.FirstArraySlice = 0;
-                    srvDesc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
+                    srv_desc.Texture2DMSArray.FirstArraySlice = 0;
+                    srv_desc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
                 else
                 {
-                    srvDesc.Texture2DMSArray.FirstArraySlice = 0;
-                    srvDesc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
+                    srv_desc.Texture2DMSArray.FirstArraySlice = 0;
+                    srv_desc.Texture2DMSArray.ArraySize = resource_desc.DepthOrArraySize;
                 }
             }
         }
     }
 
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     shared_com_ptr<ID3D12Device> device;
     res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateShaderResourceView(res.raw, &srvDesc, srv.get_cpu(index));
+    device->CreateShaderResourceView(res.raw, &srv_desc, handle);
 }
 
-void pr::backend::d3d12::make_dsv(const pr::backend::d3d12::resource& res, pr::backend::d3d12::resource_view& dsv, unsigned index, int array_slice)
+void pr::backend::d3d12::make_dsv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int array_slice)
 {
     auto const resource_desc = res.raw->GetDesc();
 
@@ -202,10 +202,10 @@ void pr::backend::d3d12::make_dsv(const pr::backend::d3d12::resource& res, pr::b
 
     shared_com_ptr<ID3D12Device> device;
     res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateDepthStencilView(res.raw, &DSViewDesc, dsv.get_cpu(index));
+    device->CreateDepthStencilView(res.raw, &DSViewDesc, handle);
 }
 
-void pr::backend::d3d12::make_uav(const pr::backend::d3d12::resource& res, pr::backend::d3d12::resource_view& uav, unsigned index)
+void pr::backend::d3d12::make_uav(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
 {
     auto const resource_desc = res.raw->GetDesc();
 
@@ -215,10 +215,10 @@ void pr::backend::d3d12::make_uav(const pr::backend::d3d12::resource& res, pr::b
 
     shared_com_ptr<ID3D12Device> device;
     res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateUnorderedAccessView(res.raw, nullptr, &UAViewDesc, uav.get_cpu(index));
+    device->CreateUnorderedAccessView(res.raw, nullptr, &UAViewDesc, handle);
 }
 
-void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, pr::backend::d3d12::resource_view& srv, unsigned index)
+void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
 {
     auto const resource_desc = res.raw->GetDesc();
 
@@ -232,7 +232,7 @@ void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, 
 
     shared_com_ptr<ID3D12Device> device;
     res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateShaderResourceView(res.raw, &srv_desc, srv.get_cpu(index));
+    device->CreateShaderResourceView(res.raw, &srv_desc, handle);
 }
 
 D3D12_VERTEX_BUFFER_VIEW pr::backend::d3d12::make_vertex_buffer_view(const pr::backend::d3d12::resource& res, size_t vertex_size)

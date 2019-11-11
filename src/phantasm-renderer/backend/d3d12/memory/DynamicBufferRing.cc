@@ -22,7 +22,7 @@ void DynamicBufferRing::initialize(ID3D12Device& pDevice, uint32_t numberOfBackB
     auto const resource_desc = CD3DX12_RESOURCE_DESC::Buffer(memTotalSize);
     PR_D3D12_VERIFY(pDevice.CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &resource_desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
                                                     PR_COM_WRITE(mResource)));
-    mResource->SetName(L"DynamicBufferRing::m_pBuffer");
+    mResource->SetName(L"DynamicBufferRing::mResource");
 
     mResource->Map(0, nullptr, reinterpret_cast<void**>(&mData));
 }
