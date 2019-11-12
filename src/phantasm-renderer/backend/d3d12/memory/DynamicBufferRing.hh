@@ -36,6 +36,7 @@ public:
     template <class T>
     bool allocConstantBuffer(T*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
     {
+        static_assert (!std::is_same_v<T, void>, "Only use this for explicit types");
         static_assert(!std::is_pointer_v<T> && !std::is_reference_v<T>, "T is not the underlying type");
         return allocConstantBuffer(sizeof(T), reinterpret_cast<void*&>(out_data), out_view);
     }
