@@ -105,7 +105,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE& pr::backend::d3d12::Swapchain::getCurrentBackbuffer
 
 void pr::backend::d3d12::Swapchain::createBackbufferRTVs()
 {
-    auto const color_desc_size = mParentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    auto const rtv_size = mParentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     mRTVs.emplace(mNumBackbuffers);
 
     D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
@@ -119,7 +119,7 @@ void pr::backend::d3d12::Swapchain::createBackbufferRTVs()
         auto& rtv = mRTVs[i];
 
         rtv = mRTVHeap->GetCPUDescriptorHandleForHeapStart();
-        rtv.ptr += color_desc_size * i;
+        rtv.ptr += rtv_size * i;
 
         shared_com_ptr<ID3D12Resource> back_buffer;
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, PR_COM_WRITE(back_buffer)));

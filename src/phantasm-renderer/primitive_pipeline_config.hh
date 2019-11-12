@@ -35,8 +35,12 @@ enum class cull_mode
 struct primitive_pipeline_config
 {
     primitive_topology topology = primitive_topology::triangles;
+
     depth_function depth = depth_function::less;
+    bool depth_readonly = false;
+
     cull_mode cull = cull_mode::back;
+
     int samples = 1;
     // TODO: detailed multisampling configuration
     // TODO: blend state

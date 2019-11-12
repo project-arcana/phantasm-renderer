@@ -103,6 +103,7 @@ pr::backend::d3d12::shared_com_ptr<ID3D12PipelineState> pr::backend::d3d12::crea
     pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     pso_desc.DepthStencilState.DepthEnable = config.depth != pr::depth_function::none && !framebuffer.depth_target.empty();
     pso_desc.DepthStencilState.DepthFunc = pr_to_native(config.depth);
+    pso_desc.DepthStencilState.DepthWriteMask = config.depth_readonly ? D3D12_DEPTH_WRITE_MASK_ZERO : D3D12_DEPTH_WRITE_MASK_ALL;
 
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.PrimitiveTopologyType = pr_to_native(config.topology);

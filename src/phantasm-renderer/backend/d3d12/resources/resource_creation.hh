@@ -13,13 +13,17 @@ class UploadHeap;
 // create resources
 //
 
+/// return state: COPY_DEST
 resource create_texture2d(ResourceAllocator& allocator, int w, int h, DXGI_FORMAT format, int mips, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 
+/// return state: DEPTH_WRITE
 resource create_depth_stencil(ResourceAllocator& allocator, int w, int h, DXGI_FORMAT format);
 
+/// return state: RENDER_TARGET
 resource create_render_target(ResourceAllocator& allocator, int w, int h, DXGI_FORMAT format);
 
-resource create_buffer(ResourceAllocator& allocator, size_t size_bytes);
+/// return state: given initial state
+resource create_buffer(ResourceAllocator& allocator, size_t size_bytes, D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON);
 
 //
 // create views (descriptors) on resources
@@ -48,6 +52,7 @@ void make_cube_srv(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 //
 // create initialized resources from files or data
 // variants using an upload buffer only initiate copies, and do not flush
+// all resources are created in COPY_DEST state unless noted otherwise
 //
 
 resource create_texture2d_from_file(ResourceAllocator& allocator, ID3D12Device& device, UploadHeap& upload_heap, char const* filename, bool use_srgb = false);

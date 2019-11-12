@@ -45,16 +45,16 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d(pr::backend::d
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format, UINT(w), UINT(h), 1, UINT16(mips), 1, 0, flags);
 
-    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_COMMON);
+    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_COPY_DEST);
     res.raw->SetName(L"anon texture2d");
     return res;
 }
 
-pr::backend::d3d12::resource pr::backend::d3d12::create_buffer(pr::backend::d3d12::ResourceAllocator& allocator, size_t size_bytes)
+pr::backend::d3d12::resource pr::backend::d3d12::create_buffer(pr::backend::d3d12::ResourceAllocator& allocator, size_t size_bytes, D3D12_RESOURCE_STATES initial_state)
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
 
-    auto res = allocator.allocateResource(desc, D3D12_RESOURCE_STATE_COMMON);
+    auto res = allocator.allocateResource(desc, initial_state);
     res.raw->SetName(L"anon buffer");
     return res;
 }
@@ -302,16 +302,6 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
             upload_heap.getCommandList()->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
         }
     }
-
-    // transition to (ps | non-ps) state
-    D3D12_RESOURCE_BARRIER barrier_desc = {};
-    barrier_desc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier_desc.Transition.pResource = res.raw;
-    barrier_desc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-    barrier_desc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    barrier_desc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-
-    upload_heap.getCommandList()->ResourceBarrier(1, &barrier_desc);
 
     return res;
 }
