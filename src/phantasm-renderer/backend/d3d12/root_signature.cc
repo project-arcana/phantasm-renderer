@@ -3,8 +3,8 @@
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::create_root_signature(ID3D12Device& device,
-                                                                                               cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
-                                                                                               cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
+                                                                                                  cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
+                                                                                                  cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
 {
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.data();
@@ -22,7 +22,7 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     return res;
 }
 
-void pr::backend::d3d12::root_signature::initialize(ID3D12Device &device, cc::span<const root_sig_payload_size> payload_sizes)
+void pr::backend::d3d12::root_signature::initialize(ID3D12Device& device, cc::span<const root_sig_payload_size> payload_sizes)
 {
     detail::root_signature_params parameters;
 
@@ -34,7 +34,14 @@ void pr::backend::d3d12::root_signature::initialize(ID3D12Device &device, cc::sp
     raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }
 
-void pr::backend::d3d12::root_signature::bind(ID3D12Device &device, ID3D12GraphicsCommandList &command_list, DynamicBufferRing &dynamic_buffer_ring, DescriptorManager &desc_manager, int payload_index, cc::span<const cpu_cbv_srv_uav> shader_resources, void *constant_buffer_data, void *root_constants_data)
+void pr::backend::d3d12::root_signature::bind(ID3D12Device& device,
+                                              ID3D12GraphicsCommandList& command_list,
+                                              DynamicBufferRing& dynamic_buffer_ring,
+                                              DescriptorAllocator& desc_allocator,
+                                              int payload_index,
+                                              cc::span<const cpu_cbv_srv_uav> shader_resources,
+                                              void* constant_buffer_data,
+                                              void* root_constants_data)
 {
     auto const& map = _payload_maps[payload_index];
     auto root_index = map.base_root_param;
@@ -42,7 +49,7 @@ void pr::backend::d3d12::root_signature::bind(ID3D12Device &device, ID3D12Graphi
     if (!shader_resources.empty())
     {
         // descriptor table
-        auto desc_table = desc_manager.allocDynamicTable(device, shader_resources);
+        auto desc_table = desc_allocator.allocDynamicTable(device, shader_resources);
         command_list.SetGraphicsRootDescriptorTable(root_index++, desc_table.shader_resource_handle_gpu);
     }
 
@@ -65,7 +72,7 @@ void pr::backend::d3d12::root_signature::bind(ID3D12Device &device, ID3D12Graphi
     }
 }
 
-pr::backend::d3d12::root_sig_payload_map pr::backend::d3d12::detail::root_signature_params::add_payload_sizes(const pr::backend::d3d12::root_sig_payload_size &size)
+pr::backend::d3d12::root_sig_payload_map pr::backend::d3d12::detail::root_signature_params::add_payload_sizes(const pr::backend::d3d12::root_sig_payload_size& size)
 {
     auto const res_index = unsigned(root_params.size());
 

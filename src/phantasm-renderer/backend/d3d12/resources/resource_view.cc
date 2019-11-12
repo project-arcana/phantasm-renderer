@@ -5,7 +5,7 @@
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-void pr::backend::d3d12::StaticDescriptorPool::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size)
+void pr::backend::d3d12::CPUDescriptorPool::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size)
 {
     auto const desc_size = device.GetDescriptorHandleIncrementSize(type);
 
@@ -26,7 +26,7 @@ void pr::backend::d3d12::StaticDescriptorPool::initialize(ID3D12Device& device, 
     }
 }
 
-void pr::backend::d3d12::DynamicDescriptorRing::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size, unsigned num_frames)
+void pr::backend::d3d12::GPUDescriptorRing::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size, unsigned num_frames)
 {
     CC_RUNTIME_ASSERT(!((type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV) || (type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV)) && "Only use this class for GPU-visible descriptors");
 
@@ -45,7 +45,7 @@ void pr::backend::d3d12::DynamicDescriptorRing::initialize(ID3D12Device& device,
     mHandleGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
 }
 
-pr::backend::d3d12::resource_view pr::backend::d3d12::DynamicDescriptorRing::allocate(unsigned num)
+pr::backend::d3d12::resource_view pr::backend::d3d12::GPUDescriptorRing::allocate(unsigned num)
 {
     unsigned index;
     bool const success = mRing.alloc(num, &index);
@@ -55,7 +55,7 @@ pr::backend::d3d12::resource_view pr::backend::d3d12::DynamicDescriptorRing::all
                          D3D12_GPU_DESCRIPTOR_HANDLE{mHandleGPU.ptr + index * mDescriptorSize});
 }
 
-void pr::backend::d3d12::DescriptorManager::initialize(ID3D12Device& device, uint32_t num_cbv_srv_uav, uint32_t num_dsv, uint32_t num_rtv, uint32_t num_sampler, uint32_t num_backbuffers)
+void pr::backend::d3d12::DescriptorAllocator::initialize(ID3D12Device& device, uint32_t num_cbv_srv_uav, uint32_t num_dsv, uint32_t num_rtv, uint32_t num_sampler, uint32_t num_backbuffers)
 {
     mPoolDSVs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, num_dsv);
     mPoolRTVs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, num_rtv);

@@ -187,7 +187,7 @@ struct root_signature
     void bind(ID3D12Device& device,
               ID3D12GraphicsCommandList& command_list,
               DynamicBufferRing& dynamic_buffer_ring,
-              DescriptorManager& desc_manager,
+              DescriptorAllocator& desc_manager,
               int payload_index,
               cc::span<cpu_cbv_srv_uav const> shader_resources,
               void* constant_buffer_data,
@@ -196,7 +196,7 @@ struct root_signature
     void bind(ID3D12Device& device,
               ID3D12GraphicsCommandList& command_list,
               DynamicBufferRing& dynamic_buffer_ring,
-              DescriptorManager& desc_manager,
+              DescriptorAllocator& desc_manager,
               int payload_index,
               root_sig_payload_data const& data)
     {

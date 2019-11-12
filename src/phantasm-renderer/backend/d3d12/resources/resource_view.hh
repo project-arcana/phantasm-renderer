@@ -61,7 +61,7 @@ struct dynamic_descriptor_table
 
 /// A non-GPU-visible pool for long-lived descriptors of size 1
 /// Should be copied contiguously into a DynamicDescriptorRing at dispatch time
-class StaticDescriptorPool
+class CPUDescriptorPool
 {
 public:
     void initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size);
@@ -88,7 +88,7 @@ private:
 
 /// A GPU-visible ring buffer for frame-local descriptors,
 /// meant to be copied to from statically existing ones
-class DynamicDescriptorRing
+class GPUDescriptorRing
 {
 public:
     void initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size, unsigned num_frames);
@@ -107,7 +107,7 @@ private:
     unsigned mDescriptorSize = 0;
 };
 
-class DescriptorManager
+class DescriptorAllocator
 {
 public:
     void initialize(ID3D12Device& device, uint32_t num_cbv_srv_uav, uint32_t num_dsv, uint32_t num_rtv, uint32_t num_sampler, uint32_t num_backbuffers);
@@ -147,12 +147,12 @@ public:
     ID3D12DescriptorHeap* getCBV_SRV_UAVHeap() const { return mRingCBVsSRVsUAVs.getHeap(); }
 
 private:
-    StaticDescriptorPool mPoolCBVsSRVsUAVs;
-    StaticDescriptorPool mPoolSamplers;
-    StaticDescriptorPool mPoolRTVs;
-    StaticDescriptorPool mPoolDSVs;
+    CPUDescriptorPool mPoolCBVsSRVsUAVs;
+    CPUDescriptorPool mPoolSamplers;
+    CPUDescriptorPool mPoolRTVs;
+    CPUDescriptorPool mPoolDSVs;
 
-    DynamicDescriptorRing mRingCBVsSRVsUAVs;
-    DynamicDescriptorRing mRingSamplers;
+    GPUDescriptorRing mRingCBVsSRVsUAVs;
+    GPUDescriptorRing mRingSamplers;
 };
 }
