@@ -7,13 +7,12 @@ namespace pr::backend::detail
 struct unique_buffer
 {
     unique_buffer() = default;
-    unique_buffer(size_t size) : _ptr(std::malloc(size)) {}
+    unique_buffer(size_t size) : _ptr(size > 0 ? std::malloc(size) : nullptr) {}
 
     void allocate(size_t size)
     {
         std::free(_ptr);
-        if (size > 0)
-            _ptr = std::malloc(size);
+        _ptr = (size > 0) ? std::malloc(size) : nullptr;
     }
 
     unique_buffer(unique_buffer const&) = delete;
@@ -40,6 +39,8 @@ struct unique_buffer
 
     [[nodiscard]] void* get() const& { return _ptr; }
     [[nodiscard]] void* get() const&& = delete;
+
+    [[nodiscard]] bool is_valid() const { return _ptr != nullptr; }
 
     operator void*() const& { return _ptr; }
     operator void*() const&& = delete;
