@@ -33,9 +33,6 @@ public:
     /// copy an allocation received by suballocate() to a destination resource
     void copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* src_allocation, size_t size);
 
-    /// transition a resource (which is not necessarily otherwise involved with the upload buffer)
-    void transitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-
     /// flush all pending outgoing copy operations and barriers, free the internal upload heap
     void flushAndFinish();
 

@@ -68,12 +68,6 @@ void UploadHeap::copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* 
     mCommandList->CopyBufferRegion(dest_resource, 0, mUploadHeap, UINT64(offset), size);
 }
 
-void UploadHeap::transitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
-{
-    auto const barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource, before, after);
-    mCommandList->ResourceBarrier(1, &barrier);
-}
-
 //--------------------------------------------------------------------------------------
 //
 // FlushAndFinish
