@@ -31,17 +31,17 @@ namespace
     switch (domain)
     {
     case pr::backend::d3d12::shader_domain::pixel:
-        return "ps_5_0";
+        return "ps_5_1";
     case pr::backend::d3d12::shader_domain::vertex:
-        return "vs_5_0";
+        return "vs_5_1";
     case pr::backend::d3d12::shader_domain::domain:
-        return "ds_5_0";
+        return "ds_5_1";
     case pr::backend::d3d12::shader_domain::hull:
-        return "hs_5_0";
+        return "hs_5_1";
     case pr::backend::d3d12::shader_domain::geometry:
-        return "gs_5_0";
+        return "gs_5_1";
     case pr::backend::d3d12::shader_domain::compute:
-        return "cs_5_0";
+        return "cs_5_1";
     }
 }
 
