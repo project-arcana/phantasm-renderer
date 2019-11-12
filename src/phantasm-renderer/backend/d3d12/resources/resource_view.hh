@@ -137,6 +137,12 @@ public:
         return {handle.get_gpu()};
     }
 
+    void setHeaps(ID3D12GraphicsCommandList& cmd_list) const
+    {
+        ID3D12DescriptorHeap* const desc_heaps[2] = {mRingCBVsSRVsUAVs.getHeap(), mRingSamplers.getHeap()};
+        cmd_list.SetDescriptorHeaps(2, desc_heaps);
+    }
+
     void onBeginFrame()
     {
         mRingCBVsSRVsUAVs.onBeginFrame();

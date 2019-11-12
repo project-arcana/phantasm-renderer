@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
-#include <vector>
+
+#include <clean-core/vector.hh>
+#include <clean-core/span.hh>
 
 #include "common/d3d12_sanitized.hh"
 
@@ -20,7 +22,7 @@ enum class adapter_vendor
 struct adapter_candidate
 {
     adapter_vendor vendor;
-    uint32_t index;
+    unsigned index;
 
     size_t dedicated_video_memory_bytes;
     size_t dedicated_system_memory_bytes;
@@ -37,7 +39,7 @@ struct adapter_candidate
 [[nodiscard]] int test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL min_features, D3D_FEATURE_LEVEL& out_max_features);
 
 /// Get all available adapter candidates
-[[nodiscard]] std::vector<adapter_candidate> get_adapter_candidates();
+[[nodiscard]] cc::vector<adapter_candidate> get_adapter_candidates();
 
-[[nodiscard]] uint32_t get_preferred_adapter_index(std::vector<adapter_candidate> const& candidates, adapter_preference preference);
+[[nodiscard]] unsigned get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, adapter_preference preference);
 }

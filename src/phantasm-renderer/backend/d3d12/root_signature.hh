@@ -39,6 +39,7 @@ struct root_sig_payload_size
 };
 
 /// Contains data to be bound
+/// This is just a helper, a span and two void* are accepted as well
 struct root_sig_payload_data
 {
     cc::capped_vector<cpu_cbv_srv_uav, 16> resources;
@@ -89,6 +90,7 @@ private:
     unsigned size_dwords = 0;
 };
 
+template<class DataT>
 struct data_size_measure_visitor
 {
     root_sig_payload_size size = {};
@@ -104,9 +106,9 @@ struct data_size_measure_visitor
         {
             ++size.num_uavs;
         }
-        else if constexpr (std::is_base_of_v<pr::immediate, T>)
+        else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
         {
-            // pr::immediate, a root constant
+            // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
             size.root_constants_size_bytes += sizeof(T);
         }
         else
@@ -117,6 +119,7 @@ struct data_size_measure_visitor
     }
 };
 
+template<class DataT>
 struct data_extraction_visitor
 {
     root_sig_payload_data data;
@@ -137,9 +140,9 @@ struct data_extraction_visitor
         {
             data.resources.push_back(val);
         }
-        else if constexpr (std::is_base_of_v<pr::immediate, T>)
+        else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
         {
-            // pr::immediate, a root constant
+            // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
             ::memcpy(static_cast<char*>(data.constant_buffer.get()) + constants_offset, &val, sizeof(T));
             constants_offset += sizeof(T);
         }
@@ -159,11 +162,11 @@ struct data_extraction_visitor
                                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
 
 /// helper to get the payload size from any introspectable struct
-/// assumes usage as if extracting eventual data usign get_payload_data
+/// assumes usage as if extracting eventual data with get_payload_data
 template <class DataT>
 [[nodiscard]] root_sig_payload_size get_payload_size()
 {
-    detail::data_size_measure_visitor visitor;
+    detail::data_size_measure_visitor<DataT> visitor;
     DataT* volatile dummy_pointer = nullptr;
     introspect(visitor, *dummy_pointer);
     return visitor.size;
@@ -174,7 +177,7 @@ template <class DataT>
 template <class DataT>
 [[nodiscard]] root_sig_payload_data get_payload_data(DataT const& data, root_sig_payload_size const& size)
 {
-    detail::data_extraction_visitor visitor(size.root_cbv_size_bytes, size.root_constants_size_bytes);
+    detail::data_extraction_visitor<DataT> visitor(size.root_cbv_size_bytes, size.root_constants_size_bytes);
     introspect(visitor, const_cast<DataT&>(data));
     return cc::move(visitor.data);
 }

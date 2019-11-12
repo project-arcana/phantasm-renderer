@@ -63,9 +63,10 @@ pr::backend::d3d12::shared_com_ptr<ID3D12PipelineState> pr::backend::d3d12::crea
                                                                                                   cc::span<D3D12_INPUT_ELEMENT_DESC const> input_layout,
                                                                                                   cc::span<shader const> shaders,
                                                                                                   ID3D12RootSignature* root_sig,
-                                                                                                  const pr::primitive_pipeline_config& config)
+                                                                                                  const pr::primitive_pipeline_config& config,
+                                                                                                  wip::framebuffer_format const& framebuffer)
 {
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {}; // explicit init on purpose
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {}; // zero init on purpose
     pso_desc.InputLayout = {input_layout.data(), UINT(input_layout.size())};
     pso_desc.pRootSignature = root_sig;
 
@@ -100,16 +101,18 @@ pr::backend::d3d12::shared_com_ptr<ID3D12PipelineState> pr::backend::d3d12::crea
     pso_desc.RasterizerState.FrontCounterClockwise = true;
 
     pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    pso_desc.DepthStencilState.DepthEnable = config.depth != pr::depth_function::none;
+    pso_desc.DepthStencilState.DepthEnable = config.depth != pr::depth_function::none && !framebuffer.depth_target.empty();
     pso_desc.DepthStencilState.DepthFunc = pr_to_native(config.depth);
 
     pso_desc.SampleMask = UINT_MAX;
     pso_desc.PrimitiveTopologyType = pr_to_native(config.topology);
 
-    // TODO
-    pso_desc.NumRenderTargets = 1;
-    pso_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; // backend.mSwapchain.getBackbufferFormat();
-    pso_desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;          // TODO store this
+    pso_desc.NumRenderTargets = UINT(framebuffer.render_targets.size());
+
+    for (auto i = 0u; i < framebuffer.render_targets.size(); ++i)
+        pso_desc.RTVFormats[i] = framebuffer.render_targets[i];
+
+    pso_desc.DSVFormat = pso_desc.DepthStencilState.DepthEnable ? framebuffer.depth_target[0] : DXGI_FORMAT_UNKNOWN;
 
     pso_desc.SampleDesc.Count = UINT(config.samples);
     pso_desc.NodeMask = 0;
