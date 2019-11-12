@@ -17,6 +17,7 @@ namespace pr::backend::d3d12
 {
 namespace wip
 {
+// these aliases are just bandaids to enable introspection helpers right now, eventually those would use proper pr types
 struct srv : cpu_cbv_srv_uav
 {
 };
@@ -52,7 +53,7 @@ struct root_sig_payload_data
     }
 };
 
-/// Contains mapping data necessary to bind a root_sig_payload_data
+/// Contains mapping data necessary to bind a root_sig_payload_data (to a particular root signature)
 struct root_sig_payload_map
 {
     unsigned base_root_param;
@@ -62,6 +63,7 @@ struct root_sig_payload_map
 
 namespace detail
 {
+/// allows constructive creation of a root signature by combining payload sizes
 struct root_signature_params
 {
     cc::capped_vector<CD3DX12_ROOT_PARAMETER, 16> root_params;
@@ -159,10 +161,13 @@ struct data_extraction_visitor
 };
 }
 
+/// creates a root signature from parameters and samplers
 [[nodiscard]] shared_com_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device& device,
                                                                         cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
                                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
 
+/// helper to get the payload size from any introspectable struct
+/// assumes usage as if extracting eventual data usign get_payload_data
 template <class DataT>
 [[nodiscard]] root_sig_payload_size get_payload_size()
 {
@@ -172,6 +177,8 @@ template <class DataT>
     return visitor.size;
 }
 
+/// helper to extract payload data from any introspectable struct
+/// requires a size that is equal to the one received from get_payload_size
 template <class DataT>
 [[nodiscard]] root_sig_payload_data get_payload_data(DataT const& data, root_sig_payload_size const& size)
 {
@@ -182,8 +189,10 @@ template <class DataT>
 
 struct root_signature
 {
+    /// Creates a root signature from its "shape", an array of payload sizes
     void initialize(ID3D12Device& device, cc::span<root_sig_payload_size const> payload_sizes);
 
+    /// binds a payload, given index and the raw data
     void bind(ID3D12Device& device,
               ID3D12GraphicsCommandList& command_list,
               DynamicBufferRing& dynamic_buffer_ring,

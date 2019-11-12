@@ -81,7 +81,8 @@ public:
 
 
     T* operator->() const { return _pointer; }
-    operator T*() const { return _pointer; }
+    operator T*() const & { return _pointer; }
+    operator T*() const && = delete;
 
     /// Safely release possibly stored pointer, then return a pointer to the inner T* for reassignemnt
     /// Regularly used in D3D12 API interop, T** arguments are common
