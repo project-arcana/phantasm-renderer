@@ -7,6 +7,7 @@
 #include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
+#include <phantasm-renderer/backend/detail/unique_buffer.hh>
 #include <phantasm-renderer/immediate.hh>
 #include <phantasm-renderer/resources.hh>
 
@@ -41,16 +42,11 @@ struct root_sig_payload_size
 struct root_sig_payload_data
 {
     cc::capped_vector<cpu_cbv_srv_uav, 16> resources;
-    void* cbv_data;
-    void* constant_data;
+    pr::backend::detail::unique_buffer cbv_buffer;
+    pr::backend::detail::unique_buffer constant_buffer;
 
-    void free()
-    {
-        if (cbv_data)
-            ::free(cbv_data);
-        if (constant_data)
-            ::free(constant_data);
-    }
+    root_sig_payload_data() = default;
+    root_sig_payload_data(size_t cbv_size, size_t constant_size) : cbv_buffer(cbv_size), constant_buffer(constant_size) {}
 };
 
 /// Contains mapping data necessary to bind a root_sig_payload_data (to a particular root signature)
@@ -128,11 +124,7 @@ struct data_extraction_visitor
     unsigned cbv_offset = 0;
     unsigned constants_offset = 0;
 
-    data_extraction_visitor(unsigned cbv_size, unsigned constants_size)
-    {
-        data.cbv_data = cbv_size > 0 ? ::malloc(cbv_size) : nullptr;
-        data.constant_data = constants_size > 0 ? ::malloc(constants_size) : nullptr;
-    }
+    data_extraction_visitor(unsigned cbv_size, unsigned constants_size) : data(cbv_size, constants_size) {}
 
     template <class T>
     void operator()(T const& val, char const*)
@@ -148,13 +140,13 @@ struct data_extraction_visitor
         else if constexpr (std::is_base_of_v<pr::immediate, T>)
         {
             // pr::immediate, a root constant
-            ::memcpy(static_cast<char*>(data.constant_data) + constants_offset, &val, sizeof(T));
+            ::memcpy(static_cast<char*>(data.constant_buffer.get()) + constants_offset, &val, sizeof(T));
             constants_offset += sizeof(T);
         }
         else
         {
             // raw data, summed into a root CBV
-            ::memcpy(static_cast<char*>(data.cbv_data) + cbv_offset, &val, sizeof(T));
+            ::memcpy(static_cast<char*>(data.cbv_buffer.get()) + cbv_offset, &val, sizeof(T));
             cbv_offset += sizeof(T);
         }
     }
@@ -184,7 +176,7 @@ template <class DataT>
 {
     detail::data_extraction_visitor visitor(size.root_cbv_size_bytes, size.root_constants_size_bytes);
     introspect(visitor, const_cast<DataT&>(data));
-    return visitor.data;
+    return cc::move(visitor.data);
 }
 
 struct root_signature
@@ -209,7 +201,7 @@ struct root_signature
               int payload_index,
               root_sig_payload_data const& data)
     {
-        bind(device, command_list, dynamic_buffer_ring, desc_manager, payload_index, data.resources, data.cbv_data, data.constant_data);
+        bind(device, command_list, dynamic_buffer_ring, desc_manager, payload_index, data.resources, data.cbv_buffer.get(), data.constant_buffer.get());
     }
 
     shared_com_ptr<ID3D12RootSignature> raw_root_sig;
