@@ -2,7 +2,9 @@
 
 #include <phantasm-renderer/backend/d3d12/BackendD3D12.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
+#include <phantasm-renderer/backend/d3d12/memory/Allocator.hh>
 
 #include "byte_util.hh"
 
@@ -31,6 +33,7 @@ void UploadHeap::initialize(BackendD3D12* backend, size_t size)
 
     mDataCurrent = mDataBegin;
     mDataEnd = mDataBegin + mUploadHeap->GetDesc().Width;
+    mPendingInitBarriers.reserve(16);
 }
 
 uint8_t* UploadHeap::suballocate(size_t size, size_t align)
@@ -68,6 +71,11 @@ void UploadHeap::copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* 
     mCommandList->CopyBufferRegion(dest_resource, 0, mUploadHeap, UINT64(offset), size);
 }
 
+void UploadHeap::barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+{
+    mPendingInitBarriers.emplace_back(allocation, before, after);
+}
+
 //--------------------------------------------------------------------------------------
 //
 // FlushAndFinish
@@ -75,6 +83,12 @@ void UploadHeap::copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* 
 //--------------------------------------------------------------------------------------
 void UploadHeap::flushAndFinish()
 {
+    if (!mPendingInitBarriers.empty())
+    {
+        master_state_cache::submit_initial_creation_barriers(mCommandList, mPendingInitBarriers);
+        mPendingInitBarriers.clear();
+    }
+
     // Close & submit
     PR_D3D12_VERIFY(mCommandList->Close());
     auto const command_list_raw = mCommandList.get();
