@@ -58,12 +58,8 @@ void pr::backend::d3d12::root_signature::bind(ID3D12Device& device,
     if (constant_buffer_data)
     {
         // root CBV
-
-        void* cb_cpu;
         D3D12_GPU_VIRTUAL_ADDRESS cb_gpu;
-        dynamic_buffer_ring.allocConstantBuffer(map.root_cbv_size_bytes, cb_cpu, cb_gpu);
-        ::memcpy(cb_cpu, constant_buffer_data, map.root_cbv_size_bytes);
-
+        dynamic_buffer_ring.allocConstantBufferMemcpy(constant_buffer_data, map.root_cbv_size_bytes, cb_gpu);
         command_list.SetGraphicsRootConstantBufferView(root_index++, cb_gpu);
     }
 

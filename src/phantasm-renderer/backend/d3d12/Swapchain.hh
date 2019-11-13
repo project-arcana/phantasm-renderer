@@ -26,14 +26,16 @@ public:
     void onResize(int width, int height);
     void setFullscreen(bool fullscreen);
 
+    /// call swapchain->Present(0, 0) and issue the fence
     void present();
 
-    void waitForSwapchain();
+    /// wait for the fence of the current backbuffer
+    void waitForBackbuffer();
 
-    /// barrier the current backbuffer resource to the present state
+    /// barrier the current backbuffer resource to the present state (if necessary)
     void barrierToPresent(ID3D12GraphicsCommandList* command_list);
 
-    /// barrier the current backbuffer resource to the render target state
+    /// barrier the current backbuffer resource to the render target state (if necessary)
     void barrierToRenderTarget(ID3D12GraphicsCommandList* command_list);
 
 public:

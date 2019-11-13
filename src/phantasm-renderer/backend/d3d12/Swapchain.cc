@@ -80,7 +80,7 @@ void pr::backend::d3d12::Swapchain::present()
     mBackbuffers[backbuffer_i].fence.issueFence(*mParentDirectQueue);
 }
 
-void pr::backend::d3d12::Swapchain::waitForSwapchain()
+void pr::backend::d3d12::Swapchain::waitForBackbuffer()
 {
     auto const backbuffer_i = mSwapchain->GetCurrentBackBufferIndex();
     mBackbuffers[backbuffer_i].fence.waitOnCPU(0);

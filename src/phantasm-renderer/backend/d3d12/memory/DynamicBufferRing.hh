@@ -19,7 +19,7 @@ namespace pr::backend::d3d12
 //    3) When a new frame just started ( indicated by OnBeginFrame() )
 //         - This will free the data of the oldest frame so it can be reused for the new frame
 //
-// Note than in this ring an allocated chuck of memory has to be contiguous in memory, that is it cannot spawn accross the tail and the head.
+// Note than in this ring an allocated chunk of memory has to be contiguous in memory, that is it cannot spawn accross the tail and the head.
 // This class takes care of that.
 
 class DynamicBufferRing
@@ -33,10 +33,22 @@ public:
     bool allocVertexBuffer(uint32_t num_vertices, uint32_t stride_in_bytes, void*& out_data, D3D12_VERTEX_BUFFER_VIEW& out_view);
     bool allocConstantBuffer(uint32_t size, void*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_view);
 
-    template <class T>
-    bool allocConstantBuffer(T*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
+    bool allocConstantBufferMemcpy(void* src_data, uint32_t size, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
     {
-        static_assert (!std::is_same_v<T, void>, "Only use this for explicit types");
+        void* dest_cpu;
+        if (allocConstantBuffer(size, dest_cpu, out_view))
+        {
+            ::memcpy(dest_cpu, src_data, size);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template <class T>
+    bool allocConstantBufferTyped(T*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
+    {
+        static_assert(!std::is_same_v<T, void>, "Only use this for explicit types");
         static_assert(!std::is_pointer_v<T> && !std::is_reference_v<T>, "T is not the underlying type");
         return allocConstantBuffer(sizeof(T), reinterpret_cast<void*&>(out_data), out_view);
     }
