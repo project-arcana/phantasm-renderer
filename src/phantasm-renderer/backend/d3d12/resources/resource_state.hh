@@ -60,20 +60,18 @@ public:
 ///
 /// This class is stateless (no globals involved), since the master state is stored within D3D12MA allocations themselves
 ///
-///
+/// Not internally synchronized
 struct master_state_cache
 {
     struct init_state
     {
         /// (const) the raw resource pointer
         D3D12MA::Allocation* ptr;
-        /// (const) the <before> state of the initial barrier
-        D3D12_RESOURCE_STATES before;
         /// (const) the <after> state of the initial barrier
         D3D12_RESOURCE_STATES initial;
 
         init_state() = default;
-        init_state(D3D12MA::Allocation* p, D3D12_RESOURCE_STATES b, D3D12_RESOURCE_STATES i) : ptr(p), before(b), initial(i) {}
+        init_state(D3D12MA::Allocation* p, D3D12_RESOURCE_STATES i) : ptr(p), initial(i) {}
     };
 
     /// submits all required resource barriers based on an incomplete state cache

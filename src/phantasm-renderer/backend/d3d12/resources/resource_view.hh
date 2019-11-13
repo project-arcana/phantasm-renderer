@@ -109,6 +109,11 @@ private:
 
 /// Responsible for allocating and freeing of CPU descriptors, as well as
 /// staging them into a GPU-visible ring buffer on the fly for descriptor tables
+///
+/// TODO: Split this into two classes, the GPU ring and the CPU allocator
+///     - CPU handles do not have to come from one and the same CPU allocator for any GPU ring
+///     - Should the GPU part be thread-local, or synchronized?
+///     - There should probably just be one CPU allocator in any scenario
 class DescriptorAllocator
 {
 public:

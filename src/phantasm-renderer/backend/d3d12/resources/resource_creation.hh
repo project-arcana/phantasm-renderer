@@ -61,8 +61,8 @@ resource create_buffer_from_data(ResourceAllocator& allocator, UploadHeap& uploa
 
 /// must be explicitly templated due to the span deduction issue
 template <class ElementT>
-resource create_buffer_from_data(ResourceAllocator& allocator, UploadHeap& upload_heap, cc::span<ElementT const> vertices)
+resource create_buffer_from_data(ResourceAllocator& allocator, UploadHeap& upload_heap, cc::span<ElementT const> elements)
 {
-    return create_buffer_from_data(allocator, upload_heap, vertices.size() * sizeof(ElementT), vertices.data());
+    return create_buffer_from_data(allocator, upload_heap, elements.size() * sizeof(ElementT), elements.data());
 }
 }

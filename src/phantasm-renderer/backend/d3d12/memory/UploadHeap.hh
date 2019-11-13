@@ -43,7 +43,7 @@ public:
 
     /// insert a transition barrier for the given resource upon next flush
     /// also takes care of the state cache
-    void barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+    void barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after);
 
     /// flush all pending outgoing copy operations and barriers, free the internal upload heap
     void flushAndFinish();

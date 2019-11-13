@@ -71,9 +71,9 @@ void UploadHeap::copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* 
     mCommandList->CopyBufferRegion(dest_resource, 0, mUploadHeap, UINT64(offset), size);
 }
 
-void UploadHeap::barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+void UploadHeap::barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after)
 {
-    mPendingInitBarriers.emplace_back(allocation, before, after);
+    mPendingInitBarriers.emplace_back(allocation, after);
 }
 
 //--------------------------------------------------------------------------------------

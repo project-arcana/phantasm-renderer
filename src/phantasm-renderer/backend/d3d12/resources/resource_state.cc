@@ -74,7 +74,7 @@ void pr::backend::d3d12::master_state_cache::submit_initial_creation_barriers(ID
     {
         // perform the initial state barrier
         auto& barrier = barriers.emplace_back();
-        util::populate_barrier_desc(barrier, entry.ptr->GetResource(), entry.before, entry.initial);
+        util::populate_barrier_desc(barrier, entry.ptr->GetResource(), entry.ptr->pr_getResourceState(), entry.initial);
 
         // set the master state to the initial one
         entry.ptr->pr_setResourceState(entry.initial);
