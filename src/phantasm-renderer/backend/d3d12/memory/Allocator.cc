@@ -3829,7 +3829,9 @@ HRESULT Allocator::CreateResource(const ALLOCATION_DESC* pAllocDesc,
         return E_INVALIDARG;
     }
     D3D12MA_DEBUG_GLOBAL_MUTEX_LOCK
-    return m_Pimpl->CreateResource(pAllocDesc, pResourceDesc, InitialResourceState, pOptimizedClearValue, ppAllocation, riidResource, ppvResource);
+    auto res = m_Pimpl->CreateResource(pAllocDesc, pResourceDesc, InitialResourceState, pOptimizedClearValue, ppAllocation, riidResource, ppvResource);
+    (*ppAllocation)->pr_setResourceState(InitialResourceState);
+    return res;
 }
 
 HRESULT Allocator::AllocateMemory(const ALLOCATION_DESC* pAllocDesc, D3D12_HEAP_FLAGS heapFlags, const D3D12_RESOURCE_ALLOCATION_INFO* pAllocInfo, Allocation** ppAllocation)

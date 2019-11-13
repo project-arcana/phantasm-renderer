@@ -476,6 +476,10 @@ public:
     */
     LPCWSTR GetName() const { return m_Name; }
 
+    // custom additions
+    D3D12_RESOURCE_STATES pr_getResourceState() const { return m_pr_State; }
+    void pr_setResourceState(D3D12_RESOURCE_STATES state) { m_pr_State = state; }
+
 private:
     friend class AllocatorPimpl;
     friend class BlockVector;
@@ -491,6 +495,7 @@ private:
         TYPE_HEAP,
         TYPE_COUNT
     } m_Type;
+    D3D12_RESOURCE_STATES m_pr_State; ///< Custom addition, not at all used internally by this class
     UINT64 m_Size;
     ID3D12Resource* m_Resource;
     D3D12_RESOURCE_DIMENSION m_ResourceDimension;
