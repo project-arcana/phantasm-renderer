@@ -26,6 +26,10 @@ struct srv : cpu_cbv_srv_uav
 struct uav : cpu_cbv_srv_uav
 {
 };
+
+struct cbv : cpu_cbv_srv_uav
+{
+};
 }
 
 /// Describes the size of a payload
@@ -42,12 +46,17 @@ struct root_sig_payload_size
 /// This is just a helper, a span and two void* are accepted as well
 struct root_sig_payload_data
 {
-    cc::capped_vector<cpu_cbv_srv_uav, 16> resources;
-    pr::backend::detail::unique_buffer cbv_buffer;
-    pr::backend::detail::unique_buffer constant_buffer;
+    // CPU resource views pending copy into a GPU-visible descriptor heap
+    cc::capped_vector<cpu_cbv_srv_uav, 8> cbvs;
+    cc::capped_vector<cpu_cbv_srv_uav, 8> srvs;
+    cc::capped_vector<cpu_cbv_srv_uav, 8> uavs;
+
+    // raw, void* memory buffers pending copy into root constants and a single, dynamically allocated root CBV
+    pr::backend::detail::unique_buffer root_cbv_buffer;
+    pr::backend::detail::unique_buffer root_constant_buffer;
 
     root_sig_payload_data() = default;
-    root_sig_payload_data(size_t cbv_size, size_t constant_size) : cbv_buffer(cbv_size), constant_buffer(constant_size) {}
+    root_sig_payload_data(size_t cbv_size, size_t constant_size) : root_cbv_buffer(cbv_size), root_constant_buffer(constant_size) {}
 };
 
 /// Contains mapping data necessary to bind a root_sig_payload_data (to a particular root signature)
@@ -71,7 +80,7 @@ struct root_signature_params
     root_sig_payload_map add_payload_sizes(root_sig_payload_size const& size);
 
 private:
-    void create_descriptor_table(int num_cbvs, int num_srvs, int num_uavs);
+    void create_descriptor_table(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs);
 
     void create_root_uav();
 
@@ -90,7 +99,7 @@ private:
     unsigned size_dwords = 0;
 };
 
-template<class DataT>
+template <class DataT>
 struct data_size_measure_visitor
 {
     root_sig_payload_size size = {};
@@ -106,6 +115,10 @@ struct data_size_measure_visitor
         {
             ++size.num_uavs;
         }
+        else if constexpr (std::is_same_v<T, wip::cbv>)
+        {
+            ++size.num_cbvs;
+        }
         else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
         {
             // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
@@ -119,13 +132,15 @@ struct data_size_measure_visitor
     }
 };
 
-template<class DataT>
+template <class DataT>
 struct data_extraction_visitor
 {
     root_sig_payload_data data;
 
     unsigned cbv_offset = 0;
     unsigned constants_offset = 0;
+
+    // in payload_data, cbvs, srvs and uavs must be arranged in three contiguous blocks, in that order
 
     data_extraction_visitor(unsigned cbv_size, unsigned constants_size) : data(cbv_size, constants_size) {}
 
@@ -134,22 +149,26 @@ struct data_extraction_visitor
     {
         if constexpr (std::is_same_v<T, wip::srv>)
         {
-            data.resources.push_back(val);
+            data.srvs.push_back(val);
         }
         else if constexpr (std::is_same_v<T, wip::uav>)
         {
-            data.resources.push_back(val);
+            data.uavs.push_back(val);
+        }
+        else if constexpr (std::is_same_v<T, wip::cbv>)
+        {
+            data.cbvs.push_back(val);
         }
         else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
         {
             // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
-            ::memcpy(static_cast<char*>(data.constant_buffer.get()) + constants_offset, &val, sizeof(T));
+            ::memcpy(static_cast<char*>(data.root_constant_buffer.get()) + constants_offset, &val, sizeof(T));
             constants_offset += sizeof(T);
         }
         else
         {
             // raw data, summed into a root CBV
-            ::memcpy(static_cast<char*>(data.cbv_buffer.get()) + cbv_offset, &val, sizeof(T));
+            ::memcpy(static_cast<char*>(data.root_cbv_buffer.get()) + cbv_offset, &val, sizeof(T));
             cbv_offset += sizeof(T);
         }
     }
@@ -193,7 +212,9 @@ struct root_signature
               DynamicBufferRing& dynamic_buffer_ring,
               DescriptorAllocator& desc_manager,
               int payload_index,
-              cc::span<cpu_cbv_srv_uav const> shader_resources,
+              cc::span<cpu_cbv_srv_uav const> cbvs,
+              cc::span<cpu_cbv_srv_uav const> srvs,
+              cc::span<cpu_cbv_srv_uav const> uavs,
               void* constant_buffer_data,
               void* root_constants_data);
 
@@ -204,7 +225,8 @@ struct root_signature
               int payload_index,
               root_sig_payload_data const& data)
     {
-        bind(device, command_list, dynamic_buffer_ring, desc_manager, payload_index, data.resources, data.cbv_buffer.get(), data.constant_buffer.get());
+        bind(device, command_list, dynamic_buffer_ring, desc_manager, payload_index, data.cbvs, data.srvs, data.uavs, data.root_cbv_buffer.get(),
+             data.root_constant_buffer.get());
     }
 
     shared_com_ptr<ID3D12RootSignature> raw_root_sig;

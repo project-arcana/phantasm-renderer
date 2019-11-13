@@ -107,6 +107,8 @@ private:
     unsigned mDescriptorSize = 0;
 };
 
+/// Responsible for allocating and freeing of CPU descriptors, as well as
+/// staging them into a GPU-visible ring buffer on the fly for descriptor tables
 class DescriptorAllocator
 {
 public:
@@ -124,14 +126,25 @@ public:
 
     /// allocates a contiguous, GPU-visible, frame-local descriptor for the given range of CBVs/SRVs/UAVs
     /// for use in descriptor tables (TODO: heap samplers)
-    [[nodiscard]] dynamic_descriptor_table allocDynamicTable(ID3D12Device& device, cc::span<cpu_cbv_srv_uav const> resources)
+    [[nodiscard]] dynamic_descriptor_table allocDynamicTable(ID3D12Device& device,
+                                                             cc::span<cpu_cbv_srv_uav const> cbvs,
+                                                             cc::span<cpu_cbv_srv_uav const> srvs,
+                                                             cc::span<cpu_cbv_srv_uav const> uavs)
     {
-        auto const num = unsigned(resources.size());
+        auto const num = unsigned(cbvs.size() + srvs.size() + uavs.size());
         auto handle = mRingCBVsSRVsUAVs.allocate(num);
 
-        for (auto i = 0u; i < num; ++i)
+        for (auto i = 0u; i < cbvs.size(); ++i)
         {
-            device.CopyDescriptorsSimple(1, handle.get_cpu(i), resources[i].handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            device.CopyDescriptorsSimple(1, handle.get_cpu(i), cbvs[i].handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        }
+        for (auto i = 0u; i < srvs.size(); ++i)
+        {
+            device.CopyDescriptorsSimple(1, handle.get_cpu(i + unsigned(cbvs.size())), srvs[i].handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        }
+        for (auto i = 0u; i < uavs.size(); ++i)
+        {
+            device.CopyDescriptorsSimple(1, handle.get_cpu(i + unsigned(cbvs.size() + srvs.size())), uavs[i].handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         }
 
         return {handle.get_gpu()};

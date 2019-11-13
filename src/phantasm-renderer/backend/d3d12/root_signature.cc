@@ -39,17 +39,19 @@ void pr::backend::d3d12::root_signature::bind(ID3D12Device& device,
                                               DynamicBufferRing& dynamic_buffer_ring,
                                               DescriptorAllocator& desc_allocator,
                                               int payload_index,
-                                              cc::span<const cpu_cbv_srv_uav> shader_resources,
+                                              cc::span<cpu_cbv_srv_uav const> cbvs,
+                                              cc::span<cpu_cbv_srv_uav const> srvs,
+                                              cc::span<cpu_cbv_srv_uav const> uavs,
                                               void* constant_buffer_data,
                                               void* root_constants_data)
 {
-    auto const& map = _payload_maps[payload_index];
+    auto const& map = _payload_maps[unsigned(payload_index)];
     auto root_index = map.base_root_param;
 
-    if (!shader_resources.empty())
+    if (!cbvs.empty() || !srvs.empty() || !uavs.empty())
     {
         // descriptor table
-        auto desc_table = desc_allocator.allocDynamicTable(device, shader_resources);
+        auto desc_table = desc_allocator.allocDynamicTable(device, cbvs, srvs, uavs);
         command_list.SetGraphicsRootDescriptorTable(root_index++, desc_table.shader_resource_handle_gpu);
     }
 
@@ -77,7 +79,7 @@ pr::backend::d3d12::root_sig_payload_map pr::backend::d3d12::detail::root_signat
     auto const res_index = unsigned(root_params.size());
 
     if (size.num_cbvs + size.num_srvs + size.num_uavs > 0)
-        create_descriptor_table(size.num_cbvs, size.num_srvs, size.num_uavs);
+        create_descriptor_table(unsigned(size.num_cbvs), unsigned(size.num_srvs), unsigned(size.num_uavs));
 
     if (size.root_cbv_size_bytes > 0)
         create_root_cbv();
@@ -89,7 +91,7 @@ pr::backend::d3d12::root_sig_payload_map pr::backend::d3d12::detail::root_signat
     return {res_index, size.root_cbv_size_bytes, num_constant_dwords};
 }
 
-void pr::backend::d3d12::detail::root_signature_params::create_descriptor_table(int num_cbvs, int num_srvs, int num_uavs)
+void pr::backend::d3d12::detail::root_signature_params::create_descriptor_table(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs)
 {
     auto const desc_range_start = desc_ranges.size();
 
