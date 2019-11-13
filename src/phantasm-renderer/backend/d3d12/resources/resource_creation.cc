@@ -260,7 +260,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     if (use_srgb)
         img_info.format = util::to_srgb_format(img_info.format);
 
-    resource res = create_texture2d(allocator, img_info.width, img_info.height, img_info.format, img_info.mipMapCount);
+    resource res = create_texture2d(allocator, int(img_info.width), int(img_info.height), img_info.format, int(img_info.mipMapCount));
 
     // Get mip footprints (if it is an array we reuse the mip footprints for all the elements of the array)
     //
@@ -268,7 +268,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
     UINT64 row_sizes_in_bytes[D3D12_REQ_MIP_LEVELS] = {0};
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_subres_tex2d[D3D12_REQ_MIP_LEVELS];
 
-    auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(img_info.format, img_info.width, img_info.height, 1, img_info.mipMapCount);
+    auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(img_info.format, img_info.width, img_info.height, 1, UINT16(img_info.mipMapCount));
 
     UINT64 upload_heap_size;
     device.GetCopyableFootprints(&res_desc, 0, img_info.mipMapCount, 0, placed_subres_tex2d, num_rows, row_sizes_in_bytes, &upload_heap_size);
