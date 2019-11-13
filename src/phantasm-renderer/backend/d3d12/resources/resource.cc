@@ -39,17 +39,16 @@ pr::backend::d3d12::resource pr::backend::d3d12::ResourceAllocator::allocateReso
     auto const hr = mAllocator->CreateResource(&allocation_desc, &desc, initial_state, clear_value, &res._allocation, __uuidof(ID3D12Resource), nullptr);
     PR_D3D12_ASSERT(hr);
     res.raw = res._allocation->GetResource();
+    res._allocation->pr_setResourceState(initial_state);
     return res;
 }
 
-pr::backend::d3d12::resource::~resource()
-{
-    free();
-}
+pr::backend::d3d12::resource::~resource() { free(); }
 
 void pr::backend::d3d12::resource::free()
 {
-    if (_allocation) {
+    if (_allocation)
+    {
         _allocation->Release();
         _allocation = nullptr;
     }

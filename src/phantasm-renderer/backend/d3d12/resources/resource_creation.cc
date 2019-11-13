@@ -311,7 +311,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_buffer_from_data(pr::bac
                                                                          size_t size,
                                                                          const void* data)
 {
-    auto res = create_buffer(allocator, size);
+    auto res = create_buffer(allocator, size, D3D12_RESOURCE_STATE_COPY_DEST);
     auto const buffer_width = res.raw->GetDesc().Width;
     auto const buffer_align = res.raw->GetDesc().Alignment;
 
