@@ -45,6 +45,8 @@ struct resource
 
     ID3D12Resource* raw;
 
+    D3D12MA::Allocation* get_allocation() const { return _allocation; }
+
 private:
     friend class ResourceAllocator;
     D3D12MA::Allocation* _allocation = nullptr;
