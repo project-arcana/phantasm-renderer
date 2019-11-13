@@ -32,7 +32,7 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_render_target(pr::backen
     clear_value.Color[0] = 0.0f;
     clear_value.Color[1] = 0.0f;
     clear_value.Color[2] = 0.0f;
-    clear_value.Color[3] = 0.0f;
+    clear_value.Color[3] = 1.0f;
 
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 

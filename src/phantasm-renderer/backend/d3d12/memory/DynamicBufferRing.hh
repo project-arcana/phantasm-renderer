@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+#include <clean-core/span.hh>
+
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 #include <phantasm-renderer/backend/d3d12/memory/Ring.hh>
@@ -30,10 +32,24 @@ public:
     void onBeginFrame();
 
     bool allocIndexBuffer(uint32_t num_indices, uint32_t stride_in_bytes, void*& out_data, D3D12_INDEX_BUFFER_VIEW& out_view);
+
     bool allocVertexBuffer(uint32_t num_vertices, uint32_t stride_in_bytes, void*& out_data, D3D12_VERTEX_BUFFER_VIEW& out_view);
+
+    template <class VertT>
+    bool allocVertexBufferFromData(cc::span<VertT const> vertices, D3D12_VERTEX_BUFFER_VIEW& out_view)
+    {
+        void* dest_cpu;
+        if (allocVertexBuffer(vertices.size(), sizeof(VertT), dest_cpu, out_view))
+        {
+            ::memcpy(dest_cpu, vertices.data(), sizeof(VertT) * vertices.size());
+            return true;
+        }
+        return false;
+    }
+
     bool allocConstantBuffer(uint32_t size, void*& out_data, D3D12_GPU_VIRTUAL_ADDRESS& out_view);
 
-    bool allocConstantBufferMemcpy(void* src_data, uint32_t size, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
+    bool allocConstantBufferFromData(void* src_data, uint32_t size, D3D12_GPU_VIRTUAL_ADDRESS& out_view)
     {
         void* dest_cpu;
         if (allocConstantBuffer(size, dest_cpu, out_view))
@@ -41,8 +57,7 @@ public:
             ::memcpy(dest_cpu, src_data, size);
             return true;
         }
-        else
-            return false;
+        return false;
     }
 
     template <class T>
