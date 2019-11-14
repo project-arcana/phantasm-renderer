@@ -17,11 +17,19 @@ public:
     void destroy();
 
 public:
+    /// flushes the device and recreates the swapchain, and all associated resources
     void onResize(int width, int height);
 
+    /// all-in-one convenience to fill out a VkSubmitInfo struct with the necessary semaphores,
+    /// then submit the given command buffer with the necessary fence
+    /// However, this is suboptimal because submits should be batched
     void performPresentSubmit(VkCommandBuffer command_buf);
+
+    /// present the active backbuffer to the screen
     void present();
 
+    /// wait for the next backbuffer
+    /// this has to be called before calls to getCurrent<X>
     void waitForBackbuffer();
 
 
@@ -40,7 +48,6 @@ public:
     [[nodiscard]] VkFramebuffer getFramebuffer(unsigned i) const { return mBackbuffers[i].framebuffer; }
 
     [[nodiscard]] VkSwapchainKHR getSwapchain() const { return mSwapchain; }
-    //[[nodiscard]] auto const& getBackbufferViews() const { return mBackbufferViews; }
 
 private:
     void createSwapchain(int w, int h);

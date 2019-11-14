@@ -32,7 +32,7 @@ pr::backend::device::Window::~Window()
     s_display = nullptr;
 }
 
-void pr::backend::device::Window::initialize(const char* title)
+void pr::backend::device::Window::initialize(const char* title, int width, int height)
 {
     CC_RUNTIME_ASSERT(s_display == nullptr && "Only one window allowed");
     s_display = ::XOpenDisplay(nullptr);
@@ -40,10 +40,8 @@ void pr::backend::device::Window::initialize(const char* title)
 
     s_screen = DefaultScreen(s_display);
 
-    auto constexpr initial_w = 1280;
-    auto constexpr initial_h = 720;
-    mWidth = initial_w;
-    mHeight = initial_h;
+    mWidth = width;
+    mHeight = height;
 
     s_window = XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, mWidth, mHeight, 1, BlackPixel(s_display, s_screen),
                                    WhitePixel(s_display, s_screen));

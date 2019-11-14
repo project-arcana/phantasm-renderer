@@ -29,7 +29,7 @@ public:
     Window& operator=(Window&&) noexcept = delete;
     ~Window();
 
-    void initialize(char const* title);
+    void initialize(char const* title, int width = 850, int height = 550);
 
     void pollEvents();
 

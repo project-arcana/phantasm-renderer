@@ -52,13 +52,16 @@ pr::backend::device::Window::~Window()
     sEventProxy.window = nullptr;
 }
 
-void pr::backend::device::Window::initialize(const char* title)
+void pr::backend::device::Window::initialize(const char* title, int width, int height)
 {
     // No two windows allowed at the same time
     CC_ASSERT(sEventProxy.window == nullptr);
     sEventProxy.window = this;
 
-    auto hInstance = GetModuleHandle(nullptr);
+    mWidth = width;
+    mHeight = height;
+
+    auto const hInstance = GetModuleHandle(nullptr);
 
     // Window Setup
     WNDCLASS windowClass = {};
@@ -68,8 +71,8 @@ void pr::backend::device::Window::initialize(const char* title)
     windowClass.lpszClassName = "MiniWindow";
     RegisterClass(&windowClass);
 
-    mHandle = CreateWindowEx(0, windowClass.lpszClassName, title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-                             CW_USEDEFAULT, nullptr, nullptr, hInstance, nullptr);
+    mHandle = CreateWindowEx(0, windowClass.lpszClassName, title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, mWidth, mHeight,
+                             nullptr, nullptr, hInstance, nullptr);
 }
 
 void pr::backend::device::Window::pollEvents()
