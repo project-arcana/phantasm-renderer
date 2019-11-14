@@ -1,21 +1,12 @@
 #pragma once
 
-#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 
 namespace pr::backend::d3d12
 {
-enum class shader_domain
-{
-    pixel,
-    vertex,
-    domain,
-    hull,
-    geometry,
-    compute
-};
-
 struct shader
 {
     shader_domain domain;
@@ -28,4 +19,3 @@ struct shader
 [[nodiscard]] shader compile_shader_from_file(char const* filename, shader_domain domain, char const* entrypoint = nullptr);
 
 }
-
