@@ -7,9 +7,9 @@
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
 #include "common/zero_struct.hh"
+#include "gpu_choice_util.hh"
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
-#include "gpu_choice_util.hh"
 
 void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, device::Window& window)
 {

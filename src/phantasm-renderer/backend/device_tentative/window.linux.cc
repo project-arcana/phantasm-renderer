@@ -1,8 +1,6 @@
 #include "window.hh"
 #ifdef CC_OS_LINUX
 
-#include <iostream>
-
 #include <X11/Xlib.h>
 
 #ifdef PR_BACKEND_VULKAN
@@ -58,8 +56,6 @@ void pr::backend::device::Window::initialize(const char* title)
     ::XSelectInput(s_display, s_window, StructureNotifyMask | PropertyChangeMask);
     ::XStoreName(s_display, s_window, title);
     ::XMapWindow(s_display, s_window);
-
-    std::cout << "Opened window" << std::endl;
 }
 
 void pr::backend::device::Window::pollEvents()

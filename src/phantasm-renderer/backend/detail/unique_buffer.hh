@@ -6,8 +6,8 @@ namespace pr::backend::detail
 {
 struct unique_buffer
 {
-    unique_buffer() = default;
-    unique_buffer(size_t size) : _ptr(size > 0 ? std::malloc(size) : nullptr) {}
+    explicit unique_buffer() = default;
+    explicit unique_buffer(size_t size) : _ptr(size > 0 ? std::malloc(size) : nullptr), _size(size) {}
 
     void allocate(size_t size)
     {
@@ -21,6 +21,7 @@ struct unique_buffer
     unique_buffer(unique_buffer&& rhs) noexcept
     {
         _ptr = rhs._ptr;
+        _size = rhs._size;
         rhs._ptr = nullptr;
     }
     unique_buffer& operator=(unique_buffer&& rhs) noexcept
@@ -29,6 +30,7 @@ struct unique_buffer
         {
             std::free(_ptr);
             _ptr = rhs._ptr;
+            _size = rhs._size;
             rhs._ptr = nullptr;
         }
 
@@ -37,8 +39,9 @@ struct unique_buffer
 
     ~unique_buffer() { std::free(_ptr); }
 
-    [[nodiscard]] void* get() const& { return _ptr; }
-    [[nodiscard]] void* get() const&& = delete;
+    [[nodiscard]] void* get() const { return _ptr; }
+    [[nodiscard]] size_t size() const { return _size; }
+    [[nodiscard]] char* get_as_char() const { return static_cast<char*>(_ptr); }
 
     [[nodiscard]] bool is_valid() const { return _ptr != nullptr; }
 
@@ -50,7 +53,10 @@ struct unique_buffer
     [[nodiscard]] bool operator==(void const* rhs) const { return _ptr == rhs; }
     [[nodiscard]] bool operator!=(void const* rhs) const { return _ptr != rhs; }
 
+    [[nodiscard]] static unique_buffer create_from_binary_file(char const* filename);
+
 private:
     void* _ptr = nullptr;
+    size_t _size = 0;
 };
 }
