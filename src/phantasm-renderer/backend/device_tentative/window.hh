@@ -1,7 +1,6 @@
 #pragma once
 
 #include <clean-core/macros.hh>
-#ifdef CC_OS_WINDOWS
 
 // Win32 HWND forward declaration
 typedef struct HWND__* HWND;
@@ -71,8 +70,3 @@ private:
 };
 
 }
-
-#else
-// TODO
-#endif
-

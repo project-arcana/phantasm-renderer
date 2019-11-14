@@ -1,12 +1,12 @@
 #include "window.hh"
-
 #ifdef CC_OS_WINDOWS
+
 #include <clean-core/assert.hh>
 #include <clean-core/native/win32_sanitized.hh>
 
 #ifdef PR_BACKEND_VULKAN
-#include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
+#include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
 #endif
 
 struct pr::backend::device::Window::event_proxy
@@ -85,13 +85,9 @@ void pr::backend::device::Window::pollEvents()
 cc::vector<char const*> pr::backend::device::Window::getRequiredInstanceExtensions()
 {
     cc::vector<char const*> res;
-    res.reserve(5);
-
+    res.reserve(2);
     res.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
     res.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-
-    // if linux: VK_KHR_XCB_SURFACE_EXTENSION_NAME
-
     return res;
 }
 
@@ -107,7 +103,7 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 
 
 #ifdef PR_BACKEND_VULKAN
-void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR &out_surface)
+void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
 {
     VkWin32SurfaceCreateInfoKHR surface_info;
     vk::zero_info_struct(surface_info, VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR);

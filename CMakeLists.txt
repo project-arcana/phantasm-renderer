@@ -64,7 +64,7 @@ if (MSVC)
     target_compile_options(phantasm-renderer PUBLIC /MP)
 else()
     target_compile_options(phantasm-renderer PRIVATE -Wall -fPIC)
-    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold)
+    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold -lX11)
 endif()
 
 
