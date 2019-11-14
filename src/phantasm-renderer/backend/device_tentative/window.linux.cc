@@ -40,7 +40,12 @@ void pr::backend::device::Window::initialize(const char* title)
 
     s_screen = DefaultScreen(s_display);
 
-    s_window = XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, 1080, 720, 1, BlackPixel(s_display, s_screen),
+    auto constexpr initial_w = 1280;
+    auto constexpr initial_h = 720;
+    mWidth = initial_w;
+    mHeight = initial_h;
+
+    s_window = XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, mWidth, mHeight, 1, BlackPixel(s_display, s_screen),
                                    WhitePixel(s_display, s_screen));
 
     s_atom_delete_message = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0);
