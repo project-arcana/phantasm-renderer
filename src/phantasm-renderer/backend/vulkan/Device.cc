@@ -46,6 +46,16 @@ void pr::backend::vk::Device::initialize(VkPhysicalDevice physical, vulkan_confi
     device_info.pEnabledFeatures = &features;
 
     PR_VK_VERIFY_SUCCESS(vkCreateDevice(mPhysicalDevice, &device_info, nullptr, &mDevice));
+
+    // Query queues
+    {
+        if (chosen_queues[0] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[0]), 0, &mQueueGraphics);
+        if (chosen_queues[1] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[1]), 0, &mQueueCompute);
+        if (chosen_queues[2] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[2]), 0, &mQueueCopy);
+    }
 }
 
 void pr::backend::vk::Device::destroy()

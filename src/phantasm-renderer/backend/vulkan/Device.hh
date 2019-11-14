@@ -22,6 +22,9 @@ public:
 private:
     VkPhysicalDevice mPhysicalDevice;
     VkDevice mDevice = VK_NULL_HANDLE;
+    VkQueue mQueueGraphics = VK_NULL_HANDLE;
+    VkQueue mQueueCompute = VK_NULL_HANDLE;
+    VkQueue mQueueCopy = VK_NULL_HANDLE;
 };
 }
 
