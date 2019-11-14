@@ -1,6 +1,7 @@
 #include "CommandList.hh"
 
 #include <clean-core/capped_vector.hh>
+#include <clean-core/move.hh>
 
 #include "BackendD3D12.hh"
 

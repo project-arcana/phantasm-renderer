@@ -19,7 +19,7 @@ public:
 public:
     void onResize(int width, int height);
 
-    void performPresentSubmission(VkCommandBuffer command_buf);
+    void performPresentSubmit(VkCommandBuffer command_buf);
     void present();
 
     void waitForBackbuffer();

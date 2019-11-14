@@ -87,7 +87,6 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
 
 void pr::backend::vk::Swapchain::destroy()
 {
-    vkDeviceWaitIdle(mDevice);
     destroySwapchain();
 
     vkDestroyRenderPass(mDevice, mRenderPass, nullptr);
@@ -132,7 +131,7 @@ void pr::backend::vk::Swapchain::waitForBackbuffer()
     vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
 }
 
-void pr::backend::vk::Swapchain::performPresentSubmission(VkCommandBuffer command_buf)
+void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_buf)
 {
     auto& active_backbuffer = mBackbuffers[mActiveFenceIndex];
 
@@ -251,6 +250,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
 
 void pr::backend::vk::Swapchain::destroySwapchain()
 {
+    vkDeviceWaitIdle(mDevice);
     for (auto& backbuffer : mBackbuffers)
     {
         vkDestroyFramebuffer(mDevice, backbuffer.framebuffer, nullptr);

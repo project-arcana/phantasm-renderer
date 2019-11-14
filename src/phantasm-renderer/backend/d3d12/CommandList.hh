@@ -1,9 +1,6 @@
 #pragma once
 
-#include <atomic>
-
 #include <clean-core/array.hh>
-#include <clean-core/move.hh>
 
 #include "common/d3d12_sanitized.hh"
 
