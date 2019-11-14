@@ -34,7 +34,6 @@ public:
 
     void pollEvents();
 
-    [[nodiscard]] HWND getHandle() const { return mHandle; }
 
     /// Whether a close event has been fired
     [[nodiscard]] bool isRequestingClose() const { return mIsRequestingClose; }
@@ -51,7 +50,12 @@ public:
 
 #ifdef PR_BACKEND_VULKAN
     static cc::vector<char const*> getRequiredInstanceExtensions();
+
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
+#endif
+
+#ifdef PR_BACKEND_D3D12
+    [[nodiscard]] HWND getHandle() const { return mHandle; }
 #endif
 
 private:
