@@ -7,6 +7,7 @@
 
 #include "loader/volk.hh"
 #include "vulkan_config.hh"
+#include "Device.hh"
 
 namespace pr::backend::vk
 {
@@ -18,7 +19,12 @@ public:
     ~BackendVulkan() override;
 
 private:
+    void createDebugMessenger();
+
+private:
     VkInstance mInstance;
+    VkDebugUtilsMessengerEXT mDebugMessenger = VK_NULL_HANDLE;
+    Device mDevice;
 };
 }
 

@@ -14,14 +14,13 @@ public:
     Device& operator=(Device const&) = delete;
     Device& operator=(Device&&) noexcept = delete;
 
-    Device(VkPhysicalDevice physical);
+    Device() = default;
 
-    void initialize(vulkan_config const& config);
-
-    ~Device();
+    void initialize(VkPhysicalDevice physical, vulkan_config const& config);
+    void destroy();
 
 private:
-    VkPhysicalDevice const mPhysicalDevice;
+    VkPhysicalDevice mPhysicalDevice;
     VkDevice mDevice = VK_NULL_HANDLE;
 };
 }

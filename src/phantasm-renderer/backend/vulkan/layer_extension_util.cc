@@ -50,7 +50,6 @@ pr::backend::vk::lay_ext_set pr::backend::vk::get_available_instance_lay_ext()
     {
         layer_extension_bundle global_layer;
         global_layer.fill_with_instance_extensions(nullptr);
-
         available_res.extensions.add(global_layer.extension_properties);
     }
 
@@ -80,7 +79,6 @@ pr::backend::vk::lay_ext_set pr::backend::vk::get_available_instance_lay_ext()
             layer_extension_bundle layer;
             layer.layer_properties = layer_prop;
             layer.fill_with_instance_extensions(layer_prop.layerName);
-
             available_res.extensions.add(layer.extension_properties);
             available_res.layers.add(layer_prop.layerName);
         }
@@ -140,27 +138,53 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
 {
     lay_ext_array used_res;
 
+    auto const add_required_layer = [&](char const* layer_name)
+    {
+        if (available.layers.contains(layer_name))
+        {
+            used_res.layers.push_back(layer_name);
+            return true;
+        }
+        return false;
+    };
+
+    auto const add_required_ext = [&](char const* ext_name)
+    {
+        if (available.extensions.contains(ext_name))
+        {
+            used_res.extensions.push_back(ext_name);
+            return true;
+        }
+        return false;
+    };
+
     // Decide upon active instance layers and extensions based on configuration and availability
     if (config.enable_validation)
     {
-        auto constexpr khronos_validation_name = "VK_LAYER_KHRONOS_validation";
-        auto constexpr lunarg_validation_name = "VK_LAYER_LUNARG_standard_validation";
-        if (available.layers.contains(khronos_validation_name))
+        if (!add_required_layer("VK_LAYER_LUNARG_standard_validation"))
         {
-            used_res.layers.push_back(khronos_validation_name);
+            if (!add_required_layer("VK_LAYER_KHRONOS_validation"))
+            {
+                std::cerr << "[pr][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
+                std::cerr << "[pr][vk] Download the LunarG SDK for your operating system," << std::endl;
+                std::cerr << "[pr][vk] then set the VK_LAYER_PATH environment variable to the" << std::endl;
+                std::cerr << "[pr][vk] absolute path towards <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
+            }
         }
-        else if (available.layers.contains(lunarg_validation_name))
+
+        if (!add_required_ext("VK_EXT_debug_utils"))
         {
-            used_res.layers.push_back(lunarg_validation_name);
-        }
-        else
-        {
-            // TODO: Warn about missing validation layers
+            std::cerr << "Missing debug utils extension" << std::endl;
         }
     }
 
     // TODO: platform extensions
     // these must be sourced from device-abstraction somehow
+    if (!add_required_ext("VK_KHR_surface"))
+    {
+        std::cerr << "Missing surface extension" << std::endl;
+    }
+
 
     return used_res;
 }
