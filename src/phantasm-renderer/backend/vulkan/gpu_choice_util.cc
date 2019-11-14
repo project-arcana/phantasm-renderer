@@ -61,6 +61,32 @@ pr::backend::vk::gpu_information pr::backend::vk::get_gpu_information(VkPhysical
     return res;
 }
 
+pr::backend::vk::backbuffer_information pr::backend::vk::get_backbuffer_information(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+    backbuffer_information res;
+
+    uint32_t num_formats;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &num_formats, nullptr);
+    CC_RUNTIME_ASSERT(num_formats != 0);
+    res.backbuffer_formats = cc::array<VkSurfaceFormatKHR>::uninitialized(num_formats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &num_formats, res.backbuffer_formats.data());
+
+    uint32_t num_present_modes;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &num_present_modes, nullptr);
+    CC_RUNTIME_ASSERT(num_present_modes != 0);
+    res.present_modes = cc::array<VkPresentModeKHR>::uninitialized(num_present_modes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &num_present_modes, res.present_modes.data());
+
+    return res;
+}
+
+VkSurfaceCapabilitiesKHR pr::backend::vk::get_surface_capabilities(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+    VkSurfaceCapabilitiesKHR res;
+    PR_VK_VERIFY_NONERROR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &res));
+    return res;
+}
+
 VkSurfaceFormatKHR pr::backend::vk::choose_backbuffer_format(cc::span<const VkSurfaceFormatKHR> available_formats)
 {
     for (auto const& f : available_formats)

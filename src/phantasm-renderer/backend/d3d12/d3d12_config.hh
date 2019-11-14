@@ -34,5 +34,7 @@ struct d3d12_config
     cc::uint32 explicit_adapter_index = cc::uint32(-1);
 
     D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_12_0; ///< The feature level to query in ::D3D12CreateDevice
+
+    unsigned num_backbuffers = 3;
 };
 }

@@ -62,7 +62,7 @@ void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, dev
         if (info.is_suitable)
         {
             mDevice.initialize(info, mSurface, config);
-            mSwapchain.initialize(mDevice, info, mSurface);
+            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight());
             break;
         }
     }

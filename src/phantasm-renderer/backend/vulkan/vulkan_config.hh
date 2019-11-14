@@ -8,5 +8,7 @@ namespace pr::backend::vk
 struct vulkan_config
 {
     bool enable_validation = false;
+
+    unsigned num_backbuffers = 3;
 };
 }
