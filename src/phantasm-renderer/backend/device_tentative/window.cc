@@ -1,18 +1,24 @@
 #include "window.hh"
 
+#ifdef CC_OS_WINDOWS
 #include <clean-core/assert.hh>
 #include <clean-core/native/win32_sanitized.hh>
 
-struct pr::backend::d3d12::Window::event_proxy
+#ifdef PR_BACKEND_VULKAN
+#include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
+#include <phantasm-renderer/backend/vulkan/common/verify.hh>
+#endif
+
+struct pr::backend::device::Window::event_proxy
 {
-    pr::backend::d3d12::Window* window = nullptr;
+    pr::backend::device::Window* window = nullptr;
     void delegateEventOnClose() const { window->onCloseEvent(); }
     void delegateEventResize(int w, int h, bool minimized) const { window->onResizeEvent(w, h, minimized); }
 };
 
 namespace
 {
-pr::backend::d3d12::Window::event_proxy sEventProxy;
+pr::backend::device::Window::event_proxy sEventProxy;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -39,14 +45,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 }
 
-pr::backend::d3d12::Window::~Window()
+pr::backend::device::Window::~Window()
 {
     CC_ASSERT(sEventProxy.window == this);
     ::DestroyWindow(mHandle);
     sEventProxy.window = nullptr;
 }
 
-void pr::backend::d3d12::Window::initialize(const char* title)
+void pr::backend::device::Window::initialize(const char* title)
 {
     // No two windows allowed at the same time
     CC_ASSERT(sEventProxy.window == nullptr);
@@ -66,7 +72,7 @@ void pr::backend::d3d12::Window::initialize(const char* title)
                              CW_USEDEFAULT, nullptr, nullptr, hInstance, nullptr);
 }
 
-void pr::backend::d3d12::Window::pollEvents()
+void pr::backend::device::Window::pollEvents()
 {
     MSG msg = {};
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -76,9 +82,22 @@ void pr::backend::d3d12::Window::pollEvents()
     }
 }
 
-void pr::backend::d3d12::Window::onCloseEvent() { mIsRequestingClose = true; }
+cc::vector<char const*> pr::backend::device::Window::getRequiredInstanceExtensions()
+{
+    cc::vector<char const*> res;
+    res.reserve(5);
 
-void pr::backend::d3d12::Window::onResizeEvent(int w, int h, bool minimized)
+    res.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+    res.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+
+    // if linux: VK_KHR_XCB_SURFACE_EXTENSION_NAME
+
+    return res;
+}
+
+void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
+
+void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 {
     mWidth = w;
     mHeight = h;
@@ -86,3 +105,16 @@ void pr::backend::d3d12::Window::onResizeEvent(int w, int h, bool minimized)
     mPendingResize = true;
 }
 
+
+#ifdef PR_BACKEND_VULKAN
+void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR &out_surface)
+{
+    VkWin32SurfaceCreateInfoKHR surface_info;
+    vk::zero_info_struct(surface_info, VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR);
+    surface_info.hwnd = mHandle;
+    surface_info.hinstance = GetModuleHandle(nullptr);
+    PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &out_surface));
+}
+#endif
+
+#endif

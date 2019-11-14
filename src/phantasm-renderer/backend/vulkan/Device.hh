@@ -6,6 +6,8 @@
 
 namespace pr::backend::vk
 {
+struct gpu_information;
+
 class Device
 { // reference type
 public:
@@ -16,8 +18,12 @@ public:
 
     Device() = default;
 
-    void initialize(VkPhysicalDevice physical, vulkan_config const& config);
+    void initialize(gpu_information const& device, VkSurfaceKHR surface, vulkan_config const& config);
     void destroy();
+
+public:
+    VkPhysicalDevice getPhysicalDevice() const { return mPhysicalDevice; }
+    VkDevice getDevice() const { return mDevice; }
 
 private:
     VkPhysicalDevice mPhysicalDevice;

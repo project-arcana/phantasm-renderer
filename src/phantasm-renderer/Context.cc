@@ -27,7 +27,7 @@ Context::Context()
 #ifndef CC_RELEASE
     cfg.enable_validation = true;
 #endif
-    mBackend = make_vulkan_backend(cfg);
+    //mBackend = make_vulkan_backend(cfg);
 }
 
 Context::Context(cc::poly_unique_ptr<Backend> backend) : mBackend(std::move(backend)) {}

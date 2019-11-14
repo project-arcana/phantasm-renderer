@@ -1,6 +1,8 @@
 #include "queue_util.hh"
 
-pr::backend::vk::suitable_queues pr::backend::vk::get_suitable_queues(VkPhysicalDevice physical)
+#include "common/verify.hh"
+
+pr::backend::vk::suitable_queues pr::backend::vk::get_suitable_queues(VkPhysicalDevice physical, VkSurfaceKHR surface)
 {
     uint32_t num_families;
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &num_families, nullptr);
@@ -12,7 +14,14 @@ pr::backend::vk::suitable_queues pr::backend::vk::get_suitable_queues(VkPhysical
     {
         auto const& family = queue_families[i];
         if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            res.indices_graphics.push_back(int(i));
+        {
+            // graphics candidate, query present support
+            VkBool32 present_support = false;
+            PR_VK_VERIFY_SUCCESS(vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &present_support));
+
+            if (present_support)
+                res.indices_graphics.push_back(int(i));
+        }
 
         if (family.queueFlags & VK_QUEUE_COMPUTE_BIT)
             res.indices_compute.push_back(int(i));

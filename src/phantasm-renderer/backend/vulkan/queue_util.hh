@@ -17,7 +17,7 @@ struct suitable_queues
 // graphics, compute, copy
 using chosen_queues = cc::array<int, 3>;
 
-[[nodiscard]] suitable_queues get_suitable_queues(VkPhysicalDevice physical);
+[[nodiscard]] suitable_queues get_suitable_queues(VkPhysicalDevice physical, VkSurfaceKHR surface);
 
 [[nodiscard]] chosen_queues get_chosen_queues(suitable_queues const& suitable);
 

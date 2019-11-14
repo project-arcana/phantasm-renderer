@@ -5,15 +5,15 @@
 
 #include "common/verify.hh"
 #include "common/zero_struct.hh"
-#include "layer_extension_util.hh"
+#include "gpu_choice_util.hh"
 #include "queue_util.hh"
 
-void pr::backend::vk::Device::initialize(VkPhysicalDevice physical, vulkan_config const& config)
+void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfaceKHR surface, vulkan_config const& config)
 {
-    mPhysicalDevice = physical;
+    mPhysicalDevice = device.physical_device;
     CC_ASSERT(mDevice == VK_NULL_HANDLE);
 
-    auto const active_lay_ext = get_used_device_lay_ext(get_available_device_lay_ext(mPhysicalDevice), config, mPhysicalDevice);
+    auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mPhysicalDevice);
 
     VkDeviceCreateInfo device_info;
     zero_info_struct(device_info, VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
@@ -23,7 +23,7 @@ void pr::backend::vk::Device::initialize(VkPhysicalDevice physical, vulkan_confi
     device_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
     auto const global_queue_priority = 1.f;
-    auto const chosen_queues = get_chosen_queues(get_suitable_queues(mPhysicalDevice));
+    auto const chosen_queues = get_chosen_queues(device.queues);
     cc::capped_vector<VkDeviceQueueCreateInfo, 3> queue_create_infos;
     for (auto i = 0u; i < 3u; ++i)
     {
@@ -46,6 +46,8 @@ void pr::backend::vk::Device::initialize(VkPhysicalDevice physical, vulkan_confi
     device_info.pEnabledFeatures = &features;
 
     PR_VK_VERIFY_SUCCESS(vkCreateDevice(mPhysicalDevice, &device_info, nullptr, &mDevice));
+
+    volkLoadDevice(mDevice);
 
     // Query queues
     {

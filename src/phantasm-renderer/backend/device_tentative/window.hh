@@ -1,9 +1,18 @@
 #pragma once
 
+#include <clean-core/macros.hh>
+#ifdef CC_OS_WINDOWS
+
 // Win32 HWND forward declaration
 typedef struct HWND__* HWND;
 
-namespace pr::backend::d3d12
+#ifdef PR_BACKEND_VULKAN
+#include <clean-core/vector.hh>
+
+#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
+#endif
+
+namespace pr::backend::device
 {
 /// Tentative precursor of eventual device-abstraction library
 /// Only one allowed at the time
@@ -40,6 +49,11 @@ public:
     [[nodiscard]] int getHeight() const { return mHeight; }
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
 
+#ifdef PR_BACKEND_VULKAN
+    static cc::vector<char const*> getRequiredInstanceExtensions();
+    void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
+#endif
+
 private:
     void onCloseEvent();
     void onResizeEvent(int w, int h, bool minimized);
@@ -53,4 +67,8 @@ private:
 };
 
 }
+
+#else
+// TODO
+#endif
 

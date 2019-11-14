@@ -1,7 +1,7 @@
 #include "layer_extension_util.hh"
-#ifdef PR_BACKEND_VULKAN
 
 #include <iostream>
+#include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "common/unique_name_set.hh"
 #include "common/verify.hh"
@@ -138,8 +138,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
 {
     lay_ext_array used_res;
 
-    auto const add_required_layer = [&](char const* layer_name)
-    {
+    auto const add_required_layer = [&](char const* layer_name) {
         if (available.layers.contains(layer_name))
         {
             used_res.layers.push_back(layer_name);
@@ -148,8 +147,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         return false;
     };
 
-    auto const add_required_ext = [&](char const* ext_name)
-    {
+    auto const add_required_ext = [&](char const* ext_name) {
         if (available.extensions.contains(ext_name))
         {
             used_res.extensions.push_back(ext_name);
@@ -178,11 +176,11 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         }
     }
 
-    // TODO: platform extensions
-    // these must be sourced from device-abstraction somehow
-    if (!add_required_ext("VK_KHR_surface"))
+    // platform extensions
+    for (char const* const required_device_ext : device::Window::getRequiredInstanceExtensions())
     {
-        std::cerr << "Missing surface extension" << std::endl;
+        if (!add_required_ext(required_device_ext))
+            std::cerr << "[pr][vk] Missing required extension " << required_device_ext << std::endl;
     }
 
 
@@ -195,10 +193,28 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
 {
     lay_ext_array used_res;
 
-    // Decide upon active device layers and extensions based on configuration and availability
-    // TODO: Everything
+    auto const add_required_layer = [&](char const* layer_name) {
+        if (available.layers.contains(layer_name))
+        {
+            used_res.layers.push_back(layer_name);
+            return true;
+        }
+        return false;
+    };
+
+    auto const add_required_ext = [&](char const* ext_name) {
+        if (available.extensions.contains(ext_name))
+        {
+            used_res.extensions.push_back(ext_name);
+            return true;
+        }
+        return false;
+    };
+
+    if (!add_required_ext(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+    {
+        std::cerr << "[pr][vk] Missing swapchain extension" << std::endl;
+    }
 
     return used_res;
 }
-
-#endif

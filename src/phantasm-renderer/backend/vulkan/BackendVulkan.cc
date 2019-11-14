@@ -1,17 +1,17 @@
 #include "BackendVulkan.hh"
 
-#include <iostream>
-
 #include <clean-core/array.hh>
+#include <iostream>
+#include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
 #include "common/zero_struct.hh"
-#include "loader/volk.hh"
-
 #include "layer_extension_util.hh"
+#include "loader/volk.hh"
+#include "gpu_choice_util.hh"
 
-void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config)
+void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, device::Window& window)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
 
@@ -45,33 +45,35 @@ void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config)
     // See https://github.com/zeux/volk#optimizing-device-calls
     volkLoadInstance(mInstance);
 
-    // TODO: Debug callback
-
-    // TODO: Adapter choice
-    uint32_t num_physical_devices;
-    PR_VK_VERIFY_NONERROR(vkEnumeratePhysicalDevices(mInstance, &num_physical_devices, nullptr));
-    cc::array<VkPhysicalDevice> physical_devices(num_physical_devices);
-    PR_VK_VERIFY_NONERROR(vkEnumeratePhysicalDevices(mInstance, &num_physical_devices, physical_devices.data()));
-
-    //    for (auto const physical : physical_devices)
-    //    {
-    //        VkPhysicalDeviceProperties properties;
-    //        vkGetPhysicalDeviceProperties(physical, &properties);
-    //        std::cout << "Device " << properties.deviceID << ", Name: " << properties.deviceName << std::endl;
-    //        std::cout << "  " << properties.driverVersion << ", " << properties.deviceType << std::endl;
-    //        std::cout << " " << properties.vendorID << ", " << properties.apiVersion  << std::endl;
-    //    }
-
     if (config.enable_validation)
     {
+        // Debug callback
         createDebugMessenger();
     }
 
-    mDevice.initialize(physical_devices[0], config);
+    window.createVulkanSurface(mInstance, mSurface);
+
+    // TODO: Adapter choice
+    auto const gpus = get_physical_devices(mInstance);
+    for (auto const gpu : gpus)
+    {
+        auto const info = get_gpu_information(gpu, mSurface);
+
+        if (info.is_suitable)
+        {
+            mDevice.initialize(info, mSurface, config);
+            mSwapchain.initialize(mDevice, info, mSurface);
+            break;
+        }
+    }
 }
 
 pr::backend::vk::BackendVulkan::~BackendVulkan()
 {
+    mSwapchain.destroy();
+
+    vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
+
     mDevice.destroy();
 
     if (mDebugMessenger != VK_NULL_HANDLE)
