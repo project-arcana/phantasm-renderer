@@ -2,11 +2,10 @@
 #ifdef PR_BACKEND_VULKAN
 
 #include <phantasm-renderer/backend/Backend.hh>
-#include <vector>
 
 #include "Device.hh"
-#include "loader/volk.hh"
 #include "Swapchain.hh"
+#include "loader/volk.hh"
 #include "vulkan_config.hh"
 
 namespace pr::backend::device
@@ -26,12 +25,14 @@ public:
 private:
     void createDebugMessenger();
 
-private:
+public:
     VkInstance mInstance;
     VkDebugUtilsMessengerEXT mDebugMessenger = VK_NULL_HANDLE;
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
     Device mDevice;
     Swapchain mSwapchain;
+
+private:
 };
 }
 

@@ -4,7 +4,8 @@
 
 #include "loader/volk.hh"
 
-namespace pr::backend::vk {
+namespace pr::backend::vk
+{
 class Device;
 struct gpu_information;
 
@@ -14,6 +15,11 @@ public:
     void initialize(Device const& device, gpu_information const& gpu_info, VkSurfaceKHR surface);
 
     void destroy();
+
+    [[nodiscard]] VkSwapchainKHR getSwapchain() const { return mSwapchain; }
+    [[nodiscard]] VkFormat getBackbufferFormat() const { return mBackbufferFormat; }
+    [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
+    [[nodiscard]] auto const& getBackbufferViews() const { return mBackbufferViews; }
 
 private:
     void queryBackbuffers();

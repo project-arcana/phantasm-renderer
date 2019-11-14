@@ -23,11 +23,11 @@ void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfac
     device_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
     auto const global_queue_priority = 1.f;
-    auto const chosen_queues = get_chosen_queues(device.queues);
+    mQueueFamilies = get_chosen_queues(device.queues);
     cc::capped_vector<VkDeviceQueueCreateInfo, 3> queue_create_infos;
     for (auto i = 0u; i < 3u; ++i)
     {
-        auto const queue_family_index = chosen_queues[i];
+        auto const queue_family_index = mQueueFamilies[i];
         if (queue_family_index == -1)
             continue;
 
@@ -51,12 +51,12 @@ void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfac
 
     // Query queues
     {
-        if (chosen_queues[0] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[0]), 0, &mQueueGraphics);
-        if (chosen_queues[1] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[1]), 0, &mQueueCompute);
-        if (chosen_queues[2] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(chosen_queues[2]), 0, &mQueueCopy);
+        if (mQueueFamilies[0] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[0]), 0, &mQueueGraphics);
+        if (mQueueFamilies[1] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[1]), 0, &mQueueCompute);
+        if (mQueueFamilies[2] != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[2]), 0, &mQueueCopy);
     }
 }
 
