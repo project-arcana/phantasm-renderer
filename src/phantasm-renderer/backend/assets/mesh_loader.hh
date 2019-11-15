@@ -4,8 +4,8 @@
 
 #include <typed-geometry/tg-lean.hh>
 
-namespace pr::backend::assets {
-
+namespace pr::backend::assets
+{
 struct simple_vertex
 {
     tg::pos3 position = tg::pos3::zero;
@@ -30,6 +30,9 @@ struct simple_mesh_data
 {
     cc::vector<int> indices;
     cc::vector<simple_vertex> vertices;
+
+    unsigned get_vertex_size_bytes() const { return unsigned(sizeof(vertices[0]) * vertices.size()); }
+    unsigned get_index_size_bytes() const { return unsigned(sizeof(indices[0]) * indices.size()); }
 };
 
 [[nodiscard]] simple_mesh_data load_obj_mesh(char const* path, bool flip_uvs = true);
