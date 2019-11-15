@@ -3,7 +3,7 @@
 #include <clean-core/assert.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
-#include <phantasm-renderer/backend/d3d12/memory/Allocator.hh>
+#include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 
 void pr::backend::d3d12::ResourceAllocator::initialize(ID3D12Device& device)
 {

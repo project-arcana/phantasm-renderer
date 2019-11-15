@@ -2,8 +2,6 @@
 
 #include "common/verify.hh"
 
-#include "memory/Allocator.hh"
-
 void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::d3d12::d3d12_config& config, HWND handle)
 {
     mAdapter.initialize(config);

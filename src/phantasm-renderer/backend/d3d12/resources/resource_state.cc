@@ -1,7 +1,7 @@
 #include "resource_state.hh"
 
 #include <phantasm-renderer/backend/d3d12/common/util.hh>
-#include <phantasm-renderer/backend/d3d12/memory/Allocator.hh>
+#include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 
 bool pr::backend::d3d12::incomplete_state_cache::transition_resource(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after, D3D12_RESOURCE_STATES& out_before)
 {

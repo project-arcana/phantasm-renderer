@@ -4,7 +4,7 @@
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
-#include <phantasm-renderer/backend/d3d12/memory/Allocator.hh>
+#include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 
 #include "byte_util.hh"
 
