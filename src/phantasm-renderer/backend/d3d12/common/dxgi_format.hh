@@ -10,7 +10,7 @@ template <class T>
 [[nodiscard]] constexpr DXGI_FORMAT get_dxgi_format()
 {
     if constexpr (tg::is_comp_like<T, 4, float>)
-        return DXGI_FORMAT_R32G32B32_FLOAT;
+        return DXGI_FORMAT_R32G32B32A32_FLOAT;
     else if constexpr (tg::is_comp_like<T, 3, float>)
         return DXGI_FORMAT_R32G32B32_FLOAT;
     else if constexpr (tg::is_comp_like<T, 2, float>)
@@ -19,7 +19,7 @@ template <class T>
         return DXGI_FORMAT_R32_FLOAT;
 
     else if constexpr (tg::is_comp_like<T, 4, int>)
-        return DXGI_FORMAT_R32G32B32_SINT;
+        return DXGI_FORMAT_R32G32B32A32_SINT;
     else if constexpr (tg::is_comp_like<T, 3, int>)
         return DXGI_FORMAT_R32G32B32_SINT;
     else if constexpr (tg::is_comp_like<T, 2, int>)
@@ -28,7 +28,7 @@ template <class T>
         return DXGI_FORMAT_R32_SINT;
 
     else if constexpr (tg::is_comp_like<T, 4, unsigned>)
-        return DXGI_FORMAT_R32G32B32_UINT;
+        return DXGI_FORMAT_R32G32B32A32_UINT;
     else if constexpr (tg::is_comp_like<T, 3, unsigned>)
         return DXGI_FORMAT_R32G32B32_UINT;
     else if constexpr (tg::is_comp_like<T, 2, unsigned>)
