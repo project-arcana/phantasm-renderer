@@ -15,7 +15,7 @@
 
 namespace
 {
-constexpr auto null_image_handle = pr::backend::d3d12::img::image_handle{false, nullptr, nullptr};
+constexpr auto null_image_handle = pr::backend::d3d12::img::image_handle{false, {nullptr}};
 
 /// Returns the last file ending of a given filename
 /// Includes the '.'
@@ -228,8 +228,7 @@ struct dds_header
             pByteData += sizeof(dds_header_dx10);
             rawTextureSize -= sizeof(dds_header_dx10);
 
-            out_info = {header->dwWidth,       header->dwHeight,     header->dwDepth,       header10->arraySize,
-                        header->dwMipMapCount, header10->dxgiFormat, header->ddspf.bitCount};
+            out_info = {header->dwWidth, header->dwHeight, header->dwDepth, header10->arraySize, header->dwMipMapCount, header10->dxgiFormat};
         }
         else if (dwMagic == ' SDD') // "DDS "
         {
@@ -238,8 +237,7 @@ struct dds_header
             DXGI_FORMAT dxgiFormat = dds_to_dxgi_format(header->ddspf);
             UINT32 mipMapCount = header->dwMipMapCount ? header->dwMipMapCount : 1;
 
-            out_info = {header->dwWidth, header->dwHeight,      header->dwDepth ? header->dwDepth : 1, arraySize, mipMapCount,
-                        dxgiFormat,      header->ddspf.bitCount};
+            out_info = {header->dwWidth, header->dwHeight, header->dwDepth ? header->dwDepth : 1, arraySize, mipMapCount, dxgiFormat};
         }
         else
         {
@@ -276,12 +274,11 @@ struct dds_header
     if (!res_data)
         return nullptr;
 
-    out_info.arraySize = 1;
+    out_info.array_size = 1;
     out_info.width = unsigned(width);
     out_info.height = unsigned(height);
     out_info.depth = 1;
-    out_info.mipMapCount = get_num_mips(unsigned(width), unsigned(height));
-    out_info.bitCount = 32;
+    out_info.num_mip_levels = get_num_mips(unsigned(width), unsigned(height));
     out_info.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
     return res_data;
@@ -328,7 +325,7 @@ pr::backend::d3d12::img::image_handle pr::backend::d3d12::img::load_image(const 
         if (res_handle == nullptr || res_handle == INVALID_HANDLE_VALUE)
             return null_image_handle;
         else
-            return {true, res_handle, nullptr};
+            return {true, {res_handle}};
     }
     else
     {
@@ -337,7 +334,7 @@ pr::backend::d3d12::img::image_handle pr::backend::d3d12::img::load_image(const 
         if (res_ptr == nullptr)
             return null_image_handle;
         else
-            return {false, nullptr, res_ptr};
+            return {false, {res_ptr}};
     }
 }
 

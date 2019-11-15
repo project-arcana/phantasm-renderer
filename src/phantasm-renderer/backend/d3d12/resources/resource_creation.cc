@@ -2,6 +2,8 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-renderer/backend/assets/image_loader.hh>
+
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
@@ -250,60 +252,93 @@ D3D12_CONSTANT_BUFFER_VIEW_DESC pr::backend::d3d12::make_constant_buffer_view(co
     return D3D12_CONSTANT_BUFFER_VIEW_DESC{res.raw->GetGPUVirtualAddress(), UINT(res.raw->GetDesc().Width)};
 }
 
-pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
-    pr::backend::d3d12::ResourceAllocator& allocator, ID3D12Device& device, pr::backend::d3d12::UploadHeap& upload_heap, const char* filename, bool use_srgb)
+namespace
 {
-    img::image_info img_info;
-    auto const img_handle = img::load_image(filename, img_info);
-    CC_RUNTIME_ASSERT(img::is_valid(img_handle) && "File not found or image invalid");
-
-    if (use_srgb)
-        img_info.format = util::to_srgb_format(img_info.format);
-
-    resource res = create_texture2d(allocator, int(img_info.width), int(img_info.height), img_info.format, int(img_info.mipMapCount));
+using namespace pr::backend::d3d12;
+pr::backend::d3d12::resource create_texture2d_from_data(
+    ResourceAllocator& allocator, ID3D12Device& device, UploadHeap& upload_heap, img::image_info const& img_info, img::image_handle const& img_handle)
+{
+    resource res = create_texture2d(allocator, int(img_info.width), int(img_info.height), img_info.format, int(img_info.num_mip_levels));
 
     // Get mip footprints (if it is an array we reuse the mip footprints for all the elements of the array)
     //
     uint32_t num_rows[D3D12_REQ_MIP_LEVELS] = {0};
     UINT64 row_sizes_in_bytes[D3D12_REQ_MIP_LEVELS] = {0};
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_subres_tex2d[D3D12_REQ_MIP_LEVELS];
-
-    auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(img_info.format, img_info.width, img_info.height, 1, UINT16(img_info.mipMapCount));
-
     UINT64 upload_heap_size;
-    device.GetCopyableFootprints(&res_desc, 0, img_info.mipMapCount, 0, placed_subres_tex2d, num_rows, row_sizes_in_bytes, &upload_heap_size);
-
-    // compute pixel size
-    //
-    UINT32 bytes_per_pixel = img_info.bitCount / 8;
-    if ((img_info.format >= DXGI_FORMAT_BC1_TYPELESS) && (img_info.format <= DXGI_FORMAT_BC5_SNORM))
     {
-        bytes_per_pixel = util::get_dxgi_bytes_per_pixel(img_info.format);
+        auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(img_info.format, img_info.width, img_info.height, 1, UINT16(img_info.num_mip_levels));
+        device.GetCopyableFootprints(&res_desc, 0, img_info.num_mip_levels, 0, placed_subres_tex2d, num_rows, row_sizes_in_bytes, &upload_heap_size);
     }
 
-    for (auto a = 0u; a < img_info.arraySize; ++a)
+    auto const bytes_per_pixel = util::get_dxgi_bytes_per_pixel(img_info.format);
+
+    for (auto a = 0u; a < img_info.array_size; ++a)
     {
         // allocate memory for mip chain from upload heap
         //
-        auto* const pixels = upload_heap.suballocateAllowRetry(SIZE_T(upload_heap_size), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+        auto* const upload_ptr = upload_heap.suballocateAllowRetry(upload_heap_size, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
         // copy all the mip slices into the offsets specified by the footprint structure
         //
-        for (auto mip = 0u; mip < img_info.mipMapCount; ++mip)
+        for (auto mip = 0u; mip < img_info.num_mip_levels; ++mip)
         {
-            img::copy_pixels(img_handle, pixels + placed_subres_tex2d[mip].Offset, placed_subres_tex2d[mip].Footprint.RowPitch,
+            img::copy_pixels(img_handle, upload_ptr + placed_subres_tex2d[mip].Offset, placed_subres_tex2d[mip].Footprint.RowPitch,
                              placed_subres_tex2d[mip].Footprint.Width * bytes_per_pixel, num_rows[mip]);
 
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT slice = placed_subres_tex2d[mip];
-            slice.Offset += (pixels - upload_heap.getBasePointer());
+            slice.Offset += size_t(upload_ptr - upload_heap.getBasePointer());
 
-            CD3DX12_TEXTURE_COPY_LOCATION Dst(res.raw, a * img_info.mipMapCount + mip);
-            CD3DX12_TEXTURE_COPY_LOCATION Src(upload_heap.getResource(), slice);
-            upload_heap.getCommandList()->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+            CD3DX12_TEXTURE_COPY_LOCATION const dest(res.raw, a * img_info.num_mip_levels + mip);
+            CD3DX12_TEXTURE_COPY_LOCATION const source(upload_heap.getResource(), slice);
+            upload_heap.getCommandList()->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
         }
     }
 
     return res;
+}
+
+img::image_info to_native_info(pr::backend::assets::image_size const& img_size, bool use_srgb)
+{
+    img::image_info out_info;
+    out_info.array_size = 1;
+    out_info.width = unsigned(img_size.width);
+    out_info.height = unsigned(img_size.height);
+    out_info.depth = 1;
+    out_info.num_mip_levels = unsigned(img_size.num_mipmaps);
+    out_info.format = use_srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
+    return out_info;
+}
+
+}
+
+pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
+    pr::backend::d3d12::ResourceAllocator& allocator, ID3D12Device& device, pr::backend::d3d12::UploadHeap& upload_heap, const char* filename, bool use_srgb)
+{
+#if 1
+    {
+        // new assets-based loading
+        assets::image_size img_size;
+        auto const img_data = assets::load_image(filename, img_size);
+        CC_RUNTIME_ASSERT(assets::is_valid(img_data) && "File not found or image invalid");
+        auto res = create_texture2d_from_data(allocator, device, upload_heap, to_native_info(img_size, use_srgb), img::image_handle{false, {img_data.raw}});
+        assets::free(img_data);
+        return res;
+    }
+#else
+    {
+        img::image_info img_info;
+        auto const img_handle = img::load_image(filename, img_info);
+        CC_RUNTIME_ASSERT(img::is_valid(img_handle) && "File not found or image invalid");
+
+        if (use_srgb)
+            img_info.format = util::to_srgb_format(img_info.format);
+
+        auto res = create_texture2d_from_data(allocator, device, upload_heap, img_info, img_handle);
+        img::free(img_handle);
+        return res;
+    }
+#endif
 }
 
 pr::backend::d3d12::resource pr::backend::d3d12::create_buffer_from_data(pr::backend::d3d12::ResourceAllocator& allocator,
