@@ -63,6 +63,14 @@ public:
         return false;
     }
 
+    template <class T>
+    bool allocConstantBufferTyped(T*& out_data, VkDescriptorBufferInfo& out_info)
+    {
+        static_assert(!std::is_same_v<T, void>, "Only use this for explicit types");
+        static_assert(!std::is_pointer_v<T> && !std::is_reference_v<T>, "T is not the underlying type");
+        return allocConstantBuffer(sizeof(T), reinterpret_cast<void*&>(out_data), out_info);
+    }
+
     void setDescriptorSet(uint32_t index, uint32_t size, VkDescriptorSet descriptorSet);
 
 private:

@@ -67,8 +67,7 @@ void DynamicBufferRing::setDescriptorSet(uint32_t index, uint32_t size, VkDescri
     out.offset = 0;
     out.range = size;
 
-    VkWriteDescriptorSet write;
-    write = {};
+    VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.pNext = nullptr;
     write.dstSet = descriptorSet;
