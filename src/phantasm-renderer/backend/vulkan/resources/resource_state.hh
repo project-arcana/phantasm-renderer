@@ -91,6 +91,6 @@ namespace pr::backend::vk
     }
 }
 
-[[nodiscard]] VkImageMemoryBarrier get_image_memory_barrier(VkImage image, resource_state before, resource_state after, unsigned num_mips = 1, unsigned num_layers = 1);
+[[nodiscard]] VkImageMemoryBarrier get_image_memory_barrier(VkImage image, resource_state before, resource_state after, bool is_depth = false, unsigned num_mips = 1, unsigned num_layers = 1);
 
 }

@@ -9,11 +9,13 @@ namespace pr::backend::vk
 // create resources
 //
 
+/// initial layout: undefined
 [[nodiscard]] inline image create_render_target(Allocator& allocator, unsigned w, unsigned h, VkFormat format)
 {
     return allocator.allocRenderTarget(w, h, format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 }
 
+/// initial layout: undefined
 [[nodiscard]] inline image create_depth_stencil(Allocator& allocator, unsigned w, unsigned h, VkFormat format)
 {
     return allocator.allocRenderTarget(w, h, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
