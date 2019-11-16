@@ -9,20 +9,20 @@
 
 namespace
 {
-void compute_mip(unsigned char* data, int width, int height)
+void compute_mip(unsigned char* data, unsigned width, unsigned height)
 {
-    constexpr int offsetsX[] = {0, 1, 0, 1};
-    constexpr int offsetsY[] = {0, 0, 1, 1};
+    constexpr unsigned offsetsX[] = {0, 1, 0, 1};
+    constexpr unsigned offsetsY[] = {0, 0, 1, 1};
 
     auto* const image_data = reinterpret_cast<uint32_t*>(data);
 
     auto const get_byte = [](auto color, int component) { return (color >> (8 * component)) & 0xff; };
-    auto const get_color = [&](int x, int y) { return image_data[unsigned(x + y * int(width))]; };
-    auto const set_color = [&](int x, int y, auto color) { image_data[x + y * width / 2] = color; };
+    auto const get_color = [&](unsigned x, unsigned y) { return image_data[x + y * width]; };
+    auto const set_color = [&](unsigned x, unsigned y, auto color) { image_data[x + y * width / 2] = color; };
 
-    for (auto y = 0; y < height; y += 2)
+    for (auto y = 0u; y < height; y += 2)
     {
-        for (auto x = 0; x < width; x += 2)
+        for (auto x = 0u; x < width; x += 2)
         {
             uint32_t color = 0;
             for (auto c = 0; c < 4; ++c)
@@ -42,22 +42,22 @@ void compute_mip(unsigned char* data, int width, int height)
 
 pr::backend::assets::image_data pr::backend::assets::load_image(const char* filename, pr::backend::assets::image_size& out_size)
 {
-    int num_channels;
-    auto* const res_data = ::stbi_load(filename, &out_size.width, &out_size.height, &num_channels, 4);
+    int width, height, num_channels;
+    auto* const res_data = ::stbi_load(filename, &width, &height, &num_channels, 4);
 
     if (!res_data)
         return {nullptr};
 
+    out_size.width = unsigned(width);
+    out_size.height = unsigned(height);
     out_size.num_mipmaps = get_num_mip_levels(out_size.width, out_size.height);
+    out_size.array_size = 1;
     return {res_data};
 }
 
-int pr::backend::assets::get_num_mip_levels(int w, int h)
+unsigned pr::backend::assets::get_num_mip_levels(unsigned width, unsigned height)
 {
-    auto width = unsigned(w);
-    auto height = unsigned(h);
-
-    auto res = 0;
+    auto res = 0u;
     while (true)
     {
         ++res;
@@ -71,14 +71,14 @@ int pr::backend::assets::get_num_mip_levels(int w, int h)
     return res;
 }
 
-void pr::backend::assets::copy_subdata(const pr::backend::assets::image_data& data, void* dest, int stride, int width, int height)
+void pr::backend::assets::copy_subdata(const pr::backend::assets::image_data& data, void* dest, unsigned stride, unsigned width, unsigned height)
 {
     for (auto y = 0u; y < unsigned(height); ++y)
     {
         std::memcpy(static_cast<char*>(dest) + y * unsigned(stride), data.raw + y * unsigned(width), unsigned(width));
     }
 
-    compute_mip(data.raw, width / 4, int(height));
+    compute_mip(data.raw, width / 4, height);
 }
 
 void pr::backend::assets::free(const pr::backend::assets::image_data& data)

@@ -35,6 +35,6 @@ struct simple_mesh_data
     unsigned get_index_size_bytes() const { return unsigned(sizeof(indices[0]) * indices.size()); }
 };
 
-[[nodiscard]] simple_mesh_data load_obj_mesh(char const* path, bool flip_uvs = true);
+[[nodiscard]] simple_mesh_data load_obj_mesh(char const* path, bool flip_uvs = true, bool flip_xaxis = true);
 
 }

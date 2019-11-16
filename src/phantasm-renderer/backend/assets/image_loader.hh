@@ -4,9 +4,10 @@ namespace pr::backend::assets
 {
 struct image_size
 {
-    int width;
-    int height;
-    int num_mipmaps;
+    unsigned width;
+    unsigned height;
+    unsigned num_mipmaps;
+    unsigned array_size;
 };
 
 struct image_data
@@ -18,9 +19,9 @@ struct image_data
 
 [[nodiscard]] image_data load_image(char const* filename, image_size& out_size);
 
-[[nodiscard]] int get_num_mip_levels(int width, int height);
+[[nodiscard]] unsigned get_num_mip_levels(unsigned width, unsigned height);
 
-void copy_subdata(image_data const& data, void* dest, int stride, int width, int height);
+void copy_subdata(image_data const& data, void* dest, unsigned stride, unsigned width, unsigned height);
 
 void free(image_data const& data);
 

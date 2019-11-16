@@ -21,7 +21,7 @@ struct hash<simple_vertex>
 };
 }
 
-pr::backend::assets::simple_mesh_data pr::backend::assets::load_obj_mesh(const char* path, bool flip_uvs)
+pr::backend::assets::simple_mesh_data pr::backend::assets::load_obj_mesh(const char* path, bool flip_uvs, bool flip_xaxis)
 {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -50,15 +50,21 @@ pr::backend::assets::simple_mesh_data pr::backend::assets::load_obj_mesh(const c
         for (auto const& index : shape.mesh.indices)
         {
             simple_vertex vertex = {};
-            vertex.position = tg::pos3(-1 * attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1],
+            vertex.position = tg::pos3(attrib.vertices[3 * index.vertex_index + 0], attrib.vertices[3 * index.vertex_index + 1],
                                        attrib.vertices[3 * index.vertex_index + 2]);
 
             if (index.texcoord_index != -1)
                 vertex.texcoord = transform_uv(tg::vec2(attrib.texcoords[2 * index.texcoord_index + 0], attrib.texcoords[2 * index.texcoord_index + 1]));
 
             if (index.normal_index != -1)
-                vertex.normal = tg::vec3(-1 * attrib.normals[3 * index.normal_index + 0], attrib.normals[3 * index.normal_index + 1],
+                vertex.normal = tg::vec3(attrib.normals[3 * index.normal_index + 0], attrib.normals[3 * index.normal_index + 1],
                                          attrib.normals[3 * index.normal_index + 2]);
+
+            if (flip_xaxis)
+            {
+                vertex.position.x *= -1;
+                vertex.normal.x *= -1;
+            }
 
             if (unique_vertices.count(vertex) == 0)
             {
