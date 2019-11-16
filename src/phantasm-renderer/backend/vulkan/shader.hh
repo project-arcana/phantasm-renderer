@@ -16,7 +16,7 @@ struct shader
     [[nodiscard]] VkPipelineShaderStageCreateInfo get_create_info() const;
 };
 
-[[nodiscard]] inline constexpr VkShaderStageFlagBits to_shader_stage_flag(pr::backend::shader_domain domain)
+[[nodiscard]] inline constexpr VkShaderStageFlagBits to_shader_stage_flags(pr::backend::shader_domain domain)
 {
     switch (domain)
     {

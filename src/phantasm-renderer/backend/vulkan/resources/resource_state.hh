@@ -217,7 +217,7 @@ inline void submit_barriers(VkCommandBuffer cmd_buf,
     return submit_barriers(cmd_buf, deps, image_barriers, buffer_barriers, barriers);
 }
 
-template <size_t Nimg, size_t Nbuf, size_t Nmem>
+template <size_t Nimg, size_t Nbuf = 0, size_t Nmem = 0>
 struct barrier_bundle
 {
     stage_dependencies dependencies;

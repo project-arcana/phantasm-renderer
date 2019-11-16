@@ -29,7 +29,7 @@ VkPipelineShaderStageCreateInfo pr::backend::vk::shader::get_create_info() const
 {
     VkPipelineShaderStageCreateInfo res;
     zero_info_struct(res, VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-    res.stage = to_shader_stage_flag(domain);
+    res.stage = to_shader_stage_flags(domain);
     res.module = module;
     res.pName = "main";
     return res;
