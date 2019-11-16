@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace pr::backend::d3d12::mem
+namespace pr::backend::mem
 {
 template <class T>
 constexpr T kb(T x)

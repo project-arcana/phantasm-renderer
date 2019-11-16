@@ -58,6 +58,12 @@ void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfac
         if (mQueueFamilies[2] != -1)
             vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[2]), 0, &mQueueCopy);
     }
+
+    // Query info
+    {
+        vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mInformation.memory_properties);
+        vkGetPhysicalDeviceProperties(mPhysicalDevice, &mInformation.device_properties);
+    }
 }
 
 void pr::backend::vk::Device::destroy()

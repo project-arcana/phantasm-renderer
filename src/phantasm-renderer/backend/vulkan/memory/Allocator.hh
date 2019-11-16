@@ -5,7 +5,7 @@
 typedef struct VmaAllocator_T* VmaAllocator;
 typedef struct VmaAllocation_T* VmaAllocation;
 
-namespace pr::backend::vulkan
+namespace pr::backend::vk
 {
 struct buffer
 {
@@ -18,10 +18,9 @@ class Allocator
 {
 public:
     void initialize(VkPhysicalDevice physical, VkDevice device);
+    void destroy();
 
-    ~Allocator();
-
-    [[nodiscard]] buffer allocBuffer(uint32_t size);
+    [[nodiscard]] buffer allocBuffer(uint32_t size, VkBufferUsageFlags usage);
 
     void free(buffer const& buffer);
 

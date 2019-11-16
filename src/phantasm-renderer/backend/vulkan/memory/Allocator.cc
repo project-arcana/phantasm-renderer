@@ -4,9 +4,10 @@
 
 #include "VMA.hh"
 
-void pr::backend::vulkan::Allocator::initialize(VkPhysicalDevice physical, VkDevice device)
+void pr::backend::vk::Allocator::initialize(VkPhysicalDevice physical, VkDevice device)
 {
     CC_ASSERT(mAllocator == nullptr);
+
     VmaAllocatorCreateInfo create_info = {};
     create_info.physicalDevice = physical;
     create_info.device = device;
@@ -14,18 +15,14 @@ void pr::backend::vulkan::Allocator::initialize(VkPhysicalDevice physical, VkDev
     vmaCreateAllocator(&create_info, &mAllocator);
 }
 
-pr::backend::vulkan::Allocator::~Allocator()
-{
-    if (mAllocator)
-        vmaDestroyAllocator(mAllocator);
-}
+void pr::backend::vk::Allocator::destroy() { vmaDestroyAllocator(mAllocator); }
 
-pr::backend::vulkan::buffer pr::backend::vulkan::Allocator::allocBuffer(uint32_t size)
+pr::backend::vk::buffer pr::backend::vk::Allocator::allocBuffer(uint32_t size, VkBufferUsageFlags usage)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size;
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    buffer_info.usage = usage;
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -35,7 +32,4 @@ pr::backend::vulkan::buffer pr::backend::vulkan::Allocator::allocBuffer(uint32_t
     return res;
 }
 
-void pr::backend::vulkan::Allocator::free(const pr::backend::vulkan::buffer& buffer)
-{
-    vmaDestroyBuffer(mAllocator, buffer.buffer, buffer.allocation);
-}
+void pr::backend::vk::Allocator::free(const pr::backend::vk::buffer& buffer) { vmaDestroyBuffer(mAllocator, buffer.buffer, buffer.allocation); }

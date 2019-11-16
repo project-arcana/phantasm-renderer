@@ -6,6 +6,7 @@
 #include "Device.hh"
 #include "Swapchain.hh"
 #include "loader/volk.hh"
+#include "memory/Allocator.hh"
 #include "vulkan_config.hh"
 
 namespace pr::backend::device
@@ -31,6 +32,7 @@ public:
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
     Device mDevice;
     Swapchain mSwapchain;
+    Allocator mAllocator;
 
 private:
 };

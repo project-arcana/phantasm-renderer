@@ -1,9 +1,9 @@
 #include "DynamicBufferRing.hh"
 
+#include <phantasm-renderer/backend/detail/byte_util.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-#include "byte_util.hh"
 
 namespace pr::backend::d3d12
 {

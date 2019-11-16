@@ -57,4 +57,24 @@ struct backbuffer_information
     return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 }
 
+inline bool memory_type_from_properties(VkPhysicalDeviceMemoryProperties const& memory_properties, uint32_t type_bits, VkFlags requirements_mask, uint32_t& out_type_index)
+{
+    // Search memtypes to find first index with those properties
+    for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+    {
+        if ((type_bits & 1) == 1)
+        {
+            // Type is available, does it match user properties?
+            if ((memory_properties.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask)
+            {
+                out_type_index = i;
+                return true;
+            }
+        }
+        type_bits >>= 1;
+    }
+    // No memory types matched, return failure
+    return false;
+}
+
 }

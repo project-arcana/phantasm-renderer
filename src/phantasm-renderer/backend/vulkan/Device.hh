@@ -31,6 +31,10 @@ public:
     int getQueueFamilyCopy() const { return mQueueFamilies[2]; }
 
 public:
+    VkPhysicalDeviceMemoryProperties const& getMemoryProperties() const { return mInformation.memory_properties; }
+    VkPhysicalDeviceProperties const& getDeviceProperties() const { return mInformation.device_properties; }
+
+public:
     VkPhysicalDevice getPhysicalDevice() const { return mPhysicalDevice; }
     VkDevice getDevice() const { return mDevice; }
 
@@ -42,5 +46,11 @@ private:
     VkQueue mQueueCompute = VK_NULL_HANDLE;
     VkQueue mQueueCopy = VK_NULL_HANDLE;
     cc::array<int, 3> mQueueFamilies;
+
+    // Miscellaneous info
+    struct {
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        VkPhysicalDeviceProperties device_properties;
+    } mInformation;
 };
 }

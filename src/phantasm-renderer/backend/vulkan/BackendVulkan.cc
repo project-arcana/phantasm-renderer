@@ -62,7 +62,11 @@ void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, dev
         if (info.is_suitable)
         {
             mDevice.initialize(info, mSurface, config);
+
+            mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
+
             mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight());
+
             break;
         }
     }
@@ -73,6 +77,8 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
     mSwapchain.destroy();
 
     vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
+
+    mAllocator.destroy();
 
     mDevice.destroy();
 

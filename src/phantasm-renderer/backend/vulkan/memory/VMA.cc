@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#define VMA_STATIC_VULKAN_FUNCTIONS 1
+
 /*******************************************************************************
 CONFIGURATION SECTION
 
