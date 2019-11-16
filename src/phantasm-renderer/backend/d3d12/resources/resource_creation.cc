@@ -301,11 +301,11 @@ pr::backend::d3d12::resource create_texture2d_from_data(
 img::image_info to_native_info(pr::backend::assets::image_size const& img_size, bool use_srgb)
 {
     img::image_info out_info;
-    out_info.array_size = 1;
-    out_info.width = unsigned(img_size.width);
-    out_info.height = unsigned(img_size.height);
+    out_info.array_size = img_size.array_size;
+    out_info.width = img_size.width;
+    out_info.height = img_size.height;
     out_info.depth = 1;
-    out_info.num_mip_levels = unsigned(img_size.num_mipmaps);
+    out_info.num_mip_levels = img_size.num_mipmaps;
     out_info.format = use_srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
     return out_info;
 }

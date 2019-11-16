@@ -3,6 +3,8 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
+#include <phantasm-renderer/backend/detail/resource_state.hh>
+
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 
 namespace D3D12MA
@@ -12,6 +14,50 @@ class Allocation;
 
 namespace pr::backend::d3d12
 {
+[[nodiscard]] inline constexpr D3D12_RESOURCE_STATES to_resource_states(resource_state state)
+{
+    using rs = resource_state;
+    switch (state)
+    {
+    case rs::undefined:
+    case rs::unknown:
+        return D3D12_RESOURCE_STATE_COMMON;
+
+    case rs::vertex_buffer:
+        return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    case rs::index_buffer:
+        return D3D12_RESOURCE_STATE_INDEX_BUFFER;
+
+    case rs::constant_buffer:
+        return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    case rs::shader_resource:
+        return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    case rs::unordered_access:
+        return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+    case rs::render_target:
+        return D3D12_RESOURCE_STATE_RENDER_TARGET;
+    case rs::depth_read:
+        return D3D12_RESOURCE_STATE_DEPTH_READ;
+    case rs::depth_write:
+        return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+    case rs::indirect_argument:
+        return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+
+    case rs::copy_src:
+        return D3D12_RESOURCE_STATE_COPY_SOURCE;
+    case rs::copy_dest:
+        return D3D12_RESOURCE_STATE_COPY_DEST;
+
+    case rs::present:
+        return D3D12_RESOURCE_STATE_PRESENT;
+
+    case rs::raytrace_accel_struct:
+        return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+}
+
 ///
 /// The only way to transition resources is via either of these two classes
 /// Only exceptions:
