@@ -22,6 +22,9 @@ public:
 
     [[nodiscard]] buffer allocBuffer(uint32_t size, VkBufferUsageFlags usage);
 
+    [[nodiscard]] buffer allocCPUtoGPUBuffer(uint32_t size, VkBufferUsageFlags usage, void** map_ptr);
+    void unmapCPUtoGPUBuffer(buffer const& buffer);
+
     void free(buffer const& buffer);
 
 private:

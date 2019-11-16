@@ -6,7 +6,7 @@
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
-#include <phantasm-renderer/backend/d3d12/memory/Ring.hh>
+#include <phantasm-renderer/backend/detail/Ring.hh>
 
 namespace pr::backend::d3d12
 {
@@ -71,7 +71,7 @@ public:
 private:
     shared_com_ptr<ID3D12Resource> mResource;
     char* mData = nullptr;
-    RingWithTabs mMemoryRing;
+    backend::detail::RingWithTabs mMemoryRing;
     uint32_t mTotalSize; ///< The total allocated size of this ring in bytes
 };
 }

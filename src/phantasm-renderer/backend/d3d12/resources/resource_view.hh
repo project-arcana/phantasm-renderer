@@ -7,7 +7,7 @@
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
-#include <phantasm-renderer/backend/d3d12/memory/Ring.hh>
+#include <phantasm-renderer/backend/detail/Ring.hh>
 
 namespace pr::backend::d3d12
 {
@@ -103,7 +103,7 @@ private:
     shared_com_ptr<ID3D12DescriptorHeap> mHeap;
     D3D12_CPU_DESCRIPTOR_HANDLE mHandleCPU;
     D3D12_GPU_DESCRIPTOR_HANDLE mHandleGPU;
-    RingWithTabs mRing;
+    backend::detail::RingWithTabs mRing;
     unsigned mDescriptorSize = 0;
 };
 
