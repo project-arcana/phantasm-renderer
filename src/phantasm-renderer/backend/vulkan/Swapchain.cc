@@ -159,7 +159,8 @@ void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
 {
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
     auto const present_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
-    mBackbufferExtent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(w), unsigned(h)});
+    auto const extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(w), unsigned(h)});
+    mBackbufferSize = tg::ivec2{int(extent.width), int(extent.height)};
 
     // Create swapchain
     {
@@ -169,7 +170,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
         swapchain_info.imageFormat = mBackbufferFormat.format;
         swapchain_info.imageColorSpace = mBackbufferFormat.colorSpace;
         swapchain_info.minImageCount = unsigned(mBackbuffers.size());
-        swapchain_info.imageExtent = mBackbufferExtent;
+        swapchain_info.imageExtent = extent;
         swapchain_info.imageArrayLayers = 1;
         swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 

@@ -11,8 +11,9 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     desc.NumParameters = UINT(root_params.size());
     desc.pStaticSamplers = samplers.data();
     desc.NumStaticSamplers = UINT(samplers.size());
-    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
-                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+//            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+//                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
     shared_com_ptr<ID3DBlob> serialized_root_sig;
     PR_D3D12_VERIFY(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), nullptr));
@@ -118,7 +119,7 @@ void pr::backend::d3d12::detail::root_signature_params::create_descriptor_table(
     ++size_dwords;
 
     CD3DX12_ROOT_PARAMETER& param = root_params.emplace_back();
-    param.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), desc_ranges.data() + desc_range_start, D3D12_SHADER_VISIBILITY_PIXEL);
+    param.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), desc_ranges.data() + desc_range_start, D3D12_SHADER_VISIBILITY_ALL);
 
     // implicitly create a sampler (TODO)
     // static samplers cost no dwords towards this size
@@ -133,7 +134,7 @@ void pr::backend::d3d12::detail::root_signature_params::create_root_uav()
     // root descriptors cost 2 dwords
     size_dwords += 2;
 
-    param.InitAsUnorderedAccessView(register_u++, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+    param.InitAsUnorderedAccessView(register_u++, 0, D3D12_SHADER_VISIBILITY_ALL);
 }
 
 void pr::backend::d3d12::detail::root_signature_params::create_root_cbv()
@@ -143,7 +144,7 @@ void pr::backend::d3d12::detail::root_signature_params::create_root_cbv()
     // root descriptors cost 2 dwords
     size_dwords += 2;
 
-    param.InitAsConstantBufferView(register_b++, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    param.InitAsConstantBufferView(register_b++, 0, D3D12_SHADER_VISIBILITY_ALL);
 }
 
 void pr::backend::d3d12::detail::root_signature_params::create_root_constants(unsigned num_dwords)
@@ -153,5 +154,5 @@ void pr::backend::d3d12::detail::root_signature_params::create_root_constants(un
     // root constants cost their size in dowrds
     size_dwords += num_dwords;
 
-    param.InitAsConstants(num_dwords, register_b++, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+    param.InitAsConstants(num_dwords, register_b++, 0, D3D12_SHADER_VISIBILITY_ALL);
 }

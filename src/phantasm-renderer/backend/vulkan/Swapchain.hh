@@ -2,6 +2,8 @@
 
 #include <clean-core/capped_array.hh>
 
+#include <typed-geometry/tg-lean.hh>
+
 #include "loader/volk.hh"
 
 namespace pr::backend::vk
@@ -35,7 +37,7 @@ public:
 
 public:
     [[nodiscard]] VkFormat getBackbufferFormat() const { return mBackbufferFormat.format; }
-    [[nodiscard]] VkExtent2D getBackbufferExtent() const { return mBackbufferExtent; }
+    [[nodiscard]] tg::ivec2 getBackbufferSize() const { return mBackbufferSize; }
     [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
 
     [[nodiscard]] VkRenderPass getRenderPass() const { return mRenderPass; }
@@ -85,6 +87,7 @@ private:
     unsigned mActiveImageIndex = 0;
 
     VkSurfaceFormatKHR mBackbufferFormat;
+    tg::ivec2 mBackbufferSize;
     VkExtent2D mBackbufferExtent;
 };
 
