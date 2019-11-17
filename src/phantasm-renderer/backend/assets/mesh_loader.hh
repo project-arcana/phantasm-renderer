@@ -8,9 +8,9 @@ namespace pr::backend::assets
 {
 struct simple_vertex
 {
-    tg::pos3 position = tg::pos3::zero;
+    tg::pos3 position = tg::pos3(0, 0, 0);
     tg::vec3 normal = tg::vec3(0, 1, 0);
-    tg::vec2 texcoord = tg::vec2::zero;
+    tg::vec2 texcoord = tg::vec2(0, 0);
 
     constexpr bool operator==(simple_vertex const& rhs) const noexcept
     {

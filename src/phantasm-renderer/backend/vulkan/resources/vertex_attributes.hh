@@ -1,10 +1,11 @@
 #pragma once
 
 #include <clean-core/capped_vector.hh>
-#include <clean-core/vector.hh>
 
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
+#include <reflector/members.hh>
+
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
+#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
 namespace pr::backend::vk
 {
@@ -14,9 +15,8 @@ template <class VertT>
 struct vertex_visitor
 {
     // TODO: Eventually, this will work once the 19.23 bug is fixed
-    // static constexpr auto num_attributes = rf::member_count<VertT>;
-    // cc::capped_vector<VkVertexInputAttributeDescription, num_attributes> attributes;
-    cc::vector<VkVertexInputAttributeDescription> attributes;
+    static constexpr auto num_attributes = rf::member_count<VertT>;
+    cc::capped_vector<VkVertexInputAttributeDescription, num_attributes> attributes;
 
     template <class T>
     void operator()(T const& ref, char const*)

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <clean-core/capped_vector.hh>
-#include <clean-core/vector.hh>
+
+#include <reflector/members.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
@@ -14,10 +15,8 @@ namespace detail
 template <class VertT>
 struct vertex_visitor
 {
-    // TODO: Eventually, this will work once the 19.23 bug is fixed
-    // static constexpr auto num_attributes = rf::member_count<VertT>;
-    // cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, num_attributes> attributes;
-    cc::vector<D3D12_INPUT_ELEMENT_DESC> attributes;
+    static constexpr auto num_attributes = rf::member_count<VertT>;
+    cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, num_attributes> attributes;
 
     template <class T>
     void operator()(T const& ref, char const* name)
