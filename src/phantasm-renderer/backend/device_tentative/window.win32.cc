@@ -58,6 +58,14 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     CC_ASSERT(sEventProxy.window == nullptr);
     sEventProxy.window = this;
 
+    // Set process DPI awareness
+    // PER_MONITOR_AWARE: No scaling by Windows, no lies by GetClientRect
+    // Possible alternative is PER_MONITOR_AWARE_V2, with better per-window DPI access,
+    // but it requires the Win10 Creators update.
+    // While this setting is definitively a good idea, support for HighDPI should
+    // possibly play a role in the future da::Window
+    ::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+
     mWidth = width;
     mHeight = height;
 
