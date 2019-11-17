@@ -75,19 +75,19 @@ pr::backend::d3d12::shared_com_ptr<ID3D12PipelineState> pr::backend::d3d12::crea
         switch (s.domain)
         {
         case shader_domain::pixel:
-            pso_desc.PS = {s.blob->GetBufferPointer(), s.blob->GetBufferSize()};
+            pso_desc.PS = s.get_bytecode();
             break;
         case shader_domain::vertex:
-            pso_desc.VS = {s.blob->GetBufferPointer(), s.blob->GetBufferSize()};
+            pso_desc.VS = s.get_bytecode();
             break;
         case shader_domain::domain:
-            pso_desc.DS = {s.blob->GetBufferPointer(), s.blob->GetBufferSize()};
+            pso_desc.DS = s.get_bytecode();
             break;
         case shader_domain::hull:
-            pso_desc.HS = {s.blob->GetBufferPointer(), s.blob->GetBufferSize()};
+            pso_desc.HS = s.get_bytecode();
             break;
         case shader_domain::geometry:
-            pso_desc.GS = {s.blob->GetBufferPointer(), s.blob->GetBufferSize()};
+            pso_desc.GS = s.get_bytecode();
             break;
         case shader_domain::compute:
             break;

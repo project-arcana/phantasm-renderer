@@ -12,8 +12,8 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     desc.pStaticSamplers = samplers.data();
     desc.NumStaticSamplers = UINT(samplers.size());
     desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-//            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
-//                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    //            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+    //                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
     shared_com_ptr<ID3DBlob> serialized_root_sig;
     PR_D3D12_VERIFY(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), nullptr));
@@ -23,136 +23,94 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     return res;
 }
 
-void pr::backend::d3d12::root_signature::initialize(ID3D12Device& device, cc::span<const root_sig_payload_size> payload_sizes)
+void pr::backend::d3d12::root_signature::initialize(ID3D12Device& device, const shader_payload_shape& payload_shape)
 {
     detail::root_signature_params parameters;
 
-    for (auto const& s : payload_sizes)
+    for (auto const& arg_shape : payload_shape.shader_arguments)
     {
-        _payload_maps.push_back(parameters.add_payload_sizes(s));
+        _payload_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
     }
+
+    parameters.add_implicit_sampler();
 
     raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }
 
-void pr::backend::d3d12::root_signature::bind(ID3D12Device& device,
-                                              ID3D12GraphicsCommandList& command_list,
-                                              DynamicBufferRing& dynamic_buffer_ring,
-                                              DescriptorAllocator& desc_allocator,
-                                              int payload_index,
-                                              cc::span<cpu_cbv_srv_uav const> cbvs,
-                                              cc::span<cpu_cbv_srv_uav const> srvs,
-                                              cc::span<cpu_cbv_srv_uav const> uavs,
-                                              void* constant_buffer_data,
-                                              void* root_constants_data)
+void pr::backend::d3d12::root_signature::bind(
+    ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_allocator, int argument_index, const shader_argument& argument)
 {
-    auto const& map = _payload_maps[unsigned(payload_index)];
-    auto root_index = map.base_root_param;
+    auto const& map = _payload_maps[unsigned(argument_index)];
 
-    if (!cbvs.empty() || !srvs.empty() || !uavs.empty())
+
+    if (map.cbv_param != uint32_t(-1))
+    {
+        // root cbv
+        command_list.SetGraphicsRootConstantBufferView(map.cbv_param, argument.cbv_va + argument.cbv_view_offset);
+    }
+
+    if (map.descriptor_table_param != uint32_t(-1))
     {
         // descriptor table
-        auto desc_table = desc_allocator.allocDynamicTable(device, cbvs, srvs, uavs);
-        command_list.SetGraphicsRootDescriptorTable(root_index++, desc_table.shader_resource_handle_gpu);
-    }
-
-    if (constant_buffer_data)
-    {
-        // root CBV
-        D3D12_GPU_VIRTUAL_ADDRESS cb_gpu;
-        dynamic_buffer_ring.allocConstantBufferFromData(constant_buffer_data, map.root_cbv_size_bytes, cb_gpu);
-        command_list.SetGraphicsRootConstantBufferView(root_index++, cb_gpu);
-    }
-
-    if (root_constants_data)
-    {
-        // root constants
-        command_list.SetGraphicsRoot32BitConstants(root_index++, map.num_root_constant_dwords, root_constants_data, 0);
+        auto desc_table = desc_allocator.allocDynamicTable(device, {}, argument.srvs, argument.uavs);
+        command_list.SetGraphicsRootDescriptorTable(map.descriptor_table_param, desc_table.shader_resource_handle_gpu);
     }
 }
 
-pr::backend::d3d12::root_sig_payload_map pr::backend::d3d12::detail::root_signature_params::add_payload_sizes(const pr::backend::d3d12::root_sig_payload_size& size)
+pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(
+    const pr::backend::d3d12::shader_payload_shape::shader_argument_shape& shape)
 {
-    auto const res_index = unsigned(root_params.size());
+    shader_argument_map res_map;
+    auto const argument_visibility = D3D12_SHADER_VISIBILITY_ALL; // NOTE: Eventually arguments could be constrained to stages
 
-    if (size.num_cbvs + size.num_srvs + size.num_uavs > 0)
-        create_descriptor_table(unsigned(size.num_cbvs), unsigned(size.num_srvs), unsigned(size.num_uavs));
+    // create root descriptor to CBV
+    if (shape.has_cb)
+    {
+        CD3DX12_ROOT_PARAMETER& root_cbv = root_params.emplace_back();
+        root_cbv.InitAsConstantBufferView(0, _space, argument_visibility);
+        res_map.cbv_param = uint32_t(root_params.size() - 1);
+    }
+    else
+    {
+        res_map.cbv_param = uint32_t(-1);
+    }
 
-    if (size.root_cbv_size_bytes > 0)
-        create_root_cbv();
+    // create descriptor table for SRVs and UAVs
+    if (shape.num_srvs + shape.num_uavs > 0)
+    {
+        auto const desc_range_start = desc_ranges.size();
 
-    auto const num_constant_dwords = unsigned(size.root_constants_size_bytes / sizeof(DWORD32));
-    if (size.root_constants_size_bytes > 0)
-        create_root_constants(num_constant_dwords);
+        if (shape.num_srvs > 0)
+        {
+            desc_ranges.emplace_back();
+            desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shape.num_srvs, 0, _space);
+        }
 
-    return {res_index, size.root_cbv_size_bytes, num_constant_dwords};
+        if (shape.num_uavs > 0)
+        {
+            desc_ranges.emplace_back();
+            desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shape.num_uavs, 0, _space);
+        }
+
+        auto const desc_range_end = desc_ranges.size();
+
+        CD3DX12_ROOT_PARAMETER& desc_table = root_params.emplace_back();
+        desc_table.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), desc_ranges.data() + desc_range_start, argument_visibility);
+        res_map.descriptor_table_param = uint32_t(root_params.size() - 1);
+    }
+    else
+    {
+        res_map.descriptor_table_param = uint32_t(-1);
+    }
+
+    ++_space;
+    return res_map;
 }
 
-void pr::backend::d3d12::detail::root_signature_params::create_descriptor_table(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs)
+void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
 {
-    auto const desc_range_start = desc_ranges.size();
-
-    if (num_cbvs > 0)
-    {
-        desc_ranges.emplace_back();
-        desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, num_cbvs, register_b);
-        register_b += num_cbvs;
-    }
-
-    if (num_srvs > 0)
-    {
-        desc_ranges.emplace_back();
-        desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, num_srvs, register_t);
-        register_t += num_srvs;
-    }
-
-    if (num_uavs > 0)
-    {
-        desc_ranges.emplace_back();
-        desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, num_uavs, register_u);
-        register_u += num_uavs;
-    }
-
-    auto const desc_range_end = desc_ranges.size();
-
-    // descriptor tables cost 1 dword
-    ++size_dwords;
-
-    CD3DX12_ROOT_PARAMETER& param = root_params.emplace_back();
-    param.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), desc_ranges.data() + desc_range_start, D3D12_SHADER_VISIBILITY_ALL);
-
     // implicitly create a sampler (TODO)
     // static samplers cost no dwords towards this size
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
-    sampler.Init(register_s++);
-}
-
-void pr::backend::d3d12::detail::root_signature_params::create_root_uav()
-{
-    CD3DX12_ROOT_PARAMETER& param = root_params.emplace_back();
-
-    // root descriptors cost 2 dwords
-    size_dwords += 2;
-
-    param.InitAsUnorderedAccessView(register_u++, 0, D3D12_SHADER_VISIBILITY_ALL);
-}
-
-void pr::backend::d3d12::detail::root_signature_params::create_root_cbv()
-{
-    CD3DX12_ROOT_PARAMETER& param = root_params.emplace_back();
-
-    // root descriptors cost 2 dwords
-    size_dwords += 2;
-
-    param.InitAsConstantBufferView(register_b++, 0, D3D12_SHADER_VISIBILITY_ALL);
-}
-
-void pr::backend::d3d12::detail::root_signature_params::create_root_constants(unsigned num_dwords)
-{
-    CD3DX12_ROOT_PARAMETER& param = root_params.emplace_back();
-
-    // root constants cost their size in dowrds
-    size_dwords += num_dwords;
-
-    param.InitAsConstants(num_dwords, register_b++, 0, D3D12_SHADER_VISIBILITY_ALL);
+    sampler.Init(0);
 }

@@ -8,6 +8,7 @@
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/detail/unique_buffer.hh>
+#include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/immediate.hh>
 #include <phantasm-renderer/resources.hh>
 
@@ -32,40 +33,35 @@ struct cbv : cpu_cbv_srv_uav
 };
 }
 
-/// Describes the size of a payload
-struct root_sig_payload_size
+// A shader payload is an array of arguments
+struct shader_payload_shape
 {
-    int num_cbvs;
-    int num_srvs;
-    int num_uavs;
-    unsigned root_cbv_size_bytes;
-    unsigned root_constants_size_bytes;
+    // A shader argument consists of n SRVs, m UAVs plus a CBV and an offset into it
+    struct shader_argument_shape
+    {
+        bool has_cb = false;
+        unsigned num_srvs = 0;
+        unsigned num_uavs = 0;
+    };
+
+    static constexpr auto max_num_arguments = 4;
+    cc::capped_vector<shader_argument_shape, max_num_arguments> shader_arguments;
 };
 
-/// Contains data to be bound
-/// This is just a helper, a span and two void* are accepted as well
-struct root_sig_payload_data
+struct shader_argument
 {
-    // CPU resource views pending copy into a GPU-visible descriptor heap
-    cc::capped_vector<cpu_cbv_srv_uav, 8> cbvs;
+    D3D12_GPU_VIRTUAL_ADDRESS cbv_va = 0;
+    uint32_t cbv_view_offset = 0;
     cc::capped_vector<cpu_cbv_srv_uav, 8> srvs;
     cc::capped_vector<cpu_cbv_srv_uav, 8> uavs;
-
-    // raw, void* memory buffers pending copy into root constants and a single, dynamically allocated root CBV
-    pr::backend::detail::unique_buffer root_cbv_buffer;
-    pr::backend::detail::unique_buffer root_constant_buffer;
-
-    root_sig_payload_data() = default;
-    root_sig_payload_data(size_t cbv_size, size_t constant_size) : root_cbv_buffer(cbv_size), root_constant_buffer(constant_size) {}
 };
 
-/// Contains mapping data necessary to bind a root_sig_payload_data (to a particular root signature)
-struct root_sig_payload_map
+struct shader_argument_map
 {
-    unsigned base_root_param;
-    unsigned root_cbv_size_bytes;
-    unsigned num_root_constant_dwords;
+    unsigned cbv_param;
+    unsigned descriptor_table_param;
 };
+
 
 namespace detail
 {
@@ -75,103 +71,14 @@ struct root_signature_params
     cc::capped_vector<CD3DX12_ROOT_PARAMETER, 16> root_params;
     cc::capped_vector<CD3DX12_STATIC_SAMPLER_DESC, 16> samplers;
 
-    /// Adds a payload size into the signature description
-    /// Returns the base root parameter index of the payload
-    root_sig_payload_map add_payload_sizes(root_sig_payload_size const& size);
+    [[nodiscard]] shader_argument_map add_shader_argument_shape(shader_payload_shape::shader_argument_shape const& shape);
+    void add_implicit_sampler();
 
 private:
-    void create_descriptor_table(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs);
-
-    void create_root_uav();
-
-    void create_root_cbv();
-
-    void create_root_constants(unsigned num_dwords);
+    unsigned _space = 0;
 
 private:
     cc::capped_vector<CD3DX12_DESCRIPTOR_RANGE, 16> desc_ranges;
-
-    unsigned register_b = 0;
-    unsigned register_t = 0;
-    unsigned register_u = 0;
-    unsigned register_s = 0;
-
-    unsigned size_dwords = 0;
-};
-
-template <class DataT>
-struct data_size_measure_visitor
-{
-    root_sig_payload_size size = {};
-
-    template <class T>
-    void operator()(T const&, char const*)
-    {
-        if constexpr (std::is_same_v<T, wip::srv>)
-        {
-            ++size.num_srvs;
-        }
-        else if constexpr (std::is_same_v<T, wip::uav>)
-        {
-            ++size.num_uavs;
-        }
-        else if constexpr (std::is_same_v<T, wip::cbv>)
-        {
-            ++size.num_cbvs;
-        }
-        else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
-        {
-            // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
-            size.root_constants_size_bytes += sizeof(T);
-        }
-        else
-        {
-            // raw data, summed into a root CBV
-            size.root_cbv_size_bytes += sizeof(T);
-        }
-    }
-};
-
-template <class DataT>
-struct data_extraction_visitor
-{
-    root_sig_payload_data data;
-
-    unsigned cbv_offset = 0;
-    unsigned constants_offset = 0;
-
-    // in payload_data, cbvs, srvs and uavs must be arranged in three contiguous blocks, in that order
-
-    data_extraction_visitor(unsigned cbv_size, unsigned constants_size) : data(cbv_size, constants_size) {}
-
-    template <class T>
-    void operator()(T const& val, char const*)
-    {
-        if constexpr (std::is_same_v<T, wip::srv>)
-        {
-            data.srvs.push_back(val);
-        }
-        else if constexpr (std::is_same_v<T, wip::uav>)
-        {
-            data.uavs.push_back(val);
-        }
-        else if constexpr (std::is_same_v<T, wip::cbv>)
-        {
-            data.cbvs.push_back(val);
-        }
-        else if constexpr (std::is_base_of_v<pr::immediate, T> || std::is_base_of_v<pr::immediate, DataT>)
-        {
-            // either this sub-struct or the entire struct derives pr::immediate, this is a root constant
-            ::memcpy(static_cast<char*>(data.root_constant_buffer.get()) + constants_offset, &val, sizeof(T));
-            constants_offset += sizeof(T);
-        }
-        else
-        {
-            // raw data, summed into a root CBV
-            ::memcpy(static_cast<char*>(data.root_cbv_buffer.get()) + cbv_offset, &val, sizeof(T));
-            cbv_offset += sizeof(T);
-        }
-    }
 };
 }
 
@@ -180,59 +87,18 @@ struct data_extraction_visitor
                                                                         cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
                                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
 
-/// helper to get the payload size from any introspectable struct
-/// assumes usage as if extracting eventual data with get_payload_data
-template <class DataT>
-[[nodiscard]] root_sig_payload_size get_payload_size()
-{
-    detail::data_size_measure_visitor<DataT> visitor;
-    DataT* volatile dummy_pointer = nullptr;
-    introspect(visitor, *dummy_pointer);
-    return visitor.size;
-}
-
-/// helper to extract payload data from any introspectable struct
-/// requires a size that is equal to the one received from get_payload_size
-template <class DataT>
-[[nodiscard]] root_sig_payload_data get_payload_data(DataT const& data, root_sig_payload_size const& size)
-{
-    detail::data_extraction_visitor<DataT> visitor(size.root_cbv_size_bytes, size.root_constants_size_bytes);
-    introspect(visitor, const_cast<DataT&>(data));
-    return cc::move(visitor.data);
-}
-
 struct root_signature
 {
     /// Creates a root signature from its "shape", an array of payload sizes
-    void initialize(ID3D12Device& device, cc::span<root_sig_payload_size const> payload_sizes);
+    void initialize(ID3D12Device& device, shader_payload_shape const& payload_sizes);
 
-    /// binds a payload, given index and the raw data
-    void bind(ID3D12Device& device,
-              ID3D12GraphicsCommandList& command_list,
-              DynamicBufferRing& dynamic_buffer_ring,
-              DescriptorAllocator& desc_manager,
-              int payload_index,
-              cc::span<cpu_cbv_srv_uav const> cbvs,
-              cc::span<cpu_cbv_srv_uav const> srvs,
-              cc::span<cpu_cbv_srv_uav const> uavs,
-              void* constant_buffer_data,
-              void* root_constants_data);
-
-    void bind(ID3D12Device& device,
-              ID3D12GraphicsCommandList& command_list,
-              DynamicBufferRing& dynamic_buffer_ring,
-              DescriptorAllocator& desc_manager,
-              int payload_index,
-              root_sig_payload_data const& data)
-    {
-        bind(device, command_list, dynamic_buffer_ring, desc_manager, payload_index, data.cbvs, data.srvs, data.uavs, data.root_cbv_buffer.get(),
-             data.root_constant_buffer.get());
-    }
+    /// binds a shader argument
+    void bind(ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_manager, int argument_index, shader_argument const& argument);
 
     shared_com_ptr<ID3D12RootSignature> raw_root_sig;
 
 private:
-    cc::capped_vector<root_sig_payload_map, 8> _payload_maps;
+    cc::capped_vector<shader_argument_map, 8> _payload_maps;
 };
 
 }
