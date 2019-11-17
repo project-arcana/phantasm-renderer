@@ -111,6 +111,7 @@ void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
 {
     // implicitly create a sampler (TODO)
     // static samplers cost no dwords towards this size
+    // Note this sampler is created in space0
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
     sampler.Init(0);
 }

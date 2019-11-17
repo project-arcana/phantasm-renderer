@@ -1,16 +1,11 @@
 #pragma once
 
-#include <algorithm>
-#include <type_traits>
-
 #include <clean-core/array.hh>
 #include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/detail/unique_buffer.hh>
 #include <phantasm-renderer/backend/types.hh>
-#include <phantasm-renderer/immediate.hh>
-#include <phantasm-renderer/resources.hh>
 
 #include "memory/DynamicBufferRing.hh"
 #include "resources/resource_creation.hh"
