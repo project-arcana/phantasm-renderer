@@ -58,13 +58,15 @@ namespace detail
 struct pipeline_layout_params
 {
     // We will configure DXC to shift registers (per space) in the following way to match our bindings:
-    // CBVs (b): 0      - Starts first
-    // UAVs (u): 1      - Directly after the single CBV
-    // SRVs (t): 21     - Leaving space for 20 UAVs
-    // Samplers (s): 41 - Leaving space for 20 SRVs
-    static constexpr auto max_cbvs_per_space = 1;
-    static constexpr auto max_uavs_per_space = 20;
-    static constexpr auto max_srvs_per_space = 20;
+    // CBVs (b): 0          - Starts first
+    // SRVs (t): 1000       - Shifted by 1k
+    // UAVs (u): 2000       - Shifted by 2k
+    // Samplers (s): 3000   - Shifted by 3k
+
+    static constexpr auto cbv_binding_start = 0;
+    static constexpr auto srv_binding_start = 1000;
+    static constexpr auto uav_binding_start = 2000;
+    static constexpr auto sampler_binding_start = 3000;
 
     struct descriptor_set_params
     {

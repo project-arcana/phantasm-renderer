@@ -12,7 +12,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::ini
     {
         VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
         binding = {};
-        binding.binding = 0u; // CBV always in (0)
+        binding.binding = cbv_binding_start; // CBV always in (0)
         binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         binding.descriptorCount = 1;
         binding.stageFlags = argument_visibility;
@@ -23,7 +23,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::ini
     {
         VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
         binding = {};
-        binding.binding = max_cbvs_per_space; // UAVs start behind the CBV
+        binding.binding = uav_binding_start;
 
         // NOTE: UAVs map the following way to SPIR-V:
         // RWBuffer<T> -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
@@ -41,7 +41,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::ini
     {
         VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
         binding = {};
-        binding.binding = max_cbvs_per_space + max_uavs_per_space; // SRVs start behind the CBV and the UAVs
+        binding.binding = srv_binding_start;
         binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         binding.descriptorCount = arg_shape.num_srvs;
         binding.stageFlags = argument_visibility;
@@ -53,7 +53,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
 {
     VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
     binding = {};
-    binding.binding = max_cbvs_per_space + max_uavs_per_space + max_srvs_per_space; // The implicit sampler comes at the very last position
+    binding.binding = sampler_binding_start;
     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     binding.descriptorCount = 1;
     binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
@@ -181,7 +181,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
         write.descriptorCount = 1; // Just one CBV
         write.pBufferInfo = &cbv_info;
         write.dstArrayElement = 0;
-        write.dstBinding = 0; // CBVs always in binding 0
+        write.dstBinding = detail::pipeline_layout_params::cbv_binding_start; // CBVs always in binding 0
     }
 
     cc::capped_vector<VkDescriptorBufferInfo, 8> uav_infos;
@@ -204,7 +204,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
         write.descriptorCount = uint32_t(uav_infos.size());
         write.pBufferInfo = uav_infos.data();
         write.dstArrayElement = 0;
-        write.dstBinding = detail::pipeline_layout_params::max_cbvs_per_space; // UAVs start behind the CBV
+        write.dstBinding = detail::pipeline_layout_params::uav_binding_start;
     }
 
     cc::capped_vector<VkDescriptorImageInfo, 8> srv_infos;
@@ -226,7 +226,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
         write.descriptorCount = uint32_t(srv_infos.size());
         write.pImageInfo = srv_infos.data();
         write.dstArrayElement = 0;
-        write.dstBinding = detail::pipeline_layout_params::max_cbvs_per_space + detail::pipeline_layout_params::max_uavs_per_space; // SRVs start behind the CBV and the UAVs
+        write.dstBinding = detail::pipeline_layout_params::srv_binding_start;
     }
 
     vkUpdateDescriptorSets(device, uint32_t(writes.size()), writes.data(), 0, nullptr);
