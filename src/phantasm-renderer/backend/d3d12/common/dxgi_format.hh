@@ -2,50 +2,80 @@
 
 #include <dxgiformat.h> // This header only contains a single enum, no includes believe it or not
 
-#include <typed-geometry/detail/comp_traits.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 namespace pr::backend::d3d12::util
 {
-template <class T>
-[[nodiscard]] constexpr DXGI_FORMAT get_dxgi_format()
+[[nodiscard]] inline constexpr DXGI_FORMAT to_dxgi_format(assets::attribute_format format)
 {
-    if constexpr (tg::is_comp_like<T, 4, float>)
+    using af = assets::attribute_format;
+    switch (format)
+    {
+    case af::rgba32f:
         return DXGI_FORMAT_R32G32B32A32_FLOAT;
-    else if constexpr (tg::is_comp_like<T, 3, float>)
+    case af::rgb32f:
         return DXGI_FORMAT_R32G32B32_FLOAT;
-    else if constexpr (tg::is_comp_like<T, 2, float>)
+    case af::rg32f:
         return DXGI_FORMAT_R32G32_FLOAT;
-    else if constexpr (tg::is_comp_like<T, 1, float>)
+    case af::r32f:
         return DXGI_FORMAT_R32_FLOAT;
 
-    else if constexpr (tg::is_comp_like<T, 4, int>)
+    case af::rgba32i:
         return DXGI_FORMAT_R32G32B32A32_SINT;
-    else if constexpr (tg::is_comp_like<T, 3, int>)
+    case af::rgb32i:
         return DXGI_FORMAT_R32G32B32_SINT;
-    else if constexpr (tg::is_comp_like<T, 2, int>)
+    case af::rg32i:
         return DXGI_FORMAT_R32G32_SINT;
-    else if constexpr (tg::is_comp_like<T, 1, int>)
+    case af::r32i:
         return DXGI_FORMAT_R32_SINT;
 
-    else if constexpr (tg::is_comp_like<T, 4, unsigned>)
+    case af::rgba32u:
         return DXGI_FORMAT_R32G32B32A32_UINT;
-    else if constexpr (tg::is_comp_like<T, 3, unsigned>)
+    case af::rgb32u:
         return DXGI_FORMAT_R32G32B32_UINT;
-    else if constexpr (tg::is_comp_like<T, 2, unsigned>)
+    case af::rg32u:
         return DXGI_FORMAT_R32G32_UINT;
-    else if constexpr (tg::is_comp_like<T, 1, unsigned>)
+    case af::r32u:
         return DXGI_FORMAT_R32_UINT;
 
-    else
-    {
-        static_assert(sizeof(T) == 0, "Unknown type");
+    case af::rgba16i:
+        return DXGI_FORMAT_R16G16B16A16_SINT;
+    case af::rgb16i:
         return DXGI_FORMAT_UNKNOWN;
+    case af::rg16i:
+        return DXGI_FORMAT_R16G16_SINT;
+    case af::r16i:
+        return DXGI_FORMAT_R16_SINT;
+
+    case af::rgba16u:
+        return DXGI_FORMAT_R16G16B16A16_UINT;
+    case af::rgb16u:
+        return DXGI_FORMAT_UNKNOWN;
+    case af::rg16u:
+        return DXGI_FORMAT_R16G16_UINT;
+    case af::r16u:
+        return DXGI_FORMAT_R16_UINT;
+
+    case af::rgba8i:
+        return DXGI_FORMAT_R8G8B8A8_SINT;
+    case af::rgb8i:
+        return DXGI_FORMAT_UNKNOWN;
+    case af::rg8i:
+        return DXGI_FORMAT_R8G8_SINT;
+    case af::r8i:
+        return DXGI_FORMAT_R8_SINT;
+
+    case af::rgba8u:
+        return DXGI_FORMAT_R8G8B8A8_UINT;
+    case af::rgb8u:
+        return DXGI_FORMAT_UNKNOWN;
+    case af::rg8u:
+        return DXGI_FORMAT_R8G8_UINT;
+    case af::r8u:
+        return DXGI_FORMAT_R8_UINT;
     }
+    return DXGI_FORMAT_UNKNOWN;
 }
-
-template <class T>
-static constexpr DXGI_FORMAT dxgi_format = get_dxgi_format<T>();
-
 
 [[nodiscard]] inline constexpr unsigned get_dxgi_bytes_per_pixel(DXGI_FORMAT fmt)
 {
@@ -286,4 +316,3 @@ static constexpr DXGI_FORMAT dxgi_format = get_dxgi_format<T>();
     }
 }
 }
-
