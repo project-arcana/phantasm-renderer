@@ -7,7 +7,6 @@
 
 namespace pr::backend::d3d12
 {
-
 class Device
 {
     // reference type
@@ -20,8 +19,9 @@ public:
 
     void initialize(IDXGIAdapter& adapter, d3d12_config const& config);
 
-    [[nodiscard]] bool hasSM6WaveIntrinsics() const { return mHasSM6WaveIntrinsics; }
-    [[nodiscard]] bool hasRaytracing() const { return mDeviceRaytracing.is_valid(); }
+    [[nodiscard]] bool hasSM6() const { return mCapabilities.sm6; }
+    [[nodiscard]] bool hasSM6WaveIntrinsics() const { return mCapabilities.sm6_wave_intrins; }
+    [[nodiscard]] bool hasRaytracing() const { return mCapabilities.raytracing; }
 
     [[nodiscard]] ID3D12Device& getDevice() const { return *mDevice.get(); }
     [[nodiscard]] shared_com_ptr<ID3D12Device> const& getDeviceShared() const { return mDevice; }
@@ -29,7 +29,13 @@ public:
 private:
     shared_com_ptr<ID3D12Device> mDevice;
     shared_com_ptr<ID3D12Device5> mDeviceRaytracing;
-    bool mHasSM6WaveIntrinsics = false; // TODO: Bitset for capabilities
+
+    struct capabilities
+    {
+        bool sm6 = false;
+        bool sm6_wave_intrins = false;
+        bool raytracing = false;
+    } mCapabilities;
 };
 
 }
