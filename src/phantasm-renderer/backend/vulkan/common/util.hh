@@ -8,16 +8,18 @@ namespace pr::backend::vk::util
 {
 inline void set_viewport(VkCommandBuffer command_buf, tg::ivec2 size, int start_x = 0, int start_y = 0)
 {
-    // This call sets a flipped viewport using the VK_KHR_Maintenance1 extension
-    // which is core in Vulkan 1.1 (which we use)
-    // this causes the viewport to behave as it does in OpenGL
-    // see https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/
+    // vulkans viewport has a flipped y axis
+    // this can be remedied by setting a negative height, see
+    // https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/
+
+    // however, this call now sets a normal, non flipped viewport,
+    // we take care of flip via the -fvk-invert-y flag in dxc
 
     VkViewport viewport = {};
     viewport.x = float(start_x);
-    viewport.y = float(size.y + start_y);
+    viewport.y = float(start_y);
     viewport.width = float(size.x);
-    viewport.height = -float(size.y);
+    viewport.height = float(size.y);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
