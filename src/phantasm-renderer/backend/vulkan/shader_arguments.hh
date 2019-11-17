@@ -111,6 +111,7 @@ struct descriptor_set_bundle
     cc::capped_vector<VkDescriptorSet, 4> descriptor_sets;
 
     void initialize(DescriptorAllocator& allocator, pipeline_layout const& layout);
+    void free(DescriptorAllocator &allocator);
 
     void update(VkDevice device, int argument_index, shader_argument const& argument);
 };

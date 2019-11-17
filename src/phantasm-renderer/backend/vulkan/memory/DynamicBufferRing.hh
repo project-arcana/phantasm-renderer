@@ -73,6 +73,8 @@ public:
 
     void setDescriptorSet(uint32_t index, uint32_t size, VkDescriptorSet descriptorSet);
 
+    VkBuffer getBuffer() const { return mBuffer.buffer; }
+
 private:
     Device* mDevice = nullptr;
     Allocator* mAllocator = nullptr;

@@ -53,7 +53,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
 {
     VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
     binding = {};
-    binding.binding = max_cbvs_per_space + max_uavs_per_space + max_cbvs_per_space; // The implicit sampler comes at the very last position
+    binding.binding = max_cbvs_per_space + max_uavs_per_space + max_srvs_per_space; // The implicit sampler comes at the very last position
     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     binding.descriptorCount = 1;
     binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
@@ -150,6 +150,12 @@ void pr::backend::vk::descriptor_set_bundle::initialize(pr::backend::vk::Descrip
     }
 }
 
+void pr::backend::vk::descriptor_set_bundle::free(pr::backend::vk::DescriptorAllocator& allocator)
+{
+    for (auto desc_set : descriptor_sets)
+        allocator.free(desc_set);
+}
+
 void pr::backend::vk::descriptor_set_bundle::update(VkDevice device, int argument_index, const pr::backend::vk::shader_argument& argument)
 {
     auto const& desc_set = descriptor_sets[uint32_t(argument_index)];
@@ -163,7 +169,7 @@ void pr::backend::vk::descriptor_set_bundle::update(VkDevice device, int argumen
 
         cbv_info = {};
         cbv_info.buffer = argument.cbv;
-        cbv_info.offset = 0;
+        cbv_info.offset = argument.cbv_view_offset;
         cbv_info.range = argument.cbv_view_size;
 
         auto& write = writes.emplace_back();
