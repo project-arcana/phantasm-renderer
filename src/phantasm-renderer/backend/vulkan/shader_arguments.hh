@@ -111,9 +111,22 @@ struct descriptor_set_bundle
     cc::capped_vector<VkDescriptorSet, 4> descriptor_sets;
 
     void initialize(DescriptorAllocator& allocator, pipeline_layout const& layout);
-    void free(DescriptorAllocator &allocator);
+    void free(DescriptorAllocator& allocator);
 
-    void update(VkDevice device, int argument_index, shader_argument const& argument);
+    /// update the n-th argument
+    void update_argument(VkDevice device, uint32_t argument_index, shader_argument const& argument);
+
+    /// bind the n-th argument at a dynamic offset
+    void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index, uint32_t cb_offset)
+    {
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 1, &cb_offset);
+    }
+
+    /// bind the n-th argument (no offset)
+    void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
+    {
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
+    }
 };
 
 }

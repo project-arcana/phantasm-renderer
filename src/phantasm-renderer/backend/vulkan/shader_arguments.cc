@@ -156,9 +156,9 @@ void pr::backend::vk::descriptor_set_bundle::free(pr::backend::vk::DescriptorAll
         allocator.free(desc_set);
 }
 
-void pr::backend::vk::descriptor_set_bundle::update(VkDevice device, int argument_index, const pr::backend::vk::shader_argument& argument)
+void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, uint32_t argument_index, const pr::backend::vk::shader_argument& argument)
 {
-    auto const& desc_set = descriptor_sets[uint32_t(argument_index)];
+    auto const& desc_set = descriptor_sets[argument_index];
 
     cc::capped_vector<VkWriteDescriptorSet, 3> writes;
     VkDescriptorBufferInfo cbv_info;
