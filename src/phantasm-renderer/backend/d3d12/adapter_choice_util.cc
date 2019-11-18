@@ -102,7 +102,7 @@ cc::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapte
     return res;
 }
 
-unsigned pr::backend::d3d12::get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, pr::backend::d3d12::adapter_preference preference)
+unsigned pr::backend::d3d12::get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, pr::backend::adapter_preference preference)
 {
     if (candidates.empty())
         return unsigned(-1);

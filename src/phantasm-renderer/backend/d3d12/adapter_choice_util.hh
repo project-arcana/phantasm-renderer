@@ -5,9 +5,9 @@
 #include <clean-core/vector.hh>
 #include <clean-core/span.hh>
 
-#include "common/d3d12_sanitized.hh"
+#include <phantasm-renderer/backend/types.hh>
 
-#include "d3d12_config.hh"
+#include "common/d3d12_sanitized.hh"
 
 namespace pr::backend::d3d12
 {

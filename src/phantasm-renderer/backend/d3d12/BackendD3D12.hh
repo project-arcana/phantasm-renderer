@@ -1,6 +1,7 @@
 #pragma once
 
 #include <phantasm-renderer/backend/BackendInterface.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include "Adapter.hh"
 #include "Device.hh"
@@ -13,7 +14,7 @@ namespace pr::backend::d3d12
 class BackendD3D12 final : public BackendInterface
 {
 public:
-    void initialize(d3d12_config const& config, HWND handle);
+    void initialize(backend_config const& config, HWND handle);
 
     /// flush all pending work on the GPU
     void flushGPU();

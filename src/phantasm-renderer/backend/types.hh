@@ -19,6 +19,42 @@ enum class shader_domain
     compute
 };
 
+enum class adapter_preference : char
+{
+    highest_vram,
+    first,
+    integrated,
+    highest_feature_level,
+    explicit_index
+};
+
+enum class validation_level : char
+{
+    off,
+
+    // D3D12: Whether to enable debug layers, requires installed D3D12 SDK
+    // Vulkan: Whether to enable validation, requires installed LunarG SDK
+    on,
+
+    // D3D12: Whether to additionally enable GPU based validation (slow)
+    // Vulkan: No additional effect
+    on_extended
+};
+
+struct backend_config
+{
+    validation_level validation = validation_level::on;
+
+    adapter_preference adapter_preference = adapter_preference::highest_vram;
+    unsigned explicit_adapter_index = unsigned(-1);
+
+    /// Enable DXR / VK raytracing features if available
+    bool enable_raytracing = true;
+
+    /// Amount of backbuffers to create
+    unsigned num_backbuffers = 3;
+};
+
 namespace assets
 {
 enum class attribute_format

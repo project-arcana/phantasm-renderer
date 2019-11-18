@@ -2,12 +2,11 @@
 
 #include <clean-core/assert.hh>
 
-#include "common/d3d12_sanitized.hh"
-
 #include "adapter_choice_util.hh"
+#include "common/d3d12_sanitized.hh"
 #include "common/verify.hh"
 
-void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
+void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 {
     // Factory init
     {
@@ -29,7 +28,7 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
     }
 
     // Debug layer init
-    if (config.enable_validation)
+    if (config.validation == validation_level::on || config.validation == validation_level::on_extended)
     {
         shared_com_ptr<ID3D12Debug> debug_controller;
         bool const debug_init_success = SUCCEEDED(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));
@@ -38,7 +37,7 @@ void pr::backend::d3d12::Adapter::initialize(d3d12_config const& config)
         {
             debug_controller->EnableDebugLayer();
 
-            if (config.enable_validation_extended)
+            if (config.validation == validation_level::on_extended)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
                 PR_D3D12_VERIFY(debug_controller.get_interface(debug_controller_v3));
