@@ -47,6 +47,7 @@ public:
     [[nodiscard]] int getHeight() const { return mHeight; }
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
 
+public:
 #ifdef PR_BACKEND_VULKAN
     static cc::span<char const*> getRequiredInstanceExtensions();
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);

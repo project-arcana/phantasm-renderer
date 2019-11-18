@@ -10,9 +10,9 @@
 #include <clean-core/capped_vector.hh>
 
 #ifdef PR_BACKEND_VULKAN
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
+#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #endif
 
 namespace
@@ -23,13 +23,9 @@ namespace
 
 int s_screen;
 
-::Atom s_atom_wm_protocols;
-
 ::Atom s_atom_wm_delete_window;
 ::Atom s_atom_wm_ping;
-
-
-cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
+::Atom s_atom_wm_protocols;
 }
 
 pr::backend::device::Window::~Window()
@@ -172,6 +168,11 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 
 
 #ifdef PR_BACKEND_VULKAN
+namespace
+{
+cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
+}
+
 cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
 
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
@@ -184,7 +185,7 @@ void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSur
     surface_info.flags = 0;
     PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &out_surface));
 }
-#endif
+#endif // PR_BACKEND_VULKAN
 
 
-#endif
+#endif // CC_OS_LINUX

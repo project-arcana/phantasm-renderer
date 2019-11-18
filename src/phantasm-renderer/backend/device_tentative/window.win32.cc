@@ -9,9 +9,9 @@
 #include <clean-core/native/win32_sanitized.hh>
 
 #ifdef PR_BACKEND_VULKAN
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
+#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #endif
 
 struct pr::backend::device::Window::event_proxy
@@ -24,6 +24,7 @@ struct pr::backend::device::Window::event_proxy
 namespace
 {
 pr::backend::device::Window::event_proxy s_event_proxy;
+::HWND s_window_handle;
 
 ::LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -47,10 +48,6 @@ pr::backend::device::Window::event_proxy s_event_proxy;
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 }
-
-::HWND s_window_handle;
-
-cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
 }
 
 pr::backend::device::Window::~Window()
@@ -93,10 +90,10 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
 
 void pr::backend::device::Window::pollEvents()
 {
-    MSG msg = {};
+    ::MSG msg = {};
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
     {
-        TranslateMessage(&msg);
+        ::TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
 }
@@ -111,8 +108,12 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
     mPendingResize = true;
 }
 
-
 #ifdef PR_BACKEND_VULKAN
+namespace
+{
+cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+}
+
 cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
 
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
@@ -123,10 +124,10 @@ void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSur
     surface_info.hinstance = GetModuleHandle(nullptr);
     PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &out_surface));
 }
-#endif
+#endif // PR_BACKEND_VULKAN
 
 #ifdef PR_BACKEND_D3D12
 HWND pr::backend::device::Window::getHandle() const { return s_window_handle; }
-#endif
+#endif // PR_BACKEND_D3D12
 
-#endif
+#endif // CC_OS_WINDOWS
