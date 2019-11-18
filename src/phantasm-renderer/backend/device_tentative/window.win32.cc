@@ -1,6 +1,7 @@
 #include "window.hh"
 #ifdef CC_OS_WINDOWS
 
+#include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 #include <clean-core/native/win32_sanitized.hh>
 
@@ -43,6 +44,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
 }
 
+cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
 }
 
 pr::backend::device::Window::~Window()
@@ -93,15 +95,6 @@ void pr::backend::device::Window::pollEvents()
     }
 }
 
-cc::vector<char const*> pr::backend::device::Window::getRequiredInstanceExtensions()
-{
-    cc::vector<char const*> res;
-    res.reserve(2);
-    res.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    res.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-    return res;
-}
-
 void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
 
 void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
@@ -114,6 +107,8 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 
 
 #ifdef PR_BACKEND_VULKAN
+cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
+
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
 {
     VkWin32SurfaceCreateInfoKHR surface_info;

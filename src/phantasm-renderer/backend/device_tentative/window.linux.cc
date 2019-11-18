@@ -3,6 +3,9 @@
 
 #include <X11/Xlib.h>
 
+#include <clean-core/array.hh>
+#include <clean-core/capped_vector.hh>
+
 #ifdef PR_BACKEND_VULKAN
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
@@ -19,13 +22,16 @@ int s_screen;
 ::Atom s_atom_unminimized;
 ::Atom s_atom_maximized_h;
 ::Atom s_atom_maximized_v;
+
+
+cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
 }
 
 pr::backend::device::Window::~Window()
 {
     CC_RUNTIME_ASSERT(s_display != nullptr);
 
-    // A requested close is triggered by a WM_DELETE_WINDOW message, which already deletes everything
+    // A requested close is triggered by a WM_DELETE_WINDOW message, which already deletes everything, so this would be a double close
     if (!mIsRequestingClose)
         ::XCloseDisplay(s_display);
 
@@ -44,25 +50,38 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     mHeight = height;
     mPendingResize = true;
 
-    s_window = ::XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, unsigned(mWidth), unsigned(mHeight), 0,
+    // Create a window with the given initial size
+    // position arguments are ignored by most WMs
+    s_window = ::XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 100, 100, unsigned(mWidth), unsigned(mHeight), 0,
                                      BlackPixel(s_display, s_screen), WhitePixel(s_display, s_screen));
 
-    s_atom_delete_message = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0);
+    {
+        cc::capped_vector<::Atom, 5> atoms;
 
-    // TODO: Unused
-    s_atom_minimized = ::XInternAtom(s_display, "_NET_WM_STATE_HIDDEN", 0);
-    s_atom_unminimized = ::XInternAtom(s_display, "_NET_WM_STATE", 0);
-    s_atom_maximized_h = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_VERT", 0);
-    s_atom_maximized_v = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0);
+        // Save the atom corresponding to the WM window close event
+        atoms.push_back(s_atom_delete_message = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0));
 
-    ::XSetWMProtocols(s_display, s_window, &s_atom_delete_message, 1);
+        // Save additional events regarding minimization, UNUSED
+        atoms.push_back(s_atom_minimized = ::XInternAtom(s_display, "_NET_WM_STATE_HIDDEN", 0));
+        atoms.push_back(s_atom_unminimized = ::XInternAtom(s_display, "_NET_WM_STATE", 0));
+        atoms.push_back(s_atom_maximized_h = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_VERT", 0));
+        atoms.push_back(s_atom_maximized_v = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0));
 
+        // Subscribe to the atom events
+        ::XSetWMProtocols(s_display, s_window, atoms.data(), int(atoms.size()));
+    }
+
+    // Select inputs regarding structural and property changes for resizes
     ::XSelectInput(s_display, s_window, StructureNotifyMask | PropertyChangeMask);
+
+    // Set the window title
     ::XStoreName(s_display, s_window, title);
+
+    // Map the window and flush pending outgoing X messages
     ::XMapWindow(s_display, s_window);
     ::XFlush(s_display);
 
-    // Wait for MapNotify
+    // Block until the window is mapped
     while (true)
     {
         ::XEvent e;
@@ -105,14 +124,7 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 
 
 #ifdef PR_BACKEND_VULKAN
-cc::vector<char const*> pr::backend::device::Window::getRequiredInstanceExtensions()
-{
-    cc::vector<char const*> res;
-    res.reserve(2);
-    res.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    res.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-    return res;
-}
+cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
 
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
 {

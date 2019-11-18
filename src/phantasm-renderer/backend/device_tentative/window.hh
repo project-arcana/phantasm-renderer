@@ -6,7 +6,7 @@
 typedef struct HWND__* HWND;
 
 #ifdef PR_BACKEND_VULKAN
-#include <clean-core/vector.hh>
+#include <clean-core/span.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #endif
@@ -47,8 +47,8 @@ public:
     [[nodiscard]] int getHeight() const { return mHeight; }
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
 
-#ifdef PR_BACKEND_VULKAN
-    static cc::vector<char const*> getRequiredInstanceExtensions();
+#ifdef PR_BACKEND_VULKAN    
+    static cc::span<char const*> getRequiredInstanceExtensions();
 
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
 #endif
