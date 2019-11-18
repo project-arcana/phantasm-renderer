@@ -63,11 +63,11 @@ pr::backend::handle::shader_view pr::backend::d3d12::shader_view_allocator::crea
                 // TODO
                 CC_RUNTIME_ASSERT(false && "Unimplemented");
                 ID3D12Resource* const raw_resource = nullptr; // ???::get_raw_resource(uav);
-                auto const gpu_handle = _srv_uav_allocator.increment_to_index(cpu_base, descriptor_index++);
+                auto const cpu_handle = _srv_uav_allocator.increment_to_index(cpu_base, descriptor_index++);
 
                 // Create a default UAV, without a counter resource
                 // (NOTE: Eventually we need more detailed views)
-                device.CreateUnorderedAccessView(raw_resource, nullptr, nullptr, gpu_handle);
+                device.CreateUnorderedAccessView(raw_resource, nullptr, nullptr, cpu_handle);
             }
         }
 
