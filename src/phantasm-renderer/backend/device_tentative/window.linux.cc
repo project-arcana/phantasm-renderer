@@ -1,6 +1,8 @@
 #include "window.hh"
 #ifdef CC_OS_LINUX
 
+#include <iostream> // NOCHECKIN
+
 #include <X11/Xlib.h>
 
 #include <clean-core/array.hh>
@@ -15,13 +17,14 @@ namespace
 {
 ::Display* s_display = nullptr;
 ::Window s_window;
+::Window s_root_window;
+
 int s_screen;
 
-::Atom s_atom_delete_message;
-::Atom s_atom_minimized;
-::Atom s_atom_unminimized;
-::Atom s_atom_maximized_h;
-::Atom s_atom_maximized_v;
+::Atom s_atom_wm_protocols;
+
+::Atom s_atom_wm_delete_window;
+::Atom s_atom_wm_ping;
 
 
 cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
@@ -45,34 +48,47 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     CC_RUNTIME_ASSERT(s_display != nullptr && "Failed to open display");
 
     s_screen = DefaultScreen(s_display);
+    s_root_window = RootWindow(s_display, s_screen);
 
     mWidth = width;
     mHeight = height;
     mPendingResize = true;
 
-    // Create a window with the given initial size
-    // position arguments are ignored by most WMs
-    s_window = ::XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 100, 100, unsigned(mWidth), unsigned(mHeight), 0,
-                                     BlackPixel(s_display, s_screen), WhitePixel(s_display, s_screen));
+    {
+        ::Visual* const visual = DefaultVisual(s_display, s_screen);
+        int const depth = DefaultDepth(s_display, s_screen);
+        ::Colormap const colormap = ::XCreateColormap(s_display, s_root_window, visual, AllocNone);
+
+        XSetWindowAttributes window_attribs;
+        window_attribs.colormap = colormap;
+        window_attribs.border_pixel = 0;
+        window_attribs.event_mask = StructureNotifyMask | PropertyChangeMask; /*| KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask
+                                    | ButtonReleaseMask | ExposureMask | FocusChangeMask | VisibilityChangeMask | EnterWindowMask | LeaveWindowMask*/
+
+        auto const window_attrib_mask = CWBorderPixel | CWColormap | CWEventMask;
+
+        // Create a window with the given initial size
+        // position arguments are ignored by most WMs
+        s_window = XCreateWindow(s_display, s_root_window, 0, 0, unsigned(mWidth), unsigned(mHeight), 0, depth, InputOutput, visual,
+                                 window_attrib_mask, &window_attribs);
+
+        CC_RUNTIME_ASSERT(!!s_window && "Failed to create window");
+    }
 
     {
         cc::capped_vector<::Atom, 5> atoms;
 
-        // Save the atom corresponding to the WM window close event
-        atoms.push_back(s_atom_delete_message = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0));
-
-        // Save additional events regarding minimization, UNUSED
-        atoms.push_back(s_atom_minimized = ::XInternAtom(s_display, "_NET_WM_STATE_HIDDEN", 0));
-        atoms.push_back(s_atom_unminimized = ::XInternAtom(s_display, "_NET_WM_STATE", 0));
-        atoms.push_back(s_atom_maximized_h = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_VERT", 0));
-        atoms.push_back(s_atom_maximized_v = ::XInternAtom(s_display, "_NET_WM_STATE_MAXIMIZED_HORZ", 0));
+        // WM window close event
+        atoms.push_back(s_atom_wm_delete_window = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0));
+        // WM ping (checks if the window is still alive)
+        atoms.push_back(s_atom_wm_ping = ::XInternAtom(s_display, "_NET_WM_PING", 0));
 
         // Subscribe to the atom events
         ::XSetWMProtocols(s_display, s_window, atoms.data(), int(atoms.size()));
-    }
 
-    // Select inputs regarding structural and property changes for resizes
-    ::XSelectInput(s_display, s_window, StructureNotifyMask | PropertyChangeMask);
+        // Store the WM protocols atom for discerning events
+        s_atom_wm_protocols = ::XInternAtom(s_display, "WM_PROTOCOLS", 0);
+    }
 
     // Set the window title
     ::XStoreName(s_display, s_window, title);
@@ -89,11 +105,20 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
         if (e.type == MapNotify)
             break;
     }
+
+    // Fetch and update the initial size
+    {
+        ::XWindowAttributes attribs;
+        ::XGetWindowAttributes(s_display, s_window, &attribs);
+        mWidth = attribs.width;
+        mHeight = attribs.height;
+    }
 }
 
 void pr::backend::device::Window::pollEvents()
 {
-    while (::XPending(s_display) > 0)
+    ::XPending(s_display);
+    while (::XQLength(s_display) > 0)
     {
         ::XEvent e;
         ::XNextEvent(s_display, &e);
@@ -104,10 +129,31 @@ void pr::backend::device::Window::pollEvents()
         }
         else if (e.type == ClientMessage)
         {
-            if (e.xclient.data.l[0] == long(s_atom_delete_message))
-                onCloseEvent();
+            if (e.xclient.message_type == None)
+                continue;
+
+            if (e.xclient.message_type == s_atom_wm_protocols)
+            {
+                auto const& atom = e.xclient.data.l[0];
+
+                if (atom == None)
+                    continue;
+
+                if (atom == long(s_atom_wm_delete_window))
+                    // Window closed by the WM
+                    onCloseEvent();
+                else if (atom == long(s_atom_wm_ping))
+                {
+                    // WM checks if this window is still responding
+                    ::XEvent reply = e;
+                    reply.xclient.window = s_window;
+                    ::XSendEvent(s_display, s_window, 0, SubstructureNotifyMask | SubstructureRedirectMask, &reply);
+                }
+            }
         }
     }
+
+    ::XFlush(s_display);
 }
 void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
 
