@@ -40,7 +40,7 @@ struct backbuffer_information
 [[nodiscard]] VkSurfaceFormatKHR choose_backbuffer_format(cc::span<VkSurfaceFormatKHR const> available_formats);
 [[nodiscard]] VkPresentModeKHR choose_present_mode(cc::span<VkPresentModeKHR const> available_modes, bool prefer_synced = true);
 
-[[nodiscard]] VkExtent2D get_swap_extent(VkSurfaceCapabilitiesKHR const& capabilities, VkExtent2D fallback_size);
+[[nodiscard]] VkExtent2D get_swap_extent(VkSurfaceCapabilitiesKHR const& capabilities, VkExtent2D extent_hint);
 
 [[nodiscard]] inline VkSurfaceTransformFlagBitsKHR choose_identity_transform(VkSurfaceCapabilitiesKHR const& capabilities)
 {
