@@ -1,14 +1,14 @@
 #pragma once
 
-#include <clean-core/macros.hh>
-
-// Win32 HWND forward declaration
-typedef struct HWND__* HWND;
-
 #ifdef PR_BACKEND_VULKAN
 #include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
+typedef struct VkInstance_T* VkInstance;
+typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
+#endif
+
+#ifdef PR_BACKEND_D3D12
+typedef struct HWND__* HWND;
 #endif
 
 namespace pr::backend::device
@@ -47,21 +47,19 @@ public:
     [[nodiscard]] int getHeight() const { return mHeight; }
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
 
-#ifdef PR_BACKEND_VULKAN    
+#ifdef PR_BACKEND_VULKAN
     static cc::span<char const*> getRequiredInstanceExtensions();
-
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
 #endif
 
 #ifdef PR_BACKEND_D3D12
-    [[nodiscard]] HWND getHandle() const { return mHandle; }
+    [[nodiscard]] ::HWND getHandle() const;
 #endif
 
 private:
     void onCloseEvent();
     void onResizeEvent(int w, int h, bool minimized);
 
-    HWND mHandle;
     int mWidth = 0;
     int mHeight = 0;
     bool mIsMinimized = false;

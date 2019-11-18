@@ -1,7 +1,8 @@
 #include "window.hh"
-#ifdef CC_OS_LINUX
 
-#include <iostream> // NOCHECKIN
+#include <clean-core/macros.hh>
+
+#ifdef CC_OS_LINUX
 
 #include <X11/Xlib.h>
 
@@ -9,6 +10,7 @@
 #include <clean-core/capped_vector.hh>
 
 #ifdef PR_BACKEND_VULKAN
+#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
 #endif
