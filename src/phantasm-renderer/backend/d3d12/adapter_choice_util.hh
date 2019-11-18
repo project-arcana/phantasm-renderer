@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include <clean-core/vector.hh>
 #include <clean-core/span.hh>
+#include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/types.hh>
 
@@ -11,14 +11,6 @@
 
 namespace pr::backend::d3d12
 {
-enum class adapter_vendor
-{
-    amd,
-    intel,
-    nvidia,
-    unknown
-};
-
 struct adapter_candidate
 {
     adapter_vendor vendor;
@@ -28,6 +20,7 @@ struct adapter_candidate
     size_t dedicated_system_memory_bytes;
     size_t shared_system_memory_bytes;
 
+    // std over cc because of wchar support
     std::string description;
     D3D_FEATURE_LEVEL max_feature_level;
 };
@@ -41,5 +34,5 @@ struct adapter_candidate
 /// Get all available adapter candidates
 [[nodiscard]] cc::vector<adapter_candidate> get_adapter_candidates();
 
-[[nodiscard]] unsigned get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, adapter_preference preference);
+[[nodiscard]] unsigned get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, backend::adapter_preference preference);
 }

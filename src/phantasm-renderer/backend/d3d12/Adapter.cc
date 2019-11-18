@@ -28,7 +28,7 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
     }
 
     // Debug layer init
-    if (config.validation == validation_level::on || config.validation == validation_level::on_extended)
+    if (config.validation != validation_level::off)
     {
         shared_com_ptr<ID3D12Debug> debug_controller;
         bool const debug_init_success = SUCCEEDED(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));

@@ -7,7 +7,7 @@
 #include "common/shared_com_ptr.hh"
 #include "common/verify.hh"
 
-pr::backend::d3d12::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsigned id)
+pr::backend::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsigned id)
 {
     switch (id)
     {

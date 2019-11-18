@@ -28,6 +28,14 @@ enum class adapter_preference : char
     explicit_index
 };
 
+enum class adapter_vendor
+{
+    amd,
+    intel,
+    nvidia,
+    unknown
+};
+
 enum class validation_level : char
 {
     off,
