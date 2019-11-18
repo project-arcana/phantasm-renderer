@@ -109,7 +109,7 @@ VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentMo
 
 VkExtent2D pr::backend::vk::get_swap_extent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D extent_hint)
 {
-    if (capabilities.currentExtent.width == UINT32_MAX)
+    if (capabilities.currentExtent.width != UINT32_MAX)
     {
         return capabilities.currentExtent;
     }
