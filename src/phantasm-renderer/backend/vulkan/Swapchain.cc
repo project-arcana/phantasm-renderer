@@ -122,8 +122,8 @@ void pr::backend::vk::Swapchain::present()
 
     if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR)
     {
-        // onResize(0, 0);
-        CC_RUNTIME_ASSERT(false && "Out of date / suboptimal!");
+        onResize(0, 0);
+        return;
     }
     else
     {
@@ -137,19 +137,21 @@ void pr::backend::vk::Swapchain::present()
     vkWaitForFences(mDevice, 1, &mBackbuffers[mActiveFenceIndex].fence_command_buf_executed, VK_TRUE, UINT64_MAX);
 }
 
-void pr::backend::vk::Swapchain::waitForBackbuffer()
+bool pr::backend::vk::Swapchain::waitForBackbuffer()
 {
     auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
 
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
     {
-        // onResize(0, 0);
-        CC_RUNTIME_ASSERT(false && "Out of date / suboptimal!");
+        onResize(0, 0);
+        return false;
     }
     else
     {
         PR_VK_ASSERT_SUCCESS(res);
     }
+
+    return true;
 }
 
 void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_buf)
@@ -182,6 +184,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
     auto const present_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
     auto const new_extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(width_hint), unsigned(height_hint)});
     mBackbufferSize = tg::ivec2{int(new_extent.width), int(new_extent.height)};
+    mBackbufferHasResized = true;
 
     // Create swapchain
     {

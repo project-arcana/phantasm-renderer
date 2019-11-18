@@ -1,7 +1,8 @@
 #include "gpu_choice_util.hh"
 
-#include <clean-core/utility.hh>
 #include <cstdint>
+
+#include <clean-core/utility.hh>
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "common/verify.hh"

@@ -28,12 +28,16 @@ public:
     void performPresentSubmit(VkCommandBuffer command_buf);
 
     /// present the active backbuffer to the screen
+    /// can trigger a resize instead of presenting if the swapchain is stale
     void present();
 
     /// wait for the next backbuffer
     /// this has to be called before calls to getCurrent<X>
-    void waitForBackbuffer();
+    /// if this returns false, the backbuffer has resized, and the frame should likely be discarded
+    [[nodiscard]] bool waitForBackbuffer();
 
+    [[nodiscard]] bool hasBackbufferResized() { return mBackbufferHasResized; }
+    void clearBackbufferResizeFlag() { mBackbufferHasResized = false; }
 
 public:
     [[nodiscard]] VkFormat getBackbufferFormat() const { return mBackbufferFormat.format; }
@@ -88,7 +92,7 @@ private:
 
     VkSurfaceFormatKHR mBackbufferFormat;
     tg::ivec2 mBackbufferSize;
-    VkExtent2D mBackbufferExtent;
+    bool mBackbufferHasResized = true;
 };
 
 }
