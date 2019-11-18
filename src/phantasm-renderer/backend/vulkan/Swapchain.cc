@@ -100,10 +100,10 @@ void pr::backend::vk::Swapchain::destroy()
     }
 }
 
-void pr::backend::vk::Swapchain::onResize(int width, int height)
+void pr::backend::vk::Swapchain::onResize(int width_hint, int height_hint)
 {
     destroySwapchain();
-    createSwapchain(width, height);
+    createSwapchain(width_hint, height_hint);
 }
 
 void pr::backend::vk::Swapchain::present()
@@ -118,7 +118,17 @@ void pr::backend::vk::Swapchain::present()
     present.pImageIndices = &mActiveImageIndex;
     present.pResults = nullptr;
 
-    PR_VK_VERIFY_SUCCESS(vkQueuePresentKHR(mPresentQueue, &present));
+    auto const present_res = vkQueuePresentKHR(mPresentQueue, &present);
+
+    if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR)
+    {
+        // onResize(0, 0);
+        CC_RUNTIME_ASSERT(false && "Out of date / suboptimal!");
+    }
+    else
+    {
+        PR_VK_ASSERT_SUCCESS(present_res);
+    }
 
     ++mActiveFenceIndex;
     if (mActiveFenceIndex >= mBackbuffers.size())
@@ -129,7 +139,17 @@ void pr::backend::vk::Swapchain::present()
 
 void pr::backend::vk::Swapchain::waitForBackbuffer()
 {
-    vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
+    auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
+
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+    {
+        // onResize(0, 0);
+        CC_RUNTIME_ASSERT(false && "Out of date / suboptimal!");
+    }
+    else
+    {
+        PR_VK_ASSERT_SUCCESS(res);
+    }
 }
 
 void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_buf)

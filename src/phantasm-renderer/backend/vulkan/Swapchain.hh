@@ -20,7 +20,7 @@ public:
 
 public:
     /// flushes the device and recreates the swapchain, and all associated resources
-    void onResize(int width, int height);
+    void onResize(int width_hint, int height_hint);
 
     /// all-in-one convenience to fill out a VkSubmitInfo struct with the necessary semaphores,
     /// then submit the given command buffer with the necessary fence
