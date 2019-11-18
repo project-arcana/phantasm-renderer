@@ -18,7 +18,7 @@ struct page_allocator
     {
         auto const num_pages = int_div_ceil(num_elements, num_elems_per_page);
         this->_page_size = num_elems_per_page;
-        _pages = cc::array<int>::filled(num_pages, 0);
+        _pages = cc::array<int>::filled(unsigned(num_pages), 0);
     }
 
     /// allocate a block of the given size, returns the resulting page or -1
@@ -33,7 +33,7 @@ struct page_allocator
             if (page_val > 0)
             {
                 // allocated block, skip forward
-                i += (page_val - 1);
+                i = unsigned(int(i) + (page_val - 1));
                 num_contiguous_free_pages = 0;
             }
             else
@@ -43,8 +43,8 @@ struct page_allocator
                 if (num_contiguous_free_pages == num_pages)
                 {
                     // contiguous space sufficient, return start of page
-                    auto const allocation_start = i - (num_pages - 1);
-                    _pages[allocation_start] = num_pages;
+                    auto const allocation_start = int(i) - (num_pages - 1);
+                    _pages[unsigned(allocation_start)] = num_pages;
                     return allocation_start;
                 }
             }
@@ -58,12 +58,13 @@ struct page_allocator
     void free(int page)
     {
         if (page >= 0)
-            _pages[page] = 0;
+            _pages[unsigned(page)] = 0;
     }
 
     void free_all() { cc::fill(_pages, 0); }
 
     [[nodiscard]] int get_page_size() const { return _page_size; }
+    [[nodiscard]] int get_num_pages() const { return int(_pages.size()); }
 
 private:
     // pages, each element is a natural number n

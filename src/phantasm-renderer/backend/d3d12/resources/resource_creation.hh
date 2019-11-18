@@ -27,17 +27,18 @@ resource create_buffer(ResourceAllocator& allocator, size_t size_bytes, D3D12_RE
 
 //
 // create views (descriptors) on resources
+// NOTE: these might be superfluous in the face of default descriptor handles
 //
 
-void make_rtv(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip = -1);
+void make_rtv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip = -1);
 
-void make_srv(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip = -1);
+void make_srv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip = -1);
 
-void make_dsv(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int array_slice = 1);
+void make_dsv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int array_slice = 1);
 
-void make_uav(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+void make_uav(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
-void make_cube_srv(resource const& res, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+void make_cube_srv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
 //
 // create views on buffers

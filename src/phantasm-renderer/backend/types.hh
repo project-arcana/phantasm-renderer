@@ -2,6 +2,32 @@
 
 namespace pr::backend
 {
+namespace handle
+{
+using index_t = int;
+#define PR_DEFINE_HANDLE(_type_) \
+    struct _type_                \
+    {                            \
+        index_t index;           \
+    }
+
+// Resource handles
+PR_DEFINE_HANDLE(constant_buffer);
+PR_DEFINE_HANDLE(resource);
+
+// Shader arguments
+PR_DEFINE_HANDLE(shader_view);
+
+// State objects
+PR_DEFINE_HANDLE(pipeline_state);
+PR_DEFINE_HANDLE(root_signature);
+
+// Dispatch objects
+PR_DEFINE_HANDLE(command_list);
+
+#undef PR_DEFINE_HANDLE
+}
+
 using index_t = int;
 
 struct device_handle

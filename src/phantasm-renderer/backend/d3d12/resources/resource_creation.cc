@@ -61,9 +61,9 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_buffer(pr::backend::d3d1
     return res;
 }
 
-void pr::backend::d3d12::make_rtv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
+void pr::backend::d3d12::make_rtv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
 {
-    auto const texDesc = res.raw->GetDesc();
+    auto const texDesc = res->GetDesc();
 
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
     rtvDesc.Format = texDesc.Format;
@@ -82,13 +82,13 @@ void pr::backend::d3d12::make_rtv(const pr::backend::d3d12::resource& res, D3D12
     }
 
     shared_com_ptr<ID3D12Device> device;
-    res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateRenderTargetView(res.raw, &rtvDesc, handle);
+    res->GetDevice(PR_COM_WRITE(device));
+    device->CreateRenderTargetView(res, &rtvDesc, handle);
 }
 
-void pr::backend::d3d12::make_srv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
+void pr::backend::d3d12::make_srv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int mip)
 {
-    auto const resource_desc = res.raw->GetDesc();
+    auto const resource_desc = res->GetDesc();
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 
@@ -172,13 +172,13 @@ void pr::backend::d3d12::make_srv(const pr::backend::d3d12::resource& res, D3D12
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     shared_com_ptr<ID3D12Device> device;
-    res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateShaderResourceView(res.raw, &srv_desc, handle);
+    res->GetDevice(PR_COM_WRITE(device));
+    device->CreateShaderResourceView(res, &srv_desc, handle);
 }
 
-void pr::backend::d3d12::make_dsv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int array_slice)
+void pr::backend::d3d12::make_dsv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle, int array_slice)
 {
-    auto const resource_desc = res.raw->GetDesc();
+    auto const resource_desc = res->GetDesc();
 
     D3D12_DEPTH_STENCIL_VIEW_DESC DSViewDesc = {};
     DSViewDesc.Format = resource_desc.Format;
@@ -203,26 +203,26 @@ void pr::backend::d3d12::make_dsv(const pr::backend::d3d12::resource& res, D3D12
     }
 
     shared_com_ptr<ID3D12Device> device;
-    res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateDepthStencilView(res.raw, &DSViewDesc, handle);
+    res->GetDevice(PR_COM_WRITE(device));
+    device->CreateDepthStencilView(res, &DSViewDesc, handle);
 }
 
-void pr::backend::d3d12::make_uav(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+void pr::backend::d3d12::make_uav(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
 {
-    auto const resource_desc = res.raw->GetDesc();
+    auto const resource_desc = res->GetDesc();
 
     D3D12_UNORDERED_ACCESS_VIEW_DESC UAViewDesc = {};
     UAViewDesc.Format = resource_desc.Format;
-    UAViewDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+    UAViewDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
     shared_com_ptr<ID3D12Device> device;
-    res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateUnorderedAccessView(res.raw, nullptr, &UAViewDesc, handle);
+    res->GetDevice(PR_COM_WRITE(device));
+    device->CreateUnorderedAccessView(res, nullptr, &UAViewDesc, handle);
 }
 
-void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+void pr::backend::d3d12::make_cube_srv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE handle)
 {
-    auto const resource_desc = res.raw->GetDesc();
+    auto const resource_desc = res->GetDesc();
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
     srv_desc.Format = resource_desc.Format;
@@ -233,8 +233,8 @@ void pr::backend::d3d12::make_cube_srv(const pr::backend::d3d12::resource& res, 
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     shared_com_ptr<ID3D12Device> device;
-    res.raw->GetDevice(PR_COM_WRITE(device));
-    device->CreateShaderResourceView(res.raw, &srv_desc, handle);
+    res->GetDevice(PR_COM_WRITE(device));
+    device->CreateShaderResourceView(res, &srv_desc, handle);
 }
 
 D3D12_VERTEX_BUFFER_VIEW pr::backend::d3d12::make_vertex_buffer_view(const pr::backend::d3d12::resource& res, size_t vertex_size)
