@@ -107,16 +107,17 @@ VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentMo
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D pr::backend::vk::get_swap_extent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D extent_hint)
+VkExtent2D pr::backend::vk::get_swap_extent(const VkSurfaceCapabilitiesKHR& caps, VkExtent2D extent_hint)
 {
-    if (capabilities.currentExtent.width != UINT32_MAX)
+    if (caps.currentExtent.width != UINT32_MAX)
     {
-        return capabilities.currentExtent;
+        return caps.currentExtent;
     }
     else
     {
-        extent_hint.width = cc::max(capabilities.minImageExtent.width, cc::min(capabilities.maxImageExtent.width, extent_hint.width));
-        extent_hint.height = cc::max(capabilities.minImageExtent.height, cc::min(capabilities.maxImageExtent.height, extent_hint.height));
+        // Return the hing, clamped to the min/max extents
+        extent_hint.width = cc::clamp(extent_hint.width, caps.minImageExtent.width, caps.maxImageExtent.width);
+        extent_hint.height = cc::clamp(extent_hint.height, caps.minImageExtent.height, caps.maxImageExtent.height);
         return extent_hint;
     }
 }

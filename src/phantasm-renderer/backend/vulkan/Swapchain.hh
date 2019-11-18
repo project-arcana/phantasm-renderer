@@ -52,7 +52,7 @@ public:
     [[nodiscard]] VkSwapchainKHR getSwapchain() const { return mSwapchain; }
 
 private:
-    void createSwapchain(int w, int h);
+    void createSwapchain(int width_hint, int height_hint);
     void destroySwapchain();
 
 private:

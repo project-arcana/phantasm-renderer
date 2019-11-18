@@ -11,6 +11,7 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
     mDevice = device.getDevice();
     mPhysicalDevice = device.getPhysicalDevice();
     mPresentQueue = device.getQueueGraphics();
+    mBackbufferSize = tg::ivec2(-1, -1);
 
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
 
@@ -155,12 +156,12 @@ void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_bu
     PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mPresentQueue, 1, &submit_info, active_backbuffer.fence_command_buf_executed));
 }
 
-void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
+void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint)
 {
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
     auto const present_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
-    auto const extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(w), unsigned(h)});
-    mBackbufferSize = tg::ivec2{int(extent.width), int(extent.height)};
+    auto const new_extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(width_hint), unsigned(height_hint)});
+    mBackbufferSize = tg::ivec2{int(new_extent.width), int(new_extent.height)};
 
     // Create swapchain
     {
@@ -170,7 +171,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
         swapchain_info.imageFormat = mBackbufferFormat.format;
         swapchain_info.imageColorSpace = mBackbufferFormat.colorSpace;
         swapchain_info.minImageCount = unsigned(mBackbuffers.size());
-        swapchain_info.imageExtent = extent;
+        swapchain_info.imageExtent = new_extent;
         swapchain_info.imageArrayLayers = 1;
         swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -237,8 +238,8 @@ void pr::backend::vk::Swapchain::createSwapchain(int w, int h)
             fb_info.renderPass = mRenderPass;
             fb_info.attachmentCount = 1;
             fb_info.pAttachments = attachments;
-            fb_info.width = unsigned(w);
-            fb_info.height = unsigned(h);
+            fb_info.width = new_extent.width;
+            fb_info.height = new_extent.height;
             fb_info.layers = 1;
 
             PR_VK_VERIFY_SUCCESS(vkCreateFramebuffer(mDevice, &fb_info, nullptr, &backbuffer.framebuffer));
