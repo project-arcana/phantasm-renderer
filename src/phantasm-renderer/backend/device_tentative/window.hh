@@ -29,19 +29,20 @@ public:
     Window& operator=(Window&&) noexcept = delete;
     ~Window();
 
+    /// initialize the window with a given titel and initial size
     void initialize(char const* title, int width = 850, int height = 550);
 
+    /// poll events by the WM/OS
     void pollEvents();
 
-
-    /// Whether a close event has been fired
+    /// whether a close event has been fired
     [[nodiscard]] bool isRequestingClose() const { return mIsRequestingClose; }
 
-    /// Clears pending resizes
-    void clearPendingResize() { mPendingResize = false; }
-
-    /// Whether a resize happened since the last call to clearPendingResize
+    /// whether a resize occured since the last ::clearPendingResize()
     [[nodiscard]] bool isPendingResize() const { return mPendingResize; }
+
+    /// clears pending resizes
+    void clearPendingResize() { mPendingResize = false; }
 
     [[nodiscard]] int getWidth() const { return mWidth; }
     [[nodiscard]] int getHeight() const { return mHeight; }

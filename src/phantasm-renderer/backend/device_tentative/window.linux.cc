@@ -187,5 +187,8 @@ void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSur
 }
 #endif // PR_BACKEND_VULKAN
 
+#ifdef PR_BACKEND_D3D12
+#error "D3D12 not supported on Linux"
+#endif // PR_BACKEND_D3D12
 
 #endif // CC_OS_LINUX
