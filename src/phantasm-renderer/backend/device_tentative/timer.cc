@@ -56,7 +56,7 @@ double pr::backend::device::Timer::getElapsedTime() const
 {
     ::timespec spec;
     ::clock_gettime(CLOCK_REALTIME, &spec);
-    return static_cast<double>(spec.tv_nsec - mTimestamp) / static_cast<double>(mFrequency);
+    return static_cast<double>(spec.tv_nsec - mStartTime) / static_cast<double>(mResolution);
 }
 
 

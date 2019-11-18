@@ -42,9 +42,10 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
 
     mWidth = width;
     mHeight = height;
+    mPendingResize = true;
 
-    s_window = XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, mWidth, mHeight, 1, BlackPixel(s_display, s_screen),
-                                   WhitePixel(s_display, s_screen));
+    s_window = ::XCreateSimpleWindow(s_display, RootWindow(s_display, s_screen), 10, 10, unsigned(mWidth), unsigned(mHeight), 0,
+                                     BlackPixel(s_display, s_screen), WhitePixel(s_display, s_screen));
 
     s_atom_delete_message = ::XInternAtom(s_display, "WM_DELETE_WINDOW", 0);
 
@@ -59,6 +60,16 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     ::XSelectInput(s_display, s_window, StructureNotifyMask | PropertyChangeMask);
     ::XStoreName(s_display, s_window, title);
     ::XMapWindow(s_display, s_window);
+    ::XFlush(s_display);
+
+    // Wait for MapNotify
+    while (true)
+    {
+        ::XEvent e;
+        ::XNextEvent(s_display, &e);
+        if (e.type == MapNotify)
+            break;
+    }
 }
 
 void pr::backend::device::Window::pollEvents()
