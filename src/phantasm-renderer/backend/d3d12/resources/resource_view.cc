@@ -65,3 +65,20 @@ void pr::backend::d3d12::DescriptorAllocator::initialize(ID3D12Device& device, u
     mRingCBVsSRVsUAVs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_cbv_srv_uav, num_backbuffers);
     mRingSamplers.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, num_sampler, num_backbuffers);
 }
+
+void pr::backend::d3d12::descriptor_page_allocator::initialize(ID3D12Device &device, D3D12_DESCRIPTOR_HEAP_TYPE type, int num_descriptors, int page_size)
+{
+    mPageAllocator.initialize(num_descriptors, page_size);
+    mDescriptorSize = device.GetDescriptorHandleIncrementSize(type);
+
+    D3D12_DESCRIPTOR_HEAP_DESC desc;
+    desc.NumDescriptors = num_descriptors;
+    desc.Type = type;
+    desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    desc.NodeMask = 0;
+    PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
+    mHeap->SetName(L"DynamicDescriptorRing::mHeap");
+
+    mHeapStartCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
+    mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
+}

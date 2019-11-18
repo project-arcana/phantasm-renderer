@@ -29,7 +29,7 @@ public:
     Window& operator=(Window&&) noexcept = delete;
     ~Window();
 
-    /// initialize the window with a given titel and initial size
+    /// initialize the window with a given title and initial size
     void initialize(char const* title, int width = 850, int height = 550);
 
     /// poll events by the WM/OS
