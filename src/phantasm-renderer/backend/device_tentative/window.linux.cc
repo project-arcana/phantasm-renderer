@@ -74,17 +74,20 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
 
 void pr::backend::device::Window::pollEvents()
 {
-    ::XEvent e;
-    ::XNextEvent(s_display, &e);
-    if (e.type == ConfigureNotify)
+    while (::XPending(s_display) > 0)
     {
-        XConfigureEvent const& xce = e.xconfigure;
-        onResizeEvent(xce.width, xce.height, false);
-    }
-    else if (e.type == ClientMessage)
-    {
-        if (e.xclient.data.l[0] == long(s_atom_delete_message))
-            onCloseEvent();
+        ::XEvent e;
+        ::XNextEvent(s_display, &e);
+        if (e.type == ConfigureNotify)
+        {
+            XConfigureEvent const& xce = e.xconfigure;
+            onResizeEvent(xce.width, xce.height, false);
+        }
+        else if (e.type == ClientMessage)
+        {
+            if (e.xclient.data.l[0] == long(s_atom_delete_message))
+                onCloseEvent();
+        }
     }
 }
 void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
