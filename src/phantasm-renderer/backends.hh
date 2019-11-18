@@ -2,7 +2,6 @@
 
 #include <clean-core/fwd.hh>
 
-#include <phantasm-renderer/backend/vulkan/vulkan_config.hh>
 #include <phantasm-renderer/fwd.hh>
 
 namespace pr

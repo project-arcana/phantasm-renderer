@@ -1,6 +1,6 @@
 #pragma once
 
-#include <phantasm-renderer/backend/BackendInterface.hh>
+#include <phantasm-renderer/backend/Backend.hh>
 #include <phantasm-renderer/backend/types.hh>
 
 #include "Adapter.hh"
@@ -11,7 +11,7 @@
 
 namespace pr::backend::d3d12
 {
-class BackendD3D12 final : public BackendInterface
+class BackendD3D12 final : public Backend
 {
 public:
     void initialize(backend_config const& config, HWND handle);
