@@ -134,7 +134,7 @@ pr::backend::vk::lay_ext_set pr::backend::vk::get_available_device_lay_ext(VkPhy
 }
 
 
-pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const pr::backend::vk::lay_ext_set& available, const pr::backend::vk::vulkan_config& config)
+pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const pr::backend::vk::lay_ext_set& available, const pr::backend::backend_config& config)
 {
     lay_ext_array used_res;
 
@@ -157,7 +157,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
     };
 
     // Decide upon active instance layers and extensions based on configuration and availability
-    if (config.enable_validation)
+    if (config.validation != validation_level::off)
     {
         if (!add_required_layer("VK_LAYER_LUNARG_standard_validation"))
         {
@@ -188,7 +188,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
 }
 
 pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr::backend::vk::lay_ext_set& available,
-                                                                        const pr::backend::vk::vulkan_config& config,
+                                                                        const pr::backend::backend_config& config,
                                                                         VkPhysicalDevice physical)
 {
     lay_ext_array used_res;

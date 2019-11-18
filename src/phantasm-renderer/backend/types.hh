@@ -43,7 +43,7 @@ enum class validation_level : char
 
 struct backend_config
 {
-    validation_level validation = validation_level::on;
+    validation_level validation = validation_level::off;
 
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);

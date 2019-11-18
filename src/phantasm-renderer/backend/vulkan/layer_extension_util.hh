@@ -1,15 +1,15 @@
 #pragma once
-#ifdef PR_BACKEND_VULKAN
 
 #include <string>
 #include <vector>
 
 #include <clean-core/span.hh>
 
+#include <phantasm-renderer/backend/types.hh>
+
 #include "common/unique_name_set.hh"
 #include "common/zero_struct.hh"
 #include "loader/volk.hh"
-#include "vulkan_config.hh"
 
 namespace pr::backend::vk
 {
@@ -44,9 +44,8 @@ struct lay_ext_array
 [[nodiscard]] lay_ext_set get_available_instance_lay_ext();
 [[nodiscard]] lay_ext_set get_available_device_lay_ext(VkPhysicalDevice physical);
 
-[[nodiscard]] lay_ext_array get_used_instance_lay_ext(lay_ext_set const& available, vulkan_config const& config);
-[[nodiscard]] lay_ext_array get_used_device_lay_ext(lay_ext_set const& available, vulkan_config const& config, VkPhysicalDevice physical);
+[[nodiscard]] lay_ext_array get_used_instance_lay_ext(lay_ext_set const& available, backend_config const& config);
+[[nodiscard]] lay_ext_array get_used_device_lay_ext(lay_ext_set const& available, backend_config const& config, VkPhysicalDevice physical);
 
 }
 
-#endif

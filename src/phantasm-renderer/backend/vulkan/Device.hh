@@ -2,8 +2,9 @@
 
 #include <clean-core/array.hh>
 
+#include <phantasm-renderer/backend/types.hh>
+
 #include "loader/volk.hh"
-#include "vulkan_config.hh"
 
 namespace pr::backend::vk
 {
@@ -19,7 +20,7 @@ public:
 
     Device() = default;
 
-    void initialize(gpu_information const& device, VkSurfaceKHR surface, vulkan_config const& config);
+    void initialize(gpu_information const& device, VkSurfaceKHR surface, backend_config const& config);
     void destroy();
 
     VkQueue getQueueGraphics() const { return mQueueGraphics; }

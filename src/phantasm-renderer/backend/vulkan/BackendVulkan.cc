@@ -11,7 +11,7 @@
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
 
-void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, device::Window& window)
+void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, device::Window& window)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
 
@@ -45,7 +45,7 @@ void pr::backend::vk::BackendVulkan::initialize(vulkan_config const& config, dev
     // See https://github.com/zeux/volk#optimizing-device-calls
     volkLoadInstance(mInstance);
 
-    if (config.enable_validation)
+    if (config.validation != validation_level::off)
     {
         // Debug callback
         createDebugMessenger();

@@ -8,7 +8,7 @@
 #include "gpu_choice_util.hh"
 #include "queue_util.hh"
 
-void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfaceKHR surface, vulkan_config const& config)
+void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfaceKHR surface, backend_config const& config)
 {
     mPhysicalDevice = device.physical_device;
     CC_ASSERT(mDevice == VK_NULL_HANDLE);
