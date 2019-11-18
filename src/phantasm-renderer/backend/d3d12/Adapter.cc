@@ -17,10 +17,12 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 
     // Adapter init
     {
+        auto const candidates = get_adapter_candidates();
         auto const chosen_adapter_index = config.adapter_preference == adapter_preference::explicit_index
                                               ? config.explicit_adapter_index
-                                              : get_preferred_adapter_index(get_adapter_candidates(), config.adapter_preference);
-        CC_ASSERT(chosen_adapter_index != uint32_t(-1));
+                                              : get_preferred_adapter_index(candidates, config.adapter_preference);
+
+        CC_RUNTIME_ASSERT(chosen_adapter_index != uint32_t(-1));
 
         shared_com_ptr<IDXGIAdapter> temp_adapter;
         mFactory->EnumAdapters(chosen_adapter_index, temp_adapter.override());
