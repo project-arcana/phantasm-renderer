@@ -47,6 +47,7 @@ public:
     [[nodiscard]] int getWidth() const { return mWidth; }
     [[nodiscard]] int getHeight() const { return mHeight; }
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
+    [[nodiscard]] float getScaleFactor() const { return mScaleFactor; }
 
 public:
 #ifdef PR_BACKEND_VULKAN
@@ -64,6 +65,7 @@ private:
 
     int mWidth = 0;
     int mHeight = 0;
+    float mScaleFactor = 1.f;
     bool mIsMinimized = false;
     bool mPendingResize = false;
     bool mIsRequestingClose = false;

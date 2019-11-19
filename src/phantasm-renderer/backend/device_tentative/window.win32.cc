@@ -1,12 +1,20 @@
-#include "window.hh"
-
 #include <clean-core/macros.hh>
+
+#include "window.hh"
 
 #ifdef CC_OS_WINDOWS
 
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
-#include <clean-core/native/win32_sanitized.hh>
+
+// clang-format off
+#include <clean-core/native/detail/win32_sanitize_before.inl>
+
+#include <Windows.h>
+#include <ShellScalingApi.h>
+
+#include <clean-core/native/detail/win32_sanitize_after.inl>
+// clang-format on
 
 #ifdef PR_BACKEND_VULKAN
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
@@ -64,12 +72,30 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     s_event_proxy.window = this;
 
     // Set process DPI awareness
-    // PER_MONITOR_AWARE: No scaling by Windows, no lies by GetClientRect
-    // Possible alternative is PER_MONITOR_AWARE_V2, with better per-window DPI access,
-    // but it requires the Win10 Creators update.
-    // While this setting is definitively a good idea, support for HighDPI should
-    // possibly play a role in the future da::Window
-    ::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    {
+        // PER_MONITOR_AWARE: No scaling by Windows, no lies by GetClientRect
+        // Possible alternative is PER_MONITOR_AWARE_V2, with better per-window DPI access,
+        // but it requires the Win10 Creators update.
+        // While this setting is definitively a good idea, support for HighDPI should
+        // possibly play a role in the future da::Window
+        ::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    }
+
+    // Retrieve primary monitor scale factor and adapt width/height accordingly
+    {
+        POINT const zero_point = {0, 0};
+        auto const primary_monitor = ::MonitorFromPoint(zero_point, MONITOR_DEFAULTTOPRIMARY);
+
+        DEVICE_SCALE_FACTOR scale_factor;
+        auto const hres = ::GetScaleFactorForMonitor(primary_monitor, &scale_factor);
+
+        if (hres == S_OK && scale_factor != DEVICE_SCALE_FACTOR_INVALID)
+        {
+            mScaleFactor = int(scale_factor) / 100.f;
+            width = int(width * mScaleFactor);
+            height = int(height * mScaleFactor);
+        }
+    }
 
     mWidth = width;
     mHeight = height;
