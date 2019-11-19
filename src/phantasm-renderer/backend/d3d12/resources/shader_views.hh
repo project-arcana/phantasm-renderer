@@ -81,12 +81,14 @@ private:
     unsigned _descriptor_size = 0;
 };
 
+class ResourcePool;
+
 /// the high-level, synchronized allocator for shader views
 class shader_view_allocator
 {
 public:
     // backend-facing API
-    [[nodiscard]] handle::shader_view create(ID3D12Device& device, cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
+    [[nodiscard]] handle::shader_view create(ID3D12Device& device, ResourcePool& res_pool, cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
 
     void destroy(handle::shader_view sv)
     {
@@ -112,6 +114,7 @@ private:
     {
         D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
         // we must store the resource handles contained in this shader view for state tracking
+        // handles correspond to num_srvs SRVs first, num_uavs UAVs second
         cc::capped_vector<handle::resource, 16> resources;
         cc::uint16 num_srvs;
         cc::uint16 num_uavs;

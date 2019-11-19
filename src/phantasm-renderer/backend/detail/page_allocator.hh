@@ -63,6 +63,7 @@ struct page_allocator
 
     void free_all() { cc::fill(_pages, 0); }
 
+public:
     [[nodiscard]] int get_page_size() const { return _page_size; }
     [[nodiscard]] int get_num_pages() const { return int(_pages.size()); }
 

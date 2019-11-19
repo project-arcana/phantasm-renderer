@@ -6,72 +6,72 @@
 
 namespace pr::backend::vk::util
 {
-[[nodiscard]] inline constexpr VkFormat to_vk_format(assets::attribute_format format)
+[[nodiscard]] inline constexpr VkFormat to_vk_format(backend::format format)
 {
-    using af = assets::attribute_format;
+    using bf = backend::format;
     switch (format)
     {
-    case af::rgba32f:
+    case bf::rgba32f:
         return VK_FORMAT_R32G32B32A32_SFLOAT;
-    case af::rgb32f:
+    case bf::rgb32f:
         return VK_FORMAT_R32G32B32_SFLOAT;
-    case af::rg32f:
+    case bf::rg32f:
         return VK_FORMAT_R32G32_SFLOAT;
-    case af::r32f:
+    case bf::r32f:
         return VK_FORMAT_R32_SFLOAT;
 
-    case af::rgba32i:
+    case bf::rgba32i:
         return VK_FORMAT_R32G32B32A32_SINT;
-    case af::rgb32i:
+    case bf::rgb32i:
         return VK_FORMAT_R32G32B32_SINT;
-    case af::rg32i:
+    case bf::rg32i:
         return VK_FORMAT_R32G32_SINT;
-    case af::r32i:
+    case bf::r32i:
         return VK_FORMAT_R32_SINT;
 
-    case af::rgba32u:
+    case bf::rgba32u:
         return VK_FORMAT_R32G32B32A32_UINT;
-    case af::rgb32u:
+    case bf::rgb32u:
         return VK_FORMAT_R32G32B32_UINT;
-    case af::rg32u:
+    case bf::rg32u:
         return VK_FORMAT_R32G32_UINT;
-    case af::r32u:
+    case bf::r32u:
         return VK_FORMAT_R32_UINT;
 
-    case af::rgba16i:
+    case bf::rgba16i:
         return VK_FORMAT_R16G16B16A16_SINT;
-    case af::rgb16i:
+    case bf::rgb16i:
         return VK_FORMAT_R16G16B16_SINT;
-    case af::rg16i:
+    case bf::rg16i:
         return VK_FORMAT_R16G16_SINT;
-    case af::r16i:
+    case bf::r16i:
         return VK_FORMAT_R16_SINT;
 
-    case af::rgba16u:
+    case bf::rgba16u:
         return VK_FORMAT_R16G16B16A16_UINT;
-    case af::rgb16u:
+    case bf::rgb16u:
         return VK_FORMAT_R16G16B16_UINT;
-    case af::rg16u:
+    case bf::rg16u:
         return VK_FORMAT_R16G16_UINT;
-    case af::r16u:
+    case bf::r16u:
         return VK_FORMAT_R16_UINT;
 
-    case af::rgba8i:
+    case bf::rgba8i:
         return VK_FORMAT_R8G8B8A8_SINT;
-    case af::rgb8i:
+    case bf::rgb8i:
         return VK_FORMAT_R8G8B8_SINT;
-    case af::rg8i:
+    case bf::rg8i:
         return VK_FORMAT_R8G8_SINT;
-    case af::r8i:
+    case bf::r8i:
         return VK_FORMAT_R8_SINT;
 
-    case af::rgba8u:
+    case bf::rgba8u:
         return VK_FORMAT_R8G8B8A8_UINT;
-    case af::rgb8u:
+    case bf::rgb8u:
         return VK_FORMAT_R8G8B8_UINT;
-    case af::rg8u:
+    case bf::rg8u:
         return VK_FORMAT_R8G8_UINT;
-    case af::r8u:
+    case bf::r8u:
         return VK_FORMAT_R8_UINT;
     }
     return VK_FORMAT_UNDEFINED;

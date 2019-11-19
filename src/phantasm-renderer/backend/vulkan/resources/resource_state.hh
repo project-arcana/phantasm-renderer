@@ -3,7 +3,7 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/detail/resource_state.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>

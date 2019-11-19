@@ -15,7 +15,7 @@ struct vertex_attribute_info
 {
     char const* semantic_name;
     unsigned offset;
-    attribute_format format;
+    format format;
 };
 
 /// Returns a capped vector of vertex attribute infos
@@ -26,9 +26,9 @@ template <class VertT>
 namespace detail
 {
 template <class T>
-constexpr attribute_format to_attribute_format()
+constexpr format to_attribute_format()
 {
-    using af = attribute_format;
+    using af = format;
 
     if constexpr (tg::is_comp_like<T, 4, cc::float32>)
         return af::rgba32f;
@@ -101,7 +101,7 @@ constexpr attribute_format to_attribute_format()
 }
 
 template <class T>
-static constexpr attribute_format as_attribute_format = detail::to_attribute_format<T>();
+static constexpr format as_attribute_format = detail::to_attribute_format<T>();
 
 template <class VertT>
 struct vertex_visitor

@@ -2,7 +2,7 @@
 
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-#include "resource_creation.hh"
+#include "resource_pool.hh"
 
 void pr::backend::d3d12::descriptor_page_allocator::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int num_descriptors, int page_size)
 {
@@ -22,6 +22,7 @@ void pr::backend::d3d12::descriptor_page_allocator::initialize(ID3D12Device& dev
 }
 
 pr::backend::handle::shader_view pr::backend::d3d12::shader_view_allocator::create(ID3D12Device& device,
+                                                                                   ResourcePool& res_pool,
                                                                                    cc::span<pr::backend::handle::resource> srvs,
                                                                                    cc::span<pr::backend::handle::resource> uavs)
 {
@@ -46,9 +47,7 @@ pr::backend::handle::shader_view pr::backend::d3d12::shader_view_allocator::crea
             {
                 data.resources.push_back(srv);
 
-                // TODO
-                CC_RUNTIME_ASSERT(false && "Unimplemented");
-                ID3D12Resource* const raw_resource = nullptr; // ???::get_raw_resource(srv);
+                ID3D12Resource* const raw_resource = res_pool.getRawResource(srv);
                 auto const cpu_handle = _srv_uav_allocator.increment_to_index(cpu_base, descriptor_index++);
 
                 // Create a default SRV
@@ -60,9 +59,7 @@ pr::backend::handle::shader_view pr::backend::d3d12::shader_view_allocator::crea
             {
                 data.resources.push_back(uav);
 
-                // TODO
-                CC_RUNTIME_ASSERT(false && "Unimplemented");
-                ID3D12Resource* const raw_resource = nullptr; // ???::get_raw_resource(uav);
+                ID3D12Resource* const raw_resource = res_pool.getRawResource(uav);
                 auto const cpu_handle = _srv_uav_allocator.increment_to_index(cpu_base, descriptor_index++);
 
                 // Create a default UAV, without a counter resource

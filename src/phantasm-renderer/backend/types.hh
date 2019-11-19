@@ -28,14 +28,7 @@ PR_DEFINE_HANDLE(command_list);
 #undef PR_DEFINE_HANDLE
 }
 
-using index_t = int;
-
-struct device_handle
-{
-    index_t index;
-};
-
-enum class shader_domain
+enum class shader_domain : char
 {
     pixel,
     vertex,
@@ -54,7 +47,7 @@ enum class adapter_preference : char
     explicit_index
 };
 
-enum class adapter_vendor
+enum class adapter_vendor : char
 {
     amd,
     intel,
@@ -89,9 +82,40 @@ struct backend_config
     unsigned num_backbuffers = 3;
 };
 
-namespace assets
+// Map to
+// D3D12: resource states
+// Vulkan: access masks, image layouts and pipeline stage dependencies
+enum class resource_state : char
 {
-enum class attribute_format
+    // unknown to pr
+    unknown,
+    // undefined in API semantics
+    undefined,
+
+    vertex_buffer,
+    index_buffer,
+
+    constant_buffer,
+    shader_resource,
+    unordered_access,
+
+    render_target,
+    depth_read,
+    depth_write,
+
+    indirect_argument,
+
+    copy_src,
+    copy_dest,
+
+    present,
+
+    raytrace_accel_struct,
+};
+
+// Map to DXGI_FORMAT and VkFormat
+// [f]loat, [i]nt, [u]int, [un]orm
+enum class format : char
 {
     rgba32f,
     rgb32f,
@@ -120,7 +144,13 @@ enum class attribute_format
     rgba8u,
     rgb8u,
     rg8u,
-    r8u
+    r8u,
+
+    depth32f,
+    depth16un,
+    depth32f_stencil8u,
+    depth24un_stencil8u,
 };
-}
+
+[[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
 }

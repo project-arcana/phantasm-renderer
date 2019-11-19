@@ -6,9 +6,9 @@
 
 namespace pr::backend::d3d12::util
 {
-[[nodiscard]] inline constexpr DXGI_FORMAT to_dxgi_format(assets::attribute_format format)
+[[nodiscard]] inline constexpr DXGI_FORMAT to_dxgi_format(backend::format format)
 {
-    using af = assets::attribute_format;
+    using af = backend::format;
     switch (format)
     {
     case af::rgba32f:

@@ -3,7 +3,7 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/detail/resource_state.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 
@@ -56,6 +56,9 @@ namespace pr::backend::d3d12
     case rs::raytrace_accel_struct:
         return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
     }
+
+
+    return D3D12_RESOURCE_STATE_COMMON;
 }
 
 ///
