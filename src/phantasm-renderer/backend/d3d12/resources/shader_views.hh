@@ -27,7 +27,7 @@ namespace pr::backend::d3d12
 ///
 /// We might have to add defragmentation at some point, which would probably require an additional indirection
 /// Lookup and free is O(1), allocate is O(#pages), but still fast and skipping blocks
-class descriptor_page_allocator
+class DescriptorPageAllocator
 {
 public:
     using handle_t = int;
@@ -37,54 +37,54 @@ public:
 
     [[nodiscard]] handle_t allocate(int num_descriptors)
     {
-        auto const res_page = _page_allocator.allocate(num_descriptors);
+        auto const res_page = mPageAllocator.allocate(num_descriptors);
         CC_RUNTIME_ASSERT(res_page != -1 && "descriptor_page_allocator overcommitted!");
         return res_page;
     }
 
-    void free(handle_t handle) { _page_allocator.free(handle); }
+    void free(handle_t handle) { mPageAllocator.free(handle); }
 
 public:
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE get_cpu_start(handle_t handle) const
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCPUStart(handle_t handle) const
     {
         // index = page index * page size
-        auto const index = handle * _page_allocator.get_page_size();
-        return D3D12_CPU_DESCRIPTOR_HANDLE{_heap_start_cpu.ptr + unsigned(index) * _descriptor_size};
+        auto const index = handle * mPageAllocator.get_page_size();
+        return D3D12_CPU_DESCRIPTOR_HANDLE{mHeapStartCPU.ptr + unsigned(index) * mDescriptorSize};
     }
 
-    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE get_gpu_start(handle_t handle) const
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getGPUStart(handle_t handle) const
     {
         // index = page index * page size
-        auto const index = handle * _page_allocator.get_page_size();
-        return D3D12_GPU_DESCRIPTOR_HANDLE{_heap_start_gpu.ptr + unsigned(index) * _descriptor_size};
+        auto const index = handle * mPageAllocator.get_page_size();
+        return D3D12_GPU_DESCRIPTOR_HANDLE{mHeapStartGPU.ptr + unsigned(index) * mDescriptorSize};
     }
 
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE increment_to_index(D3D12_CPU_DESCRIPTOR_HANDLE desc, unsigned i) const
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE incrementToIndex(D3D12_CPU_DESCRIPTOR_HANDLE desc, unsigned i) const
     {
-        desc.ptr += i * _descriptor_size;
+        desc.ptr += i * mDescriptorSize;
         return desc;
     }
 
-    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE increment_to_index(D3D12_GPU_DESCRIPTOR_HANDLE desc, unsigned i) const
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE incrementToIndex(D3D12_GPU_DESCRIPTOR_HANDLE desc, unsigned i) const
     {
-        desc.ptr += i * _descriptor_size;
+        desc.ptr += i * mDescriptorSize;
         return desc;
     }
 
-    [[nodiscard]] int get_num_pages() const { return _page_allocator.get_num_pages(); }
+    [[nodiscard]] int getNumPages() const { return mPageAllocator.get_num_pages(); }
 
 private:
-    shared_com_ptr<ID3D12DescriptorHeap> _heap;
-    D3D12_CPU_DESCRIPTOR_HANDLE _heap_start_cpu;
-    D3D12_GPU_DESCRIPTOR_HANDLE _heap_start_gpu;
-    backend::detail::page_allocator _page_allocator;
-    unsigned _descriptor_size = 0;
+    shared_com_ptr<ID3D12DescriptorHeap> mHeap;
+    D3D12_CPU_DESCRIPTOR_HANDLE mHeapStartCPU;
+    D3D12_GPU_DESCRIPTOR_HANDLE mHeapStartGPU;
+    backend::detail::page_allocator mPageAllocator;
+    unsigned mDescriptorSize = 0;
 };
 
 class ResourcePool;
 
 /// the high-level, synchronized allocator for shader views
-class shader_view_allocator
+class ShaderViewAllocator
 {
 public:
     // backend-facing API
@@ -92,35 +92,57 @@ public:
 
     void destroy(handle::shader_view sv)
     {
-        std::lock_guard lg(_mutex);
-        _srv_uav_allocator.free(sv.index);
+        auto lg = std::lock_guard(mMutex);
+        mSRVUAVAllocator.free(sv.index);
     }
 
 public:
     // internal API
+
     void initialize(ID3D12Device& device, int num_srvs_uavs)
     {
-        _srv_uav_allocator.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
-        _shader_view_data = cc::array<shader_view_data>::uninitialized(unsigned(_srv_uav_allocator.get_num_pages()));
+        mSRVUAVAllocator.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
+        mShaderViewData = cc::array<shader_view_data>::uninitialized(unsigned(mSRVUAVAllocator.getNumPages()));
     }
 
-    /// NOTE: is CPU even required?
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE get_cpu_start(handle::shader_view sv) const { return _srv_uav_allocator.get_cpu_start(sv.index); }
+    // NOTE: is CPU even required?
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCPUStart(handle::shader_view sv) const { return mSRVUAVAllocator.getCPUStart(sv.index); }
 
-    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE get_gpu_start(handle::shader_view sv) const { return _srv_uav_allocator.get_gpu_start(sv.index); }
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getGPUStart(handle::shader_view sv) const
+    {
+        // cached fastpath
+        return mShaderViewData[static_cast<size_t>(sv.index)].gpu_handle;
+    }
+
+    //
+    // Receive contained resource handles for state management
+    //
+
+    [[nodiscard]] cc::span<handle::resource const> getSRVs(handle::shader_view sv) const
+    {
+        auto const& data = mShaderViewData[static_cast<size_t>(sv.index)];
+        return cc::span{data.resources.data(), static_cast<size_t>(data.num_srvs)};
+    }
+
+    [[nodiscard]] cc::span<handle::resource const> getUAVs(handle::shader_view sv) const
+    {
+        auto const& data = mShaderViewData[static_cast<size_t>(sv.index)];
+        return cc::span{data.resources.data() + data.num_srvs, static_cast<size_t>(data.num_uavs)};
+    }
 
 private:
     struct shader_view_data
     {
+        // pre-constructed gpu handle
         D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
-        // we must store the resource handles contained in this shader view for state tracking
+        // handles contained in this shader view, for state tracking
         // handles correspond to num_srvs SRVs first, num_uavs UAVs second
         cc::capped_vector<handle::resource, 16> resources;
         cc::uint16 num_srvs;
         cc::uint16 num_uavs;
     };
-    cc::array<shader_view_data> _shader_view_data;
-    descriptor_page_allocator _srv_uav_allocator;
-    std::mutex _mutex;
+    cc::array<shader_view_data> mShaderViewData;
+    DescriptorPageAllocator mSRVUAVAllocator;
+    std::mutex mMutex;
 };
 }

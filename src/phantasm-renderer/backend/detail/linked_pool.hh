@@ -5,6 +5,8 @@
 
 namespace pr::backend::detail
 {
+/// Fixed-size object pool
+/// Uses an in-place linked list in free nodes, for O(1) acquire, release and size overhead
 template <class T, class IdxT = size_t>
 struct linked_pool
 {
@@ -38,7 +40,7 @@ struct linked_pool
 
     [[nodiscard]] index_t acquire()
     {
-        CC_ASSERT(_first_free_node != nullptr && "linked_pool full");
+        CC_ASSERT(!is_full() && "linked_pool full");
 
         T* const acquired_node = _first_free_node;
         // read the in-place next pointer of this node
@@ -62,6 +64,8 @@ struct linked_pool
 
     T& get(index_t index) { return _pool[static_cast<size_t>(index)]; }
     T const& get(index_t index) const { return _pool[static_cast<size_t>(index)]; }
+
+    bool is_full() const { return _first_free_node == nullptr; }
 
 private:
     T* _first_free_node = nullptr;

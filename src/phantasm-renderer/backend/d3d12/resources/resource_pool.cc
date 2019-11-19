@@ -61,11 +61,11 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
     }
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(size_t size_bytes, pr::backend::resource_state initial_state)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state initial_state, unsigned stride_bytes)
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocateResourceRaw(desc, to_resource_states(initial_state));
-    return acquireResource(alloc, initial_state);
+    return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
 }
 
 void pr::backend::d3d12::ResourcePool::freeResource(pr::backend::handle::resource res)
@@ -85,33 +85,10 @@ void pr::backend::d3d12::ResourcePool::freeResource(pr::backend::handle::resourc
     }
 }
 
-ID3D12Resource* pr::backend::d3d12::ResourcePool::getRawResource(pr::backend::handle::resource res) const
-{
-    // TODO: dangle check
-
-    // Read-only, requires no synchronization
-    return mPool.get(static_cast<unsigned>(res.index)).allocation->GetResource();
-}
-
-pr::backend::resource_state pr::backend::d3d12::ResourcePool::getResourceState(pr::backend::handle::resource res) const
-{
-    // TODO: dangle check
-
-    // Read-only, requires no synchronization
-    return mPool.get(static_cast<unsigned>(res.index)).master_state;
-}
-
-void pr::backend::d3d12::ResourcePool::setResourceState(pr::backend::handle::resource res, pr::backend::resource_state new_state)
-{
-    // TODO: dangle check
-
-    // This is a write access to the pool, however we require
-    // no sync since it would not interfere with unrelated allocs and frees
-    // and this call assumes exclusive access to the given resource
-    mPool.get(static_cast<unsigned>(res.index)).master_state = new_state;
-}
-
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(D3D12MA::Allocation* alloc, pr::backend::resource_state initial_state)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(D3D12MA::Allocation* alloc,
+                                                                                pr::backend::resource_state initial_state,
+                                                                                unsigned buffer_width,
+                                                                                unsigned buffer_stride)
 {
     unsigned res;
     {
@@ -121,6 +98,11 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(
     }
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
+    new_node.resource = alloc->GetResource();
+
     new_node.master_state = initial_state;
+    new_node.buffer_width = buffer_width;
+    new_node.buffer_stride = buffer_stride;
+
     return {static_cast<handle::index_t>(res)};
 }
