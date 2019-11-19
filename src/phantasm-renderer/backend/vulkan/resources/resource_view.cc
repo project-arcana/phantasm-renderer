@@ -36,7 +36,7 @@ DescriptorAllocator::~DescriptorAllocator()
     }
 }
 
-bool DescriptorAllocator::createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding> layout_bindings,
+bool DescriptorAllocator::createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding const> layout_bindings,
                                                                          VkDescriptorSetLayout& out_layout,
                                                                          VkDescriptorSet& out_set)
 {

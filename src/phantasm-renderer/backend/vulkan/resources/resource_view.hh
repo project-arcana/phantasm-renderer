@@ -17,12 +17,12 @@ public:
     ~DescriptorAllocator();
 
 
-    bool allocDescriptor(VkDescriptorSetLayout descriptorLayout, VkDescriptorSet &out_set);
-    bool allocDescriptor(int size, const VkSampler* samplers, VkDescriptorSetLayout &out_layout, VkDescriptorSet &out_set);
+    bool allocDescriptor(VkDescriptorSetLayout descriptorLayout, VkDescriptorSet& out_set);
+    bool allocDescriptor(int size, const VkSampler* samplers, VkDescriptorSetLayout& out_layout, VkDescriptorSet& out_set);
 
-    bool createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding> layout_bindings,
-                                                        VkDescriptorSetLayout &out_layout,
-                                                        VkDescriptorSet &out_set);
+    bool createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding const> layout_bindings,
+                                                        VkDescriptorSetLayout& out_layout,
+                                                        VkDescriptorSet& out_set);
 
     void free(VkDescriptorSet descriptor_set);
 
