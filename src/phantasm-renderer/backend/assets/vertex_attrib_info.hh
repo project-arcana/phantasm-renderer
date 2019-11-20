@@ -10,14 +10,6 @@
 
 namespace pr::backend::assets
 {
-/// Information about a single vertex attribute
-struct vertex_attribute_info
-{
-    char const* semantic_name;
-    unsigned offset;
-    format format;
-};
-
 /// Returns a capped vector of vertex attribute infos
 template <class VertT>
 [[nodiscard]] auto get_vertex_attributes();

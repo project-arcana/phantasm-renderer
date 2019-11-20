@@ -5,16 +5,17 @@
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include "resource.hh"
+#include <phantasm-renderer/backend/d3d12/resources/resource.hh>
 
 namespace pr::backend::d3d12
 {
+/// The high-level allocator for resources
 /// Synchronized
 /// Exception: ::setResourceState (see master state cache)
 class ResourcePool
 {
 public:
-    // Backend-facing API
+    // frontend-facing API
 
     /// create a 2D texture2
     [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
@@ -25,10 +26,10 @@ public:
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);
 
-    void freeResource(handle::resource res);
+    void free(handle::resource res);
 
 public:
-    // Internal API
+    // internal API
 
     void initialize(ID3D12Device& device, unsigned max_num_resources);
 

@@ -9,7 +9,7 @@
 
 namespace pr::backend::vk
 {
-[[nodiscard]] inline cc::capped_vector<VkVertexInputAttributeDescription, 16> get_input_description(cc::span<assets::vertex_attribute_info const> attrib_info)
+[[nodiscard]] inline cc::capped_vector<VkVertexInputAttributeDescription, 16> get_input_description(cc::span<vertex_attribute_info const> attrib_info)
 {
     cc::capped_vector<VkVertexInputAttributeDescription, 16> res;
     for (auto const& ai : attrib_info)

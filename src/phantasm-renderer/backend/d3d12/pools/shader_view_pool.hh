@@ -83,14 +83,16 @@ private:
 
 class ResourcePool;
 
-/// the high-level, synchronized allocator for shader views
-class ShaderViewAllocator
+/// The high-level allocator for shader views
+/// Synchronized
+class ShaderViewPool
 {
 public:
-    // backend-facing API
+    // frontend-facing API
+
     [[nodiscard]] handle::shader_view create(ID3D12Device& device, ResourcePool& res_pool, cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
 
-    void destroy(handle::shader_view sv)
+    void free(handle::shader_view sv)
     {
         auto lg = std::lock_guard(mMutex);
         mSRVUAVAllocator.free(sv.index);

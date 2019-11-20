@@ -3,8 +3,7 @@
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
-
-#include "resource_state.hh"
+#include <phantasm-renderer/backend/d3d12/resources/resource_state.hh>
 
 void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned max_num_resources)
 {
@@ -68,7 +67,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
     return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
 }
 
-void pr::backend::d3d12::ResourcePool::freeResource(pr::backend::handle::resource res)
+void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
 {
     // TODO: dangle check
     // TODO: Do we internally keep the resource alive until it is no longer used, or

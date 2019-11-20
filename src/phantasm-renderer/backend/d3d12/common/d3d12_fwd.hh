@@ -15,6 +15,8 @@ struct ID3D12Fence;
 struct ID3D12Resource;
 struct ID3D12CommandQueue;
 struct ID3D12DescriptorHeap;
+struct ID3D12RootSignature;
+struct ID3D12PipelineState;
 
 struct IDXGIAdapter;
 struct IDXGIFactory4;

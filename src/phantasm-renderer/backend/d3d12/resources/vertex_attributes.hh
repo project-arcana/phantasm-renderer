@@ -10,7 +10,7 @@
 
 namespace pr::backend::d3d12
 {
-[[nodiscard]] inline cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> get_input_description(cc::span<assets::vertex_attribute_info const> attrib_info)
+[[nodiscard]] inline cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> get_native_vertex_format(cc::span<vertex_attribute_info const> attrib_info)
 {
     cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> res;
     for (auto const& ai : attrib_info)

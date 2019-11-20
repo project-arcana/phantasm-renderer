@@ -23,11 +23,11 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     return res;
 }
 
-void pr::backend::d3d12::root_signature::initialize(ID3D12Device& device, const shader_payload_shape& payload_shape)
+void pr::backend::d3d12::root_signature_high_level::initialize(ID3D12Device& device, arg::shader_argument_shapes payload_shape)
 {
     detail::root_signature_params parameters;
 
-    for (auto const& arg_shape : payload_shape.shader_arguments)
+    for (auto const& arg_shape : payload_shape)
     {
         _payload_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
     }
@@ -37,7 +37,7 @@ void pr::backend::d3d12::root_signature::initialize(ID3D12Device& device, const 
     raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }
 
-void pr::backend::d3d12::root_signature::bind(
+void pr::backend::d3d12::root_signature_high_level::bind(
     ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_allocator, int argument_index, const shader_argument& argument)
 {
     auto const& map = _payload_maps[unsigned(argument_index)];
@@ -57,8 +57,7 @@ void pr::backend::d3d12::root_signature::bind(
     }
 }
 
-pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(
-    const pr::backend::d3d12::shader_payload_shape::shader_argument_shape& shape)
+pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(const pr::backend::arg::shader_argument_shape& shape)
 {
     shader_argument_map res_map;
     auto const argument_visibility = D3D12_SHADER_VISIBILITY_ALL; // NOTE: Eventually arguments could be constrained to stages

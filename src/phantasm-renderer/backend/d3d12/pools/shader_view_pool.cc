@@ -1,4 +1,4 @@
-#include "shader_views.hh"
+#include "shader_view_pool.hh"
 
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
@@ -21,10 +21,10 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
 }
 
-pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewAllocator::create(ID3D12Device& device,
-                                                                                   ResourcePool& res_pool,
-                                                                                   cc::span<pr::backend::handle::resource> srvs,
-                                                                                   cc::span<pr::backend::handle::resource> uavs)
+pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(ID3D12Device& device,
+                                                                            ResourcePool& res_pool,
+                                                                            cc::span<pr::backend::handle::resource> srvs,
+                                                                            cc::span<pr::backend::handle::resource> uavs)
 {
     auto const total_size = int(srvs.size() + uavs.size());
     DescriptorPageAllocator::handle_t res_alloc;

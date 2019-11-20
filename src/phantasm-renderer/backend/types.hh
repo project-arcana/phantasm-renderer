@@ -11,18 +11,17 @@ using index_t = int;
         index_t index;           \
     }
 
-// Resource handles
-PR_DEFINE_HANDLE(constant_buffer);
+
+/// generic resource (Image, Buffer, RT)
 PR_DEFINE_HANDLE(resource);
 
-// Shader arguments
+/// shader arguments := handle::shader_view (SRVs + UAVs) + handle::resource (CBV) + uint (CBV offset)
 PR_DEFINE_HANDLE(shader_view);
 
-// State objects
+/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats)
 PR_DEFINE_HANDLE(pipeline_state);
-PR_DEFINE_HANDLE(root_signature);
 
-// Dispatch objects
+/// command list handle, returned from compiles
 PR_DEFINE_HANDLE(command_list);
 
 #undef PR_DEFINE_HANDLE
@@ -153,4 +152,12 @@ enum class format : char
 };
 
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
+
+/// Information about a single vertex attribute
+struct vertex_attribute_info
+{
+    char const* semantic_name;
+    unsigned offset;
+    format format;
+};
 }
