@@ -92,7 +92,10 @@ private:
         UINT buffer_stride; ///< vertex size or index size
     };
 
+    /// The main pool data
     backend::detail::linked_pool<resource_node, unsigned> mPool;
+
+    /// "Backing" allocator
     ResourceAllocator mAllocator;
     std::mutex mMutex;
 };

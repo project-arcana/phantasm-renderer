@@ -21,10 +21,7 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
 }
 
-pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(ID3D12Device& device,
-                                                                            ResourcePool& res_pool,
-                                                                            cc::span<pr::backend::handle::resource> srvs,
-                                                                            cc::span<pr::backend::handle::resource> uavs)
+pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::span<pr::backend::handle::resource> srvs, cc::span<pr::backend::handle::resource> uavs)
 {
     auto const total_size = int(srvs.size() + uavs.size());
     DescriptorPageAllocator::handle_t res_alloc;
@@ -47,24 +44,24 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(ID3D
             {
                 data.resources.push_back(srv);
 
-                ID3D12Resource* const raw_resource = res_pool.getRawResource(srv);
+                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(srv);
                 auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(cpu_base, descriptor_index++);
 
                 // Create a default SRV
                 // (NOTE: Eventually we need more detailed views)
-                device.CreateShaderResourceView(raw_resource, nullptr, cpu_handle);
+                mDevice->CreateShaderResourceView(raw_resource, nullptr, cpu_handle);
             }
 
             for (auto const uav : uavs)
             {
                 data.resources.push_back(uav);
 
-                ID3D12Resource* const raw_resource = res_pool.getRawResource(uav);
+                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(uav);
                 auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(cpu_base, descriptor_index++);
 
                 // Create a default UAV, without a counter resource
                 // (NOTE: Eventually we need more detailed views)
-                device.CreateUnorderedAccessView(raw_resource, nullptr, nullptr, cpu_handle);
+                mDevice->CreateUnorderedAccessView(raw_resource, nullptr, nullptr, cpu_handle);
             }
         }
 

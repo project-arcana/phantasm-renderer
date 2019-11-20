@@ -90,7 +90,7 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(ID3D12Device& device, ResourcePool& res_pool, cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
+    [[nodiscard]] handle::shader_view create(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
 
     void free(handle::shader_view sv)
     {
@@ -101,9 +101,11 @@ public:
 public:
     // internal API
 
-    void initialize(ID3D12Device& device, int num_srvs_uavs)
+    void initialize(ID3D12Device* device, ResourcePool* res_pool, int num_srvs_uavs)
     {
-        mSRVUAVAllocator.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
+        mDevice = device;
+        mResourcePool = res_pool;
+        mSRVUAVAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
         mShaderViewData = cc::array<shader_view_data>::uninitialized(unsigned(mSRVUAVAllocator.getNumPages()));
     }
 
@@ -143,6 +145,11 @@ private:
         cc::uint16 num_srvs;
         cc::uint16 num_uavs;
     };
+
+    // non-owning
+    ID3D12Device* mDevice;
+    ResourcePool* mResourcePool;
+
     cc::array<shader_view_data> mShaderViewData;
     DescriptorPageAllocator mSRVUAVAllocator;
     std::mutex mMutex;
