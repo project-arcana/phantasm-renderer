@@ -14,13 +14,14 @@ public:
     void initialize(ID3D12Device& device, char const* debug_name = nullptr);
     ~SimpleFence();
 
+    SimpleFence() = default;
     SimpleFence(SimpleFence const&) = delete;
     SimpleFence& operator=(SimpleFence const&) = delete;
     SimpleFence(SimpleFence&&) noexcept = delete;
     SimpleFence& operator=(SimpleFence&&) noexcept = delete;
 
-    void signalCPU(uint64_t new_val);
-    void signalGPU(uint64_t new_val, ID3D12CommandQueue& queue);
+    void signalCPU(uint64_t new_val) { mFence->Signal(new_val); }
+    void signalGPU(uint64_t new_val, ID3D12CommandQueue& queue) { queue.Signal(mFence, new_val); }
 
     void waitCPU(uint64_t val);
     void waitGPU(uint64_t val, ID3D12CommandQueue& queue);
@@ -54,10 +55,7 @@ public:
         }
     }
 
-    void waitOnGPU(ID3D12CommandQueue& queue)
-    {
-        mFence.waitGPU(mCounter, queue);
-    }
+    void waitOnGPU(ID3D12CommandQueue& queue) { mFence.waitGPU(mCounter, queue); }
 
 private:
     SimpleFence mFence;

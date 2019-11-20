@@ -33,17 +33,6 @@ pr::backend::d3d12::SimpleFence::~SimpleFence()
     }
 }
 
-void pr::backend::d3d12::SimpleFence::signalCPU(uint64_t new_val)
-{
-    //
-    mFence->Signal(new_val);
-}
-
-void pr::backend::d3d12::SimpleFence::signalGPU(uint64_t new_val, ID3D12CommandQueue& queue)
-{
-    //
-    PR_D3D12_VERIFY(queue.Signal(mFence, new_val));
-}
 
 void pr::backend::d3d12::SimpleFence::waitCPU(uint64_t val)
 {
