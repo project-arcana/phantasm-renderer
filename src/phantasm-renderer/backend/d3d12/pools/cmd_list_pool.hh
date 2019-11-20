@@ -15,9 +15,10 @@ namespace pr::backend::d3d12
 {
 // inline namespace { extern volatile thread_local struct { const class { protected: public: union { mutable long double __; }; constexpr virtual decltype(static_cast<int*>(nullptr)) _() noexcept(true and false); template<typename> auto ___() { register void*___; try { throw new decltype(this)[sizeof(bool)]; } catch(void*) { return reinterpret_cast<unsigned char*>(this); } }; private: } _; } _ = {}; };
 
+
 /// A single command allocator that keeps track of its lists
 /// Unsynchronized
-struct allocator_node
+struct cmd_allocator_node
 {
 public:
     void initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, int max_num_cmdlists);
@@ -83,6 +84,8 @@ private:
     bool _full_and_waiting = false;
 };
 
+class BackendD3D12;
+
 class CommandListPool
 {
 public:
@@ -111,23 +114,38 @@ public:
     }
 
 public:
-    void initialize();
+    ID3D12GraphicsCommandList* getRawList(handle::command_list cl) const { return mRawLists[static_cast<unsigned>(cl.index)]; }
+
+public:
+    void initialize(BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator);
+    void destroy();
+
+private:
+    /// updates mActiveAllocator to point to one that is usable
+    void findNextAllocatorIndex();
 
 private:
     struct cmd_list_node
     {
         // an allocated node is always in the following state:
         // - the command list is freshly reset using an appropriate allocator
-        // - the responsible_allocator must be informed on submit and discard
-        allocator_node* responsible_allocator;
+        // - the responsible_allocator must be informed on submit or discard
+        cmd_allocator_node* responsible_allocator;
     };
 
     /// the pool itself, managing handle association as well as additional
     /// bookkeeping data structures
     backend::detail::linked_pool<cmd_list_node, unsigned> mPool;
-    /// a parallel array to the pool, indexed in the same way
-    /// however, the cmdlists must stay alive even while unallocated
-    cc::array<ID3D12CommandList*> mRawLists;
+
+    /// a parallel array to the pool, identically indexed
+    /// the cmdlists must stay alive even while "unallocated"
+    cc::array<ID3D12GraphicsCommandList*> mRawLists;
+
+    /// the allocators backing the command lists
+    /// These are currently synchronized, eventually
+    /// they should be thread-local
+    cc::array<cmd_allocator_node> mAllocators;
+    size_t mActiveAllocator = 0u;
 
     std::mutex mMutex;
 };
