@@ -59,7 +59,7 @@ struct typed_cmd : cmd_base
 
 }
 
-#define PR_DEFINE_CMD(_type_) struct _type_ : detail::typed_cmd<detail::cmd_type::_type_>
+#define PR_DEFINE_CMD(_type_) struct _type_ final : detail::typed_cmd<detail::cmd_type::_type_>
 
 PR_DEFINE_CMD(begin_render_pass)
 {
