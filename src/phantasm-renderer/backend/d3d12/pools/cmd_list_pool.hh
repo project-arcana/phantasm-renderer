@@ -90,8 +90,31 @@ private:
     bool _full_and_waiting = false;
 };
 
+/// A bundle of single command allocators which automatically
+/// circles through them and soft-resets when possible
+/// Unsynchronized
+class CommandAllocatorBundle
+{
+public:
+    void initialize(ID3D12Device& device, int num_allocators, int num_cmdlists_per_allocator, cc::span<ID3D12GraphicsCommandList*> initial_lists);
+    void destroy();
+
+    /// Resets the given command list to use memory by an appropriate allocator
+    /// Returns a pointer to the backing allocator node
+    cmd_allocator_node* acquireMemory(ID3D12GraphicsCommandList* list);
+
+private:
+    void updateActiveIndex();
+
+private:
+    cc::array<cmd_allocator_node> mAllocators;
+    size_t mActiveAllocator = 0u;
+};
+
 class BackendD3D12;
 
+/// The high-level allocator for Command Lists
+/// Synchronized
 class CommandListPool
 {
 public:
@@ -127,10 +150,6 @@ public:
     void destroy();
 
 private:
-    /// updates mActiveAllocator to point to one that is usable
-    void findNextAllocatorIndex();
-
-private:
     struct cmd_list_node
     {
         // an allocated node is always in the following state:
@@ -150,8 +169,9 @@ private:
     /// the allocators backing the command lists
     /// These are currently synchronized, eventually
     /// they should be thread-local
-    cc::array<cmd_allocator_node> mAllocators;
-    size_t mActiveAllocator = 0u;
+    /// (Instead of a member here, ::create would take
+    /// the thread-local bundle as an argument)
+    CommandAllocatorBundle mAllocatorBundle;
 
     std::mutex mMutex;
 };

@@ -105,54 +105,32 @@ bool pr::backend::d3d12::cmd_allocator_node::is_submit_counter_up_to_date() cons
 pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create()
 {
     unsigned res_handle;
+    cmd_allocator_node* backing_alloc;
     {
         auto lg = std::lock_guard(mMutex);
-        findNextAllocatorIndex();
         res_handle = mPool.acquire();
-        mAllocators[mActiveAllocator].acquire(mRawLists[res_handle]);
+        backing_alloc = mAllocatorBundle.acquireMemory(mRawLists[res_handle]);
     }
 
     cmd_list_node& new_node = mPool.get(res_handle);
-    new_node.responsible_allocator = &mAllocators[mActiveAllocator];
+    new_node.responsible_allocator = backing_alloc;
 
     return {static_cast<handle::index_t>(res_handle)};
 }
 
 void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator)
 {
-    // NOTE: Eventually, we'll need multiple
-    constexpr auto list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-
     auto const num_cmdlists_total = static_cast<size_t>(num_allocators * num_cmdlists_per_allocator);
 
     // initialize data structures
     mPool.initialize(num_cmdlists_total);
     mRawLists = mRawLists.uninitialized(num_cmdlists_total);
-    mAllocators = mAllocators.defaulted(static_cast<size_t>(num_allocators));
-    mActiveAllocator = 0u;
 
-    auto& direct_queue = backend.mDirectQueue.getQueue();
-    auto& device = backend.mDevice.getDevice();
-
-    // Initialize allocators, create command lists
-    {
-        auto cmdlist_i = 0u;
-        for (cmd_allocator_node& alloc_node : mAllocators)
-        {
-            alloc_node.initialize(device, list_type, num_cmdlists_per_allocator);
-            ID3D12CommandAllocator* const raw_alloc = alloc_node.get_allocator();
-
-            for (auto _ = 0; _ < num_cmdlists_per_allocator; ++_)
-            {
-                PR_D3D12_VERIFY(device.CreateCommandList(0, list_type, raw_alloc, nullptr, IID_PPV_ARGS(&mRawLists[cmdlist_i])));
-                mRawLists[cmdlist_i]->Close();
-                ++cmdlist_i;
-            }
-        }
-    }
+    // initialize the (currently single) allocator bundle and give it ALL raw lists
+    mAllocatorBundle.initialize(backend.mDevice.getDevice(), num_allocators, num_cmdlists_per_allocator, mRawLists);
 
     // Execute all (closed) lists once to suppress warnings
-    direct_queue.ExecuteCommandLists(                                 //
+    backend.mDirectQueue.getQueue().ExecuteCommandLists(              //
         UINT(mRawLists.size()),                                       //
         reinterpret_cast<ID3D12CommandList* const*>(mRawLists.data()) // This is hopefully always fine
     );
@@ -168,6 +146,38 @@ void pr::backend::d3d12::CommandListPool::destroy()
         list->Release();
     }
 
+    mAllocatorBundle.destroy();
+}
+
+void pr::backend::d3d12::CommandAllocatorBundle::initialize(ID3D12Device& device, int num_allocators, int num_cmdlists_per_allocator, cc::span<ID3D12GraphicsCommandList*> initial_lists)
+{
+    // NOTE: Eventually, we'll need multiple
+    constexpr auto list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+    mAllocators = mAllocators.defaulted(static_cast<size_t>(num_allocators));
+    mActiveAllocator = 0u;
+
+
+    // Initialize allocators, create command lists
+    {
+        auto cmdlist_i = 0u;
+        for (cmd_allocator_node& alloc_node : mAllocators)
+        {
+            alloc_node.initialize(device, list_type, num_cmdlists_per_allocator);
+            ID3D12CommandAllocator* const raw_alloc = alloc_node.get_allocator();
+
+            for (auto _ = 0; _ < num_cmdlists_per_allocator; ++_)
+            {
+                PR_D3D12_VERIFY(device.CreateCommandList(0, list_type, raw_alloc, nullptr, IID_PPV_ARGS(&initial_lists[cmdlist_i])));
+                initial_lists[cmdlist_i]->Close();
+                ++cmdlist_i;
+            }
+        }
+    }
+}
+
+void pr::backend::d3d12::CommandAllocatorBundle::destroy()
+{
     for (cmd_allocator_node& alloc_node : mAllocators)
     {
         auto const reset_success = alloc_node.try_reset_blocking();
@@ -176,7 +186,14 @@ void pr::backend::d3d12::CommandListPool::destroy()
     }
 }
 
-void pr::backend::d3d12::CommandListPool::findNextAllocatorIndex()
+pr::backend::d3d12::cmd_allocator_node* pr::backend::d3d12::CommandAllocatorBundle::acquireMemory(ID3D12GraphicsCommandList* list)
+{
+    updateActiveIndex();
+    mAllocators[mActiveAllocator].acquire(list);
+    return &mAllocators[mActiveAllocator];
+}
+
+void pr::backend::d3d12::CommandAllocatorBundle::updateActiveIndex()
 {
     for (auto it = 0u; it < mAllocators.size(); ++it)
     {
