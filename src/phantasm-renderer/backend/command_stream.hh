@@ -15,7 +15,6 @@ namespace limits
 inline constexpr auto max_render_targets = 8u;
 inline constexpr auto max_resource_transitions = 4u;
 inline constexpr auto max_shader_arguments = 4u;
-
 }
 
 namespace cmd
@@ -91,7 +90,9 @@ PR_DEFINE_CMD(begin_render_pass)
     cc::capped_vector<depth_stencil_info, 1> depth_target;
 };
 
-PR_DEFINE_CMD(end_render_pass){};
+PR_DEFINE_CMD(end_render_pass){
+    // NOTE: Anything useful to pass here?
+};
 
 PR_DEFINE_CMD(transition_resources)
 {
@@ -121,18 +122,21 @@ PR_DEFINE_CMD(final_command){
 
 namespace detail
 {
+/// returns the size in bytes of the given command
 [[nodiscard]] inline constexpr size_t get_command_size(detail::cmd_type type)
 {
     switch (type)
     {
 #define PR_X(_val_)               \
     case detail::cmd_type::_val_: \
-        return sizeof(_val_);
+        return sizeof(::pr::backend::cmd::_val_);
         PR_CMD_TYPE_VALUES
 #undef PR_X
     }
+    return 0; // suppress warnings
 }
 
+/// returns a string literal corresponding to the command type
 [[nodiscard]] inline constexpr char const* command_type_to_string(detail::cmd_type type)
 {
     switch (type)
@@ -143,16 +147,19 @@ namespace detail
         PR_CMD_TYPE_VALUES
 #undef PR_X
     }
+    return ""; // suppress warnings
 }
 
+/// calls F::execute() with the apropriately downcasted command object as a const&
+/// (F should have an execute method with overloads for all command objects)
 template <class F>
-void reinterpret_dispatch(detail::cmd_base const& base, F& callback)
+void dynamic_dispatch(detail::cmd_base const& base, F& callback)
 {
     switch (base.type)
     {
-#define PR_X(_val_)                                        \
-    case detail::cmd_type::_val_:                          \
-        callback.execute(static_cast<_val_ const&>(base)); \
+#define PR_X(_val_)                                                            \
+    case detail::cmd_type::_val_:                                              \
+        callback.execute(static_cast<::pr::backend::cmd::_val_ const&>(base)); \
         break;
         PR_CMD_TYPE_VALUES
 #undef PR_X
@@ -215,13 +222,19 @@ public:
     void add_command(CMDT const& command)
     {
         static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "Type is not a command");
-        CC_ASSERT(sizeof(CMDT) <= _max_size - _cursor);
+        CC_ASSERT(static_cast<int>(sizeof(CMDT)) <= remaining_bytes());
         std::memcpy(_output_stream + _cursor, &command, sizeof(CMDT));
         _cursor += sizeof(CMDT);
     }
 
-    void finalize() { add_command(cmd::final_command{}); }
+    void finalize()
+    {
+        // NOTE: maybe a final command is not the best idea as it is not required if we just
+        // pass command streams as char* + size instead
+        add_command(cmd::final_command{});
+    }
 
+    int remaining_bytes() const { return static_cast<int>(_max_size) - static_cast<int>(_cursor); }
 
 private:
     char* _output_stream = nullptr;
