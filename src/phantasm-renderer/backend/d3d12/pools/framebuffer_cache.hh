@@ -27,6 +27,9 @@ namespace pr::backend::d3d12
 /// PER command list, which act as linear allocators and create the
 /// descriptors (remember, not GPU-visible) on the fly
 ///
+/// Jesse Natalie: CPU-only descriptors have ZERO lifetime requirements and can be invalidated before
+/// the command list is even closed. This simplifies management for the linear allocators.
+///
 /// The data structure for this linear allocator could be placed here,
 /// and must be referenced in CommandListPool::cmd_list_node
 ///

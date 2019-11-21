@@ -59,6 +59,12 @@ public:
     void on_submit(ID3D12CommandQueue& queue)
     {
         ++_submit_counter;
+        // NOTE: Fence access requires no synchronization in d3d12,
+        // however the CommandListPool has to take a lock for this call (right now).
+        // Eventually these nodes should be extracted to TLS bundles
+        // with no synchronization necessary except for two atomics:
+        // _submit_counter and _num_discarded
+        // because on_submit and on_discard will be called from the submit thread at any time
         _fence.signalGPU(_submit_counter, queue);
     }
 
