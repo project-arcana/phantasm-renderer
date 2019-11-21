@@ -13,6 +13,8 @@
 
 namespace pr::backend::d3d12
 {
+namespace legacy
+{
 struct shader_argument
 {
     D3D12_GPU_VIRTUAL_ADDRESS cbv_va = 0;
@@ -21,6 +23,7 @@ struct shader_argument
     cc::capped_vector<cpu_cbv_srv_uav, 8> uavs;
 };
 
+}
 struct shader_argument_map
 {
     unsigned cbv_param;
@@ -70,7 +73,21 @@ inline void initialize_root_signature(root_signature_ll& root_sig, ID3D12Device&
     root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers).get();
 }
 
-//inline void bind_root_signature_arg(root_signature_ll& root_sig);
+inline void bind_root_signature_argument(root_signature_ll& root_sig,
+                                         ID3D12GraphicsCommandList& cmd_list,
+                                         int arg_index,
+                                         D3D12_GPU_VIRTUAL_ADDRESS cbv_va,
+                                         unsigned cbv_offset,
+                                         D3D12_GPU_DESCRIPTOR_HANDLE descriptor_table)
+{
+    auto const& map = root_sig.argument_maps[static_cast<unsigned>(arg_index)];
+
+    if (map.cbv_param != uint32_t(-1))
+        cmd_list.SetGraphicsRootConstantBufferView(map.cbv_param, cbv_va + cbv_offset);
+
+    if (map.descriptor_table_param != uint32_t(-1))
+        cmd_list.SetGraphicsRootDescriptorTable(map.descriptor_table_param, descriptor_table);
+}
 
 
 struct root_signature_high_level
@@ -79,7 +96,7 @@ struct root_signature_high_level
     void initialize(ID3D12Device& device, arg::shader_argument_shapes payload_sizes);
 
     /// binds a shader argument
-    void bind(ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_manager, int argument_index, shader_argument const& argument);
+    void bind(ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_manager, int argument_index, legacy::shader_argument const& argument);
 
     shared_com_ptr<ID3D12RootSignature> raw_root_sig;
 

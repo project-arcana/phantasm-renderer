@@ -38,7 +38,7 @@ void pr::backend::d3d12::root_signature_high_level::initialize(ID3D12Device& dev
 }
 
 void pr::backend::d3d12::root_signature_high_level::bind(
-    ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_allocator, int argument_index, const shader_argument& argument)
+    ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_allocator, int argument_index, const legacy::shader_argument& argument)
 {
     auto const& map = _payload_maps[unsigned(argument_index)];
 
@@ -114,3 +114,5 @@ void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
     sampler.Init(0);
 }
+
+

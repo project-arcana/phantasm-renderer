@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
+
 namespace pr::backend
 {
 namespace handle
 {
-using index_t = int;
+using index_t = int32_t;
 #define PR_DEFINE_HANDLE(_type_) \
     struct _type_                \
     {                            \
@@ -25,9 +27,21 @@ PR_DEFINE_HANDLE(pipeline_state);
 PR_DEFINE_HANDLE(command_list);
 
 #undef PR_DEFINE_HANDLE
+
+inline constexpr index_t null_handle_value = index_t(-1);
+
+inline constexpr resource backbuffer_resource = {INT32_MAX};
+
 }
 
-enum class shader_domain : char
+struct shader_argument
+{
+    handle::resource constant_buffer;
+    unsigned constant_buffer_offset;
+    handle::shader_view shader_view;
+};
+
+enum class shader_domain : uint8_t
 {
     pixel,
     vertex,
@@ -37,7 +51,7 @@ enum class shader_domain : char
     compute
 };
 
-enum class adapter_preference : char
+enum class adapter_preference : uint8_t
 {
     highest_vram,
     first,
@@ -46,7 +60,7 @@ enum class adapter_preference : char
     explicit_index
 };
 
-enum class adapter_vendor : char
+enum class adapter_vendor : uint8_t
 {
     amd,
     intel,
@@ -54,7 +68,7 @@ enum class adapter_vendor : char
     unknown
 };
 
-enum class validation_level : char
+enum class validation_level : uint8_t
 {
     off,
 
@@ -84,7 +98,7 @@ struct backend_config
 // Map to
 // D3D12: resource states
 // Vulkan: access masks, image layouts and pipeline stage dependencies
-enum class resource_state : char
+enum class resource_state : uint8_t
 {
     // unknown to pr
     unknown,
@@ -114,7 +128,7 @@ enum class resource_state : char
 
 // Map to DXGI_FORMAT and VkFormat
 // [f]loat, [i]nt, [u]int, [un]orm
-enum class format : char
+enum class format : uint8_t
 {
     rgba32f,
     rgb32f,

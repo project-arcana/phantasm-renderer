@@ -40,6 +40,8 @@ struct uav_buffer_view
     uint32_t offset = 0;
 };
 
+namespace legacy {
+
 struct shader_argument
 {
     VkBuffer cbv = VK_NULL_HANDLE;
@@ -48,6 +50,7 @@ struct shader_argument
     cc::capped_vector<VkImageView, 8> srvs;
     cc::capped_vector<uav_buffer_view, 8> uavs;
 };
+}
 
 namespace detail
 {
@@ -116,7 +119,7 @@ struct descriptor_set_bundle
     void free(DescriptorAllocator& allocator);
 
     /// update the n-th argument
-    void update_argument(VkDevice device, uint32_t argument_index, shader_argument const& argument);
+    void update_argument(VkDevice device, uint32_t argument_index, legacy::shader_argument const& argument);
 
     /// bind the n-th argument at a dynamic offset
     void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index, uint32_t cb_offset)

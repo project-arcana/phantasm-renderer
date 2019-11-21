@@ -156,7 +156,7 @@ void pr::backend::vk::descriptor_set_bundle::free(pr::backend::vk::DescriptorAll
         allocator.free(desc_set);
 }
 
-void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, uint32_t argument_index, const pr::backend::vk::shader_argument& argument)
+void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, uint32_t argument_index, const pr::backend::vk::legacy::shader_argument& argument)
 {
     auto const& desc_set = descriptor_sets[argument_index];
 
