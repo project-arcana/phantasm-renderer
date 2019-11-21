@@ -3,6 +3,7 @@
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
 #include <phantasm-renderer/backends.hh>
+#include <phantasm-renderer/backend/Backend.hh>
 
 using namespace pr;
 
@@ -23,9 +24,9 @@ void Context::submit(const CompiledFrame& frame)
 
 Context::Context()
 {
-    backend::backend_config cfg;
+    // backend::backend_config cfg;
 #ifndef CC_RELEASE
-    cfg.validation = backend::validation_level::on;
+    // cfg.validation = backend::validation_level::on;
 #endif
     // mBackend = make_vulkan_backend(cfg);
 }
