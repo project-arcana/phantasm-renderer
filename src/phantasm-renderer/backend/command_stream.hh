@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include <clean-core/capped_vector.hh>
+#include <clean-core/utility.hh>
 
 #include <typed-geometry/tg-lean.hh>
 
@@ -25,8 +26,7 @@ namespace detail
     PR_X(draw)                 \
     PR_X(transition_resources) \
     PR_X(begin_render_pass)    \
-    PR_X(end_render_pass)      \
-    PR_X(final_command)
+    PR_X(end_render_pass)
 
 enum class cmd_type : uint8_t
 {
@@ -53,7 +53,6 @@ struct cmd_base
 template <cmd_type TYPE, cmd_queue_type QUEUE = cmd_queue_type::graphics>
 struct typed_cmd : cmd_base
 {
-    static constexpr cmd_type s_type = TYPE;
     static constexpr cmd_queue_type s_queue_type = QUEUE;
     typed_cmd() : cmd_base(TYPE) {}
 };
@@ -114,10 +113,6 @@ PR_DEFINE_CMD(draw)
     cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
 };
 
-PR_DEFINE_CMD(final_command){
-    // signals the end of the stream
-};
-
 #undef PR_DEFINE_CMD
 
 namespace detail
@@ -165,6 +160,17 @@ void dynamic_dispatch(detail::cmd_base const& base, F& callback)
 #undef PR_X
     }
 }
+
+[[nodiscard]] inline constexpr size_t compute_max_command_size()
+{
+    size_t res = 0;
+#define PR_X(_val_) res = cc::max(res, sizeof(::pr::backend::cmd::_val_));
+    PR_CMD_TYPE_VALUES
+#undef PR_X
+    return res;
+}
+
+inline constexpr size_t max_command_size = compute_max_command_size();
 }
 
 #undef PR_CMD_TYPE_VALUES
@@ -179,21 +185,18 @@ public:
 
     struct iterator
     {
-        iterator(char* pos) : _pos(reinterpret_cast<cmd::detail::cmd_base*>(pos)) {}
+        iterator(char* pos, size_t size)
+          : _pos(reinterpret_cast<cmd::detail::cmd_base*>(pos)), _remaining_size(_pos == nullptr ? 0 : static_cast<int64_t>(size))
+        {
+        }
 
-        bool operator==(iterator_end) const noexcept { return _pos->type == cmd::detail::cmd_type::final_command; }
-        bool operator!=(iterator_end) const noexcept { return _pos->type != cmd::detail::cmd_type::final_command; }
-
-        //        bool operator==(iterator other) const noexcept { return other._pos == _pos; }
-        //        bool operator!=(iterator other) const noexcept { return other._pos != _pos; }
-        //        bool operator<(iterator other) const noexcept { return _pos < other._pos; }
-        //        bool operator<=(iterator other) const noexcept { return _pos <= other._pos; }
-        //        bool operator>(iterator other) const noexcept { return _pos > other._pos; }
-        //        bool operator>=(iterator other) const noexcept { return _pos >= other._pos; }
+        bool operator!=(iterator_end) const noexcept { return _remaining_size > 0; }
 
         iterator& operator++()
         {
-            _pos = reinterpret_cast<cmd::detail::cmd_base*>(reinterpret_cast<char*>(_pos) + cmd::detail::get_command_size(_pos->type));
+            auto const advance = cmd::detail::get_command_size(_pos->type);
+            _pos = reinterpret_cast<cmd::detail::cmd_base*>(reinterpret_cast<char*>(_pos) + advance);
+            _remaining_size -= advance;
             return *this;
         }
 
@@ -201,43 +204,41 @@ public:
 
     private:
         cmd::detail::cmd_base* _pos = nullptr;
+        int64_t _remaining_size = 0;
     };
 
 public:
-    command_stream_parser(char* buffer) : _input_stream(buffer) {}
+    command_stream_parser(char* buffer, size_t size) : _in_buffer(buffer), _size(buffer == nullptr ? 0 : size) {}
 
-    iterator begin() const { return iterator(_input_stream); }
+    auto begin() const { return iterator(_in_buffer, _size); }
     iterator_end end() const { return iterator_end(); }
 
 private:
-    char* _input_stream = nullptr;
+    char* _in_buffer = nullptr;
+    size_t _size = 0;
 };
 
 struct command_stream_writer
 {
 public:
-    command_stream_writer(char* buffer, size_t size) : _output_stream(buffer), _max_size(size) {}
+    command_stream_writer(char* buffer, size_t size) : _out_buffer(buffer), _max_size(size) {}
 
     template <class CMDT>
     void add_command(CMDT const& command)
     {
-        static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "Type is not a command");
+        static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "not a command");
         CC_ASSERT(static_cast<int>(sizeof(CMDT)) <= remaining_bytes());
-        std::memcpy(_output_stream + _cursor, &command, sizeof(CMDT));
+        std::memcpy(_out_buffer + _cursor, &command, sizeof(CMDT));
         _cursor += sizeof(CMDT);
     }
 
-    void finalize()
-    {
-        // NOTE: maybe a final command is not the best idea as it is not required if we just
-        // pass command streams as char* + size instead
-        add_command(cmd::final_command{});
-    }
+    size_t size() const { return _cursor; }
+    char* buffer() const { return _out_buffer; }
 
     int remaining_bytes() const { return static_cast<int>(_max_size) - static_cast<int>(_cursor); }
 
 private:
-    char* _output_stream = nullptr;
+    char* _out_buffer = nullptr;
     size_t _max_size = 0;
     size_t _cursor = 0;
 };
