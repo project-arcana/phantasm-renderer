@@ -26,7 +26,7 @@ void pr::backend::d3d12::ResourceAllocator::destroy()
         mAllocator->Release();
 }
 
-D3D12MA::Allocation* pr::backend::d3d12::ResourceAllocator::allocateResourceRaw(const D3D12_RESOURCE_DESC& desc,
+D3D12MA::Allocation* pr::backend::d3d12::ResourceAllocator::allocate(const D3D12_RESOURCE_DESC& desc,
                                                                                 D3D12_RESOURCE_STATES initial_state,
                                                                                 D3D12_CLEAR_VALUE* clear_value,
                                                                                 D3D12_HEAP_TYPE heap_type) const
@@ -39,14 +39,4 @@ D3D12MA::Allocation* pr::backend::d3d12::ResourceAllocator::allocateResourceRaw(
     auto const hr = mAllocator->CreateResource(&allocation_desc, &desc, initial_state, clear_value, &res, __uuidof(ID3D12Resource), nullptr);
     PR_D3D12_ASSERT(hr);
     return res;
-}
-pr::backend::d3d12::resource::~resource() { free(); }
-
-void pr::backend::d3d12::resource::free()
-{
-    if (_allocation)
-    {
-        _allocation->Release();
-        _allocation = nullptr;
-    }
 }
