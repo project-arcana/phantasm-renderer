@@ -9,8 +9,6 @@
 #include <phantasm-renderer/backend/detail/unique_buffer.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include "resources/resource_creation.hh"
-
 namespace pr::backend::d3d12
 {
 struct shader_argument_map
@@ -39,21 +37,17 @@ private:
 }
 
 /// creates a root signature from parameters and samplers
-[[nodiscard]] shared_com_ptr<ID3D12RootSignature> create_root_signature(ID3D12Device& device,
-                                                                        cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
-                                                                        cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
+[[nodiscard]] ID3D12RootSignature* create_root_signature(ID3D12Device& device,
+                                                         cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
+                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
 
-[[nodiscard]] ID3D12RootSignature* create_root_signature_raw(ID3D12Device& device,
-                                                             cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
-                                                             cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
-
-struct root_signature_ll
+struct root_signature
 {
     ID3D12RootSignature* raw_root_sig;
     cc::capped_vector<shader_argument_map, 4> argument_maps;
 };
 
-inline void initialize_root_signature(root_signature_ll& root_sig, ID3D12Device& device, arg::shader_argument_shapes payload_shape)
+inline void initialize_root_signature(root_signature& root_sig, ID3D12Device& device, arg::shader_argument_shapes payload_shape)
 {
     detail::root_signature_params parameters;
 
@@ -63,22 +57,6 @@ inline void initialize_root_signature(root_signature_ll& root_sig, ID3D12Device&
     }
 
     parameters.add_implicit_sampler();
-    root_sig.raw_root_sig = create_root_signature_raw(device, parameters.root_params, parameters.samplers);
-}
-
-inline void bind_root_signature_argument(root_signature_ll& root_sig,
-                                         ID3D12GraphicsCommandList& cmd_list,
-                                         int arg_index,
-                                         D3D12_GPU_VIRTUAL_ADDRESS cbv_va,
-                                         unsigned cbv_offset,
-                                         D3D12_GPU_DESCRIPTOR_HANDLE descriptor_table)
-{
-    auto const& map = root_sig.argument_maps[static_cast<unsigned>(arg_index)];
-
-    if (map.cbv_param != uint32_t(-1))
-        cmd_list.SetGraphicsRootConstantBufferView(map.cbv_param, cbv_va + cbv_offset);
-
-    if (map.descriptor_table_param != uint32_t(-1))
-        cmd_list.SetGraphicsRootDescriptorTable(map.descriptor_table_param, descriptor_table);
+    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }
 }

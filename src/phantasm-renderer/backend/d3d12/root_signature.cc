@@ -2,15 +2,8 @@
 
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::create_root_signature(ID3D12Device& device,
-                                                                                                  cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
-                                                                                                  cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
-{
-    return shared_com_ptr<ID3D12RootSignature>(create_root_signature_raw(device, root_params, samplers), false);
-}
 
-
-ID3D12RootSignature* pr::backend::d3d12::create_root_signature_raw(ID3D12Device& device,
+ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
                                                                    cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
                                                                    cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
 {

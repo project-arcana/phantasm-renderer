@@ -4,73 +4,7 @@
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-pr::backend::d3d12::shared_com_ptr<ID3D12PipelineState> pr::backend::d3d12::create_pipeline_state(ID3D12Device& device,
-                                                                                                  cc::span<D3D12_INPUT_ELEMENT_DESC const> input_layout,
-                                                                                                  cc::span<shader const> shaders,
-                                                                                                  ID3D12RootSignature* root_sig,
-                                                                                                  const pr::primitive_pipeline_config& config,
-                                                                                                  wip::framebuffer_format const& framebuffer)
-{
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {}; // zero init on purpose
-    pso_desc.InputLayout = {input_layout.data(), UINT(input_layout.size())};
-    pso_desc.pRootSignature = root_sig;
-
-    for (shader const& s : shaders)
-    {
-        switch (s.domain)
-        {
-        case shader_domain::pixel:
-            pso_desc.PS = s.get_bytecode();
-            break;
-        case shader_domain::vertex:
-            pso_desc.VS = s.get_bytecode();
-            break;
-        case shader_domain::domain:
-            pso_desc.DS = s.get_bytecode();
-            break;
-        case shader_domain::hull:
-            pso_desc.HS = s.get_bytecode();
-            break;
-        case shader_domain::geometry:
-            pso_desc.GS = s.get_bytecode();
-            break;
-        case shader_domain::compute:
-            break;
-        }
-    }
-
-    pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-
-    pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.RasterizerState.CullMode = pr_to_native(config.cull);
-    pso_desc.RasterizerState.FrontCounterClockwise = true;
-
-    pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    pso_desc.DepthStencilState.DepthEnable = config.depth != pr::depth_function::none && !framebuffer.depth_target.empty();
-    pso_desc.DepthStencilState.DepthFunc = pr_to_native(config.depth);
-    pso_desc.DepthStencilState.DepthWriteMask = config.depth_readonly ? D3D12_DEPTH_WRITE_MASK_ZERO : D3D12_DEPTH_WRITE_MASK_ALL;
-
-    pso_desc.SampleMask = UINT_MAX;
-    pso_desc.PrimitiveTopologyType = pr_to_native(config.topology);
-
-    pso_desc.NumRenderTargets = UINT(framebuffer.render_targets.size());
-
-    for (auto i = 0u; i < framebuffer.render_targets.size(); ++i)
-        pso_desc.RTVFormats[i] = framebuffer.render_targets[i];
-
-    pso_desc.DSVFormat = pso_desc.DepthStencilState.DepthEnable ? framebuffer.depth_target[0] : DXGI_FORMAT_UNKNOWN;
-
-    pso_desc.SampleDesc.Count = UINT(config.samples);
-    pso_desc.NodeMask = 0;
-    pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
-    shared_com_ptr<ID3D12PipelineState> pso;
-    PR_D3D12_VERIFY(device.CreateGraphicsPipelineState(&pso_desc, PR_COM_WRITE(pso)));
-    return pso;
-}
-
-
-ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state_ll(ID3D12Device& device,
+ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& device,
                                                                   ID3D12RootSignature* root_sig,
                                                                   cc::span<const D3D12_INPUT_ELEMENT_DESC> vertex_input_layout,
                                                                   pr::backend::arg::framebuffer_format framebuffer_format,

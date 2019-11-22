@@ -5,7 +5,7 @@
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/d3d12/resources/resource.hh>
+#include <phantasm-renderer/backend/d3d12/memory/ResourceAllocator.hh>
 
 namespace pr::backend::d3d12
 {

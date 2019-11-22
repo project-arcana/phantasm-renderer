@@ -11,7 +11,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
                                                                                                      pr::backend::arg::shader_stages shader_stages,
                                                                                                      const pr::primitive_pipeline_config& primitive_config)
 {
-    root_signature_ll* root_sig;
+    root_signature* root_sig;
     unsigned pool_index;
     // Do things requiring synchronization first
     {
@@ -27,7 +27,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     {
         // Create root signature
         auto const vert_format_native = get_native_vertex_format(vertex_format.attributes);
-        new_node.raw_pso = create_pipeline_state_ll(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
+        new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
     }
 
     new_node.primitive_topology = pr_to_native_topology(primitive_config.topology);

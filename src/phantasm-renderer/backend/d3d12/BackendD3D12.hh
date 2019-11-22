@@ -8,7 +8,6 @@
 #include "Queue.hh"
 #include "Swapchain.hh"
 #include "cmd_list_translation.hh"
-#include "resources/resource.hh"
 
 #include "pools/cmd_list_pool.hh"
 #include "pools/pso_pool.hh"
