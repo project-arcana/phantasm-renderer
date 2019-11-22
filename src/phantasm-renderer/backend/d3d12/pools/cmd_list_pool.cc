@@ -102,14 +102,15 @@ bool pr::backend::d3d12::cmd_allocator_node::is_submit_counter_up_to_date() cons
     return (submits_since_reset == _num_in_flight - _num_discarded);
 }
 
-pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create()
+pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist)
 {
     unsigned res_handle;
     cmd_allocator_node* backing_alloc;
     {
         auto lg = std::lock_guard(mMutex);
         res_handle = mPool.acquire();
-        backing_alloc = mAllocatorBundle.acquireMemory(mRawLists[res_handle]);
+        out_cmdlist = mRawLists[res_handle];
+        backing_alloc = mAllocatorBundle.acquireMemory(out_cmdlist);
     }
 
     cmd_list_node& new_node = mPool.get(res_handle);

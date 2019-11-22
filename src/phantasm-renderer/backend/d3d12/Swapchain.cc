@@ -80,10 +80,11 @@ void pr::backend::d3d12::Swapchain::present()
     mBackbuffers[backbuffer_i].fence.issueFence(*mParentDirectQueue);
 }
 
-void pr::backend::d3d12::Swapchain::waitForBackbuffer()
+unsigned pr::backend::d3d12::Swapchain::waitForBackbuffer()
 {
     auto const backbuffer_i = mSwapchain->GetCurrentBackBufferIndex();
     mBackbuffers[backbuffer_i].fence.waitOnCPU(0);
+    return backbuffer_i;
 }
 
 void pr::backend::d3d12::Swapchain::barrierToPresent(ID3D12GraphicsCommandList* command_list)
@@ -112,12 +113,6 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
 {
     auto const rtv_size = mParentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
-    rtv_desc.Format = s_backbuffer_format;
-    rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    rtv_desc.Texture2D.MipSlice = 0;
-    rtv_desc.Texture2D.PlaneSlice = 0;
-
     for (auto i = 0u; i < mBackbuffers.size(); ++i)
     {
         auto& backbuffer = mBackbuffers[i];
@@ -128,7 +123,7 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
         backbuffer.rtv.ptr += rtv_size * i;
 
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
-        mParentDevice->CreateRenderTargetView(backbuffer.resource, &rtv_desc, backbuffer.rtv);
+        mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
         backbuffer.resource->Release();
     }
 }

@@ -17,7 +17,7 @@ class ResourcePool
 public:
     // frontend-facing API
 
-    /// create a 2D texture2
+    /// create a 2D texture
     [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
 
     /// create a render- or depth-stencil target
@@ -26,7 +26,13 @@ public:
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);
 
+    /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
+    [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
+
     void free(handle::resource res);
+
+    /// only valid for resources created with createMappedBuffer
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res);
 
 public:
     // internal API
@@ -75,8 +81,19 @@ public:
         return {data.resource->GetGPUVirtualAddress(), data.buffer_width};
     }
 
+    //
+    // Swapchain backbuffer resource injection
+    // Swapchain backbuffers are exposed as handle::resource, so they can be interchangably
+    // used with any other render target, and follow the same transition semantics
+    // these handles have a limited lifetime: valid from Backend::acquireBackbuffer until
+    // the first of either Backend::present or Backend::resize
+    //
+
+    [[nodiscard]] handle::resource injectBackbufferResource(ID3D12Resource* raw_resource, resource_state state);
+
 private:
-    [[nodiscard]] handle::resource acquireResource(D3D12MA::Allocation* alloc, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0);
+    [[nodiscard]] handle::resource acquireResource(
+        D3D12MA::Allocation* alloc, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
 private:
     struct resource_node
@@ -90,10 +107,13 @@ private:
         // only valid if the resource was created with ::createBuffer
         UINT buffer_width;
         UINT buffer_stride; ///< vertex size or index size
+        std::byte* buffer_map;
     };
 
     /// The main pool data
     backend::detail::linked_pool<resource_node, unsigned> mPool;
+
+    handle::resource mInjectedBackbufferResource = handle::null_resource;
 
     /// "Backing" allocator
     ResourceAllocator mAllocator;

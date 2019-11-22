@@ -73,6 +73,8 @@ public:
 
     [[nodiscard]] int getNumPages() const { return mPageAllocator.get_num_pages(); }
 
+    [[nodiscard]] ID3D12DescriptorHeap* getHeap() const { return mHeap; }
+
 private:
     shared_com_ptr<ID3D12DescriptorHeap> mHeap;
     D3D12_CPU_DESCRIPTOR_HANDLE mHeapStartCPU;
@@ -133,6 +135,8 @@ public:
         auto const& data = mShaderViewData[static_cast<size_t>(sv.index)];
         return cc::span{data.resources.data() + data.num_srvs, static_cast<size_t>(data.num_uavs)};
     }
+
+    cc::array<ID3D12DescriptorHeap*, 1> getGPURelevantHeaps() const { return {mSRVUAVAllocator.getHeap()}; }
 
 private:
     struct shader_view_data

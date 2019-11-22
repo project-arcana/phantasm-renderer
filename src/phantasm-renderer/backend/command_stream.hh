@@ -22,10 +22,12 @@ namespace cmd
 {
 namespace detail
 {
-#define PR_CMD_TYPE_VALUES     \
-    PR_X(draw)                 \
-    PR_X(transition_resources) \
-    PR_X(begin_render_pass)    \
+#define PR_CMD_TYPE_VALUES       \
+    PR_X(draw)                   \
+    PR_X(transition_resources)   \
+    PR_X(copy_buffer)            \
+    PR_X(copy_buffer_to_texture) \
+    PR_X(begin_render_pass)      \
     PR_X(end_render_pass)
 
 enum class cmd_type : uint8_t
@@ -87,6 +89,7 @@ PR_DEFINE_CMD(begin_render_pass)
 
     cc::capped_vector<render_target_info, limits::max_render_targets> render_targets;
     cc::capped_vector<depth_stencil_info, 1> depth_target;
+    tg::ivec2 viewport;
 };
 
 PR_DEFINE_CMD(end_render_pass){
@@ -111,6 +114,32 @@ PR_DEFINE_CMD(draw)
     handle::resource index_buffer;
     unsigned num_indices;
     cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+};
+
+PR_DEFINE_CMD(copy_buffer)
+{
+    handle::resource destination;
+    handle::resource source;
+    size_t dest_offset;
+    size_t source_offset;
+    size_t size;
+
+    copy_buffer() = default;
+    copy_buffer(handle::resource dest, size_t dest_offset, handle::resource src, size_t src_offset, size_t size)
+      : destination(dest), source(src), dest_offset(dest_offset), source_offset(src_offset), size(size)
+    {
+    }
+};
+
+PR_DEFINE_CMD(copy_buffer_to_texture)
+{
+    handle::resource destination;
+    handle::resource source;
+    size_t source_offset;
+    unsigned mip_width;
+    unsigned mip_height;
+    unsigned subresource_index;
+    format texture_format;
 };
 
 #undef PR_DEFINE_CMD
@@ -208,9 +237,16 @@ public:
     };
 
 public:
+    command_stream_parser() = default;
     command_stream_parser(std::byte* buffer, size_t size) : _in_buffer(buffer), _size(buffer == nullptr ? 0 : size) {}
 
-    auto begin() const { return iterator(_in_buffer, _size); }
+    void set_buffer(std::byte* buffer, size_t size)
+    {
+        _in_buffer = buffer;
+        _size = (buffer == nullptr ? 0 : size);
+    }
+
+    iterator begin() const { return iterator(_in_buffer, _size); }
     iterator_end end() const { return iterator_end(); }
 
 private:

@@ -10,6 +10,7 @@
 
 #include <phantasm-renderer/backend/d3d12/Fence.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/resources/resource_state.hh>
 
 namespace pr::backend::d3d12
 {
@@ -120,7 +121,7 @@ class CommandListPool
 public:
     // frontend-facing API (not quite, command_list can only be compiled immediately)
 
-    [[nodiscard]] handle::command_list create();
+    [[nodiscard]] handle::command_list create(ID3D12GraphicsCommandList*& out_cmdlist);
 
     void freeOnSubmit(handle::command_list cl, ID3D12CommandQueue& queue)
     {
@@ -145,6 +146,8 @@ public:
 public:
     ID3D12GraphicsCommandList* getRawList(handle::command_list cl) const { return mRawLists[static_cast<unsigned>(cl.index)]; }
 
+    incomplete_state_cache* getStateCache(handle::command_list cl) { return &mPool.get(static_cast<unsigned>(cl.index)).state_cache; }
+
 public:
     void initialize(BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator);
     void destroy();
@@ -156,6 +159,7 @@ private:
         // - the command list is freshly reset using an appropriate allocator
         // - the responsible_allocator must be informed on submit or discard
         cmd_allocator_node* responsible_allocator;
+        incomplete_state_cache state_cache;
     };
 
     /// the pool itself, managing handle association as well as additional
