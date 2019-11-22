@@ -6,7 +6,6 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 {
     mAdapter.initialize(config);
     mDevice.initialize(mAdapter.getAdapter(), config);
-    mAllocator.initialize(mDevice.getDevice());
     mDirectQueue.initialize(mDevice.getDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
     mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), handle, config.num_backbuffers);
 
@@ -26,8 +25,7 @@ void pr::backend::d3d12::BackendD3D12::destroy()
 
     mPoolPSOs.destroy();
     mPoolCmdLists.destroy();
-
-    mAllocator.destroy();
+    mPoolResources.destroy();
 }
 
 void pr::backend::d3d12::BackendD3D12::flushGPU()

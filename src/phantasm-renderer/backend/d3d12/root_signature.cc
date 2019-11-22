@@ -31,43 +31,6 @@ ID3D12RootSignature* pr::backend::d3d12::create_root_signature_raw(ID3D12Device&
     return res;
 }
 
-void pr::backend::d3d12::root_signature_high_level::initialize(ID3D12Device& device, arg::shader_argument_shapes payload_shape)
-{
-    detail::root_signature_params parameters;
-
-    for (auto const& arg_shape : payload_shape)
-    {
-        _payload_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
-    }
-
-    parameters.add_implicit_sampler();
-
-    raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
-}
-
-void pr::backend::d3d12::root_signature_high_level::bind(ID3D12Device& device,
-                                                         ID3D12GraphicsCommandList& command_list,
-                                                         DescriptorAllocator& desc_allocator,
-                                                         int argument_index,
-                                                         const legacy::shader_argument& argument)
-{
-    auto const& map = _payload_maps[unsigned(argument_index)];
-
-
-    if (map.cbv_param != uint32_t(-1))
-    {
-        // root cbv
-        command_list.SetGraphicsRootConstantBufferView(map.cbv_param, argument.cbv_va + argument.cbv_view_offset);
-    }
-
-    if (map.descriptor_table_param != uint32_t(-1))
-    {
-        // descriptor table
-        auto desc_table = desc_allocator.allocDynamicTable(device, {}, argument.srvs, argument.uavs);
-        command_list.SetGraphicsRootDescriptorTable(map.descriptor_table_param, desc_table.shader_resource_handle_gpu);
-    }
-}
-
 pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(const pr::backend::arg::shader_argument_shape& shape)
 {
     shader_argument_map res_map;
@@ -124,5 +87,5 @@ void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
     // Note this sampler is created in space0
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
     sampler.Init(0, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 0,
-                 16, D3D12_COMPARISON_FUNC_LESS_EQUAL, D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE, 5, 5);
+                 16, D3D12_COMPARISON_FUNC_LESS_EQUAL, D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE);
 }

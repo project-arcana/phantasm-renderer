@@ -70,11 +70,6 @@ public:
     void destroy();
 
     /// allocate a resource, thread safe
-    [[nodiscard]] resource allocateResource(D3D12_RESOURCE_DESC const& desc,
-                                            D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON,
-                                            D3D12_CLEAR_VALUE* clear_value = nullptr,
-                                            D3D12_HEAP_TYPE heap_type = D3D12_HEAP_TYPE_DEFAULT) const;
-
     [[nodiscard]] D3D12MA::Allocation* allocateResourceRaw(D3D12_RESOURCE_DESC const& desc,
                                                            D3D12_RESOURCE_STATES initial_state = D3D12_RESOURCE_STATE_COMMON,
                                                            D3D12_CLEAR_VALUE* clear_value = nullptr,

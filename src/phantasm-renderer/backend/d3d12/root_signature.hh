@@ -13,17 +13,6 @@
 
 namespace pr::backend::d3d12
 {
-namespace legacy
-{
-struct shader_argument
-{
-    D3D12_GPU_VIRTUAL_ADDRESS cbv_va = 0;
-    uint32_t cbv_view_offset = 0;
-    cc::capped_vector<cpu_cbv_srv_uav, 8> srvs;
-    cc::capped_vector<cpu_cbv_srv_uav, 8> uavs;
-};
-
-}
 struct shader_argument_map
 {
     unsigned cbv_param;
@@ -92,20 +81,4 @@ inline void bind_root_signature_argument(root_signature_ll& root_sig,
     if (map.descriptor_table_param != uint32_t(-1))
         cmd_list.SetGraphicsRootDescriptorTable(map.descriptor_table_param, descriptor_table);
 }
-
-
-struct root_signature_high_level
-{
-    /// Creates a root signature from its "shape", an array of payload sizes
-    void initialize(ID3D12Device& device, arg::shader_argument_shapes payload_sizes);
-
-    /// binds a shader argument
-    void bind(ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_manager, int argument_index, legacy::shader_argument const& argument);
-
-    shared_com_ptr<ID3D12RootSignature> raw_root_sig;
-
-private:
-    cc::capped_vector<shader_argument_map, 8> _payload_maps;
-};
-
 }

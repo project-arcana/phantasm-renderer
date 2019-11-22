@@ -1,5 +1,7 @@
 #include "pso_pool.hh"
 
+#include <iostream>
+
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
 #include <phantasm-renderer/backend/d3d12/resources/vertex_attributes.hh>
 
@@ -57,4 +59,18 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
     mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary
 }
 
-void pr::backend::d3d12::PipelineStateObjectPool::destroy() { mRootSigCache.destroy(); }
+void pr::backend::d3d12::PipelineStateObjectPool::destroy()
+{
+    auto num_leaks = 0;
+    mPool.iterate_allocated_nodes([&](pso_node& leaked_node) {
+        ++num_leaks;
+        leaked_node.raw_pso->Release();
+    });
+
+    if (num_leaks > 0)
+    {
+        std::cout << "[pr][backend][d3d12] warning: leaked " << num_leaks << " handle::pipeline_state object" << (num_leaks == 1 ? "" : "s") << std::endl;
+    }
+
+    mRootSigCache.destroy();
+}

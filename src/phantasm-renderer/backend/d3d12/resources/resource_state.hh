@@ -100,35 +100,4 @@ public:
     // linear "map" for now, might want to benchmark this
     cc::capped_vector<cache_entry, 32> cache;
 };
-
-/// A single state cache with the definitive information about each resource's state
-/// responsible for filling small command lists with nothing but barriers so that assumptions
-/// made by threads with incomplete_state_caches hold in their command lists
-///
-/// This class is stateless (no globals involved), since the master state is stored within D3D12MA allocations themselves
-///
-/// Not internally synchronized
-struct master_state_cache
-{
-    struct init_state
-    {
-        /// (const) the raw resource pointer
-        D3D12MA::Allocation* ptr;
-        /// (const) the <after> state of the initial barrier
-        D3D12_RESOURCE_STATES initial;
-
-        init_state() = default;
-        init_state(D3D12MA::Allocation* p, D3D12_RESOURCE_STATES i) : ptr(p), initial(i) {}
-    };
-
-    /// submits all required resource barriers based on an incomplete state cache
-    /// updates the master cache to the current states
-    static void submit_required_incomplete_barriers(ID3D12GraphicsCommandList* command_list, incomplete_state_cache const& incomplete_cache);
-
-    /// submits all required resource barriers based on a span of init states
-    /// updates the master cache to the initial states
-    static void submit_initial_creation_barriers(ID3D12GraphicsCommandList* command_list, cc::span<init_state const> init_states);
-
-    master_state_cache() = delete;
-};
 }

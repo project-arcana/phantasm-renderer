@@ -101,7 +101,6 @@ public:
     Device mDevice;
     Queue mDirectQueue;
     Swapchain mSwapchain;
-    ResourceAllocator mAllocator;
 
     // Pools
     ResourcePool mPoolResources;

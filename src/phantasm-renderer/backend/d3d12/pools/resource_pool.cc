@@ -1,5 +1,7 @@
 #include "resource_pool.hh"
 
+#include <iostream>
+
 #include <clean-core/bit_cast.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
@@ -13,6 +15,25 @@ void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned
     // TODO: think about reserved bits for dangle check, assert max_num < 2^free bits
     mPool.initialize(max_num_resources + 1); // 1 additional resource for the backbuffer
     mInjectedBackbufferResource = {static_cast<handle::index_t>(mPool.acquire())};
+}
+
+void pr::backend::d3d12::ResourcePool::destroy()
+{
+    auto num_leaks = 0;
+    mPool.iterate_allocated_nodes([&](resource_node& leaked_node) {
+        if (leaked_node.allocation != nullptr)
+        {
+            ++num_leaks;
+            leaked_node.allocation->Release();
+        }
+    });
+
+    if (num_leaks > 0)
+    {
+        std::cout << "[pr][backend][d3d12] warning: leaked " << num_leaks << " handle::resource object" << (num_leaks == 1 ? "" : "s") << std::endl;
+    }
+
+    mAllocator.destroy();
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::injectBackbufferResource(ID3D12Resource* raw_resource, pr::backend::resource_state state)

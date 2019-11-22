@@ -38,6 +38,7 @@ public:
     // internal API
 
     void initialize(ID3D12Device& device, unsigned max_num_resources);
+    void destroy();
 
     //
     // Raw ID3D12Resource access

@@ -41,10 +41,6 @@ public:
     /// copy an allocation received by suballocate() to a destination resource
     void copyAllocationToBuffer(ID3D12Resource* dest_resource, uint8_t* src_allocation, size_t size);
 
-    /// insert a transition barrier for the given resource upon next flush
-    /// also takes care of the state cache
-    void barrierResourceOnFlush(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after);
-
     /// flush all pending outgoing copy operations and barriers, free the internal upload heap
     void flushAndFinish();
 
@@ -58,8 +54,6 @@ private:
     shared_com_ptr<ID3D12Resource> mUploadHeap;
     shared_com_ptr<ID3D12GraphicsCommandList> mCommandList;
     shared_com_ptr<ID3D12CommandAllocator> mCommandAllocator;
-
-    cc::vector<master_state_cache::init_state> mPendingInitBarriers;
 
     uint8_t* mDataCurrent = nullptr; // current position of upload heap
     uint8_t* mDataBegin = nullptr;   // starting position of upload heap
