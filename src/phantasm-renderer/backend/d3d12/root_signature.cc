@@ -6,6 +6,14 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
                                                                                                   cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
                                                                                                   cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
 {
+    return shared_com_ptr<ID3D12RootSignature>(create_root_signature_raw(device, root_params, samplers), false);
+}
+
+
+ID3D12RootSignature* pr::backend::d3d12::create_root_signature_raw(ID3D12Device& device,
+                                                                   cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
+                                                                   cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
+{
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.data();
     desc.NumParameters = UINT(root_params.size());
@@ -18,8 +26,8 @@ pr::backend::d3d12::shared_com_ptr<ID3D12RootSignature> pr::backend::d3d12::crea
     shared_com_ptr<ID3DBlob> serialized_root_sig;
     PR_D3D12_VERIFY(D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), nullptr));
 
-    shared_com_ptr<ID3D12RootSignature> res;
-    PR_D3D12_VERIFY(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), PR_COM_WRITE(res)));
+    ID3D12RootSignature* res;
+    PR_D3D12_VERIFY(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), IID_PPV_ARGS(&res)));
     return res;
 }
 
@@ -37,8 +45,11 @@ void pr::backend::d3d12::root_signature_high_level::initialize(ID3D12Device& dev
     raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }
 
-void pr::backend::d3d12::root_signature_high_level::bind(
-    ID3D12Device& device, ID3D12GraphicsCommandList& command_list, DescriptorAllocator& desc_allocator, int argument_index, const legacy::shader_argument& argument)
+void pr::backend::d3d12::root_signature_high_level::bind(ID3D12Device& device,
+                                                         ID3D12GraphicsCommandList& command_list,
+                                                         DescriptorAllocator& desc_allocator,
+                                                         int argument_index,
+                                                         const legacy::shader_argument& argument)
 {
     auto const& map = _payload_maps[unsigned(argument_index)];
 
@@ -112,7 +123,6 @@ void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
     // static samplers cost no dwords towards this size
     // Note this sampler is created in space0
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
-    sampler.Init(0);
+    sampler.Init(0, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 0,
+                 16, D3D12_COMPARISON_FUNC_LESS_EQUAL, D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE);
 }
-
-

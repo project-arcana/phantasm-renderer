@@ -54,6 +54,10 @@ private:
                                                                         cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
                                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
 
+[[nodiscard]] ID3D12RootSignature* create_root_signature_raw(ID3D12Device& device,
+                                                             cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
+                                                             cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
+
 struct root_signature_ll
 {
     ID3D12RootSignature* raw_root_sig;
@@ -70,7 +74,7 @@ inline void initialize_root_signature(root_signature_ll& root_sig, ID3D12Device&
     }
 
     parameters.add_implicit_sampler();
-    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers).get();
+    root_sig.raw_root_sig = create_root_signature_raw(device, parameters.root_params, parameters.samplers);
 }
 
 inline void bind_root_signature_argument(root_signature_ll& root_sig,

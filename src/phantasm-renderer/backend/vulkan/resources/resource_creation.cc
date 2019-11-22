@@ -5,6 +5,8 @@
 #include <clean-core/assert.hh>
 #include <clean-core/utility.hh>
 
+#include <typed-geometry/tg.hh>
+
 #include <phantasm-renderer/backend/assets/image_loader.hh>
 
 #include "resource_state.hh"
@@ -64,11 +66,11 @@ pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk
         {
             for (auto mip = 0u; mip < img_size.num_mipmaps; mip++)
             {
-                auto const mip_width = cc::max(img_size.width >> mip, 1u);
-                auto const mip_height = cc::max(img_size.height >> mip, 1u);
+                auto const mip_width = cc::max(unsigned(tg::floor(img_size.width / tg::pow(2.f, float(mip)))), 1u);
+                auto const mip_height = cc::max(unsigned(tg::floor(img_size.height / tg::pow(2.f, float(mip)))), 1u);
+                auto const mip_size_bytes = mip_width * mip_height * bytes_per_pixel;
 
-                auto const mip_upload_size = mip_width * mip_height * bytes_per_pixel;
-                auto* const pixels = upload_heap.suballocateAllowRetry(mip_upload_size, 512);
+                auto* const pixels = upload_heap.suballocateAllowRetry(mip_size_bytes, 512);
 
                 auto const offset = uint32_t(pixels - upload_heap.getBasePointer());
 
