@@ -67,7 +67,7 @@ public:
 
 public:
     void initialize(ID3D12Device& device);
-    ~ResourceAllocator();
+    void destroy();
 
     /// allocate a resource, thread safe
     [[nodiscard]] resource allocateResource(D3D12_RESOURCE_DESC const& desc,

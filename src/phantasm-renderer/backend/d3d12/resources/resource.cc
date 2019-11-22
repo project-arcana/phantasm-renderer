@@ -19,7 +19,7 @@ void pr::backend::d3d12::ResourceAllocator::initialize(ID3D12Device& device)
     PR_D3D12_ASSERT(hr);
 }
 
-pr::backend::d3d12::ResourceAllocator::~ResourceAllocator()
+void pr::backend::d3d12::ResourceAllocator::destroy()
 {
     // this is not a COM pointer although it looks like one
     if (mAllocator)
