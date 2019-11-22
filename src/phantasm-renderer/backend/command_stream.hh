@@ -132,7 +132,7 @@ namespace detail
 }
 
 /// returns a string literal corresponding to the command type
-[[nodiscard]] inline constexpr char const* command_type_to_string(detail::cmd_type type)
+[[nodiscard]] inline constexpr char const* to_string(detail::cmd_type type)
 {
     switch (type)
     {
@@ -185,7 +185,7 @@ public:
 
     struct iterator
     {
-        iterator(char* pos, size_t size)
+        iterator(std::byte* pos, size_t size)
           : _pos(reinterpret_cast<cmd::detail::cmd_base*>(pos)), _remaining_size(_pos == nullptr ? 0 : static_cast<int64_t>(size))
         {
         }
@@ -195,7 +195,7 @@ public:
         iterator& operator++()
         {
             auto const advance = cmd::detail::get_command_size(_pos->type);
-            _pos = reinterpret_cast<cmd::detail::cmd_base*>(reinterpret_cast<char*>(_pos) + advance);
+            _pos = reinterpret_cast<cmd::detail::cmd_base*>(reinterpret_cast<std::byte*>(_pos) + advance);
             _remaining_size -= advance;
             return *this;
         }
@@ -208,20 +208,20 @@ public:
     };
 
 public:
-    command_stream_parser(char* buffer, size_t size) : _in_buffer(buffer), _size(buffer == nullptr ? 0 : size) {}
+    command_stream_parser(std::byte* buffer, size_t size) : _in_buffer(buffer), _size(buffer == nullptr ? 0 : size) {}
 
     auto begin() const { return iterator(_in_buffer, _size); }
     iterator_end end() const { return iterator_end(); }
 
 private:
-    char* _in_buffer = nullptr;
+    std::byte* _in_buffer = nullptr;
     size_t _size = 0;
 };
 
 struct command_stream_writer
 {
 public:
-    command_stream_writer(char* buffer, size_t size) : _out_buffer(buffer), _max_size(size) {}
+    command_stream_writer(std::byte* buffer, size_t size) : _out_buffer(buffer), _max_size(size) {}
 
     template <class CMDT>
     void add_command(CMDT const& command)
@@ -233,12 +233,12 @@ public:
     }
 
     size_t size() const { return _cursor; }
-    char* buffer() const { return _out_buffer; }
+    std::byte* buffer() const { return _out_buffer; }
 
     int remaining_bytes() const { return static_cast<int>(_max_size) - static_cast<int>(_cursor); }
 
 private:
-    char* _out_buffer = nullptr;
+    std::byte* _out_buffer = nullptr;
     size_t _max_size = 0;
     size_t _cursor = 0;
 };
