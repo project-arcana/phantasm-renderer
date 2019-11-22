@@ -7,11 +7,16 @@ namespace pr::backend
 namespace handle
 {
 using index_t = int32_t;
-#define PR_DEFINE_HANDLE(_type_) \
-    struct _type_                \
-    {                            \
-        index_t index;           \
-    }
+inline constexpr index_t null_handle_index = index_t(-1);
+#define PR_DEFINE_HANDLE(_type_)                                                                          \
+    struct _type_                                                                                         \
+    {                                                                                                     \
+        index_t index;                                                                                    \
+        [[nodiscard]] constexpr bool is_valid() const { return index != null_handle_index; }              \
+        [[nodiscard]] constexpr bool operator==(_type_ rhs) const noexcept { return index == rhs.index; } \
+        [[nodiscard]] constexpr bool operator!=(_type_ rhs) const noexcept { return index != rhs.index; } \
+    };                                                                                                    \
+    inline constexpr _type_ null_##_type_ = {null_handle_index}
 
 
 /// generic resource (Image, Buffer, RT)
@@ -27,11 +32,6 @@ PR_DEFINE_HANDLE(pipeline_state);
 PR_DEFINE_HANDLE(command_list);
 
 #undef PR_DEFINE_HANDLE
-
-inline constexpr index_t null_handle_value = index_t(-1);
-
-inline constexpr resource backbuffer_resource = {INT32_MAX};
-
 }
 
 struct shader_argument
@@ -93,6 +93,10 @@ struct backend_config
 
     /// Amount of backbuffers to create
     unsigned num_backbuffers = 3;
+
+    unsigned max_num_resources = 2048;
+    unsigned max_num_pipeline_states = 1024;
+    unsigned max_num_shader_view_elements = 4096;
 };
 
 // Map to
@@ -159,6 +163,10 @@ enum class format : uint8_t
     rg8u,
     r8u,
 
+    // backbuffer formats
+    rgba8un,
+
+    // depth stencil formats
     depth32f,
     depth16un,
     depth32f_stencil8u,

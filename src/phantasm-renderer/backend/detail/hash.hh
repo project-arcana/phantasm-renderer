@@ -36,9 +36,9 @@ size_t hash(T1 const& a, T2 const& b, T3 const& c, T4 const& d)
 }
 }
 
-size_t compute(arg::shader_argument_shape const& v) { return detail::hash(v.num_srvs, v.num_uavs, v.has_cb); }
+inline size_t compute(arg::shader_argument_shape const& v) { return detail::hash(v.num_srvs, v.num_uavs, v.has_cb); }
 
-size_t compute(arg::shader_argument_shapes const v)
+inline size_t compute(arg::shader_argument_shapes const v)
 {
     size_t res = 0;
     for (auto const& e : v)
@@ -46,7 +46,7 @@ size_t compute(arg::shader_argument_shapes const v)
     return res;
 }
 
-size_t compute(arg::framebuffer_format const v)
+inline size_t compute(arg::framebuffer_format const v)
 {
     size_t res = 0;
     for (auto f_rt : v.render_targets)
@@ -56,10 +56,16 @@ size_t compute(arg::framebuffer_format const v)
     return res;
 }
 
+
+inline size_t compute(shader_argument const& v) { return detail::hash(v.constant_buffer.index, v.constant_buffer_offset, v.shader_view.index); }
+
 struct compute_functor
 {
     template <class KeyT>
-    std::size_t operator()(KeyT&& v) const { return compute(cc::forward<KeyT&&>(v)); }
+    std::size_t operator()(KeyT&& v) const
+    {
+        return compute(cc::forward<KeyT&&>(v));
+    }
 };
 
 }
