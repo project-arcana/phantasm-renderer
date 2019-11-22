@@ -7,6 +7,7 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include "detail/trivial_capped_vector.hh"
 #include "types.hh"
 
 namespace pr::backend
@@ -61,6 +62,9 @@ struct typed_cmd : cmd_base
 
 }
 
+template <class T, uint8_t N>
+using cmd_vector = backend::detail::trivial_capped_vector<T, N>;
+
 #define PR_DEFINE_CMD(_type_) struct _type_ final : detail::typed_cmd<detail::cmd_type::_type_>
 
 PR_DEFINE_CMD(begin_render_pass)
@@ -75,20 +79,20 @@ PR_DEFINE_CMD(begin_render_pass)
     struct render_target_info
     {
         handle::resource resource;
-        tg::color4 clear_value;
+        float clear_value[4];
         rt_clear_type clear_type;
     };
 
     struct depth_stencil_info
     {
-        handle::resource resource;
+        handle::resource resource = handle::null_resource;
         float clear_value_depth;
         uint8_t clear_value_stencil;
         rt_clear_type clear_type;
     };
 
-    cc::capped_vector<render_target_info, limits::max_render_targets> render_targets;
-    cc::capped_vector<depth_stencil_info, 1> depth_target;
+    cmd_vector<render_target_info, limits::max_render_targets> render_targets;
+    depth_stencil_info depth_target;
     tg::ivec2 viewport;
 };
 
@@ -104,7 +108,7 @@ PR_DEFINE_CMD(transition_resources)
         resource_state target_state;
     };
 
-    cc::capped_vector<transition_info, limits::max_resource_transitions> transitions;
+    cmd_vector<transition_info, limits::max_resource_transitions> transitions;
 };
 
 PR_DEFINE_CMD(draw)
@@ -113,7 +117,7 @@ PR_DEFINE_CMD(draw)
     handle::resource vertex_buffer;
     handle::resource index_buffer;
     unsigned num_indices;
-    cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
 };
 
 PR_DEFINE_CMD(copy_buffer)
@@ -139,6 +143,7 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
     unsigned mip_width;
     unsigned mip_height;
     unsigned subresource_index;
+    unsigned row_pitch;
     format texture_format;
 };
 
@@ -146,8 +151,15 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
 
 namespace detail
 {
-/// returns the size in bytes of the given command
-[[nodiscard]] inline constexpr size_t get_command_size(detail::cmd_type type)
+#define PR_X(_val_)                                                                                                                       \
+    static_assert(std::is_trivially_copyable_v<::pr::backend::cmd::_val_> && std::is_trivially_destructible_v<::pr::backend::cmd::_val_>, \
+                  #_val_ " is not trivially copyable / destructible");
+PR_CMD_TYPE_VALUES
+#undef PR_X
+
+    /// returns the size in bytes of the given command
+    [[nodiscard]] inline constexpr size_t
+    get_command_size(detail::cmd_type type)
 {
     switch (type)
     {
@@ -257,12 +269,13 @@ private:
 struct command_stream_writer
 {
 public:
-    command_stream_writer(std::byte* buffer, size_t size) : _out_buffer(buffer), _max_size(size) {}
+    command_stream_writer(std::byte* buffer, size_t size) : _out_buffer(buffer), _max_size(size), _cursor(0) {}
 
     template <class CMDT>
     void add_command(CMDT const& command)
     {
         static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "not a command");
+        static_assert(std::is_trivially_copyable_v<CMDT>, "command not trivially copyable");
         CC_ASSERT(static_cast<int>(sizeof(CMDT)) <= remaining_bytes());
         std::memcpy(_out_buffer + _cursor, &command, sizeof(CMDT));
         _cursor += sizeof(CMDT);
