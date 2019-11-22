@@ -82,21 +82,19 @@ struct incomplete_state_cache
 public:
     /// signal a resource transition to a given state
     /// returns true if the before state is known, or false otherwise
-    bool transition_resource(D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after, D3D12_RESOURCE_STATES& out_before);
+    bool transition_resource(handle::resource res, resource_state after, resource_state& out_before);
 
-    /// all-in-one convenience, submitting the barrier itself if applicable
-    /// note that this version should eventually be removed, in favor of batched, split barriers
-    void transition_and_barrier_resource(ID3D12GraphicsCommandList* command_list, D3D12MA::Allocation* allocation, D3D12_RESOURCE_STATES after);
+    void reset() { cache.clear(); }
 
 public:
     struct cache_entry
     {
         /// (const) the raw resource pointer
-        D3D12MA::Allocation* ptr;
+        handle::resource ptr;
         /// (const) the <after> state of the initial barrier (<before> is unknown)
-        D3D12_RESOURCE_STATES required_initial;
+        resource_state required_initial;
         /// latest state of this resource
-        D3D12_RESOURCE_STATES current;
+        resource_state current;
     };
 
     // linear "map" for now, might want to benchmark this
