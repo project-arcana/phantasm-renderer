@@ -1,9 +1,13 @@
 #include "resource_creation.hh"
 
 #include <clean-core/assert.hh>
+#include <clean-core/utility.hh>
+
+#include <typed-geometry/tg.hh>
 
 #include <phantasm-renderer/backend/assets/image_loader.hh>
 
+#include <phantasm-renderer/backend/command_stream.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
@@ -255,10 +259,14 @@ D3D12_CONSTANT_BUFFER_VIEW_DESC pr::backend::d3d12::make_constant_buffer_view(co
 namespace
 {
 using namespace pr::backend::d3d12;
-pr::backend::d3d12::resource create_texture2d_from_data(
-    ResourceAllocator& allocator, ID3D12Device& device, UploadHeap& upload_heap, img::image_info const& img_info, img::image_handle const& img_handle)
+pr::backend::d3d12::resource create_texture2d_from_data(ResourceAllocator& allocator,
+                                                        ID3D12Device& device,
+                                                        UploadHeap& upload_heap,
+                                                        DXGI_FORMAT format,
+                                                        pr::backend::assets::image_size const& img_size,
+                                                        pr::backend::assets::image_data const& img_data)
 {
-    resource res = create_texture2d(allocator, int(img_info.width), int(img_info.height), img_info.format, int(img_info.num_mip_levels));
+    resource res = create_texture2d(allocator, int(img_size.width), int(img_size.height), format, int(img_size.num_mipmaps));
 
     // Get mip footprints (if it is an array we reuse the mip footprints for all the elements of the array)
     //
@@ -267,13 +275,13 @@ pr::backend::d3d12::resource create_texture2d_from_data(
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_subres_tex2d[D3D12_REQ_MIP_LEVELS];
     UINT64 upload_heap_size;
     {
-        auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(img_info.format, img_info.width, img_info.height, 1, UINT16(img_info.num_mip_levels));
-        device.GetCopyableFootprints(&res_desc, 0, img_info.num_mip_levels, 0, placed_subres_tex2d, num_rows, row_sizes_in_bytes, &upload_heap_size);
+        auto const res_desc = CD3DX12_RESOURCE_DESC::Tex2D(format, img_size.width, img_size.height, 1, UINT16(img_size.num_mipmaps));
+        device.GetCopyableFootprints(&res_desc, 0, img_size.num_mipmaps, 0, placed_subres_tex2d, num_rows, row_sizes_in_bytes, &upload_heap_size);
     }
 
-    auto const bytes_per_pixel = util::get_dxgi_bytes_per_pixel(img_info.format);
+    auto const bytes_per_pixel = util::get_dxgi_bytes_per_pixel(format);
 
-    for (auto a = 0u; a < img_info.array_size; ++a)
+    for (auto a = 0u; a < img_size.array_size; ++a)
     {
         // allocate memory for mip chain from upload heap
         //
@@ -281,35 +289,33 @@ pr::backend::d3d12::resource create_texture2d_from_data(
 
         // copy all the mip slices into the offsets specified by the footprint structure
         //
-        for (auto mip = 0u; mip < img_info.num_mip_levels; ++mip)
+        for (auto mip = 0u; mip < img_size.num_mipmaps; ++mip)
         {
-            img::copy_pixels(img_handle, upload_ptr + placed_subres_tex2d[mip].Offset, placed_subres_tex2d[mip].Footprint.RowPitch,
-                             placed_subres_tex2d[mip].Footprint.Width * bytes_per_pixel, num_rows[mip]);
+            // D3D12_PLACED_SUBRESOURCE_FOOTPRINT slice = placed_subres_tex2d[mip];
+            // slice.Offset += size_t(upload_ptr - upload_heap.getBasePointer());
 
-            D3D12_PLACED_SUBRESOURCE_FOOTPRINT slice = placed_subres_tex2d[mip];
-            slice.Offset += size_t(upload_ptr - upload_heap.getBasePointer());
+            D3D12_SUBRESOURCE_FOOTPRINT ng_footprint;
+            ng_footprint.Format = format;
+            ng_footprint.Width = placed_subres_tex2d[mip].Footprint.Width;
+            ng_footprint.Height = placed_subres_tex2d[mip].Footprint.Height;
+            ng_footprint.Depth = 1;
+            ng_footprint.RowPitch = placed_subres_tex2d[mip].Footprint.RowPitch;
 
-            CD3DX12_TEXTURE_COPY_LOCATION const dest(res.raw, a * img_info.num_mip_levels + mip);
-            CD3DX12_TEXTURE_COPY_LOCATION const source(upload_heap.getResource(), slice);
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT ng_placed_footprint;
+            ng_placed_footprint.Offset = placed_subres_tex2d[mip].Offset + size_t(upload_ptr - upload_heap.getBasePointer());
+            ng_placed_footprint.Footprint = ng_footprint;
+
+            pr::backend::assets::copy_subdata(img_data, upload_ptr + ng_placed_footprint.Offset, ng_footprint.RowPitch,
+                                              ng_footprint.Width * bytes_per_pixel, ng_footprint.Height);
+
+            CD3DX12_TEXTURE_COPY_LOCATION const source(upload_heap.getResource(), ng_placed_footprint);
+            CD3DX12_TEXTURE_COPY_LOCATION const dest(res.raw, a * img_size.num_mipmaps + mip);
             upload_heap.getCommandList()->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
         }
     }
 
     return res;
 }
-
-img::image_info to_native_info(pr::backend::assets::image_size const& img_size, bool use_srgb)
-{
-    img::image_info out_info;
-    out_info.array_size = img_size.array_size;
-    out_info.width = img_size.width;
-    out_info.height = img_size.height;
-    out_info.depth = 1;
-    out_info.num_mip_levels = img_size.num_mipmaps;
-    out_info.format = use_srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
-    return out_info;
-}
-
 }
 
 pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
@@ -321,7 +327,8 @@ pr::backend::d3d12::resource pr::backend::d3d12::create_texture2d_from_file(
         assets::image_size img_size;
         auto const img_data = assets::load_image(filename, img_size);
         CC_RUNTIME_ASSERT(assets::is_valid(img_data) && "File not found or image invalid");
-        auto res = create_texture2d_from_data(allocator, device, upload_heap, to_native_info(img_size, use_srgb), img::image_handle{false, {img_data.raw}});
+        auto res = create_texture2d_from_data(allocator, device, upload_heap, use_srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM,
+                                              img_size, img_data);
         assets::free(img_data);
         return res;
     }

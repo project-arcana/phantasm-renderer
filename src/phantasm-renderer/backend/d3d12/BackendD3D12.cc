@@ -61,7 +61,39 @@ pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordComman
 void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list cl)
 {
     // TODO: Batching
-    // TODO: State cache
+
+    {
+        auto* const state_cache = mPoolCmdLists.getStateCache(cl);
+        cc::capped_vector<D3D12_RESOURCE_BARRIER, 32> barriers;
+
+        for (auto const& entry : state_cache->cache)
+        {
+            auto const master_before = mPoolResources.getResourceState(entry.ptr);
+
+            if (master_before != entry.required_initial)
+            {
+                // transition to the state required as the initial one
+                auto& barrier = barriers.emplace_back();
+                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), to_resource_states(master_before),
+                                            to_resource_states(entry.required_initial));
+            }
+
+            // set the master state to the one in which this resource is left
+            mPoolResources.setResourceState(entry.ptr, entry.current);
+        }
+
+        if (!barriers.empty())
+        {
+            ID3D12GraphicsCommandList* t_cmd_list;
+            auto const t_cmd_handle = mPoolCmdLists.create(t_cmd_list);
+            t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
+            t_cmd_list->Close();
+            mDirectQueue.submit(t_cmd_list);
+            mPoolCmdLists.freeOnSubmit(t_cmd_handle, mDirectQueue.getQueue());
+        }
+    }
+
+
     mDirectQueue.submit(mPoolCmdLists.getRawList(cl));
     mPoolCmdLists.freeOnSubmit(cl, mDirectQueue.getQueue());
 }

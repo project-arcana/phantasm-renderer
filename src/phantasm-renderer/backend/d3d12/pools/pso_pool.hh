@@ -33,6 +33,7 @@ public:
     {
         ID3D12PipelineState* raw_pso;
         root_signature_ll* associated_root_sig;
+        D3D12_PRIMITIVE_TOPOLOGY primitive_topology;
     };
 
 public:

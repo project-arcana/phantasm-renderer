@@ -28,6 +28,8 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
         new_node.raw_pso = create_pipeline_state_ll(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
     }
 
+    new_node.primitive_topology = pr_to_native_topology(primitive_config.topology);
+
     return {static_cast<handle::index_t>(pool_index)};
 }
 

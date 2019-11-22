@@ -63,7 +63,7 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] handle::shader_view create(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs)
+    [[nodiscard]] handle::shader_view createShaderView(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs = {})
     {
         return mPoolShaderViews.create(srvs, uavs);
     }

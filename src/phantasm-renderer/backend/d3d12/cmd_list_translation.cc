@@ -42,10 +42,9 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 {
     util::set_viewport(_cmd_list, begin_rp.viewport);
 
-    auto const num_render_targets = unsigned(begin_rp.render_targets.size());
-    resource_view_cpu_only const dynamic_rtvs = _thread_local.lin_alloc_rtvs.allocate(num_render_targets);
+    resource_view_cpu_only const dynamic_rtvs = _thread_local.lin_alloc_rtvs.allocate(begin_rp.render_targets.size());
 
-    for (auto i = 0u; i < num_render_targets; ++i)
+    for (uint8_t i = 0; i < begin_rp.render_targets.size(); ++i)
     {
         auto const& rt = begin_rp.render_targets[i];
 
@@ -58,30 +57,29 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
         if (rt.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
         {
-            _cmd_list->ClearRenderTargetView(rtv, tg::data_ptr(rt.clear_value), 0, nullptr);
+            _cmd_list->ClearRenderTargetView(rtv, rt.clear_value, 0, nullptr);
         }
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (!begin_rp.depth_target.empty())
+    if (begin_rp.depth_target.resource != handle::null_resource)
     {
-        auto const& dst = begin_rp.depth_target[0];
-
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
-        auto* const resource = _globals.pool_resources->getRawResource(dst.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.resource);
 
         // create the default DSV on the fly
         // TODO not a default DSV
         _globals.device->CreateDepthStencilView(resource, nullptr, dynamic_dsv.get_start());
 
-        if (dst.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
+        if (begin_rp.depth_target.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
         {
-            _cmd_list->ClearDepthStencilView(dynamic_dsv.get_start(), D3D12_CLEAR_FLAG_DEPTH, dst.clear_value_depth, dst.clear_value_stencil, 0, nullptr);
+            _cmd_list->ClearDepthStencilView(dynamic_dsv.get_start(), D3D12_CLEAR_FLAG_DEPTH, begin_rp.depth_target.clear_value_depth,
+                                             begin_rp.depth_target.clear_value_stencil, 0, nullptr);
         }
     }
 
     // set the render targets
-    _cmd_list->OMSetRenderTargets(num_render_targets, num_render_targets > 0 ? &dynamic_rtvs.get_start() : nullptr, true,
+    _cmd_list->OMSetRenderTargets(begin_rp.render_targets.size(), begin_rp.render_targets.size() > 0 ? &dynamic_rtvs.get_start() : nullptr, true,
                                   dynamic_dsv.is_valid() ? &dynamic_dsv.get_start() : nullptr);
 
     // reset the linear allocators
@@ -106,6 +104,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         // A new root signature invalidates bound shader arguments
         _bound.set_root_sig(pso_node.associated_root_sig->raw_root_sig);
         _cmd_list->SetGraphicsRootSignature(_bound.raw_root_sig);
+        _cmd_list->IASetPrimitiveTopology(pso_node.primitive_topology);
     }
 
     // Index buffer (optional)
@@ -127,7 +126,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     if (draw.vertex_buffer != _bound.vertex_buffer)
     {
         _bound.vertex_buffer = draw.vertex_buffer;
-        auto const vbv = _globals.pool_resources->getVertexBufferView(draw.index_buffer);
+        auto const vbv = _globals.pool_resources->getVertexBufferView(draw.vertex_buffer);
         _cmd_list->IASetVertexBuffers(0, 1, &vbv);
     }
 
@@ -135,7 +134,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     {
         auto const& root_sig = *pso_node.associated_root_sig;
 
-        for (auto i = 0u; i < draw.shader_arguments.size(); ++i)
+        for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
             auto const& arg = draw.shader_arguments[i];
             auto const& map = root_sig.argument_maps[i];
@@ -163,11 +162,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        _cmd_list->DrawInstanced(draw.num_indices, 1, 0, 0);
+        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, 0, 0, 0);
     }
     else
     {
-        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, 0, 0, 0);
+        _cmd_list->DrawInstanced(draw.num_indices, 1, 0, 0);
     }
 }
 
@@ -215,7 +214,8 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     footprint.Width = copy_text.mip_width;
     footprint.Height = copy_text.mip_height;
     footprint.Depth = 1;
-    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.mip_width, 256);
+    footprint.RowPitch = copy_text.row_pitch;
+    //    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.mip_width, 256);
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint;
     placed_footprint.Offset = copy_text.source_offset;

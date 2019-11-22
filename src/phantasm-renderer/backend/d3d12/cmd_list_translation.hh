@@ -87,9 +87,9 @@ private:
 
         void reset()
         {
-            pipeline_state.index = handle::null_handle_index;
-            index_buffer.index = handle::null_handle_index;
-            vertex_buffer.index = handle::null_handle_index;
+            pipeline_state = handle::null_pipeline_state;
+            index_buffer = handle::null_resource;
+            vertex_buffer = handle::null_resource;
 
             set_root_sig(nullptr);
         }
@@ -97,7 +97,7 @@ private:
         void set_root_sig(ID3D12RootSignature* raw)
         {
             for (auto& sv : shader_views)
-                sv.index = handle::null_handle_index;
+                sv = handle::null_shader_view;
 
             raw_root_sig = raw;
         }

@@ -50,7 +50,7 @@ public:
 
     [[nodiscard]] resource_view_cpu_only allocate(unsigned num);
 
-    void reset() { mNumAllocatedDescriptors = mNumDescriptors; }
+    void reset() { mNumAllocatedDescriptors = 0; }
 
     ID3D12DescriptorHeap* getHeap() const { return mHeap; }
 

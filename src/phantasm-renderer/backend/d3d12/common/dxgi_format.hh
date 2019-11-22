@@ -56,6 +56,15 @@ namespace pr::backend::d3d12::util
     case af::r16u:
         return DXGI_FORMAT_R16_UINT;
 
+    case af::rgba16f:
+        return DXGI_FORMAT_R16G16B16A16_FLOAT;
+    case af::rgb16f:
+        return DXGI_FORMAT_UNKNOWN;
+    case af::rg16f:
+        return DXGI_FORMAT_R16G16_FLOAT;
+    case af::r16f:
+        return DXGI_FORMAT_R16_FLOAT;
+
     case af::rgba8i:
         return DXGI_FORMAT_R8G8B8A8_SINT;
     case af::rgb8i:
