@@ -31,6 +31,7 @@ public:
     //
 
     [[nodiscard]] handle::resource acquireBackbuffer();
+    [[nodiscard]] tg::ivec2 getBackbufferSize() { return mSwapchain.getBackbufferSize(); }
     void resize(int w, int h) { mSwapchain.onResize(w, h); }
     void present() { mSwapchain.present(); }
 
@@ -56,7 +57,15 @@ public:
         return mPoolResources.createBuffer(size_bytes, initial_state, stride_bytes);
     }
 
+    /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
+    [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0)
+    {
+        return mPoolResources.createMappedBuffer(size_bytes, stride_bytes);
+    }
+
     void free(handle::resource res) { mPoolResources.free(res); }
+
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPoolResources.getMappedMemory(res); }
 
     //
     // Shader view interface
@@ -95,6 +104,12 @@ public:
     void submit(handle::command_list cl);
 
 public:
+    // backend-internal
+
+    [[nodiscard]] ID3D12Device& getDevice() { return mDevice.getDevice(); }
+    [[nodiscard]] ID3D12CommandQueue& getDirectQueue() { return mDirectQueue.getQueue(); }
+
+private:
     // Core components
     Adapter mAdapter;
     Device mDevice;

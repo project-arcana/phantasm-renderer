@@ -128,10 +128,10 @@ void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::Backend
     mRawLists = mRawLists.uninitialized(num_cmdlists_total);
 
     // initialize the (currently single) allocator bundle and give it ALL raw lists
-    mAllocatorBundle.initialize(backend.mDevice.getDevice(), num_allocators, num_cmdlists_per_allocator, mRawLists);
+    mAllocatorBundle.initialize(backend.getDevice(), num_allocators, num_cmdlists_per_allocator, mRawLists);
 
     // Execute all (closed) lists once to suppress warnings
-    backend.mDirectQueue.getQueue().ExecuteCommandLists(              //
+    backend.getDirectQueue().ExecuteCommandLists(                     //
         UINT(mRawLists.size()),                                       //
         reinterpret_cast<ID3D12CommandList* const*>(mRawLists.data()) // This is hopefully always fine
     );
