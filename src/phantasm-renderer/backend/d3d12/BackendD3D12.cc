@@ -1,5 +1,7 @@
 #include "BackendD3D12.hh"
 
+#include <iostream> //nocheckin
+
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/device_tentative/window.hh>
@@ -103,14 +105,28 @@ pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordComman
 
 void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle::command_list> cls)
 {
-    CC_RUNTIME_ASSERT(cls.size() <= 12 && "submit too large");
+    constexpr auto c_batch_size = 16;
 
-    cc::capped_vector<ID3D12CommandList*, 24> submit_batch;
-    cc::capped_vector<handle::command_list, 12> barrier_lists;
+    cc::capped_vector<ID3D12CommandList*, c_batch_size * 2> submit_batch;
+    cc::capped_vector<handle::command_list, c_batch_size> barrier_lists;
+    unsigned last_cl_index = 0;
+    unsigned num_cls_in_batch = 0;
 
     auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
-    for (auto const& cl : cls)
+    auto const submit_flush = [&]() {
+        auto& queue = mDirectQueue.getQueue();
+        queue.ExecuteCommandLists(UINT(submit_batch.size()), submit_batch.data());
+        mPoolCmdLists.freeOnSubmit(barrier_lists, queue);
+        mPoolCmdLists.freeOnSubmit(cls.subspan(last_cl_index, num_cls_in_batch), queue);
+
+        submit_batch.clear();
+        barrier_lists.clear();
+        last_cl_index += num_cls_in_batch;
+        num_cls_in_batch = 0;
+    };
+
+    for (auto const cl : cls)
     {
         if (cl == handle::null_command_list)
             continue;
@@ -144,11 +160,12 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         }
 
         submit_batch.push_back(mPoolCmdLists.getRawList(cl));
+        ++num_cls_in_batch;
+
+        if (num_cls_in_batch == c_batch_size)
+            submit_flush();
     }
 
-
-    auto& queue = mDirectQueue.getQueue();
-    queue.ExecuteCommandLists(UINT(submit_batch.size()), submit_batch.data());
-    mPoolCmdLists.freeOnSubmit(barrier_lists, queue);
-    mPoolCmdLists.freeOnSubmit(cls, queue);
+    if (num_cls_in_batch > 0)
+        submit_flush();
 }
