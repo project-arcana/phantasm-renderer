@@ -87,26 +87,6 @@ unsigned pr::backend::d3d12::Swapchain::waitForBackbuffer()
     return backbuffer_i;
 }
 
-void pr::backend::d3d12::Swapchain::barrierToPresent(ID3D12GraphicsCommandList* command_list)
-{
-    auto& backbuffer = mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()];
-    if (backbuffer.state != D3D12_RESOURCE_STATE_PRESENT)
-    {
-        util::transition_barrier(command_list, backbuffer.resource, backbuffer.state, D3D12_RESOURCE_STATE_PRESENT);
-        backbuffer.state = D3D12_RESOURCE_STATE_PRESENT;
-    }
-}
-
-void pr::backend::d3d12::Swapchain::barrierToRenderTarget(ID3D12GraphicsCommandList* command_list)
-{
-    auto& backbuffer = mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()];
-    if (backbuffer.state != D3D12_RESOURCE_STATE_RENDER_TARGET)
-    {
-        util::transition_barrier(command_list, backbuffer.resource, backbuffer.state, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        backbuffer.state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    }
-}
-
 DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return s_backbuffer_format; }
 
 void pr::backend::d3d12::Swapchain::updateBackbuffers()

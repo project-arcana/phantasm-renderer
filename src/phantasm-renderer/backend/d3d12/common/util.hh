@@ -4,7 +4,6 @@
 
 #include "d3d12_sanitized.hh"
 
-
 namespace pr::backend::d3d12::util
 {
 inline void set_viewport(ID3D12GraphicsCommandList* command_list, tg::ivec2 const& size)
@@ -24,12 +23,5 @@ inline void populate_barrier_desc(D3D12_RESOURCE_BARRIER& out_barrier, ID3D12Res
     out_barrier.Transition.StateBefore = before;
     out_barrier.Transition.StateAfter = after;
     out_barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-}
-
-inline void transition_barrier(ID3D12GraphicsCommandList* command_list, ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
-{
-    D3D12_RESOURCE_BARRIER barrier;
-    populate_barrier_desc(barrier, res, before, after);
-    command_list->ResourceBarrier(1, &barrier);
 }
 }

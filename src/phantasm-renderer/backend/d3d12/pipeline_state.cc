@@ -3,6 +3,7 @@
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 
 ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& device,
                                                                   ID3D12RootSignature* root_sig,
@@ -44,16 +45,16 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
     pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso_desc.RasterizerState.CullMode = pr_to_native(config.cull);
+    pso_desc.RasterizerState.CullMode = util::to_native(config.cull);
     pso_desc.RasterizerState.FrontCounterClockwise = true;
 
     pso_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     pso_desc.DepthStencilState.DepthEnable = config.depth != pr::depth_function::none && !framebuffer_format.depth_target.empty();
-    pso_desc.DepthStencilState.DepthFunc = pr_to_native(config.depth);
+    pso_desc.DepthStencilState.DepthFunc = util::to_native(config.depth);
     pso_desc.DepthStencilState.DepthWriteMask = config.depth_readonly ? D3D12_DEPTH_WRITE_MASK_ZERO : D3D12_DEPTH_WRITE_MASK_ALL;
 
     pso_desc.SampleMask = UINT_MAX;
-    pso_desc.PrimitiveTopologyType = pr_to_native(config.topology);
+    pso_desc.PrimitiveTopologyType = util::to_native(config.topology);
 
     pso_desc.NumRenderTargets = UINT(framebuffer_format.render_targets.size());
 

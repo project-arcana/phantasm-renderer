@@ -6,6 +6,7 @@
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 #include <phantasm-renderer/backend/d3d12/resources/resource_state.hh>
 
@@ -51,7 +52,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture2D(
     // NOTE: flags
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(util::to_dxgi_format(format), UINT(w), UINT(h), 1, UINT16(mips), 1, 0, D3D12_RESOURCE_FLAG_NONE);
 
-    auto* const alloc = mAllocator.allocate(desc, to_resource_states(initial_state));
+    auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
     return acquireResource(alloc, initial_state);
 }
 
@@ -70,7 +71,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
 
         auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-        auto* const alloc = mAllocator.allocate(desc, to_resource_states(initial_state), &clear_value);
+        auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         return acquireResource(alloc, initial_state);
     }
     else
@@ -87,7 +88,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
 
         auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
-        auto* const alloc = mAllocator.allocate(desc, to_resource_states(initial_state), &clear_value);
+        auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         return acquireResource(alloc, initial_state);
     }
 }
@@ -95,7 +96,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state initial_state, unsigned stride_bytes)
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
-    auto* const alloc = mAllocator.allocate(desc, to_resource_states(initial_state));
+    auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
     return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
 }
 

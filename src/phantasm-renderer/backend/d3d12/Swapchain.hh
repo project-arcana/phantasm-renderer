@@ -32,12 +32,6 @@ public:
     /// wait for the fence of the current backbuffer
     unsigned waitForBackbuffer();
 
-    /// barrier the current backbuffer resource to the present state (if necessary)
-    void barrierToPresent(ID3D12GraphicsCommandList* command_list);
-
-    /// barrier the current backbuffer resource to the render target state (if necessary)
-    void barrierToRenderTarget(ID3D12GraphicsCommandList* command_list);
-
 public:
     struct backbuffer
     {

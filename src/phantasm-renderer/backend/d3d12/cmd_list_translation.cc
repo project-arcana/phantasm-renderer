@@ -3,6 +3,7 @@
 #include <phantasm-renderer/backend/detail/byte_util.hh>
 
 #include "common/dxgi_format.hh"
+#include "common/native_enum.hh"
 
 void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* device,
                                                              pr::backend::d3d12::ShaderViewPool* sv_pool,
@@ -188,8 +189,8 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         {
             // The transition is neither the implicit initial one, nor redundant
             auto& barrier = barriers.emplace_back();
-            util::populate_barrier_desc(barrier, _globals.pool_resources->getRawResource(transition.resource), to_resource_states(before),
-                                        to_resource_states(transition.target_state));
+            util::populate_barrier_desc(barrier, _globals.pool_resources->getRawResource(transition.resource), util::to_native(before),
+                                        util::to_native(transition.target_state));
         }
     }
 

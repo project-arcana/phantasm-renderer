@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
 #include <phantasm-renderer/backend/d3d12/resources/vertex_attributes.hh>
 
@@ -30,7 +31,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
     }
 
-    new_node.primitive_topology = pr_to_native_topology(primitive_config.topology);
+    new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
 
     return {static_cast<handle::index_t>(pool_index)};
 }

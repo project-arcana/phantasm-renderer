@@ -19,12 +19,6 @@ public:
 
     void initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-    void submit(ID3D12CommandList* command_list)
-    {
-        ID3D12CommandList* submits[] = {command_list};
-        mQueue->ExecuteCommandLists(1, submits);
-    }
-
     [[nodiscard]] ID3D12CommandQueue& getQueue() const { return *mQueue.get(); }
     [[nodiscard]] shared_com_ptr<ID3D12CommandQueue> const& getQueueShared() const { return mQueue; }
 

@@ -1,5 +1,6 @@
 #include "BackendD3D12.hh"
 
+#include "common/native_enum.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, HWND handle)
@@ -58,7 +59,8 @@ pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordComman
 
 void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list cl)
 {
-    // TODO: Batching
+    cc::capped_vector<ID3D12CommandList*, 2> submit_batch;
+    handle::command_list barrier_cmdlist = handle::null_command_list;
 
     {
         auto* const state_cache = mPoolCmdLists.getStateCache(cl);
@@ -72,8 +74,8 @@ void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list 
             {
                 // transition to the state required as the initial one
                 auto& barrier = barriers.emplace_back();
-                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), to_resource_states(master_before),
-                                            to_resource_states(entry.required_initial));
+                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), util::to_native(master_before),
+                                            util::to_native(entry.required_initial));
             }
 
             // set the master state to the one in which this resource is left
@@ -83,15 +85,20 @@ void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list 
         if (!barriers.empty())
         {
             ID3D12GraphicsCommandList* t_cmd_list;
-            auto const t_cmd_handle = mPoolCmdLists.create(t_cmd_list);
+            barrier_cmdlist = mPoolCmdLists.create(t_cmd_list);
             t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
             t_cmd_list->Close();
-            mDirectQueue.submit(t_cmd_list);
-            mPoolCmdLists.freeOnSubmit(t_cmd_handle, mDirectQueue.getQueue());
+            submit_batch.push_back(t_cmd_list);
         }
     }
 
+    submit_batch.push_back(mPoolCmdLists.getRawList(cl));
 
-    mDirectQueue.submit(mPoolCmdLists.getRawList(cl));
-    mPoolCmdLists.freeOnSubmit(cl, mDirectQueue.getQueue());
+    auto& queue = mDirectQueue.getQueue();
+
+    queue.ExecuteCommandLists(UINT(submit_batch.size()), submit_batch.data());
+
+    if (barrier_cmdlist != handle::null_command_list)
+        mPoolCmdLists.freeOnSubmit(barrier_cmdlist, queue);
+    mPoolCmdLists.freeOnSubmit(cl, queue);
 }
