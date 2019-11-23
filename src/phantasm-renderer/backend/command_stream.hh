@@ -277,7 +277,7 @@ public:
         static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "not a command");
         static_assert(std::is_trivially_copyable_v<CMDT>, "command not trivially copyable");
         CC_ASSERT(static_cast<int>(sizeof(CMDT)) <= remaining_bytes());
-        std::memcpy(_out_buffer + _cursor, &command, sizeof(CMDT));
+        new (cc::placement_new, _out_buffer + _cursor) CMDT(command);
         _cursor += sizeof(CMDT);
     }
 

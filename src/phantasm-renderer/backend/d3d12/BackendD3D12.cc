@@ -72,7 +72,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         if (cl == handle::null_command_list)
             continue;
 
-        auto* const state_cache = mPoolCmdLists.getStateCache(cl);
+        auto const* const state_cache = mPoolCmdLists.getStateCache(cl);
         cc::capped_vector<D3D12_RESOURCE_BARRIER, 32> barriers;
 
         for (auto const& entry : state_cache->cache)
