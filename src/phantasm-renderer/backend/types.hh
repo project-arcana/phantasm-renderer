@@ -94,9 +94,18 @@ struct backend_config
     /// Amount of backbuffers to create
     unsigned num_backbuffers = 3;
 
+    /// Amount of threads to accomodate
+    /// backend calls must only be made from <= [num_threads] unique OS threads
+    unsigned num_threads = 1;
+
+    /// Resource limits
     unsigned max_num_resources = 2048;
     unsigned max_num_pipeline_states = 1024;
     unsigned max_num_shader_view_elements = 4096;
+
+    /// Command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
+    unsigned num_cmdlist_allocators_per_thread = 5;
+    unsigned num_cmdlists_per_allocator = 5;
 };
 
 // Map to

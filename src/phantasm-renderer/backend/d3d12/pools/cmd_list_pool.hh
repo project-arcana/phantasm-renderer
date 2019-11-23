@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 
@@ -57,21 +58,17 @@ public:
 
     /// to be called when a command list backed by this allocator
     /// is being submitted
+    /// free-threaded
     void on_submit(ID3D12CommandQueue& queue)
     {
-        ++_submit_counter;
-        // NOTE: Fence access requires no synchronization in d3d12,
-        // however the CommandListPool has to take a lock for this call (right now).
-        // Eventually these nodes should be extracted to TLS bundles
-        // with no synchronization necessary except for two atomics:
-        // _submit_counter and _num_discarded
-        // because on_submit and on_discard will be called from the submit thread at any time
-        _fence.signalGPU(_submit_counter, queue);
+        // NOTE: Fence access requires no synchronization in d3d12
+        _fence.signalGPU(_submit_counter.fetch_add(1) + 1, queue);
     }
 
     /// to be called when a command list backed by this allocator
     /// is being discarded (will never result in a submit)
-    void on_discard() { ++_num_discarded; }
+    /// free-threaded
+    void on_discard() { _num_discarded.fetch_add(1); }
 
 private:
     /// perform the internal reset
@@ -83,10 +80,10 @@ private:
 private:
     ID3D12CommandAllocator* _allocator;
     SimpleFence _fence;
-    uint64_t _submit_counter = 0;
+    std::atomic<uint64_t> _submit_counter = 0;
     uint64_t _submit_counter_at_last_reset = 0;
     int _num_in_flight = 0;
-    int _num_discarded = 0;
+    std::atomic<int> _num_discarded = 0;
     int _max_num_in_flight = 0;
     bool _full_and_waiting = false;
 };
@@ -121,7 +118,7 @@ class CommandListPool
 public:
     // frontend-facing API (not quite, command_list can only be compiled immediately)
 
-    [[nodiscard]] handle::command_list create(ID3D12GraphicsCommandList*& out_cmdlist);
+    [[nodiscard]] handle::command_list create(ID3D12GraphicsCommandList*& out_cmdlist, CommandAllocatorBundle& thread_allocator);
 
     void freeOnSubmit(handle::command_list cl, ID3D12CommandQueue& queue)
     {
@@ -166,7 +163,7 @@ public:
     }
 
 public:
-    void initialize(BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator);
+    void initialize(BackendD3D12& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
     void destroy();
 
 private:
@@ -192,7 +189,7 @@ private:
     /// they should be thread-local
     /// (Instead of a member here, ::create would take
     /// the thread-local bundle as an argument)
-    CommandAllocatorBundle mAllocatorBundle;
+    // CommandAllocatorBundle mAllocatorBundle;
 
     std::mutex mMutex;
 };

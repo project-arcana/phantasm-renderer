@@ -3,11 +3,12 @@
 #include <phantasm-renderer/backend/Backend.hh>
 #include <phantasm-renderer/backend/types.hh>
 
+#include <phantasm-renderer/backend/detail/thread_association.hh>
+
 #include "Adapter.hh"
 #include "Device.hh"
 #include "Queue.hh"
 #include "Swapchain.hh"
-#include "cmd_list_translation.hh"
 
 #include "pools/cmd_list_pool.hh"
 #include "pools/pso_pool.hh"
@@ -130,9 +131,9 @@ private:
     ShaderViewPool mPoolShaderViews;
 
     // Logic
-    command_list_translator mTranslator;
-    std::mutex mMutex; // bandaid, translators should be thread local
-
+    struct per_thread_component;
+    cc::array<per_thread_component> mThreadComponents;
+    backend::detail::thread_association mThreadAssociation;
 private:
 };
 }

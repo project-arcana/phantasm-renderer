@@ -1,24 +1,59 @@
 #include "BackendD3D12.hh"
 
+#include <clean-core/vector.hh>
+
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
+#include "cmd_list_translation.hh"
 #include "common/native_enum.hh"
 #include "common/verify.hh"
 
+namespace pr::backend::d3d12
+{
+struct BackendD3D12::per_thread_component
+{
+    command_list_translator translator;
+    CommandAllocatorBundle cmd_list_allocator;
+};
+
+}
+
 void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, device::Window& window)
 {
-    mAdapter.initialize(config);
-    mDevice.initialize(mAdapter.getAdapter(), config);
-    mDirectQueue.initialize(mDevice.getDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-    mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
+    // Core components
+    {
+        mAdapter.initialize(config);
+        mDevice.initialize(mAdapter.getAdapter(), config);
+        mDirectQueue.initialize(mDevice.getDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
+    }
 
     auto& device = mDevice.getDevice();
-    mPoolResources.initialize(device, config.max_num_resources);
-    mPoolCmdLists.initialize(*this, 10, 10); // TODO arbitrary
-    mPoolPSOs.initialize(&device, config.max_num_pipeline_states);
-    mPoolShaderViews.initialize(&device, &mPoolResources, int(config.max_num_shader_view_elements));
 
-    mTranslator.initialize(&mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
+    // Global pools
+    {
+        mPoolResources.initialize(device, config.max_num_resources);
+        mPoolPSOs.initialize(&device, config.max_num_pipeline_states);
+        mPoolShaderViews.initialize(&device, &mPoolResources, int(config.max_num_shader_view_elements));
+    }
+
+    // Per-thread components and command list pool
+    {
+        mThreadAssociation.initialize();
+        mThreadComponents = mThreadComponents.defaulted(config.num_threads);
+
+        cc::vector<CommandAllocatorBundle*> thread_allocator_ptrs;
+        thread_allocator_ptrs.reserve(config.num_threads);
+
+        for (auto& thread_comp : mThreadComponents)
+        {
+            thread_comp.translator.initialize(&device, &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
+            thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
+        }
+
+        // TODO arbitrary
+        mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
+    }
 }
 
 pr::backend::d3d12::BackendD3D12::~BackendD3D12()
@@ -29,6 +64,11 @@ pr::backend::d3d12::BackendD3D12::~BackendD3D12()
     mPoolPSOs.destroy();
     mPoolCmdLists.destroy();
     mPoolResources.destroy();
+
+    for (auto& thread_comp : mThreadComponents)
+    {
+        thread_comp.cmd_list_allocator.destroy();
+    }
 }
 
 void pr::backend::d3d12::BackendD3D12::flushGPU()
@@ -53,10 +93,11 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
 
 pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)
 {
-    auto lg = std::lock_guard(mMutex);
+    auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
+
     ID3D12GraphicsCommandList* raw_list;
-    auto const res = mPoolCmdLists.create(raw_list);
-    mTranslator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
+    auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator);
+    thread_comp.translator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
     return res;
 }
 
@@ -66,6 +107,8 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
 
     cc::capped_vector<ID3D12CommandList*, 24> submit_batch;
     cc::capped_vector<handle::command_list, 12> barrier_lists;
+
+    auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
     for (auto const& cl : cls)
     {
@@ -94,7 +137,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         if (!barriers.empty())
         {
             ID3D12GraphicsCommandList* t_cmd_list;
-            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list));
+            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
             t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
             t_cmd_list->Close();
             submit_batch.push_back(t_cmd_list);

@@ -13,7 +13,7 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
                                                                   const pr::primitive_pipeline_config& config)
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
-    pso_desc.InputLayout = {vertex_input_layout.data(), UINT(vertex_input_layout.size())};
+    pso_desc.InputLayout = {!vertex_input_layout.empty() ? vertex_input_layout.data() : nullptr, UINT(vertex_input_layout.size())};
     pso_desc.pRootSignature = root_sig;
 
     constexpr auto const to_bytecode = [](arg::shader_stage const& s) { return D3D12_SHADER_BYTECODE{s.binary_data, s.binary_size}; };

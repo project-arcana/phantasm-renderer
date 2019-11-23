@@ -89,46 +89,63 @@ void pr::backend::d3d12::cmd_allocator_node::do_reset()
 
 bool pr::backend::d3d12::cmd_allocator_node::is_submit_counter_up_to_date() const
 {
+    // two atomics are being loaded in this function, _submit_counter and _num_discarded
+    // both are monotonously increasing, so submits_since_reset grows, possible_submits_remaining shrinks
+    // as far as i can tell there is no failure mode and the order of the two loads does not matter
+    // if submits_since_reset is loaded early, we assume too few submits (-> return false)
+    // if possible_submits_remaining is loaded early, we assume too many pending lists (-> return false)
+    // as the two values can only ever reach equality (and not go past each other), this is safe.
+    // this function can only ever prevent resets, never cause them too early
+    // once the two values are equal, no further changes will occur to the atomics until the next reset
+
     // Check if all lists acquired from this allocator
     // since the last reset have been either submitted or discarded
-    int const submits_since_reset = static_cast<int>(_submit_counter - _submit_counter_at_last_reset);
+    int const submits_since_reset = static_cast<int>(_submit_counter.load() - _submit_counter_at_last_reset);
+    int const possible_submits_remaining = _num_in_flight - _num_discarded.load();
 
     // this assert is paranoia-tier
-    CC_ASSERT(submits_since_reset >= 0 && submits_since_reset <= _num_in_flight - _num_discarded);
+    CC_ASSERT(submits_since_reset >= 0 && submits_since_reset <= possible_submits_remaining);
 
     // if this condition is false, there have been less submits than acquired lists (minus the discarded ones)
     // so some are still pending submit (or discardation [sic])
     // we cannot check the fence yet since _submit_counter is currently meaningless
-    return (submits_since_reset == _num_in_flight - _num_discarded);
+    return (submits_since_reset == possible_submits_remaining);
 }
 
-pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist)
+pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist, CommandAllocatorBundle& thread_allocator)
 {
     unsigned res_handle;
-    cmd_allocator_node* backing_alloc;
     {
         auto lg = std::lock_guard(mMutex);
         res_handle = mPool.acquire();
-        out_cmdlist = mRawLists[res_handle];
-        backing_alloc = mAllocatorBundle.acquireMemory(out_cmdlist);
     }
 
+    out_cmdlist = mRawLists[res_handle];
+
     cmd_list_node& new_node = mPool.get(res_handle);
-    new_node.responsible_allocator = backing_alloc;
+    new_node.responsible_allocator = thread_allocator.acquireMemory(out_cmdlist);
 
     return {static_cast<handle::index_t>(res_handle)};
 }
 
-void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator)
+void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::BackendD3D12& backend,
+                                                     int num_allocators_per_thread,
+                                                     int num_cmdlists_per_allocator,
+                                                     cc::span<CommandAllocatorBundle*> thread_allocators)
 {
-    auto const num_cmdlists_total = static_cast<size_t>(num_allocators * num_cmdlists_per_allocator);
+    auto const num_cmdlists_per_thread = static_cast<size_t>(num_allocators_per_thread * num_cmdlists_per_allocator);
+    auto const num_cmdlists_total = num_cmdlists_per_thread * thread_allocators.size();
 
     // initialize data structures
     mPool.initialize(num_cmdlists_total);
     mRawLists = mRawLists.uninitialized(num_cmdlists_total);
 
     // initialize the (currently single) allocator bundle and give it ALL raw lists
-    mAllocatorBundle.initialize(backend.getDevice(), num_allocators, num_cmdlists_per_allocator, mRawLists);
+    for (auto i = 0u; i < thread_allocators.size(); ++i)
+    {
+        thread_allocators[i]->initialize(backend.getDevice(), num_allocators_per_thread, num_cmdlists_per_allocator,
+                                         cc::span{mRawLists.data() + (num_cmdlists_per_thread * i), num_cmdlists_per_thread});
+    }
 
     // Execute all (closed) lists once to suppress warnings
     backend.getDirectQueue().ExecuteCommandLists(                     //
@@ -146,8 +163,6 @@ void pr::backend::d3d12::CommandListPool::destroy()
     {
         list->Release();
     }
-
-    mAllocatorBundle.destroy();
 }
 
 void pr::backend::d3d12::CommandAllocatorBundle::initialize(ID3D12Device& device, int num_allocators, int num_cmdlists_per_allocator, cc::span<ID3D12GraphicsCommandList*> initial_lists)
