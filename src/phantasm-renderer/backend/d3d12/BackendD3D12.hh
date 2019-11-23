@@ -62,7 +62,7 @@ public:
         return mPoolResources.createBuffer(size_bytes, initial_state, stride_bytes);
     }
 
-    /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
+    /// create a mapped UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) override
     {
         return mPoolResources.createMappedBuffer(size_bytes, stride_bytes);
@@ -112,7 +112,7 @@ public:
     // backend-internal
 
     [[nodiscard]] ID3D12Device& getDevice() { return mDevice.getDevice(); }
-    [[nodiscard]] ID3D12CommandQueue& getDirectQueue() { return mDirectQueue.getQueue(); }
+    [[nodiscard]] ID3D12CommandQueue& getDirectQueue() { return mGraphicsQueue.getQueue(); }
 
     /// flush all pending work on the GPU
     void flushGPU();
@@ -121,7 +121,7 @@ private:
     // Core components
     Adapter mAdapter;
     Device mDevice;
-    Queue mDirectQueue;
+    Queue mGraphicsQueue;
     Swapchain mSwapchain;
 
     // Pools

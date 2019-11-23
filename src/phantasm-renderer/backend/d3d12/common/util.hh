@@ -1,8 +1,11 @@
 #pragma once
 
+#include <clean-core/capped_vector.hh>
+
 #include <typed-geometry/tg-lean.hh>
 
-#include "d3d12_sanitized.hh"
+#include <phantasm-renderer/backend/assets/vertex_attrib_info.hh>
+#include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
 
 namespace pr::backend::d3d12::util
 {
@@ -24,4 +27,8 @@ inline void populate_barrier_desc(D3D12_RESOURCE_BARRIER& out_barrier, ID3D12Res
     out_barrier.Transition.StateAfter = after;
     out_barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 }
+
+[[nodiscard]] cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> get_native_vertex_format(cc::span<vertex_attribute_info const> attrib_info);
+
+void set_object_name(ID3D12Object* object, char const* name);
 }

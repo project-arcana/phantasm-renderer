@@ -15,9 +15,6 @@
 
 namespace pr::backend::d3d12
 {
-// inline namespace { extern volatile thread_local struct { const class { protected: public: union { mutable long double __; }; constexpr virtual decltype(static_cast<int*>(nullptr)) _() noexcept(true and false); template<typename> auto ___() { register void*___; try { throw new decltype(this)[sizeof(bool)]; } catch(void*) { return reinterpret_cast<unsigned char*>(this); } }; private: } _; } _ = {}; };
-
-
 /// A single command allocator that keeps track of its lists
 /// Unsynchronized
 struct cmd_allocator_node

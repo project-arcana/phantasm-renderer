@@ -1,6 +1,6 @@
 #pragma once
 
-#include <guiddef.h> // for __uuido; this header is tame, only other include is string.h
+#include <guiddef.h> // for __uuidof; this header is tame, only other include is string.h
 #undef FAR
 #undef _far
 

@@ -2,7 +2,6 @@
 
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
-
 ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
                                                                    cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
                                                                    cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
@@ -81,4 +80,17 @@ void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
     sampler.Init(0, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 0,
                  16, D3D12_COMPARISON_FUNC_LESS_EQUAL, D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE);
+}
+
+void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_signature &root_sig, ID3D12Device &device, pr::backend::arg::shader_argument_shapes payload_shape)
+{
+    detail::root_signature_params parameters;
+
+    for (auto const& arg_shape : payload_shape)
+    {
+        root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
+    }
+
+    parameters.add_implicit_sampler();
+    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }

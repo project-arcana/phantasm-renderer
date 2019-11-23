@@ -122,4 +122,17 @@ namespace pr::backend::d3d12::util
     }
 }
 
+[[nodiscard]] inline constexpr D3D12_COMMAND_LIST_TYPE to_native(queue_type type)
+{
+    switch (type)
+    {
+    case queue_type::graphics:
+        return D3D12_COMMAND_LIST_TYPE_DIRECT;
+    case queue_type::copy:
+        return D3D12_COMMAND_LIST_TYPE_COPY;
+    case queue_type::compute:
+        return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    }
+}
+
 }

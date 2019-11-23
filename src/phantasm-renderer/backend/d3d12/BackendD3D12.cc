@@ -8,6 +8,7 @@
 
 #include "cmd_list_translation.hh"
 #include "common/native_enum.hh"
+#include "common/util.hh"
 #include "common/verify.hh"
 
 namespace pr::backend::d3d12
@@ -26,8 +27,8 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     {
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
-        mDirectQueue.initialize(mDevice.getDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
+        mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
     }
 
     auto& device = mDevice.getDevice();
@@ -77,7 +78,7 @@ void pr::backend::d3d12::BackendD3D12::flushGPU()
 {
     shared_com_ptr<ID3D12Fence> fence;
     PR_D3D12_VERIFY(mDevice.getDevice().CreateFence(0, D3D12_FENCE_FLAG_NONE, PR_COM_WRITE(fence)));
-    PR_D3D12_VERIFY(mDirectQueue.getQueue().Signal(fence, 1));
+    PR_D3D12_VERIFY(mGraphicsQueue.getQueue().Signal(fence, 1));
 
     auto const handle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     fence->SetEventOnCompletion(1, handle);
@@ -115,7 +116,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
     auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
     auto const submit_flush = [&]() {
-        auto& queue = mDirectQueue.getQueue();
+        auto& queue = mGraphicsQueue.getQueue();
         queue.ExecuteCommandLists(UINT(submit_batch.size()), submit_batch.data());
         mPoolCmdLists.freeOnSubmit(barrier_lists, queue);
         mPoolCmdLists.freeOnSubmit(cls.subspan(last_cl_index, num_cls_in_batch), queue);

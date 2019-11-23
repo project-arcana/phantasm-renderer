@@ -1,9 +1,16 @@
 #include "cmd_list_translation.hh"
 
 #include <phantasm-renderer/backend/detail/byte_util.hh>
+#include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
+#include "Swapchain.hh"
 #include "common/dxgi_format.hh"
 #include "common/native_enum.hh"
+#include "common/util.hh"
+#include "pools/pso_pool.hh"
+#include "pools/resource_pool.hh"
+#include "pools/root_sig_cache.hh"
+#include "pools/shader_view_pool.hh"
 
 void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* device,
                                                              pr::backend::d3d12::ShaderViewPool* sv_pool,
@@ -225,4 +232,10 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
     CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), copy_text.subresource_index);
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
+}
+
+void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)
+{
+    lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 8);
+    lin_alloc_dsvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
 }

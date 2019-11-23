@@ -5,10 +5,6 @@
 
 namespace pr::backend::d3d12
 {
-/// plan changed:
-/// there won't be an explicit handle::framebuffer,
-/// but it won't just be handle::resource for RTVs either
-///
 /// There are two places where "resource views" are API exposed:
 /// handle::shader_view
 ///     (SRVs + UAVs for shaders)
@@ -19,7 +15,8 @@ namespace pr::backend::d3d12
 /// However within this command, there's nothing but the handle::resource
 /// and the "how to view" info. We create small RTV + DSV heaps
 /// per recording thread, which act as linear allocators and create the
-/// descriptors (remember, not GPU-visible) on the fly
+/// descriptors (not GPU-visible) on the fly
+/// CPUDescriptorLinearAllocator is the type of these heaps.
 ///
 /// Jesse Natalie: CPU-only descriptors have ZERO lifetime requirements and can be invalidated before
 /// the command list is even closed. This simplifies management for the linear allocators.

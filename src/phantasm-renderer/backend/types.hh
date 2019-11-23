@@ -51,6 +51,13 @@ enum class shader_domain : uint8_t
     compute
 };
 
+enum class queue_type : uint8_t
+{
+    graphics,
+    copy,
+    compute
+};
+
 enum class adapter_preference : uint8_t
 {
     highest_vram,

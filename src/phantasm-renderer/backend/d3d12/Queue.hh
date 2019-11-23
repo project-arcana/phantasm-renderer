@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common/d3d12_sanitized.hh"
+#include <phantasm-renderer/backend/types.hh>
 
+#include "common/d3d12_fwd.hh"
 #include "common/shared_com_ptr.hh"
 
 namespace pr::backend::d3d12
@@ -17,7 +18,7 @@ public:
     Queue& operator=(Queue const&) = delete;
     Queue& operator=(Queue&&) noexcept = delete;
 
-    void initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
+    void initialize(ID3D12Device& device, queue_type type = queue_type::graphics);
 
     [[nodiscard]] ID3D12CommandQueue& getQueue() const { return *mQueue.get(); }
     [[nodiscard]] shared_com_ptr<ID3D12CommandQueue> const& getQueueShared() const { return mQueue; }

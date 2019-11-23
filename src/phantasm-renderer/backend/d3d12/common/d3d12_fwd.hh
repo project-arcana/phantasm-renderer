@@ -17,9 +17,11 @@ struct ID3D12CommandQueue;
 struct ID3D12DescriptorHeap;
 struct ID3D12RootSignature;
 struct ID3D12PipelineState;
+struct ID3D12GraphicsCommandList;
 
 struct IDXGIAdapter;
 struct IDXGIFactory4;
 struct IDXGISwapChain3;
 
 struct D3D12_SHADER_BYTECODE;
+struct D3D12_INPUT_ELEMENT_DESC;

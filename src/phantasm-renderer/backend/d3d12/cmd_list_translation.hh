@@ -1,29 +1,27 @@
 #pragma once
 
-#include <clean-core/assert.hh>
-
-#include <typed-geometry/functions/data_ptr.hh>
+#include <clean-core/array.hh>
 
 #include <phantasm-renderer/backend/command_stream.hh>
-#include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
-#include "Swapchain.hh"
-#include "common/util.hh"
-#include "pools/linear_descriptor_allocator.hh"
-#include "pools/pso_pool.hh"
-#include "pools/resource_pool.hh"
-#include "pools/root_sig_cache.hh"
-#include "pools/shader_view_pool.hh"
+#include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
+#include <phantasm-renderer/backend/d3d12/pools/linear_descriptor_allocator.hh>
+
+namespace pr::backend::detail
+{
+struct incomplete_state_cache;
+}
 
 namespace pr::backend::d3d12
 {
+class ShaderViewPool;
+class ResourcePool;
+class PipelineStateObjectPool;
+class CPUDescriptorLinearAllocator;
+
 struct translator_thread_local_memory
 {
-    void initialize(ID3D12Device& device)
-    {
-        lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 8);
-        lin_alloc_dsvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
-    }
+    void initialize(ID3D12Device& device);
 
     CPUDescriptorLinearAllocator lin_alloc_rtvs;
     CPUDescriptorLinearAllocator lin_alloc_dsvs;

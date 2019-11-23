@@ -3,8 +3,8 @@
 #include <iostream>
 
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
-#include <phantasm-renderer/backend/d3d12/resources/vertex_attributes.hh>
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                                      pr::backend::arg::framebuffer_format framebuffer_format,
@@ -27,7 +27,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
     {
         // Create root signature
-        auto const vert_format_native = get_native_vertex_format(vertex_format.attributes);
+        auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
     }
 
@@ -57,7 +57,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 {
     mDevice = device;
     mPool.initialize(max_num_psos);
-    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary
+    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, but this is not a hard max, just reserving
 }
 
 void pr::backend::d3d12::PipelineStateObjectPool::destroy()
