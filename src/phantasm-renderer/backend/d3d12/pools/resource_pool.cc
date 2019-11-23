@@ -8,7 +8,6 @@
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
-#include <phantasm-renderer/backend/d3d12/resources/resource_state.hh>
 
 void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned max_num_resources)
 {

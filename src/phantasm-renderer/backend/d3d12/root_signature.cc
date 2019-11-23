@@ -44,24 +44,24 @@ pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signatu
     // create descriptor table for SRVs and UAVs
     if (shape.num_srvs + shape.num_uavs > 0)
     {
-        auto const desc_range_start = desc_ranges.size();
+        auto const desc_range_start = _desc_ranges.size();
 
         if (shape.num_srvs > 0)
         {
-            desc_ranges.emplace_back();
-            desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shape.num_srvs, 0, _space);
+            _desc_ranges.emplace_back();
+            _desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, shape.num_srvs, 0, _space);
         }
 
         if (shape.num_uavs > 0)
         {
-            desc_ranges.emplace_back();
-            desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shape.num_uavs, 0, _space);
+            _desc_ranges.emplace_back();
+            _desc_ranges.back().Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, shape.num_uavs, 0, _space);
         }
 
-        auto const desc_range_end = desc_ranges.size();
+        auto const desc_range_end = _desc_ranges.size();
 
         CD3DX12_ROOT_PARAMETER& desc_table = root_params.emplace_back();
-        desc_table.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), desc_ranges.data() + desc_range_start, argument_visibility);
+        desc_table.InitAsDescriptorTable(UINT(desc_range_end - desc_range_start), _desc_ranges.data() + desc_range_start, argument_visibility);
         res_map.descriptor_table_param = uint32_t(root_params.size() - 1);
     }
     else

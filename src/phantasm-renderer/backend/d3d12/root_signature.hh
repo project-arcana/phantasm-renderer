@@ -19,7 +19,7 @@ struct shader_argument_map
 
 namespace detail
 {
-/// allows constructive creation of a root signature by combining payload sizes
+/// allows constructive creation of a root signature by combining shader argument shapes
 struct root_signature_params
 {
     cc::capped_vector<CD3DX12_ROOT_PARAMETER, 16> root_params;
@@ -30,9 +30,7 @@ struct root_signature_params
 
 private:
     unsigned _space = 0;
-
-private:
-    cc::capped_vector<CD3DX12_DESCRIPTOR_RANGE, 16> desc_ranges;
+    cc::capped_vector<CD3DX12_DESCRIPTOR_RANGE, 16> _desc_ranges;
 };
 }
 

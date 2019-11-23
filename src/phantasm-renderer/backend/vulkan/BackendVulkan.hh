@@ -16,12 +16,11 @@ class Window;
 
 namespace pr::backend::vk
 {
-class BackendVulkan final : public Backend
+class BackendVulkan// final : public Backend
 {
 public:
     void initialize(backend_config const& config, device::Window& window);
-
-    ~BackendVulkan() override;
+    ~BackendVulkan() /*override*/;
 
 private:
     void createDebugMessenger();

@@ -15,7 +15,7 @@ void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* devic
 }
 
 void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12GraphicsCommandList* list,
-                                                                       pr::backend::d3d12::incomplete_state_cache* state_cache,
+                                                                       ::pr::backend::detail::incomplete_state_cache* state_cache,
                                                                        std::byte* buffer,
                                                                        size_t buffer_size)
 {

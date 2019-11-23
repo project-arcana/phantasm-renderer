@@ -5,6 +5,7 @@
 #include <typed-geometry/functions/data_ptr.hh>
 
 #include <phantasm-renderer/backend/command_stream.hh>
+#include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
 #include "common/util.hh"
@@ -13,7 +14,6 @@
 #include "pools/resource_pool.hh"
 #include "pools/root_sig_cache.hh"
 #include "pools/shader_view_pool.hh"
-#include "resources/resource_state.hh"
 
 namespace pr::backend::d3d12
 {
@@ -50,7 +50,7 @@ struct command_list_translator
 {
     void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool);
 
-    void translateCommandList(ID3D12GraphicsCommandList* list, incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
+    void translateCommandList(ID3D12GraphicsCommandList* list, pr::backend::detail::incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
 
     void execute(cmd::begin_render_pass const& begin_rp);
 
@@ -72,7 +72,7 @@ private:
     translator_thread_local_memory _thread_local;
 
     // non-owning dynamic
-    incomplete_state_cache* _state_cache = nullptr;
+    pr::backend::detail::incomplete_state_cache* _state_cache = nullptr;
     ID3D12GraphicsCommandList* _cmd_list = nullptr;
 
     // dynamic state

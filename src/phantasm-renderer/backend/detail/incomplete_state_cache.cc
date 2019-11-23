@@ -1,6 +1,6 @@
-#include "resource_state.hh"
+#include "incomplete_state_cache.hh"
 
-bool pr::backend::d3d12::incomplete_state_cache::transition_resource(handle::resource res, resource_state after, resource_state& out_before)
+bool pr::backend::detail::incomplete_state_cache::transition_resource(handle::resource res, resource_state after, resource_state& out_before)
 {
     for (auto& entry : cache)
     {

@@ -8,10 +8,17 @@ class Device;
 class Context;
 class Queue;
 
+namespace backend
+{
 class Backend;
-namespace backend::vk
+namespace vk
 {
 class BackendVulkan;
+}
+namespace d3d12
+{
+class BackendD3D12;
+}
 }
 
 template <class VertexT>

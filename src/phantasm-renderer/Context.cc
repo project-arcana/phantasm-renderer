@@ -30,6 +30,6 @@ Context::Context()
     // mBackend = make_vulkan_backend(cfg);
 }
 
-Context::Context(cc::poly_unique_ptr<Backend> backend) : mBackend(std::move(backend)) {}
+Context::Context(cc::poly_unique_ptr<backend::Backend> backend) : mBackend(std::move(backend)) {}
 
 Context::~Context() = default; // here because of poly_unique_ptr

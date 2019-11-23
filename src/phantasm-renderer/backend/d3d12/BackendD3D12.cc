@@ -1,14 +1,16 @@
 #include "BackendD3D12.hh"
 
+#include <phantasm-renderer/backend/device_tentative/window.hh>
+
 #include "common/native_enum.hh"
 #include "common/verify.hh"
 
-void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, HWND handle)
+void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, device::Window& window)
 {
     mAdapter.initialize(config);
     mDevice.initialize(mAdapter.getAdapter(), config);
     mDirectQueue.initialize(mDevice.getDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-    mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), handle, config.num_backbuffers);
+    mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mDirectQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
 
     auto& device = mDevice.getDevice();
     mPoolResources.initialize(device, config.max_num_resources);
@@ -19,7 +21,7 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     mTranslator.initialize(&mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
 }
 
-void pr::backend::d3d12::BackendD3D12::destroy()
+pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 {
     flushGPU();
     mSwapchain.setFullscreen(false);

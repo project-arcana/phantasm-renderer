@@ -4,15 +4,8 @@
 
 #include <phantasm-renderer/backend/types.hh>
 
-namespace pr::backend::d3d12
+namespace pr::backend::detail
 {
-///
-/// The only way to transition resources is via either of these two classes
-/// Only exceptions:
-///     	- possible pre-init barriers for copying procedures
-///         - swapchain resources (see Swapchain.hh)
-///
-
 /// A thread-local, incomplete-information resource state cache
 /// Keeps track of locally known resource states, and stores the required initial states
 /// After use:
