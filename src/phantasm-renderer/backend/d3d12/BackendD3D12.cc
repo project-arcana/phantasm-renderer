@@ -53,18 +53,25 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
 
 pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)
 {
+    auto lg = std::lock_guard(mMutex);
     ID3D12GraphicsCommandList* raw_list;
     auto const res = mPoolCmdLists.create(raw_list);
     mTranslator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
     return res;
 }
 
-void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list cl)
+void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle::command_list> cls)
 {
-    cc::capped_vector<ID3D12CommandList*, 2> submit_batch;
-    handle::command_list barrier_cmdlist = handle::null_command_list;
+    CC_RUNTIME_ASSERT(cls.size() <= 12 && "submit too large");
 
+    cc::capped_vector<ID3D12CommandList*, 24> submit_batch;
+    cc::capped_vector<handle::command_list, 12> barrier_lists;
+
+    for (auto const& cl : cls)
     {
+        if (cl == handle::null_command_list)
+            continue;
+
         auto* const state_cache = mPoolCmdLists.getStateCache(cl);
         cc::capped_vector<D3D12_RESOURCE_BARRIER, 32> barriers;
 
@@ -87,20 +94,18 @@ void pr::backend::d3d12::BackendD3D12::submit(pr::backend::handle::command_list 
         if (!barriers.empty())
         {
             ID3D12GraphicsCommandList* t_cmd_list;
-            barrier_cmdlist = mPoolCmdLists.create(t_cmd_list);
+            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list));
             t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
             t_cmd_list->Close();
             submit_batch.push_back(t_cmd_list);
         }
+
+        submit_batch.push_back(mPoolCmdLists.getRawList(cl));
     }
 
-    submit_batch.push_back(mPoolCmdLists.getRawList(cl));
 
     auto& queue = mDirectQueue.getQueue();
-
     queue.ExecuteCommandLists(UINT(submit_batch.size()), submit_batch.data());
-
-    if (barrier_cmdlist != handle::null_command_list)
-        mPoolCmdLists.freeOnSubmit(barrier_cmdlist, queue);
-    mPoolCmdLists.freeOnSubmit(cl, queue);
+    mPoolCmdLists.freeOnSubmit(barrier_lists, queue);
+    mPoolCmdLists.freeOnSubmit(cls, queue);
 }

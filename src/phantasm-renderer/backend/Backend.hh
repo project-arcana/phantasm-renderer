@@ -76,7 +76,7 @@ public:
 
     virtual void discard(handle::command_list cl) = 0;
 
-    virtual void submit(handle::command_list cl) = 0;
+    virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
 protected:
     Backend() = default;

@@ -6,8 +6,8 @@
 #include <clean-core/capped_array.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
-#include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
+#include <phantasm-renderer/backend/detail/linked_pool.hh>
 
 #include <phantasm-renderer/backend/d3d12/Fence.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
@@ -133,6 +133,20 @@ public:
         }
     }
 
+    void freeOnSubmit(cc::span<handle::command_list const> cls, ID3D12CommandQueue& queue)
+    {
+        auto lg = std::lock_guard(mMutex);
+        for (auto const& cl : cls)
+        {
+            if (cl == handle::null_command_list)
+                continue;
+
+            cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
+            freed_node.responsible_allocator->on_submit(queue);
+            mPool.release(static_cast<unsigned>(cl.index));
+        }
+    }
+
     void freeOnDiscard(handle::command_list cl)
     {
         cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
@@ -146,7 +160,10 @@ public:
 public:
     ID3D12GraphicsCommandList* getRawList(handle::command_list cl) const { return mRawLists[static_cast<unsigned>(cl.index)]; }
 
-    backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl) { return &mPool.get(static_cast<unsigned>(cl.index)).state_cache; }
+    backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl)
+    {
+        return &mPool.get(static_cast<unsigned>(cl.index)).state_cache;
+    }
 
 public:
     void initialize(BackendD3D12& backend, int num_allocators, int num_cmdlists_per_allocator);

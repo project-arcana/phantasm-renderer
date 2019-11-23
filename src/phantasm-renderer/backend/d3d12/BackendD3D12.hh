@@ -105,7 +105,7 @@ public:
 
     void discard(handle::command_list cl) override { mPoolCmdLists.freeOnDiscard(cl); }
 
-    void submit(handle::command_list cl) override;
+    void submit(cc::span<handle::command_list const> cls) override;
 
 public:
     // backend-internal
@@ -131,6 +131,7 @@ private:
 
     // Logic
     command_list_translator mTranslator;
+    std::mutex mMutex; // bandaid, translators should be thread local
 
 private:
 };
