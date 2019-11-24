@@ -1,7 +1,7 @@
 #include "Context.hh"
 
 #include <phantasm-renderer/Frame.hh>
-#include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
+#include <phantasm-renderer/backend/Backend.hh>
 #include <phantasm-renderer/backends.hh>
 
 using namespace pr;
