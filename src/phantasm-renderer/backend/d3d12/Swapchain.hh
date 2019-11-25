@@ -30,19 +30,23 @@ public:
     void present();
 
     /// wait for the fence of the current backbuffer
-    void waitForBackbuffer();
-
-    /// barrier the current backbuffer resource to the present state (if necessary)
-    void barrierToPresent(ID3D12GraphicsCommandList* command_list);
-
-    /// barrier the current backbuffer resource to the render target state (if necessary)
-    void barrierToRenderTarget(ID3D12GraphicsCommandList* command_list);
+    unsigned waitForBackbuffer();
 
 public:
+    struct backbuffer
+    {
+        Fence fence;                     ///< present fence
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv; ///< CPU RTV
+        ID3D12Resource* resource;        ///< resource ptr
+        D3D12_RESOURCE_STATES state;     ///< current state
+    };
+
     [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const;
     [[nodiscard]] tg::ivec2 const& getBackbufferSize() const { return mBackbufferSize; }
 
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCurrentBackbufferRTV() { return mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()].rtv; }
+    [[nodiscard]] backbuffer const& getBackbuffer(unsigned i) const { return mBackbuffers[i]; }
+
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCurrentBackbufferRTV() const { return mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()].rtv; }
     [[nodiscard]] ID3D12Resource* getCurrentBackbufferResource() const { return mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()].resource; }
 
     [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
@@ -61,13 +65,6 @@ private:
     shared_com_ptr<IDXGISwapChain3> mSwapchain;            ///< Swapchain COM ptr
     shared_com_ptr<ID3D12DescriptorHeap> mRTVHeap;         ///< A descriptor heap exclusively for backbuffer RTVs
 
-    struct backbuffer
-    {
-        Fence fence;                     ///< present fence
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv; ///< CPU RTV
-        ID3D12Resource* resource;        ///< resource ptr
-        D3D12_RESOURCE_STATES state;     ///< current state
-    };
 
     cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers; ///< All backbuffers
 

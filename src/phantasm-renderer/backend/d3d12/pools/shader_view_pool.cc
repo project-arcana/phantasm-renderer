@@ -15,7 +15,7 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    mHeap->SetName(L"DynamicDescriptorRing::mHeap");
+    mHeap->SetName(L"DescriptorPageAllocator::mHeap");
 
     mHeapStartCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();

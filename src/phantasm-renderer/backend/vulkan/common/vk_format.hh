@@ -56,6 +56,15 @@ namespace pr::backend::vk::util
     case bf::r16u:
         return VK_FORMAT_R16_UINT;
 
+    case bf::rgba16f:
+        return VK_FORMAT_R16G16B16A16_SFLOAT;
+    case bf::rgb16f:
+        return VK_FORMAT_R16G16B16_SFLOAT;
+    case bf::rg16f:
+        return VK_FORMAT_R16G16_SFLOAT;
+    case bf::r16f:
+        return VK_FORMAT_R16_SFLOAT;
+
     case bf::rgba8i:
         return VK_FORMAT_R8G8B8A8_SINT;
     case bf::rgb8i:
@@ -73,6 +82,18 @@ namespace pr::backend::vk::util
         return VK_FORMAT_R8G8_UINT;
     case bf::r8u:
         return VK_FORMAT_R8_UINT;
+
+    case bf::rgba8un:
+        return VK_FORMAT_R8G8B8A8_UNORM;
+
+    case bf::depth32f:
+        return VK_FORMAT_D32_SFLOAT;
+    case bf::depth16un:
+        return VK_FORMAT_D16_UNORM;
+    case bf::depth32f_stencil8u:
+        return VK_FORMAT_D32_SFLOAT_S8_UINT;
+    case bf::depth24un_stencil8u:
+        return VK_FORMAT_D24_UNORM_S8_UINT;
     }
     return VK_FORMAT_UNDEFINED;
 }

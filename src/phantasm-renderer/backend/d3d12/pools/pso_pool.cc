@@ -1,7 +1,10 @@
 #include "pso_pool.hh"
 
+#include <iostream>
+
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
-#include <phantasm-renderer/backend/d3d12/resources/vertex_attributes.hh>
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                                      pr::backend::arg::framebuffer_format framebuffer_format,
@@ -9,7 +12,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
                                                                                                      pr::backend::arg::shader_stages shader_stages,
                                                                                                      const pr::primitive_pipeline_config& primitive_config)
 {
-    root_signature_ll* root_sig;
+    root_signature* root_sig;
     unsigned pool_index;
     // Do things requiring synchronization first
     {
@@ -24,9 +27,11 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
     {
         // Create root signature
-        auto const vert_format_native = get_native_vertex_format(vertex_format.attributes);
-        new_node.raw_pso = create_pipeline_state_ll(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
+        auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
+        new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
     }
+
+    new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
 
     return {static_cast<handle::index_t>(pool_index)};
 }
@@ -52,7 +57,21 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 {
     mDevice = device;
     mPool.initialize(max_num_psos);
-    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary
+    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, but this is not a hard max, just reserving
 }
 
-void pr::backend::d3d12::PipelineStateObjectPool::destroy() { mRootSigCache.destroy(); }
+void pr::backend::d3d12::PipelineStateObjectPool::destroy()
+{
+    auto num_leaks = 0;
+    mPool.iterate_allocated_nodes([&](pso_node& leaked_node) {
+        ++num_leaks;
+        leaked_node.raw_pso->Release();
+    });
+
+    if (num_leaks > 0)
+    {
+        std::cout << "[pr][backend][d3d12] warning: leaked " << num_leaks << " handle::pipeline_state object" << (num_leaks == 1 ? "" : "s") << std::endl;
+    }
+
+    mRootSigCache.destroy();
+}

@@ -3,7 +3,6 @@
 #include <phantasm-renderer/backend/types.hh>
 
 #include "common/d3d12_fwd.hh"
-
 #include "common/shared_com_ptr.hh"
 
 namespace pr::backend::d3d12

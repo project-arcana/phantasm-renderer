@@ -22,10 +22,9 @@ public:
     /// flushes the device and recreates the swapchain, and all associated resources
     void onResize(int width_hint, int height_hint);
 
-    /// all-in-one convenience to fill out a VkSubmitInfo struct with the necessary semaphores,
-    /// then submit the given command buffer with the necessary fence
-    /// However, this is suboptimal because submits should be batched
-    void performPresentSubmit(VkCommandBuffer command_buf);
+    /// fill out a VkSubmitInfo struct with the necessary semaphores,
+    /// then submit an internal dummy command buffer with the necessary fence
+    void performPresentSubmit();
 
     /// present the active backbuffer to the screen
     /// can trigger a resize instead of presenting if the swapchain is stale
@@ -71,13 +70,20 @@ private:
     // owning
     VkSwapchainKHR mSwapchain;
     VkRenderPass mRenderPass;
+    VkCommandPool mDummyPresentCommandPool;
 
     struct backbuffer
     {
         // sync objects
+        /// reset and signalled in ::performPresentSubmit, waited on (CPU) in ::present
         VkFence fence_command_buf_executed;
+        /// signalled in ::waitForBackbuffer, waited on (GPU) in ::performPresentSubmit
         VkSemaphore sem_image_available;
+        /// signalled in ::performPresentSubmit, waited on (GPU) in ::present
         VkSemaphore sem_render_finished;
+
+        // dummy present command buffer
+        VkCommandBuffer dummy_present_cmdbuf;
 
         // viewport-dependent resources
         VkImage image;

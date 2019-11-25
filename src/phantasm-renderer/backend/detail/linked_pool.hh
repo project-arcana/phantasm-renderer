@@ -67,6 +67,42 @@ struct linked_pool
 
     bool is_full() const { return _first_free_node == nullptr; }
 
+    /// pass a lambda that is called with a T& of each allocated node
+    /// This operation is extremely slow and should not occur in normal operation
+    template <class F>
+    void iterate_allocated_nodes(F&& func)
+    {
+        cc::array<size_t> free_indices(_pool.size());
+        size_t num_free_indices = 0;
+
+        T* cursor = _first_free_node;
+        while (cursor != nullptr)
+        {
+            free_indices[num_free_indices++] = (cursor - _pool.begin());
+            cursor = *reinterpret_cast<T**>(cursor);
+        }
+
+        // NOTE: this could be sped up significantly with a sort
+
+        for (auto i = 0u; i < _pool.size(); ++i)
+        {
+            bool is_index_free = false;
+            for (auto j = 0u; j < num_free_indices; ++j)
+            {
+                if (i == free_indices[j])
+                {
+                    is_index_free = true;
+                    break;
+                }
+            }
+
+            if (!is_index_free)
+            {
+                func(_pool[i]);
+            }
+        }
+    }
+
 private:
     T* _first_free_node = nullptr;
     cc::array<T> _pool;

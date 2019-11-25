@@ -4,6 +4,9 @@
 #include <cstring>
 
 #include <clean-core/assert.hh>
+#include <clean-core/utility.hh>
+
+#include <typed-geometry/tg.hh>
 
 #include <phantasm-renderer/backend/detail/stb_image.hh>
 
@@ -57,18 +60,7 @@ pr::backend::assets::image_data pr::backend::assets::load_image(const char* file
 
 unsigned pr::backend::assets::get_num_mip_levels(unsigned width, unsigned height)
 {
-    auto res = 0u;
-    while (true)
-    {
-        ++res;
-        if (width > 1)
-            width >>= 1;
-        if (height > 1)
-            height >>= 1;
-        if (width == 1 && height == 1)
-            break;
-    }
-    return res;
+    return static_cast<unsigned>(tg::floor(tg::log2(static_cast<float>(cc::max(width, height))))) + 1u;
 }
 
 void pr::backend::assets::copy_subdata(const pr::backend::assets::image_data& data, void* dest, unsigned stride, unsigned width, unsigned height)

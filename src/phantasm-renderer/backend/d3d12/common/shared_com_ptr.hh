@@ -1,6 +1,6 @@
 #pragma once
 
-#include <guiddef.h> // for __uuido; this header is tame, only other include is string.h
+#include <guiddef.h> // for __uuidof; this header is tame, only other include is string.h
 #undef FAR
 #undef _far
 
@@ -81,8 +81,8 @@ public:
 
 
     T* operator->() const { return _pointer; }
-    operator T*() const & { return _pointer; }
-    operator T*() const && = delete;
+    operator T*() const& { return _pointer; }
+    operator T*() const&& = delete;
 
     /// Safely release possibly stored pointer, then return a pointer to the inner T* for reassignemnt
     /// Regularly used in D3D12 API interop, T** arguments are common
@@ -94,7 +94,8 @@ public:
         // If the API call fails to assign, this object's state remains valid as well
     }
 
-    [[nodiscard]] T* get() const noexcept { return _pointer; }
+    [[nodiscard]] T* get() const& noexcept { return _pointer; }
+    [[nodiscard]] T* get() const&& noexcept = delete;
 
     template <class U>
     [[nodiscard]] auto get_interface(shared_com_ptr<U>& rhs) const noexcept

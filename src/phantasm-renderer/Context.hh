@@ -66,7 +66,7 @@ public:
     /// constructs a context with a default backend (usually vulkan)
     Context();
     /// constructs a context with a specified backend
-    Context(cc::poly_unique_ptr<Backend> backend);
+    Context(cc::poly_unique_ptr<backend::Backend> backend);
 
     ~Context();
 
@@ -79,7 +79,7 @@ public:
 
     // members
 private:
-    cc::poly_unique_ptr<Backend> mBackend;
+    cc::poly_unique_ptr<backend::Backend> mBackend;
 };
 
 // ============================== IMPLEMENTATION ==============================

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <atomic>
+#include <cstdint>
 
 #include "common/d3d12_sanitized.hh"
-
 #include "common/shared_com_ptr.hh"
 
 namespace pr::backend::d3d12

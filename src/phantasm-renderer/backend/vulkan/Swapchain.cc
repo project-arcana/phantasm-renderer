@@ -22,25 +22,62 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
     auto const backbuffer_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
     mBackbufferFormat = choose_backbuffer_format(backbuffer_format_info.backbuffer_formats);
 
-    // Create synchronization primitives
-    mBackbuffers.emplace(num_backbuffers);
-    for (auto& backbuffer : mBackbuffers)
+    // Create dummy command pool
     {
-        VkFenceCreateInfo fence_info;
-        zero_info_struct(fence_info, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
-        fence_info.pNext = nullptr;
-        fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        PR_VK_VERIFY_SUCCESS(vkCreateFence(mDevice, &fence_info, nullptr, &backbuffer.fence_command_buf_executed));
-
-        VkSemaphoreCreateInfo sem_info;
-        zero_info_struct(sem_info, VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
-        sem_info.pNext = nullptr;
-        sem_info.flags = 0;
-
-        PR_VK_VERIFY_SUCCESS(vkCreateSemaphore(mDevice, &sem_info, nullptr, &backbuffer.sem_image_available));
-        PR_VK_VERIFY_SUCCESS(vkCreateSemaphore(mDevice, &sem_info, nullptr, &backbuffer.sem_render_finished));
+        VkCommandPoolCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        info.queueFamilyIndex = static_cast<unsigned>(device.getQueueFamilyGraphics());
+        PR_VK_VERIFY_SUCCESS(vkCreateCommandPool(mDevice, &info, nullptr, &mDummyPresentCommandPool));
     }
+
+    cc::array<VkCommandBuffer> linear_cmd_buffers = cc::array<VkCommandBuffer>::uninitialized(num_backbuffers);
+
+    // Create dummy command buffers in linear container
+    {
+        VkCommandBufferAllocateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandPool = mDummyPresentCommandPool;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        info.commandBufferCount = num_backbuffers;
+
+        PR_VK_VERIFY_SUCCESS(vkAllocateCommandBuffers(mDevice, &info, linear_cmd_buffers.data()));
+    }
+
+    // Create synchronization primitives and assign dummy command buffers
+    mBackbuffers.emplace(num_backbuffers);
+    for (auto i = 0u; i < mBackbuffers.size(); ++i)
+    {
+        auto& backbuffer = mBackbuffers[i];
+
+        // assign and begin/end dummy command buffer
+        {
+            backbuffer.dummy_present_cmdbuf = linear_cmd_buffers[i];
+            VkCommandBufferBeginInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            PR_VK_VERIFY_SUCCESS(vkBeginCommandBuffer(backbuffer.dummy_present_cmdbuf, &info));
+            PR_VK_VERIFY_SUCCESS(vkEndCommandBuffer(backbuffer.dummy_present_cmdbuf));
+        }
+        // create fence
+        {
+            VkFenceCreateInfo fence_info;
+            zero_info_struct(fence_info, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
+            fence_info.pNext = nullptr;
+            fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+            PR_VK_VERIFY_SUCCESS(vkCreateFence(mDevice, &fence_info, nullptr, &backbuffer.fence_command_buf_executed));
+        }
+        // create semaphores
+        {
+            VkSemaphoreCreateInfo sem_info;
+            zero_info_struct(sem_info, VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
+            sem_info.pNext = nullptr;
+            sem_info.flags = 0;
+
+            PR_VK_VERIFY_SUCCESS(vkCreateSemaphore(mDevice, &sem_info, nullptr, &backbuffer.sem_image_available));
+            PR_VK_VERIFY_SUCCESS(vkCreateSemaphore(mDevice, &sem_info, nullptr, &backbuffer.sem_render_finished));
+        }
+    }
+
 
     // Create render pass
     {
@@ -91,6 +128,8 @@ void pr::backend::vk::Swapchain::destroy()
     destroySwapchain();
 
     vkDestroyRenderPass(mDevice, mRenderPass, nullptr);
+
+    vkDestroyCommandPool(mDevice, mDummyPresentCommandPool, nullptr);
 
     for (auto const& backbuffer : mBackbuffers)
     {
@@ -154,7 +193,7 @@ bool pr::backend::vk::Swapchain::waitForBackbuffer()
     return true;
 }
 
-void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_buf)
+void pr::backend::vk::Swapchain::performPresentSubmit()
 {
     auto& active_backbuffer = mBackbuffers[mActiveFenceIndex];
 
@@ -173,7 +212,7 @@ void pr::backend::vk::Swapchain::performPresentSubmit(VkCommandBuffer command_bu
     submit_info.pSignalSemaphores = &active_backbuffer.sem_render_finished;
 
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buf;
+    submit_info.pCommandBuffers = &active_backbuffer.dummy_present_cmdbuf;
 
     PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mPresentQueue, 1, &submit_info, active_backbuffer.fence_command_buf_executed));
 }

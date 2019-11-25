@@ -22,13 +22,13 @@ public:
 
     /// receive an existing root signature matching the shape, or create a new one
     /// returns a pointer (which remains stable, §23.2.5/13 C++11)
-    [[nodiscard]] root_signature_ll* getOrCreate(ID3D12Device& device, key_t arg_shapes);
+    [[nodiscard]] root_signature* getOrCreate(ID3D12Device& device, key_t arg_shapes);
 
     /// destroys all elements inside, and clears the map
     void reset();
 
 private:
-    std::unordered_map<key_t, root_signature_ll, hash::compute_functor> mCache;
+    std::unordered_map<key_t, root_signature, hash::compute_functor> mCache;
 };
 
 }

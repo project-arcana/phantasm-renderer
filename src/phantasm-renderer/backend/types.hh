@@ -1,15 +1,22 @@
 #pragma once
 
+#include <cstdint>
+
 namespace pr::backend
 {
 namespace handle
 {
-using index_t = int;
-#define PR_DEFINE_HANDLE(_type_) \
-    struct _type_                \
-    {                            \
-        index_t index;           \
-    }
+using index_t = int32_t;
+inline constexpr index_t null_handle_index = index_t(-1);
+#define PR_DEFINE_HANDLE(_type_)                                                                          \
+    struct _type_                                                                                         \
+    {                                                                                                     \
+        index_t index;                                                                                    \
+        [[nodiscard]] constexpr bool is_valid() const { return index != null_handle_index; }              \
+        [[nodiscard]] constexpr bool operator==(_type_ rhs) const noexcept { return index == rhs.index; } \
+        [[nodiscard]] constexpr bool operator!=(_type_ rhs) const noexcept { return index != rhs.index; } \
+    };                                                                                                    \
+    inline constexpr _type_ null_##_type_ = {null_handle_index}
 
 
 /// generic resource (Image, Buffer, RT)
@@ -27,7 +34,14 @@ PR_DEFINE_HANDLE(command_list);
 #undef PR_DEFINE_HANDLE
 }
 
-enum class shader_domain : char
+struct shader_argument
+{
+    handle::resource constant_buffer;
+    unsigned constant_buffer_offset;
+    handle::shader_view shader_view;
+};
+
+enum class shader_domain : uint8_t
 {
     pixel,
     vertex,
@@ -37,7 +51,14 @@ enum class shader_domain : char
     compute
 };
 
-enum class adapter_preference : char
+enum class queue_type : uint8_t
+{
+    graphics,
+    copy,
+    compute
+};
+
+enum class adapter_preference : uint8_t
 {
     highest_vram,
     first,
@@ -46,7 +67,7 @@ enum class adapter_preference : char
     explicit_index
 };
 
-enum class adapter_vendor : char
+enum class adapter_vendor : uint8_t
 {
     amd,
     intel,
@@ -54,7 +75,7 @@ enum class adapter_vendor : char
     unknown
 };
 
-enum class validation_level : char
+enum class validation_level : uint8_t
 {
     off,
 
@@ -79,12 +100,25 @@ struct backend_config
 
     /// Amount of backbuffers to create
     unsigned num_backbuffers = 3;
+
+    /// Amount of threads to accomodate
+    /// backend calls must only be made from <= [num_threads] unique OS threads
+    unsigned num_threads = 1;
+
+    /// Resource limits
+    unsigned max_num_resources = 2048;
+    unsigned max_num_pipeline_states = 1024;
+    unsigned max_num_shader_view_elements = 4096;
+
+    /// Command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
+    unsigned num_cmdlist_allocators_per_thread = 5;
+    unsigned num_cmdlists_per_allocator = 5;
 };
 
 // Map to
 // D3D12: resource states
 // Vulkan: access masks, image layouts and pipeline stage dependencies
-enum class resource_state : char
+enum class resource_state : uint8_t
 {
     // unknown to pr
     unknown,
@@ -114,7 +148,7 @@ enum class resource_state : char
 
 // Map to DXGI_FORMAT and VkFormat
 // [f]loat, [i]nt, [u]int, [un]orm
-enum class format : char
+enum class format : uint8_t
 {
     rgba32f,
     rgb32f,
@@ -136,6 +170,10 @@ enum class format : char
     rgb16u,
     rg16u,
     r16u,
+    rgba16f,
+    rgb16f,
+    rg16f,
+    r16f,
     rgba8i,
     rgb8i,
     rg8i,
@@ -145,6 +183,10 @@ enum class format : char
     rg8u,
     r8u,
 
+    // backbuffer formats
+    rgba8un,
+
+    // depth stencil formats
     depth32f,
     depth16un,
     depth32f_stencil8u,

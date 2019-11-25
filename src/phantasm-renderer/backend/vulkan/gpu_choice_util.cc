@@ -116,7 +116,7 @@ VkExtent2D pr::backend::vk::get_swap_extent(const VkSurfaceCapabilitiesKHR& caps
     }
     else
     {
-        // Return the hing, clamped to the min/max extents
+        // Return the hint, clamped to the min/max extents
         extent_hint.width = cc::clamp(extent_hint.width, caps.minImageExtent.width, caps.maxImageExtent.width);
         extent_hint.height = cc::clamp(extent_hint.height, caps.minImageExtent.height, caps.maxImageExtent.height);
         return extent_hint;
