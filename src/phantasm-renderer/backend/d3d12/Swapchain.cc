@@ -108,10 +108,10 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
         mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
 
-        // Usually, this call would be just fine
-        // But there is a known deadlock in the D3D12 validation layer which occurs if the backbuffers are unreferenced
-        // Instead we must release backbuffers on resizes and at destruction
         // backbuffer.resource->Release();
+        // Usually, this call would be reasonable, removing the need for manual management down the line
+        // But there is a known deadlock in the D3D12 validation layer which occurs if the backbuffers are unreferenced
+        // Instead we must release backbuffers before resizes and at destruction (see ::releaseBackbuffers)
     }
 }
 
