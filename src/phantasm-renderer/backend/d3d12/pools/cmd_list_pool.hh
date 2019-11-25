@@ -47,7 +47,7 @@ public:
     [[nodiscard]] bool try_reset();
 
     /// blocking reset attempt
-    /// returns true iff the allocator is usable afterwards
+    /// returns true if the allocator is usable afterwards
     [[nodiscard]] bool try_reset_blocking();
 
 public:
@@ -180,13 +180,6 @@ private:
     /// a parallel array to the pool, identically indexed
     /// the cmdlists must stay alive even while "unallocated"
     cc::array<ID3D12GraphicsCommandList*> mRawLists;
-
-    /// the allocators backing the command lists
-    /// These are currently synchronized, eventually
-    /// they should be thread-local
-    /// (Instead of a member here, ::create would take
-    /// the thread-local bundle as an argument)
-    // CommandAllocatorBundle mAllocatorBundle;
 
     std::mutex mMutex;
 };

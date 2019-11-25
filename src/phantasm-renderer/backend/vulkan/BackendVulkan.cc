@@ -11,6 +11,15 @@
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
 
+namespace pr::backend::vk
+{
+struct BackendVulkan::per_thread_component
+{
+    //    command_list_translator translator;
+    CommandAllocatorBundle cmd_list_allocator;
+};
+}
+
 void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, device::Window& window)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
@@ -70,16 +79,40 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
             break;
         }
     }
+
+    // Per-thread components and command list pool
+    {
+        mThreadAssociation.initialize();
+        mThreadComponents = mThreadComponents.defaulted(config.num_threads);
+
+        cc::vector<CommandAllocatorBundle*> thread_allocator_ptrs;
+        thread_allocator_ptrs.reserve(config.num_threads);
+
+        for (auto& thread_comp : mThreadComponents)
+        {
+            //            thread_comp.translator.initialize(&device, &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
+            thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
+        }
+
+        // TODO arbitrary
+        mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
+    }
 }
 
 pr::backend::vk::BackendVulkan::~BackendVulkan()
 {
+    flushGPU();
     mSwapchain.destroy();
 
+    mPoolCmdLists.destroy();
+
+    for (auto& thread_cmp : mThreadComponents)
+    {
+        thread_cmp.cmd_list_allocator.destroy(mDevice.getDevice());
+    }
+
     vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
-
     mAllocator.destroy();
-
     mDevice.destroy();
 
     if (mDebugMessenger != VK_NULL_HANDLE)
@@ -87,6 +120,97 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
 
     vkDestroyInstance(mInstance, nullptr);
 }
+
+pr::backend::handle::command_list pr::backend::vk::BackendVulkan::recordCommandList(std::byte* buffer, size_t size)
+{
+    auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
+
+    VkCommandBuffer raw_list;
+    auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator);
+    //    thread_comp.translator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
+    return res;
+}
+
+void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::command_list> cls)
+{
+    constexpr auto c_batch_size = 16;
+
+    cc::capped_vector<VkCommandBuffer, c_batch_size * 2> submit_batch;
+    //    cc::capped_vector<handle::command_list, c_batch_size> barrier_lists;
+    unsigned last_cl_index = 0;
+    unsigned num_cls_in_batch = 0;
+
+    // TODO
+    VkPipelineStageFlags const submitWaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
+
+    auto const submit_flush = [&]() {
+        VkFence submit_fence;
+        auto const submit_fence_index = mPoolCmdLists.acquireFence(submit_fence);
+
+        VkSubmitInfo submit_info;
+        zero_info_struct(submit_info, VK_STRUCTURE_TYPE_SUBMIT_INFO);
+        submit_info.pWaitDstStageMask = &submitWaitStage;
+        submit_info.commandBufferCount = unsigned(submit_batch.size());
+        submit_info.pCommandBuffers = submit_batch.data();
+
+        PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mDevice.getQueueGraphics(), 1, &submit_info, submit_fence));
+
+        //        mPoolCmdLists.freeOnSubmit(barrier_lists, submit_fence_index);
+        mPoolCmdLists.freeOnSubmit(cls.subspan(last_cl_index, num_cls_in_batch), submit_fence_index);
+
+        submit_batch.clear();
+        //        barrier_lists.clear();
+        last_cl_index += num_cls_in_batch;
+        num_cls_in_batch = 0;
+    };
+
+    for (auto const cl : cls)
+    {
+        if (cl == handle::null_command_list)
+            continue;
+
+        //        auto const* const state_cache = mPoolCmdLists.getStateCache(cl);
+        //        cc::capped_vector<D3D12_RESOURCE_BARRIER, 32> barriers;
+
+        //        for (auto const& entry : state_cache->cache)
+        //        {
+        //            auto const master_before = mPoolResources.getResourceState(entry.ptr);
+
+        //            if (master_before != entry.required_initial)
+        //            {
+        //                // transition to the state required as the initial one
+        //                auto& barrier = barriers.emplace_back();
+        //                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), util::to_native(master_before),
+        //                                            util::to_native(entry.required_initial));
+        //            }
+
+        //            // set the master state to the one in which this resource is left
+        //            mPoolResources.setResourceState(entry.ptr, entry.current);
+        //        }
+
+        //        if (!barriers.empty())
+        //        {
+        //            ID3D12GraphicsCommandList* t_cmd_list;
+        //            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
+        //            t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
+        //            t_cmd_list->Close();
+        //            submit_batch.push_back(t_cmd_list);
+        //        }
+
+        submit_batch.push_back(mPoolCmdLists.getRawBuffer(cl));
+        ++num_cls_in_batch;
+
+        if (num_cls_in_batch == c_batch_size)
+            submit_flush();
+    }
+
+    if (num_cls_in_batch > 0)
+        submit_flush();
+}
+
+void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDevice()); }
 
 void pr::backend::vk::BackendVulkan::createDebugMessenger()
 {

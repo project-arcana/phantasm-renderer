@@ -54,7 +54,6 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
-        // TODO arbitrary
         mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
     }
 }
