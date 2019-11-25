@@ -63,9 +63,12 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
     }
 }
 
+pr::backend::d3d12::Swapchain::~Swapchain() { releaseBackbuffers(); }
+
 void pr::backend::d3d12::Swapchain::onResize(int width, int height)
 {
     mBackbufferSize = tg::ivec2(width, height);
+    releaseBackbuffers();
     PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(width), UINT(height), s_backbuffer_format, s_swapchain_flags));
     updateBackbuffers();
 }
@@ -104,6 +107,19 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
 
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
         mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
+
+        // Usually, this call would be just fine
+        // But there is a known deadlock in the D3D12 validation layer which occurs if the backbuffers are unreferenced
+        // Instead we must release backbuffers on resizes and at destruction
+        // backbuffer.resource->Release();
+    }
+}
+
+void pr::backend::d3d12::Swapchain::releaseBackbuffers()
+{
+    // This method is a workaround for a known deadlock in the D3D12 validation layer
+    for (auto& backbuffer : mBackbuffers)
+    {
         backbuffer.resource->Release();
     }
 }

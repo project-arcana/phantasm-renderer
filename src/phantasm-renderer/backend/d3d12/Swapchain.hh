@@ -22,6 +22,7 @@ public:
     Swapchain& operator=(Swapchain&&) noexcept = delete;
 
     void initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers);
+    ~Swapchain();
 
     void onResize(int width, int height);
     void setFullscreen(bool fullscreen);
@@ -58,6 +59,9 @@ private:
     /// recreate RTVs, re-query resource pointers, reset state to present
     void updateBackbuffers();
 
+    void releaseBackbuffers();
+
+private:
     static auto constexpr max_num_backbuffers = 6u;
 
     shared_com_ptr<ID3D12Device> mParentDevice;            ///< The parent device
