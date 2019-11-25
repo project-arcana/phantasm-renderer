@@ -1,10 +1,10 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
+
+#include <phantasm-renderer/backend/types.hh>
 
 #include "common/d3d12_fwd.hh"
 
 #include "common/shared_com_ptr.hh"
-#include "d3d12_config.hh"
 
 namespace pr::backend::d3d12
 {
@@ -19,7 +19,7 @@ public:
     Adapter& operator=(Adapter const&) = delete;
     Adapter& operator=(Adapter&&) noexcept = delete;
 
-    void initialize(d3d12_config const& config);
+    void initialize(backend_config const& config);
 
     [[nodiscard]] IDXGIAdapter& getAdapter() const { return *mAdapter.get(); }
     [[nodiscard]] shared_com_ptr<IDXGIAdapter> getAdapterShared() const { return mAdapter; }
@@ -35,5 +35,3 @@ private:
 };
 
 }
-
-#endif

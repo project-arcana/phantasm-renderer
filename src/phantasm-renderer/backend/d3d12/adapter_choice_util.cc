@@ -1,15 +1,13 @@
 #include "adapter_choice_util.hh"
-#ifdef PR_BACKEND_D3D12
 
-#include <array>
-
+#include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 
 #include "common/safe_seh_call.hh"
 #include "common/shared_com_ptr.hh"
 #include "common/verify.hh"
 
-pr::backend::d3d12::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsigned id)
+pr::backend::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsigned id)
 {
     switch (id)
     {
@@ -26,7 +24,7 @@ pr::backend::d3d12::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsign
 
 int pr::backend::d3d12::test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL min_features, D3D_FEATURE_LEVEL& out_max_features)
 {
-    std::array const all_feature_levels = {D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0, D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
+    cc::array const all_feature_levels = {D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0, D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0};
 
     int res_nodes = -1;
 
@@ -57,7 +55,7 @@ int pr::backend::d3d12::test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL mi
     return res_nodes;
 }
 
-std::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapter_candidates()
+cc::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapter_candidates()
 {
     auto constexpr min_candidate_feature_level = D3D_FEATURE_LEVEL_12_0;
 
@@ -69,7 +67,7 @@ std::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapt
     if (!temp_factory.is_valid())
         return {};
 
-    std::vector<adapter_candidate> res;
+    cc::vector<adapter_candidate> res;
 
     shared_com_ptr<IDXGIAdapter> temp_adapter;
     for (uint32_t i = 0u; temp_factory->EnumAdapters(i, temp_adapter.override()) != DXGI_ERROR_NOT_FOUND; ++i)
@@ -104,11 +102,10 @@ std::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapt
     return res;
 }
 
-uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::backend::d3d12::adapter_candidate>& candidates,
-                                                         pr::backend::d3d12::adapter_preference preference)
+unsigned pr::backend::d3d12::get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, pr::backend::adapter_preference preference)
 {
     if (candidates.empty())
-        return uint32_t(-1);
+        return unsigned(-1);
 
     switch (preference)
     {
@@ -149,11 +146,8 @@ uint32_t pr::backend::d3d12::get_preferred_adapter_index(const std::vector<pr::b
     case adapter_preference::first:
         return candidates[0].index;
     case adapter_preference::explicit_index:
-        return uint32_t(-1);
+        return unsigned(-1);
     }
 
     return candidates[0].index;
 }
-
-
-#endif

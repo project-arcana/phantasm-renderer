@@ -12,6 +12,7 @@ namespace pr::backend::vk
 template <class T>
 void zero_info_struct(T& val, VkStructureType type)
 {
+    // TODO: constexpr map of T to VkStructureType
     static_assert(!std::is_pointer_v<T>, "Argument must not be a pointer");
     static_assert(offsetof(T, sType) == 0, "Vulkan info struct must have sType as its first member");
     val.sType = type;

@@ -25,6 +25,8 @@ enum class format
     srgb8,
     srgb8_alpha8,
 
+    depth32f,
+
     // TODO!
 
     count

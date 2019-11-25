@@ -1,5 +1,4 @@
 #include "verify.hh"
-#ifdef PR_BACKEND_D3D12
 
 #include <cstdio>
 #include <cstdlib>
@@ -88,4 +87,3 @@ void pr::backend::d3d12::detail::d3d12_verify_failure_handler(HRESULT hr, const 
     std::abort();
 }
 
-#endif

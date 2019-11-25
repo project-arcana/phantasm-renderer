@@ -1,11 +1,11 @@
 #pragma once
-#ifdef PR_BACKEND_VULKAN
 
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include <clean-core/span.hh>
+#include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
@@ -44,6 +44,5 @@ private:
     // TODO: Implement this with a future cc hashmap and vector / iteration helper
     std::unordered_set<std::string> _names;
 };
-}
 
-#endif
+}

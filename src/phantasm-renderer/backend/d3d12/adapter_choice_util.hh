@@ -1,32 +1,26 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <string>
-#include <vector>
+
+#include <clean-core/span.hh>
+#include <clean-core/vector.hh>
+
+#include <phantasm-renderer/backend/types.hh>
 
 #include "common/d3d12_sanitized.hh"
 
-#include "d3d12_config.hh"
-
 namespace pr::backend::d3d12
 {
-enum class adapter_vendor
-{
-    amd,
-    intel,
-    nvidia,
-    unknown
-};
-
 struct adapter_candidate
 {
     adapter_vendor vendor;
-    uint32_t index;
+    unsigned index;
 
     size_t dedicated_video_memory_bytes;
     size_t dedicated_system_memory_bytes;
     size_t shared_system_memory_bytes;
 
+    // std over cc because of wchar support
     std::string description;
     D3D_FEATURE_LEVEL max_feature_level;
 };
@@ -38,9 +32,7 @@ struct adapter_candidate
 [[nodiscard]] int test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL min_features, D3D_FEATURE_LEVEL& out_max_features);
 
 /// Get all available adapter candidates
-[[nodiscard]] std::vector<adapter_candidate> get_adapter_candidates();
+[[nodiscard]] cc::vector<adapter_candidate> get_adapter_candidates();
 
-[[nodiscard]] uint32_t get_preferred_adapter_index(std::vector<adapter_candidate> const& candidates, adapter_preference preference);
+[[nodiscard]] unsigned get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, backend::adapter_preference preference);
 }
-
-#endif

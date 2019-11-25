@@ -1,7 +1,8 @@
 #pragma once
-#ifdef PR_BACKEND_D3D12
 
 #include <clean-core/capped_array.hh>
+
+#include <typed-geometry/tg-lean.hh>
 
 #include "common/d3d12_sanitized.hh"
 #include "common/shared_com_ptr.hh"
@@ -25,34 +26,49 @@ public:
     void onResize(int width, int height);
     void setFullscreen(bool fullscreen);
 
+    /// call swapchain->Present(0, 0) and issue the fence
     void present();
 
-    void waitForSwapchain();
+    /// wait for the fence of the current backbuffer
+    unsigned waitForBackbuffer();
+
+public:
+    struct backbuffer
+    {
+        Fence fence;                     ///< present fence
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv; ///< CPU RTV
+        ID3D12Resource* resource;        ///< resource ptr
+        D3D12_RESOURCE_STATES state;     ///< current state
+    };
 
     [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const;
+    [[nodiscard]] tg::ivec2 const& getBackbufferSize() const { return mBackbufferSize; }
 
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE& getCurrentBackbufferRTV();
-    [[nodiscard]] ID3D12Resource* getCurrentBackbufferResource() const;
+    [[nodiscard]] backbuffer const& getBackbuffer(unsigned i) const { return mBackbuffers[i]; }
 
-    [[nodiscard]] unsigned getNumBackbuffers() const { return mNumBackbuffers; }
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCurrentBackbufferRTV() const { return mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()].rtv; }
+    [[nodiscard]] ID3D12Resource* getCurrentBackbufferResource() const { return mBackbuffers[mSwapchain->GetCurrentBackBufferIndex()].resource; }
+
+    [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
 
     [[nodiscard]] IDXGISwapChain3& getSwapchain() const { return *mSwapchain.get(); }
     [[nodiscard]] shared_com_ptr<IDXGISwapChain3> const& getSwapchainShared() const { return mSwapchain; }
 
 private:
-    void createBackbufferRTVs();
+    /// recreate RTVs, re-query resource pointers, reset state to present
+    void updateBackbuffers();
 
     static auto constexpr max_num_backbuffers = 6u;
 
-    shared_com_ptr<ID3D12Device> mParentDevice;                               ///< The parent device
-    shared_com_ptr<ID3D12CommandQueue> mParentDirectQueue;                    ///< The parent device's main direct queue
-    shared_com_ptr<IDXGISwapChain3> mSwapchain;                               ///< Swapchain COM ptr
-    shared_com_ptr<ID3D12DescriptorHeap> mRTVHeap;                            ///< A descriptor heap exclusively for backbuffer RTVs
-    cc::capped_array<D3D12_CPU_DESCRIPTOR_HANDLE, max_num_backbuffers> mRTVs; ///< Backbuffer RTV CPU handles
-    cc::capped_array<Fence, max_num_backbuffers> mFences;                     ///< Present fences
-    unsigned mNumBackbuffers = 0;
+    shared_com_ptr<ID3D12Device> mParentDevice;            ///< The parent device
+    shared_com_ptr<ID3D12CommandQueue> mParentDirectQueue; ///< The parent device's main direct queue
+    shared_com_ptr<IDXGISwapChain3> mSwapchain;            ///< Swapchain COM ptr
+    shared_com_ptr<ID3D12DescriptorHeap> mRTVHeap;         ///< A descriptor heap exclusively for backbuffer RTVs
+
+
+    cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers; ///< All backbuffers
+
+    tg::ivec2 mBackbufferSize;
 };
 
 }
-
-#endif
