@@ -47,7 +47,7 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
     }
 
     // Disable Alt + Enter behavior
-    PR_D3D12_VERIFY(factory.MakeWindowAssociation(handle, DXGI_MWA_NO_ALT_ENTER));
+    PR_D3D12_VERIFY(factory.MakeWindowAssociation(handle, DXGI_MWA_NO_WINDOW_CHANGES));
 
     // Create backbuffer RTV heap, then create RTVs
     {
