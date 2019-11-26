@@ -4,6 +4,8 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include <phantasm-renderer/backend/types.hh>
+
 #include "common/d3d12_sanitized.hh"
 #include "common/shared_com_ptr.hh"
 
@@ -21,7 +23,7 @@ public:
     Swapchain& operator=(Swapchain const&) = delete;
     Swapchain& operator=(Swapchain&&) noexcept = delete;
 
-    void initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers);
+    void initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers, present_mode present_mode);
     ~Swapchain();
 
     void onResize(int width, int height);
@@ -73,6 +75,7 @@ private:
     cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers; ///< All backbuffers
 
     tg::ivec2 mBackbufferSize;
+    present_mode mPresentMode;
 };
 
 }

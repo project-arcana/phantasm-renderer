@@ -1,7 +1,5 @@
 #include "BackendD3D12.hh"
 
-#include <iostream> //nocheckin
-
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/device_tentative/window.hh>
@@ -28,7 +26,8 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
         mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(),
+                              config.num_backbuffers, config.present_mode);
     }
 
     auto& device = mDevice.getDevice();

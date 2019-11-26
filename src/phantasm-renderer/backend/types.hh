@@ -100,6 +100,7 @@ struct backend_config
     validation_level validation = validation_level::off;
 
     /// the swapchain presentation mode (note: synced does not mean refreshrate-limited)
+    /// Also note: under some circumstances, synced might force a refreshrate limit (Nvidia optimus + windowed on d3d12, etc.)
     present_mode present_mode = present_mode::synced;
 
     /// the strategy for choosing a physical GPU
