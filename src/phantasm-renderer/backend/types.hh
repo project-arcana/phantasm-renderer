@@ -88,12 +88,22 @@ enum class validation_level : uint8_t
     on_extended
 };
 
+enum class sync_mode : uint8_t
+{
+    unsynced,
+    synced_fifo,
+    synced_mailbox
+};
+
 struct backend_config
 {
     validation_level validation = validation_level::off;
 
+    sync_mode sync = sync_mode::synced_mailbox;
+
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);
+
 
     /// Enable DXR / VK raytracing features if available
     bool enable_raytracing = true;

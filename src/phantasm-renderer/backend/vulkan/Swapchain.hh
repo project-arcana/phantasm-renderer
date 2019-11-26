@@ -4,6 +4,8 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include <phantasm-renderer/backend/types.hh>
+
 #include "loader/volk.hh"
 
 namespace pr::backend::vk
@@ -14,7 +16,7 @@ struct gpu_information;
 class Swapchain
 {
 public:
-    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h);
+    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, sync_mode sync);
 
     void destroy();
 
@@ -97,8 +99,11 @@ private:
     unsigned mActiveImageIndex = 0;
 
     VkSurfaceFormatKHR mBackbufferFormat;
+
     tg::ivec2 mBackbufferSize;
     bool mBackbufferHasResized = true;
+
+    sync_mode mSyncMode;
 };
 
 }

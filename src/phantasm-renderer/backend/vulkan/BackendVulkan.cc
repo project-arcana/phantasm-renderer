@@ -74,7 +74,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
             mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
 
-            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight());
+            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.sync);
 
             break;
         }

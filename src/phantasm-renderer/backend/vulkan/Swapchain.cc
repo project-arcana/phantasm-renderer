@@ -5,13 +5,14 @@
 #include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 
-void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h)
+void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, sync_mode sync)
 {
     mSurface = surface;
     mDevice = device.getDevice();
     mPhysicalDevice = device.getPhysicalDevice();
     mPresentQueue = device.getQueueGraphics();
     mBackbufferSize = tg::ivec2(-1, -1);
+    mSyncMode = sync;
 
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
 
@@ -244,7 +245,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
 
         swapchain_info.preTransform = choose_identity_transform(surface_capabilities);
         swapchain_info.compositeAlpha = choose_alpha_mode(surface_capabilities);
-        swapchain_info.presentMode = choose_present_mode(present_format_info.present_modes, true);
+        swapchain_info.presentMode = choose_present_mode(present_format_info.present_modes, mSyncMode);
 
         swapchain_info.clipped = true;
         swapchain_info.oldSwapchain = VK_NULL_HANDLE;

@@ -2,6 +2,8 @@
 
 #include <clean-core/array.hh>
 
+#include <phantasm-renderer/backend/types.hh>
+
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
 #include "queue_util.hh"
@@ -38,7 +40,7 @@ struct backbuffer_information
 [[nodiscard]] VkSurfaceCapabilitiesKHR get_surface_capabilities(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 [[nodiscard]] VkSurfaceFormatKHR choose_backbuffer_format(cc::span<VkSurfaceFormatKHR const> available_formats);
-[[nodiscard]] VkPresentModeKHR choose_present_mode(cc::span<VkPresentModeKHR const> available_modes, bool prefer_synced = true);
+[[nodiscard]] VkPresentModeKHR choose_present_mode(cc::span<VkPresentModeKHR const> available_modes, sync_mode mode);
 
 [[nodiscard]] VkExtent2D get_swap_extent(VkSurfaceCapabilitiesKHR const& capabilities, VkExtent2D extent_hint);
 
