@@ -36,8 +36,11 @@ public:
     //
 
     [[nodiscard]] handle::resource acquireBackbuffer() override;
+
     [[nodiscard]] tg::ivec2 getBackbufferSize() override { return mSwapchain.getBackbufferSize(); }
+
     void resize(int w, int h) override { mSwapchain.onResize(w, h); }
+
     void present() override { mSwapchain.present(); }
 
     //
@@ -134,6 +137,7 @@ private:
     struct per_thread_component;
     cc::array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
+
 private:
 };
 }

@@ -30,5 +30,5 @@ inline void populate_barrier_desc(D3D12_RESOURCE_BARRIER& out_barrier, ID3D12Res
 
 [[nodiscard]] cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> get_native_vertex_format(cc::span<vertex_attribute_info const> attrib_info);
 
-void set_object_name(ID3D12Object* object, char const* name);
+void set_object_name(ID3D12Object* object, char const* name, ...);
 }

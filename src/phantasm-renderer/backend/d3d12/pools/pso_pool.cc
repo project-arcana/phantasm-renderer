@@ -29,6 +29,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
         // Create root signature
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
+        util::set_object_name(new_node.raw_pso, "PipelineStateObjectPool pso #%d", int(pool_index));
     }
 
     new_node.primitive_topology = util::to_native_topology(primitive_config.topology);

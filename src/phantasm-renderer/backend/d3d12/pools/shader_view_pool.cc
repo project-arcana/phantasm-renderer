@@ -1,5 +1,6 @@
 #include "shader_view_pool.hh"
 
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 #include "resource_pool.hh"
@@ -15,7 +16,7 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    mHeap->SetName(L"DescriptorPageAllocator::mHeap");
+    util::set_object_name(mHeap, "DescriptorPageAllocator t%d, s%d", int(type), int(num_descriptors));
 
     mHeapStartCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();

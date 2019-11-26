@@ -2,6 +2,7 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 void pr::backend::d3d12::CPUDescriptorLinearAllocator::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned size)
@@ -18,7 +19,7 @@ void pr::backend::d3d12::CPUDescriptorLinearAllocator::initialize(ID3D12Device& 
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    mHeap->SetName(L"CPUDescriptorLinearAllocator::mHeap");
+    util::set_object_name(mHeap, "CPUDescriptorLinearAllocator heap s%d", int(mNumDescriptors));
     mHandleCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
 }
 

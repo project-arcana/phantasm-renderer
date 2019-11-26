@@ -1,5 +1,7 @@
 #include "root_sig_cache.hh"
 
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
+
 void pr::backend::d3d12::RootSignatureCache::initialize(unsigned size_estimate) { mCache.reserve(size_estimate); }
 
 void pr::backend::d3d12::RootSignatureCache::destroy() { reset(); }
@@ -15,6 +17,7 @@ pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getO
         auto [new_it, success] = mCache.emplace(arg_shapes, root_signature{});
         CC_ASSERT(success);
         initialize_root_signature(new_it->second, device, arg_shapes);
+        util::set_object_name(new_it->second.raw_root_sig, "RootSignatureCache root sig");
         return &new_it->second;
     }
 }

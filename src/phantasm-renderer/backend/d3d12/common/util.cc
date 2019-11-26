@@ -1,6 +1,9 @@
 #include "util.hh"
 
 #include <corecrt_wstdio.h>
+#include <varargs.h>
+#include <cstdarg>
+#include <cstdio>
 
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 
@@ -22,12 +25,20 @@ cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> pr::backend::d3d12::util::get_na
     return res;
 }
 
-void pr::backend::d3d12::util::set_object_name(ID3D12Object* object, const char* name)
+void pr::backend::d3d12::util::set_object_name(ID3D12Object* object, const char* name, ...)
 {
     if (name != nullptr)
     {
+        char name_formatted[1024];
+        {
+            va_list args;
+            va_start(args, name);
+            ::vsprintf_s(name_formatted, 1024, name, args);
+            va_end(args);
+        }
+
         wchar_t name_wide[1024];
-        ::swprintf(name_wide, 1024, L"%S", name);
+        ::swprintf(name_wide, 1024, L"%S", name_formatted);
         object->SetName(name_wide);
     }
 }
