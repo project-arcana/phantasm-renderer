@@ -38,7 +38,7 @@ public:
     // internal API
 
     void initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources);
-    void destroy(VkDevice device);
+    void destroy();
 
     //
     // Raw VkBuffer / VkImage access

@@ -4,7 +4,7 @@
 #include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
 #include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_arg_shape(const pr::backend::vk::shader_payload_shape::shader_argument_shape& arg_shape)
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_arg_shape(const pr::backend::arg::shader_argument_shape& arg_shape)
 {
     auto const argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
 
@@ -72,12 +72,22 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, const pr::backend::vk::shader_payload_shape& shape)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device, pr::backend::arg::shader_argument_shapes arg_shapes)
 {
     detail::pipeline_layout_params params;
-    params.initialize_from_shape(shape);
+    params.initialize_from_shape(arg_shapes);
 
-    if (shape.contains_srvs())
+    bool has_srvs = false;
+    for (auto const& shape : arg_shapes)
+    {
+        if (shape.num_srvs > 0)
+        {
+            has_srvs = true;
+            break;
+        }
+    }
+
+    if (has_srvs)
     {
         create_implicit_sampler(device);
         params.add_implicit_sampler_to_first_set(&_implicit_sampler);
@@ -95,7 +105,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, const pr::bac
     layout_info.pushConstantRangeCount = 0;
     layout_info.pPushConstantRanges = nullptr;
 
-    PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline_layout));
+    PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));
 }
 
 void pr::backend::vk::pipeline_layout::free(VkDevice device)
@@ -103,7 +113,7 @@ void pr::backend::vk::pipeline_layout::free(VkDevice device)
     for (auto const layout : descriptor_set_layouts)
         vkDestroyDescriptorSetLayout(device, layout, nullptr);
 
-    vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+    vkDestroyPipelineLayout(device, raw_layout, nullptr);
 
     if (_implicit_sampler != VK_NULL_HANDLE)
     {
@@ -127,9 +137,9 @@ void pr::backend::vk::pipeline_layout::create_implicit_sampler(VkDevice device)
     PR_VK_VERIFY_SUCCESS(vkCreateSampler(device, &info, nullptr, &_implicit_sampler));
 }
 
-void pr::backend::vk::detail::pipeline_layout_params::initialize_from_shape(const pr::backend::vk::shader_payload_shape& shape)
+void pr::backend::vk::detail::pipeline_layout_params::initialize_from_shape(pr::backend::arg::shader_argument_shapes arg_shapes)
 {
-    for (auto const& arg_shape : shape.shader_arguments)
+    for (auto const& arg_shape : arg_shapes)
     {
         descriptor_sets.emplace_back();
         descriptor_sets.back().initialize_from_arg_shape(arg_shape);

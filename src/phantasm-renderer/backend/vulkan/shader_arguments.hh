@@ -4,35 +4,12 @@
 #include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/types.hh>
+#include <phantasm-renderer/backend/arguments.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
 namespace pr::backend::vk
 {
-// A shader payload is an array of arguments
-struct shader_payload_shape
-{
-    // A shader argument consists of n SRVs, m UAVs plus a CBV and an offset into it
-    struct shader_argument_shape
-    {
-        bool has_cb = false;
-        unsigned num_srvs = 0;
-        unsigned num_uavs = 0;
-    };
-
-    static constexpr auto max_num_arguments = 4;
-    cc::capped_vector<shader_argument_shape, max_num_arguments> shader_arguments;
-
-    bool contains_srvs() const
-    {
-        for (auto const& arg : shader_arguments)
-            if (arg.num_srvs > 0)
-                return true;
-
-        return false;
-    }
-};
-
 struct uav_buffer_view
 {
     VkBuffer buffer;
@@ -80,7 +57,7 @@ struct pipeline_layout_params
         // 4. Samplers
         cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
 
-        void initialize_from_arg_shape(shader_payload_shape::shader_argument_shape const& arg_shape);
+        void initialize_from_arg_shape(arg::shader_argument_shape const& arg_shape);
         void add_implicit_sampler(VkSampler* sampler);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
@@ -88,7 +65,7 @@ struct pipeline_layout_params
 
     cc::capped_vector<descriptor_set_params, 4> descriptor_sets;
 
-    void initialize_from_shape(shader_payload_shape const& shape);
+    void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
     void add_implicit_sampler_to_first_set(VkSampler* sampler);
 };
 
@@ -97,9 +74,9 @@ struct pipeline_layout_params
 struct pipeline_layout
 {
     cc::capped_vector<VkDescriptorSetLayout, 4> descriptor_set_layouts;
-    VkPipelineLayout pipeline_layout;
+    VkPipelineLayout raw_layout;
 
-    void initialize(VkDevice device, shader_payload_shape const& shape);
+    void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);
 
     void free(VkDevice device);
 

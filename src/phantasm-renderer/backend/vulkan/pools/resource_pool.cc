@@ -148,7 +148,7 @@ void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevi
     mInjectedBackbufferResource = {static_cast<handle::index_t>(mPool.acquire())};
 }
 
-void pr::backend::vk::ResourcePool::destroy(VkDevice device)
+void pr::backend::vk::ResourcePool::destroy()
 {
     auto num_leaks = 0;
     mPool.iterate_allocated_nodes([&](resource_node& leaked_node) {
@@ -161,7 +161,7 @@ void pr::backend::vk::ResourcePool::destroy(VkDevice device)
 
     if (num_leaks > 0)
     {
-        std::cout << "[pr][backend][d3d12] warning: leaked " << num_leaks << " handle::resource object" << (num_leaks == 1 ? "" : "s") << std::endl;
+        std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::resource object" << (num_leaks == 1 ? "" : "s") << std::endl;
     }
 
     mAllocator.destroy();
