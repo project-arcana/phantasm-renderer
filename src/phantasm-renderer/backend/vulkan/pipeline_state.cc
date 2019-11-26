@@ -2,8 +2,8 @@
 
 #include <clean-core/array.hh>
 
-
 #include "common/verify.hh"
+#include "common/vk_format.hh"
 #include "resources/resource_state.hh"
 
 namespace
@@ -62,7 +62,7 @@ namespace
 }
 }
 
-VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::vk::wip::framebuffer_format& framebuffer, const pr::primitive_pipeline_config& config)
+VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)
 {
     auto const sample_bits = (config.samples == 1) ? VK_SAMPLE_COUNT_1_BIT : VK_SAMPLE_COUNT_8_BIT; // TODO
 
@@ -73,11 +73,11 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::back
         VkAttachmentReference depth_attachment_ref = {};
         bool depth_present = false;
 
-        for (VkFormat rt : framebuffer.render_targets)
+        for (format rt : framebuffer.render_targets)
         {
             auto& desc = attachments.emplace_back();
             desc = {};
-            desc.format = rt;
+            desc.format = util::to_vk_format(rt);
             desc.samples = sample_bits;
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -91,11 +91,11 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::back
             ref.layout = to_image_layout(resource_state::render_target);
         }
 
-        for (VkFormat ds : framebuffer.depth_target)
+        for (format ds : framebuffer.depth_target)
         {
             auto& desc = attachments.emplace_back();
             desc = {};
-            desc.format = ds;
+            desc.format = util::to_vk_format(ds);
             desc.samples = sample_bits;
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

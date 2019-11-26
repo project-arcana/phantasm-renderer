@@ -1,10 +1,10 @@
 #include "pipeline_layout_cache.hh"
 
-void pr::backend::vk::RootSignatureCache::initialize(unsigned size_estimate) { mCache.reserve(size_estimate); }
+void pr::backend::vk::PipelineLayoutCache::initialize(unsigned size_estimate) { mCache.reserve(size_estimate); }
 
-void pr::backend::vk::RootSignatureCache::destroy(VkDevice device) { reset(device); }
+void pr::backend::vk::PipelineLayoutCache::destroy(VkDevice device) { reset(device); }
 
-pr::backend::vk::pipeline_layout* pr::backend::vk::RootSignatureCache::getOrCreate(VkDevice device, arg::shader_argument_shapes arg_shapes)
+pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, arg::shader_argument_shapes arg_shapes)
 {
     if (auto const it = mCache.find(arg_shapes); it != mCache.end())
     {
@@ -19,7 +19,7 @@ pr::backend::vk::pipeline_layout* pr::backend::vk::RootSignatureCache::getOrCrea
     }
 }
 
-void pr::backend::vk::RootSignatureCache::reset(VkDevice device)
+void pr::backend::vk::PipelineLayoutCache::reset(VkDevice device)
 {
     for (auto& elem : mCache)
     {

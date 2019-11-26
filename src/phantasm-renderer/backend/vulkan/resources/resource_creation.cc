@@ -18,7 +18,7 @@ VkImageView pr::backend::vk::make_image_view(VkDevice device, const pr::backend:
     info.image = image.image;
     info.viewType = VK_IMAGE_VIEW_TYPE_2D;
     info.format = format;
-    if (format == VK_FORMAT_D32_SFLOAT)
+    if (format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D24_UNORM_S8_UINT) // TODO
         info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
     else
         info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

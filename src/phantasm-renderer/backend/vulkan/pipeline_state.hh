@@ -4,23 +4,14 @@
 #include <clean-core/span.hh>
 
 #include <phantasm-renderer/primitive_pipeline_config.hh>
+#include <phantasm-renderer/backend/arguments.hh>
 
 #include "loader/volk.hh"
 #include "shader.hh"
 
 namespace pr::backend::vk
 {
-namespace wip
-{
-struct framebuffer_format
-{
-    cc::capped_vector<VkFormat, 6> render_targets;
-    cc::capped_vector<VkFormat, 1> depth_target; // a poor man's optional
-};
-}
-
-
-[[nodiscard]] VkRenderPass create_render_pass(VkDevice device, wip::framebuffer_format const& framebuffer, pr::primitive_pipeline_config const& config);
+[[nodiscard]] VkRenderPass create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, pr::primitive_pipeline_config const& config);
 
 [[nodiscard]] VkPipeline create_pipeline(VkDevice device,
                                          VkRenderPass render_pass,

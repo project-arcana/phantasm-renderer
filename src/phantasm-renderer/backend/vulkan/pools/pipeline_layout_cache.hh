@@ -10,9 +10,9 @@
 
 namespace pr::backend::vk
 {
-/// Persistent cache for root signatures
-/// Unsynchronized, only used inside of pso pool
-class RootSignatureCache
+/// Persistent cache for pipeline layouts
+/// Unsynchronized, only used inside of pipeline pool
+class PipelineLayoutCache
 {
 public:
     void initialize(unsigned size_estimate = 50);

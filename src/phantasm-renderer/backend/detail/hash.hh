@@ -5,6 +5,7 @@
 #include <clean-core/forward.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/primitive_pipeline_config.hh>
 
 namespace pr::backend::hash
 {
@@ -59,10 +60,15 @@ inline size_t compute(arg::framebuffer_format const v)
 
 inline size_t compute(shader_argument const& v) { return detail::hash(v.constant_buffer.index, v.constant_buffer_offset, v.shader_view.index); }
 
+inline size_t compute(pr::primitive_pipeline_config const& v)
+{
+    return detail::hash_combine(detail::hash(v.topology, v.depth, v.depth_readonly, v.cull), detail::hash(v.samples));
+}
+
 struct compute_functor
 {
     template <class KeyT>
-    std::size_t operator()(KeyT&& v) const
+    std::size_t operator()(KeyT&& v) const noexcept
     {
         return compute(cc::forward<KeyT&&>(v));
     }
