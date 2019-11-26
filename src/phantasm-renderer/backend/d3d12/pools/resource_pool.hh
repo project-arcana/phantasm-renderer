@@ -32,7 +32,7 @@ public:
     void free(handle::resource res);
 
     /// only valid for resources created with createMappedBuffer
-    [[nodiscard]] std::byte* getMappedMemory(handle::resource res);
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer_map; }
 
 public:
     // internal API

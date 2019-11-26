@@ -120,8 +120,6 @@ void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
     CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
 
     // TODO: dangle check
-    // TODO: Do we internally keep the resource alive until it is no longer used, or
-    // do we require this to only happen after that point?
 
     // This requires no synchronization, as D3D12MA internally syncs
     resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
@@ -132,11 +130,6 @@ void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
         auto lg = std::lock_guard(mMutex);
         mPool.release(static_cast<unsigned>(res.index));
     }
-}
-
-std::byte* pr::backend::d3d12::ResourcePool::getMappedMemory(pr::backend::handle::resource res)
-{
-    return mPool.get(static_cast<unsigned>(res.index)).buffer_map;
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(
