@@ -43,7 +43,7 @@ VkImageView pr::backend::vk::make_image_view(VkDevice device, const pr::backend:
     return res;
 }
 
-pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk::Allocator& allocator, pr::backend::vk::UploadHeap& upload_heap, const char* filename, bool use_srgb)
+pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk::ResourceAllocator& allocator, pr::backend::vk::UploadHeap& upload_heap, const char* filename, bool use_srgb)
 {
     assets::image_size img_size;
     auto const img_data = assets::load_image(filename, img_size);
@@ -106,7 +106,7 @@ pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk
 }
 
 pr::backend::vk::buffer pr::backend::vk::create_buffer_from_data(
-    pr::backend::vk::Allocator& allocator, pr::backend::vk::UploadHeap& upload_heap, VkBufferUsageFlags usage, size_t size, const void* data)
+    pr::backend::vk::ResourceAllocator& allocator, pr::backend::vk::UploadHeap& upload_heap, VkBufferUsageFlags usage, size_t size, const void* data)
 {
     auto const result = allocator.allocBuffer(uint32_t(size), usage);
 

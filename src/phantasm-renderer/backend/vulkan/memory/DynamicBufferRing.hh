@@ -8,7 +8,7 @@
 #include <phantasm-renderer/backend/detail/Ring.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
-#include "Allocator.hh"
+#include "ResourceAllocator.hh"
 
 namespace pr::backend::vk
 {
@@ -31,7 +31,7 @@ class Device;
 class DynamicBufferRing
 {
 public:
-    void initialize(Device* device, Allocator* allocator, uint32_t num_backbuffers, uint32_t total_size_in_bytes);
+    void initialize(Device* device, ResourceAllocator* allocator, uint32_t num_backbuffers, uint32_t total_size_in_bytes);
     ~DynamicBufferRing();
 
     void onBeginFrame();
@@ -77,7 +77,7 @@ public:
 
 private:
     Device* mDevice = nullptr;
-    Allocator* mAllocator = nullptr;
+    ResourceAllocator* mAllocator = nullptr;
 
     buffer mBuffer;
 

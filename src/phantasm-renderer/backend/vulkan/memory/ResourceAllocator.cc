@@ -1,4 +1,4 @@
-#include "Allocator.hh"
+#include "ResourceAllocator.hh"
 
 #include <clean-core/assert.hh>
 
@@ -7,7 +7,7 @@
 
 #include "VMA.hh"
 
-void pr::backend::vk::Allocator::initialize(VkPhysicalDevice physical, VkDevice device)
+void pr::backend::vk::ResourceAllocator::initialize(VkPhysicalDevice physical, VkDevice device)
 {
     CC_ASSERT(mAllocator == nullptr);
 
@@ -18,9 +18,9 @@ void pr::backend::vk::Allocator::initialize(VkPhysicalDevice physical, VkDevice 
     PR_VK_VERIFY_SUCCESS(vmaCreateAllocator(&create_info, &mAllocator));
 }
 
-void pr::backend::vk::Allocator::destroy() { vmaDestroyAllocator(mAllocator); }
+void pr::backend::vk::ResourceAllocator::destroy() { vmaDestroyAllocator(mAllocator); }
 
-pr::backend::vk::buffer pr::backend::vk::Allocator::allocBuffer(uint32_t size, VkBufferUsageFlags usage)
+pr::backend::vk::buffer pr::backend::vk::ResourceAllocator::allocBuffer(uint32_t size, VkBufferUsageFlags usage)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -35,7 +35,7 @@ pr::backend::vk::buffer pr::backend::vk::Allocator::allocBuffer(uint32_t size, V
     return res;
 }
 
-pr::backend::vk::image pr::backend::vk::Allocator::allocAssetTexture(const pr::backend::assets::image_size& image_size, bool use_srgb)
+pr::backend::vk::image pr::backend::vk::ResourceAllocator::allocAssetTexture(const pr::backend::assets::image_size& image_size, bool use_srgb)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -73,7 +73,7 @@ pr::backend::vk::image pr::backend::vk::Allocator::allocAssetTexture(const pr::b
     return res;
 }
 
-pr::backend::vk::image pr::backend::vk::Allocator::allocRenderTarget(unsigned width, unsigned height, VkFormat format, VkImageUsageFlags usage)
+pr::backend::vk::image pr::backend::vk::ResourceAllocator::allocRenderTarget(unsigned width, unsigned height, VkFormat format, VkImageUsageFlags usage)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -103,7 +103,7 @@ pr::backend::vk::image pr::backend::vk::Allocator::allocRenderTarget(unsigned wi
     return res;
 }
 
-pr::backend::vk::buffer pr::backend::vk::Allocator::allocCPUtoGPUBuffer(uint32_t size, VkBufferUsageFlags usage, void** map_ptr)
+pr::backend::vk::buffer pr::backend::vk::ResourceAllocator::allocCPUtoGPUBuffer(uint32_t size, VkBufferUsageFlags usage, void** map_ptr)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -120,8 +120,8 @@ pr::backend::vk::buffer pr::backend::vk::Allocator::allocCPUtoGPUBuffer(uint32_t
     return res;
 }
 
-void pr::backend::vk::Allocator::unmapCPUtoGPUBuffer(const pr::backend::vk::buffer& buffer) { vmaUnmapMemory(mAllocator, buffer.allocation); }
+void pr::backend::vk::ResourceAllocator::unmapCPUtoGPUBuffer(const pr::backend::vk::buffer& buffer) { vmaUnmapMemory(mAllocator, buffer.allocation); }
 
-void pr::backend::vk::Allocator::free(const pr::backend::vk::buffer& buffer) { vmaDestroyBuffer(mAllocator, buffer.buffer, buffer.allocation); }
+void pr::backend::vk::ResourceAllocator::free(const pr::backend::vk::buffer& buffer) { vmaDestroyBuffer(mAllocator, buffer.buffer, buffer.allocation); }
 
-void pr::backend::vk::Allocator::free(const pr::backend::vk::image& image) { vmaDestroyImage(mAllocator, image.image, image.allocation); }
+void pr::backend::vk::ResourceAllocator::free(const pr::backend::vk::image& image) { vmaDestroyImage(mAllocator, image.image, image.allocation); }

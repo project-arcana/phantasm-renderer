@@ -7,7 +7,7 @@
 #include "Device.hh"
 #include "Swapchain.hh"
 #include "loader/volk.hh"
-#include "memory/Allocator.hh"
+#include "memory/ResourceAllocator.hh"
 #include "pools/cmd_list_pool.hh"
 
 namespace pr::backend::device
@@ -49,7 +49,7 @@ public:
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
     Device mDevice;
     Swapchain mSwapchain;
-    Allocator mAllocator;
+    ResourceAllocator mAllocator;
 
 public:
     // Pools

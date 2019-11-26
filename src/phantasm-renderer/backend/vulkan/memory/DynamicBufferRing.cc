@@ -8,7 +8,7 @@
 
 namespace pr::backend::vk
 {
-void DynamicBufferRing::initialize(Device* device, Allocator* allocator, uint32_t num_backbuffers, uint32_t total_size_in_bytes)
+void DynamicBufferRing::initialize(Device* device, ResourceAllocator* allocator, uint32_t num_backbuffers, uint32_t total_size_in_bytes)
 {
     CC_ASSERT(mDevice == nullptr);
     mDevice = device;
