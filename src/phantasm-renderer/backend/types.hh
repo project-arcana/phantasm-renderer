@@ -88,44 +88,45 @@ enum class validation_level : uint8_t
     on_extended
 };
 
-enum class sync_mode : uint8_t
+enum class present_mode : uint8_t
 {
-    unsynced,
-    synced_fifo,
-    synced_mailbox
+    allow_tearing,
+    synced
 };
 
 struct backend_config
 {
+    /// whether to enable API-level validations
     validation_level validation = validation_level::off;
 
-    sync_mode sync = sync_mode::synced_mailbox;
+    /// the swapchain presentation mode (note: synced does not mean refreshrate-limited)
+    present_mode present_mode = present_mode::synced;
 
+    /// the strategy for choosing a physical GPU
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);
 
-
-    /// Enable DXR / VK raytracing features if available
+    /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;
 
-    /// Amount of backbuffers to create
+    /// amount of backbuffers to create
     unsigned num_backbuffers = 3;
 
-    /// Amount of threads to accomodate
+    /// amount of threads to accomodate
     /// backend calls must only be made from <= [num_threads] unique OS threads
     unsigned num_threads = 1;
 
-    /// Resource limits
+    /// resource limits
     unsigned max_num_resources = 2048;
     unsigned max_num_pipeline_states = 1024;
     unsigned max_num_shader_view_elements = 4096;
 
-    /// Command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
+    /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;
     unsigned num_cmdlists_per_allocator = 5;
 };
 
-// Map to
+// Maps to
 // D3D12: resource states
 // Vulkan: access masks, image layouts and pipeline stage dependencies
 enum class resource_state : uint8_t
@@ -156,7 +157,7 @@ enum class resource_state : uint8_t
     raytrace_accel_struct,
 };
 
-// Map to DXGI_FORMAT and VkFormat
+// Maps to DXGI_FORMAT and VkFormat
 // [f]loat, [i]nt, [u]int, [un]orm
 enum class format : uint8_t
 {
@@ -205,7 +206,7 @@ enum class format : uint8_t
 
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
 
-/// Information about a single vertex attribute
+/// information about a single vertex attribute
 struct vertex_attribute_info
 {
     char const* semantic_name;

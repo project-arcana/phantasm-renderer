@@ -97,18 +97,15 @@ VkSurfaceFormatKHR pr::backend::vk::choose_backbuffer_format(cc::span<const VkSu
     return available_formats[0];
 }
 
-VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentModeKHR> available_modes, sync_mode mode)
+VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentModeKHR> available_modes, present_mode mode)
 {
     VkPresentModeKHR preferred;
     switch (mode)
     {
-    case sync_mode::unsynced:
+    case present_mode::allow_tearing:
         preferred = VK_PRESENT_MODE_IMMEDIATE_KHR;
         break;
-    case sync_mode::synced_fifo:
-        preferred = VK_PRESENT_MODE_FIFO_KHR;
-        break;
-    case sync_mode::synced_mailbox:
+    case present_mode::synced:
         preferred = VK_PRESENT_MODE_MAILBOX_KHR;
         break;
     }

@@ -5,7 +5,7 @@
 #include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 
-void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, sync_mode sync)
+void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, present_mode sync)
 {
     mSurface = surface;
     mDevice = device.getDevice();

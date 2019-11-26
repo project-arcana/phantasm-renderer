@@ -74,7 +74,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
             mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
 
-            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.sync);
+            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
 
             break;
         }
@@ -94,7 +94,6 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
-        // TODO arbitrary
         mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
     }
 }

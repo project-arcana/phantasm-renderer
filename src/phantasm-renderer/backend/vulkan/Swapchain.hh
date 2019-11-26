@@ -16,7 +16,7 @@ struct gpu_information;
 class Swapchain
 {
 public:
-    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, sync_mode sync);
+    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, present_mode sync);
 
     void destroy();
 
@@ -103,7 +103,7 @@ private:
     tg::ivec2 mBackbufferSize;
     bool mBackbufferHasResized = true;
 
-    sync_mode mSyncMode;
+    present_mode mSyncMode;
 };
 
 }
