@@ -5,6 +5,7 @@
 #include "common/verify.hh"
 #include "common/vk_format.hh"
 #include "resources/resource_state.hh"
+#include "shader.hh"
 
 namespace
 {
@@ -143,7 +144,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
 VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
                                             VkRenderPass render_pass,
                                             VkPipelineLayout pipeline_layout,
-                                            cc::span<const pr::backend::vk::shader> shaders,
+                                            arg::shader_stages shaders,
                                             const pr::primitive_pipeline_config& config,
                                             cc::span<const VkVertexInputAttributeDescription> vertex_attribs,
                                             uint32_t vertex_size)
@@ -155,10 +156,14 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
         CC_ASSERT(vertex_attribs.empty() && "Did not expect vertex attributes for no-vertex mode");
     }
 
-    cc::capped_vector<VkPipelineShaderStageCreateInfo, 6> shader_stages;
+    cc::capped_vector<shader, 6> shader_stages;
+    cc::capped_vector<VkPipelineShaderStageCreateInfo, 6> shader_stage_create_infos;
     for (auto const& shader : shaders)
     {
-        shader_stages.push_back(shader.get_create_info());
+        auto& new_shader = shader_stages.emplace_back();
+        initialize_shader(new_shader, device, shader.binary_data, shader.binary_size, shader.domain);
+
+        shader_stage_create_infos.push_back(get_shader_create_info(new_shader));
     }
 
     VkVertexInputBindingDescription vertex_bind_desc = {};
@@ -264,8 +269,8 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = uint32_t(shader_stages.size());
-    pipelineInfo.pStages = shader_stages.data();
+    pipelineInfo.stageCount = uint32_t(shader_stage_create_infos.size());
+    pipelineInfo.pStages = shader_stage_create_infos.data();
     pipelineInfo.pVertexInputState = &vertex_input_info;
     pipelineInfo.pInputAssemblyState = &input_assembly;
     pipelineInfo.pViewportState = &viewportState;
@@ -282,5 +287,11 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     VkPipeline res;
     PR_VK_VERIFY_SUCCESS(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &res));
+
+    for (auto& shader : shader_stages)
+    {
+        shader.free(device);
+    }
+
     return res;
 }

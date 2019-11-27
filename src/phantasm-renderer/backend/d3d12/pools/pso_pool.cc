@@ -26,7 +26,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     new_node.associated_root_sig = root_sig;
 
     {
-        // Create root signature
+        // Create PSO
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
         util::set_object_name(new_node.raw_pso, "PipelineStateObjectPool pso #%d", int(pool_index));
@@ -40,8 +40,6 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 void pr::backend::d3d12::PipelineStateObjectPool::free(pr::backend::handle::pipeline_state ps)
 {
     // TODO: dangle check
-    // TODO: Do we internally keep the PSO alive until it is no longer used, or
-    // do we require this to only happen after that point?
 
     // This requires no synchronization, as D3D12MA internally syncs
     pso_node& freed_node = mPool.get(static_cast<unsigned>(ps.index));

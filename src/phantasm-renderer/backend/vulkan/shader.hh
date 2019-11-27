@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <phantasm-renderer/backend/types.hh>
 
 #include "loader/volk.hh"
@@ -11,11 +13,12 @@ struct shader
     shader_domain domain;
     VkShaderModule module;
     char const* entrypoint;
-
     void free(VkDevice device) { vkDestroyShaderModule(device, module, nullptr); }
-
-    [[nodiscard]] VkPipelineShaderStageCreateInfo get_create_info() const;
 };
+
+void initialize_shader(shader& s, VkDevice device, std::byte const* data, size_t size, shader_domain domain);
+
+[[nodiscard]] VkPipelineShaderStageCreateInfo get_shader_create_info(shader const& shader);
 
 [[nodiscard]] inline constexpr VkShaderStageFlagBits to_shader_stage_flags(pr::backend::shader_domain domain)
 {
