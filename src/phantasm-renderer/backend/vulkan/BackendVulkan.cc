@@ -80,6 +80,10 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
         }
     }
 
+    // Pool init
+    mPoolPipelines.initialize(mDevice.getDevice(), config.max_num_pipeline_states);
+    mPoolResources.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice(), config.max_num_resources);
+
     // Per-thread components and command list pool
     {
         mThreadAssociation.initialize();
@@ -104,6 +108,8 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
     mSwapchain.destroy();
 
     mPoolCmdLists.destroy();
+    mPoolPipelines.destroy();
+    mPoolResources.destroy();
 
     for (auto& thread_cmp : mThreadComponents)
     {

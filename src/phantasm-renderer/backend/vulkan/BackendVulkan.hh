@@ -1,14 +1,17 @@
 #pragma once
 
 #include <phantasm-renderer/backend/Backend.hh>
-#include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/backend/detail/thread_association.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include "Device.hh"
 #include "Swapchain.hh"
 #include "loader/volk.hh"
 #include "memory/ResourceAllocator.hh"
+
 #include "pools/cmd_list_pool.hh"
+#include "pools/pipeline_pool.hh"
+#include "pools/resource_pool.hh"
 
 namespace pr::backend::device
 {
@@ -17,7 +20,7 @@ class Window;
 
 namespace pr::backend::vk
 {
-class BackendVulkan// final : public Backend
+class BackendVulkan // final : public Backend
 {
 public:
     void initialize(backend_config const& config, device::Window& window);
@@ -40,7 +43,6 @@ public:
     void flushGPU();
 
 private:
-
     void createDebugMessenger();
 
 public:
@@ -53,10 +55,10 @@ public:
 
 public:
     // Pools
-//    ResourcePool mPoolResources;
+    ResourcePool mPoolResources;
     CommandListPool mPoolCmdLists;
-//    PipelineStateObjectPool mPoolPSOs;
-//    ShaderViewPool mPoolShaderViews;
+    PipelinePool mPoolPipelines;
+    //    ShaderViewPool mPoolShaderViews;
 
     // Logic
     struct per_thread_component;
@@ -64,4 +66,3 @@ public:
     backend::detail::thread_association mThreadAssociation;
 };
 }
-
