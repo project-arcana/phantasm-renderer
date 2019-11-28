@@ -5,7 +5,7 @@
 
 #include <typed-geometry/tg-std.hh>
 
-#include <phantasm-renderer/backend/detail/tiny_obj_loader.hh>
+#include <phantasm-renderer/backend/lib/tiny_obj_loader.hh>
 
 using pr::backend::assets::simple_vertex;
 

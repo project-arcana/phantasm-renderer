@@ -286,7 +286,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     pipelineInfo.basePipelineIndex = -1;       // Optional
 
     VkPipeline res;
-    PR_VK_VERIFY_SUCCESS(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &res));
+    PR_VK_VERIFY_SUCCESS(vkCreateGraphicsPipelines(device, nullptr, 1, &pipelineInfo, nullptr, &res));
 
     for (auto& shader : shader_stages)
     {

@@ -8,7 +8,7 @@
 
 #include <typed-geometry/tg.hh>
 
-#include <phantasm-renderer/backend/detail/stb_image.hh>
+#include <phantasm-renderer/backend/lib/stb_image.hh>
 
 namespace
 {

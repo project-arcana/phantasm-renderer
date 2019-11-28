@@ -173,7 +173,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
     cc::capped_vector<VkWriteDescriptorSet, 3> writes;
     VkDescriptorBufferInfo cbv_info;
 
-    if (argument.cbv != VK_NULL_HANDLE)
+    if (argument.cbv != nullptr)
     {
         // bind CBV
 
