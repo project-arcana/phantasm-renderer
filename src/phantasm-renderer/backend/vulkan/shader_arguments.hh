@@ -32,8 +32,8 @@ struct shader_argument
 
 namespace detail
 {
-// 1 pipeline - n descriptor sets
-// 1 descriptor set - n bindings
+// 1 pipeline layout - n descriptor set layouts
+// 1 descriptor set layouts - n bindings
 // spaces: descriptor sets
 // registers: bindings
 struct pipeline_layout_params
@@ -53,18 +53,24 @@ struct pipeline_layout_params
     {
         // one descriptor set, up to three bindings
         // 1. CBV (UNIFORM_BUFFER_DYNAMIC)
-        // 2. UAVs (STORAGE_TEXEL_BUFFER)
-        // 3. SRVs (SAMPLED_IMAGE)
-        // 4. Samplers
+        // OR
+        // 1. UAVs (STORAGE_TEXEL_BUFFER)
+        // 2. SRVs (SAMPLED_IMAGE)
+        // 3. Samplers
         cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
 
         void initialize_from_arg_shape(arg::shader_argument_shape const& arg_shape);
+
+        void initialize_from_cbv();
+        void initialize_from_srvs_uavs(unsigned num_srvs, unsigned num_uavs);
+        void initialize_as_dummy();
+
         void add_implicit_sampler(VkSampler* sampler);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };
 
-    cc::capped_vector<descriptor_set_params, limits::max_shader_arguments> descriptor_sets;
+    cc::capped_vector<descriptor_set_params, limits::max_shader_arguments * 2> descriptor_sets;
 
     void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
     void add_implicit_sampler_to_first_set(VkSampler* sampler);
@@ -74,7 +80,7 @@ struct pipeline_layout_params
 
 struct pipeline_layout
 {
-    cc::capped_vector<VkDescriptorSetLayout, limits::max_shader_arguments> descriptor_set_layouts;
+    cc::capped_vector<VkDescriptorSetLayout, limits::max_shader_arguments * 2> descriptor_set_layouts;
     VkPipelineLayout raw_layout;
 
     void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);
@@ -84,14 +90,14 @@ struct pipeline_layout
 private:
     void create_implicit_sampler(VkDevice device);
 
-    VkSampler _implicit_sampler = VK_NULL_HANDLE;
+    VkSampler _implicit_sampler = nullptr;
 };
 
 class DescriptorAllocator;
 
 struct descriptor_set_bundle
 {
-    cc::capped_vector<VkDescriptorSet, 4> descriptor_sets;
+    cc::capped_vector<VkDescriptorSet, limits::max_shader_arguments * 2> descriptor_sets;
 
     void initialize(DescriptorAllocator& allocator, pipeline_layout const& layout);
     void free(DescriptorAllocator& allocator);
@@ -102,13 +108,17 @@ struct descriptor_set_bundle
     /// bind the n-th argument at a dynamic offset
     void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index, uint32_t cb_offset)
     {
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 1, &cb_offset);
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index + limits::max_shader_arguments, 1,
+                                &descriptor_sets[argument_index + limits::max_shader_arguments], 1, &cb_offset);
     }
 
     /// bind the n-th argument (no offset)
     void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
     {
         vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index + limits::max_shader_arguments, 1,
+                                &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
     }
 };
 

@@ -6,7 +6,7 @@
 
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_arg_shape(const pr::backend::arg::shader_argument_shape& arg_shape)
 {
-    auto const argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
 
     if (arg_shape.has_cb)
     {
@@ -47,6 +47,58 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::ini
         binding.stageFlags = argument_visibility;
         binding.pImmutableSamplers = nullptr; // Optional
     }
+}
+
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_cbv()
+{
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+
+    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+    binding = {};
+    binding.binding = cbv_binding_start; // CBV always in (0)
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    binding.descriptorCount = 1;
+    binding.stageFlags = argument_visibility;
+    binding.pImmutableSamplers = nullptr; // Optional
+}
+
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_srvs_uavs(unsigned num_srvs, unsigned num_uavs)
+{
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+
+    if (num_uavs > 0)
+    {
+        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+        binding = {};
+        binding.binding = uav_binding_start;
+
+        // NOTE: UAVs map the following way to SPIR-V:
+        // RWBuffer<T> -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+        // RWTextureX<T> -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+        // In other words this is an incomplete way of mapping
+        // See https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#textures
+
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+        binding.descriptorCount = num_uavs;
+        binding.stageFlags = argument_visibility;
+        binding.pImmutableSamplers = nullptr; // Optional
+    }
+
+    if (num_srvs > 0)
+    {
+        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+        binding = {};
+        binding.binding = srv_binding_start;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        binding.descriptorCount = num_srvs;
+        binding.stageFlags = argument_visibility;
+        binding.pImmutableSamplers = nullptr; // Optional
+    }
+}
+
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_as_dummy()
+{
+    // do nothing
 }
 
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_implicit_sampler(VkSampler* sampler)
@@ -142,7 +194,20 @@ void pr::backend::vk::detail::pipeline_layout_params::initialize_from_shape(pr::
     for (auto const& arg_shape : arg_shapes)
     {
         descriptor_sets.emplace_back();
-        descriptor_sets.back().initialize_from_arg_shape(arg_shape);
+        descriptor_sets.back().initialize_from_srvs_uavs(arg_shape.num_srvs, arg_shape.num_uavs);
+    }
+
+    auto const num_empty_shader_args = limits::max_shader_arguments - arg_shapes.size();
+    for (auto _ = 0u; _ < num_empty_shader_args; ++_)
+        descriptor_sets.emplace_back().initialize_as_dummy();
+
+    for (auto const& arg_shape : arg_shapes)
+    {
+        descriptor_sets.emplace_back();
+        if (arg_shape.has_cb)
+            descriptor_sets.back().initialize_from_cbv();
+        else
+            descriptor_sets.back().initialize_as_dummy();
     }
 }
 
@@ -176,6 +241,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
     if (argument.cbv != nullptr)
     {
         // bind CBV
+        auto const& cbv_desc_set = descriptor_sets[argument_index + limits::max_shader_arguments];
 
         cbv_info = {};
         cbv_info.buffer = argument.cbv;
@@ -186,7 +252,7 @@ void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, ui
         write = {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.pNext = nullptr;
-        write.dstSet = desc_set;
+        write.dstSet = cbv_desc_set;
         write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         write.descriptorCount = 1; // Just one CBV
         write.pBufferInfo = &cbv_info;
