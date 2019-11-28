@@ -73,3 +73,11 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::
 
     return {res_alloc};
 }
+
+void pr::backend::d3d12::ShaderViewPool::initialize(ID3D12Device *device, pr::backend::d3d12::ResourcePool *res_pool, int num_srvs_uavs)
+{
+    mDevice = device;
+    mResourcePool = res_pool;
+    mSRVUAVAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
+    mShaderViewData = cc::array<shader_view_data>::uninitialized(unsigned(mSRVUAVAllocator.getNumPages()));
+}

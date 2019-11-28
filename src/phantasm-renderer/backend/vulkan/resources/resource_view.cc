@@ -2,15 +2,17 @@
 
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
+#include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/Device.hh>
+#include <phantasm-renderer/backend/vulkan/common/verify.hh>
+#include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 
 namespace pr::backend::vk
 {
-void DescriptorAllocator::initialize(Device* device, uint32_t num_cbvs, uint32_t num_srvs, uint32_t num_uavs, uint32_t num_samplers)
+void DescriptorAllocator::initialize(VkDevice device, uint32_t num_cbvs, uint32_t num_srvs, uint32_t num_uavs, uint32_t num_samplers)
 {
     mDevice = device;
-    mNumAllocations = 0;
 
     cc::array const type_count
         = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_cbvs}, VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, num_srvs},
@@ -24,40 +26,14 @@ void DescriptorAllocator::initialize(Device* device, uint32_t num_cbvs, uint32_t
     descriptor_pool.poolSizeCount = uint32_t(type_count.size());
     descriptor_pool.pPoolSizes = type_count.data();
 
-    VkResult res = vkCreateDescriptorPool(mDevice->getDevice(), &descriptor_pool, nullptr, &mPool);
-    CC_ASSERT(res == VK_SUCCESS);
+    PR_VK_VERIFY_SUCCESS(vkCreateDescriptorPool(mDevice, &descriptor_pool, nullptr, &mPool));
 }
 
-DescriptorAllocator::~DescriptorAllocator()
+void DescriptorAllocator::destroy() { vkDestroyDescriptorPool(mDevice, mPool, nullptr); }
+
+
+VkDescriptorSet DescriptorAllocator::allocDescriptor(VkDescriptorSetLayout layout)
 {
-    if (mDevice)
-    {
-        vkDestroyDescriptorPool(mDevice->getDevice(), mPool, nullptr);
-    }
-}
-
-bool DescriptorAllocator::createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding const> layout_bindings,
-                                                                         VkDescriptorSetLayout& out_layout,
-                                                                         VkDescriptorSet& out_set)
-{
-    // Next take layout bindings and use them to create a descriptor set layout
-
-    VkDescriptorSetLayoutCreateInfo descriptor_layout = {};
-    descriptor_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_layout.pNext = nullptr;
-    descriptor_layout.bindingCount = uint32_t(layout_bindings.size());
-    descriptor_layout.pBindings = layout_bindings.data();
-
-    VkResult res = vkCreateDescriptorSetLayout(mDevice->getDevice(), &descriptor_layout, nullptr, &out_layout);
-    CC_ASSERT(res == VK_SUCCESS);
-
-    return allocDescriptor(out_layout, out_set);
-}
-
-bool DescriptorAllocator::allocDescriptor(VkDescriptorSetLayout layout, VkDescriptorSet& out_set)
-{
-    // std::lock_guard<std::mutex> lock(m_mutex);
-
     VkDescriptorSetAllocateInfo alloc_info;
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.pNext = nullptr;
@@ -65,33 +41,86 @@ bool DescriptorAllocator::allocDescriptor(VkDescriptorSetLayout layout, VkDescri
     alloc_info.descriptorSetCount = 1;
     alloc_info.pSetLayouts = &layout;
 
-    VkResult res = vkAllocateDescriptorSets(mDevice->getDevice(), &alloc_info, &out_set);
-    CC_ASSERT(res == VK_SUCCESS);
-
-    mNumAllocations++;
-
-    return res == VK_SUCCESS;
+    VkDescriptorSet res;
+    PR_VK_VERIFY_SUCCESS(vkAllocateDescriptorSets(mDevice, &alloc_info, &res));
+    return res;
 }
 
-void DescriptorAllocator::free(VkDescriptorSet descriptor_set)
+VkDescriptorSet DescriptorAllocator::allocDescriptorFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler)
 {
-    mNumAllocations--;
-    vkFreeDescriptorSets(mDevice->getDevice(), mPool, 1, &descriptor_set);
+    auto const layout = createLayoutFromShape(num_cbvs, num_srvs, num_uavs, immutable_sampler);
+    auto const res = allocDescriptor(layout);
+    vkDestroyDescriptorSetLayout(mDevice, layout, nullptr);
+    return res;
 }
 
-bool DescriptorAllocator::allocDescriptor(int size, const VkSampler* samplers, VkDescriptorSetLayout& out_layout, VkDescriptorSet& out_set)
-{
-    auto layoutBindings = cc::array<VkDescriptorSetLayoutBinding>::uninitialized(size_t(size));
+void DescriptorAllocator::free(VkDescriptorSet descriptor_set) { vkFreeDescriptorSets(mDevice, mPool, 1, &descriptor_set); }
 
-    for (auto i = 0u; i < unsigned(size); ++i)
+VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const
+{
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+    cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
+
     {
-        layoutBindings[i].binding = i;
-        layoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        layoutBindings[i].descriptorCount = 1;
-        layoutBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        layoutBindings[i].pImmutableSamplers = (samplers != nullptr) ? &samplers[i] : nullptr;
+        if (num_cbvs > 0)
+        {
+            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+            binding = {};
+            binding.binding = spv::cbv_binding_start; // CBV always in (0)
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+            binding.descriptorCount = num_cbvs;
+            binding.stageFlags = argument_visibility;
+            binding.pImmutableSamplers = nullptr; // Optional
+        }
+
+        if (num_uavs > 0)
+        {
+            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+            binding = {};
+            binding.binding = spv::uav_binding_start;
+
+            // NOTE: UAVs map the following way to SPIR-V:
+            // RWBuffer<T> -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+            // RWTextureX<T> -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+            // In other words this is an incomplete way of mapping
+            // See https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#textures
+
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+            binding.descriptorCount = num_uavs;
+            binding.stageFlags = argument_visibility;
+            binding.pImmutableSamplers = nullptr; // Optional
+        }
+
+        if (num_srvs > 0)
+        {
+            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+            binding = {};
+            binding.binding = spv::srv_binding_start;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            binding.descriptorCount = num_srvs;
+            binding.stageFlags = argument_visibility;
+            binding.pImmutableSamplers = nullptr; // Optional
+        }
+
+        if (immutable_sampler != nullptr)
+        {
+            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+            binding = {};
+            binding.binding = spv::sampler_binding_start;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+            binding.descriptorCount = 1;
+            binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            binding.pImmutableSamplers = immutable_sampler;
+        }
     }
 
-    return createDescriptorSetLayoutAndAllocDescriptorSet(layoutBindings, out_layout, out_set);
+    VkDescriptorSetLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_info.bindingCount = uint32_t(bindings.size());
+    layout_info.pBindings = bindings.data();
+
+    VkDescriptorSetLayout layout;
+    PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(mDevice, &layout_info, nullptr, &layout));
+    return layout;
 }
 }

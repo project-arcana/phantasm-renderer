@@ -2,34 +2,35 @@
 
 #include <cstdint>
 
-#include <clean-core/span.hh>
-
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
 namespace pr::backend::vk
 {
-class Device;
-
+/// Unsynchronized
 class DescriptorAllocator
 {
 public:
-    void initialize(Device* device, uint32_t num_cbvs, uint32_t num_srvs, uint32_t num_uavs, uint32_t num_samplers);
-    ~DescriptorAllocator();
+    void initialize(VkDevice device, uint32_t num_cbvs, uint32_t num_srvs, uint32_t num_uavs, uint32_t num_samplers);
+    void destroy();
 
+    // requires sync
+    [[nodiscard]] VkDescriptorSet allocDescriptor(VkDescriptorSetLayout descriptorLayout);
 
-    bool allocDescriptor(VkDescriptorSetLayout descriptorLayout, VkDescriptorSet& out_set);
-    bool allocDescriptor(int size, const VkSampler* samplers, VkDescriptorSetLayout& out_layout, VkDescriptorSet& out_set);
+    // requires sync
+    [[nodiscard]] VkDescriptorSet allocDescriptorFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler);
 
-    bool createDescriptorSetLayoutAndAllocDescriptorSet(cc::span<VkDescriptorSetLayoutBinding const> layout_bindings,
-                                                        VkDescriptorSetLayout& out_layout,
-                                                        VkDescriptorSet& out_set);
-
+    // requires sync
     void free(VkDescriptorSet descriptor_set);
 
+    // free-threaded
+    [[nodiscard]] VkDescriptorSetLayout createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const;
+
+
+    [[nodiscard]] VkDevice getDevice() const { return mDevice; }
+
 private:
-    Device* mDevice = nullptr;
+    VkDevice mDevice = nullptr;
     VkDescriptorPool mPool;
-    int mNumAllocations = 0;
 };
 
 }

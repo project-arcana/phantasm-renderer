@@ -104,13 +104,7 @@ public:
 public:
     // internal API
 
-    void initialize(ID3D12Device* device, ResourcePool* res_pool, int num_srvs_uavs)
-    {
-        mDevice = device;
-        mResourcePool = res_pool;
-        mSRVUAVAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
-        mShaderViewData = cc::array<shader_view_data>::uninitialized(unsigned(mSRVUAVAllocator.getNumPages()));
-    }
+    void initialize(ID3D12Device* device, ResourcePool* res_pool, int num_srvs_uavs);
 
     // NOTE: is CPU even required?
     [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCPUStart(handle::shader_view sv) const { return mSRVUAVAllocator.getCPUStart(sv.index); }

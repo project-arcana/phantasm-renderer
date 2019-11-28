@@ -122,7 +122,7 @@ void pr::backend::vk::pipeline_layout::free(VkDevice device)
 
     vkDestroyPipelineLayout(device, raw_layout, nullptr);
 
-    if (_implicit_sampler != VK_NULL_HANDLE)
+    if (_implicit_sampler != nullptr)
     {
         vkDestroySampler(device, _implicit_sampler, nullptr);
     }
@@ -175,8 +175,7 @@ void pr::backend::vk::descriptor_set_bundle::initialize(pr::backend::vk::Descrip
 {
     for (auto const& set_layout : layout.descriptor_set_layouts)
     {
-        auto& set = descriptor_sets.emplace_back();
-        allocator.allocDescriptor(set_layout, set);
+        descriptor_sets.push_back(allocator.allocDescriptor(set_layout));
     }
 }
 
