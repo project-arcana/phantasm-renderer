@@ -3,8 +3,9 @@
 #include <clean-core/array.hh>
 #include <clean-core/capped_vector.hh>
 
-#include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/limits.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
@@ -17,11 +18,11 @@ struct uav_buffer_view
     uint32_t offset = 0;
 };
 
-namespace legacy {
-
+namespace legacy
+{
 struct shader_argument
 {
-    VkBuffer cbv = VK_NULL_HANDLE;
+    VkBuffer cbv = nullptr;
     uint32_t cbv_view_size = 0;
     uint32_t cbv_view_offset = 0;
     cc::capped_vector<VkImageView, 8> srvs;
@@ -63,7 +64,7 @@ struct pipeline_layout_params
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };
 
-    cc::capped_vector<descriptor_set_params, 4> descriptor_sets;
+    cc::capped_vector<descriptor_set_params, limits::max_shader_arguments> descriptor_sets;
 
     void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
     void add_implicit_sampler_to_first_set(VkSampler* sampler);
@@ -73,7 +74,7 @@ struct pipeline_layout_params
 
 struct pipeline_layout
 {
-    cc::capped_vector<VkDescriptorSetLayout, 4> descriptor_set_layouts;
+    cc::capped_vector<VkDescriptorSetLayout, limits::max_shader_arguments> descriptor_set_layouts;
     VkPipelineLayout raw_layout;
 
     void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);

@@ -8,17 +8,11 @@
 #include <typed-geometry/tg-lean.hh>
 
 #include "detail/trivial_capped_vector.hh"
+#include "limits.hh"
 #include "types.hh"
 
 namespace pr::backend
 {
-namespace limits
-{
-inline constexpr auto max_render_targets = 8u;
-inline constexpr auto max_resource_transitions = 4u;
-inline constexpr auto max_shader_arguments = 4u;
-}
-
 namespace cmd
 {
 namespace detail
