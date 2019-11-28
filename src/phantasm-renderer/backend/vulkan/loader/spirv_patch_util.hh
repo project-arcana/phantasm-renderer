@@ -10,6 +10,9 @@ struct patched_spirv
     size_t bytecode_size;
 };
 
+/// we have to shift all CBVs up by [max num shader args] sets to make our API work in vulkan
+/// unlike the register-to-binding shift with -fvk-[x]-shift, this cannot be done with DXC flags
+/// instead we provide these helpers which use the spriv-reflect library to do the same
 [[nodiscard]] patched_spirv create_patched_spirv(std::byte* bytecode, size_t bytecode_size);
 
 /// purely convenience, not to be used in final backend

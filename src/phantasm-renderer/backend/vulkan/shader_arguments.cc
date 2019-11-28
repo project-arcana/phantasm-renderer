@@ -4,51 +4,6 @@
 #include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
 #include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_arg_shape(const pr::backend::arg::shader_argument_shape& arg_shape)
-{
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
-
-    if (arg_shape.has_cb)
-    {
-        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-        binding = {};
-        binding.binding = cbv_binding_start; // CBV always in (0)
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        binding.descriptorCount = 1;
-        binding.stageFlags = argument_visibility;
-        binding.pImmutableSamplers = nullptr; // Optional
-    }
-
-    if (arg_shape.num_uavs > 0)
-    {
-        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-        binding = {};
-        binding.binding = uav_binding_start;
-
-        // NOTE: UAVs map the following way to SPIR-V:
-        // RWBuffer<T> -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-        // RWTextureX<T> -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-        // In other words this is an incomplete way of mapping
-        // See https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#textures
-
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        binding.descriptorCount = arg_shape.num_uavs;
-        binding.stageFlags = argument_visibility;
-        binding.pImmutableSamplers = nullptr; // Optional
-    }
-
-    if (arg_shape.num_srvs > 0)
-    {
-        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-        binding = {};
-        binding.binding = srv_binding_start;
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        binding.descriptorCount = arg_shape.num_srvs;
-        binding.stageFlags = argument_visibility;
-        binding.pImmutableSamplers = nullptr; // Optional
-    }
-}
-
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_cbv()
 {
     constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages

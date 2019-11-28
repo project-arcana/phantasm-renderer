@@ -44,6 +44,16 @@ struct pipeline_layout_params
     // UAVs (u): 2000       - Shifted by 2k
     // Samplers (s): 3000   - Shifted by 3k
 
+    // Additionally, in order to be able to create and update VkDescriptorSets independently
+    // for handle::shader_view and the single one required for the CBV, we shift CBVs up in their _set_
+    // So shader arguments map as follows to sets:
+    // Arg 0        SRV, UAV, Sampler: 0,   CBV: 4
+    // Arg 1        SRV, UAV, Sampler: 1,   CBV: 5
+    // Arg 2        SRV, UAV, Sampler: 2,   CBV: 6
+    // Arg 3        SRV, UAV, Sampler: 3,   CBV: 7
+    // (this is required as there are no "root descriptors" in vulkan, we do
+    // it using spirv-reflect, see loader/spirv_patch_util for details)
+
     static constexpr auto cbv_binding_start = 0;
     static constexpr auto srv_binding_start = 1000;
     static constexpr auto uav_binding_start = 2000;
@@ -52,14 +62,12 @@ struct pipeline_layout_params
     struct descriptor_set_params
     {
         // one descriptor set, up to three bindings
-        // 1. CBV (UNIFORM_BUFFER_DYNAMIC)
-        // OR
         // 1. UAVs (STORAGE_TEXEL_BUFFER)
         // 2. SRVs (SAMPLED_IMAGE)
         // 3. Samplers
-        cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
-
-        void initialize_from_arg_shape(arg::shader_argument_shape const& arg_shape);
+        // OR, CBVs which are padded to the sets 4,5,6,7
+        // 1. CBV (UNIFORM_BUFFER_DYNAMIC)
+        cc::capped_vector<VkDescriptorSetLayoutBinding, 3> bindings;
 
         void initialize_from_cbv();
         void initialize_from_srvs_uavs(unsigned num_srvs, unsigned num_uavs);
