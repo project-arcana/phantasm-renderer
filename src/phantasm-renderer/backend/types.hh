@@ -214,4 +214,20 @@ struct vertex_attribute_info
     unsigned offset;
     format format;
 };
+
+
+enum class shader_view_dimension : uint8_t
+{
+    buffer,
+    texture1d,
+    texture1d_array,
+    texture2d,
+    texture2d_ms,
+    texture2d_array,
+    texture2d_ms_array,
+    texture3d,
+    texturecube,
+    texturecube_array,
+    raytracing_accel_struct
+};
 }

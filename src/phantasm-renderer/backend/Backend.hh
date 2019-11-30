@@ -51,7 +51,7 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs = {}) = 0;
+    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs = {}) = 0;
 
     virtual void free(handle::shader_view sv) = 0;
 

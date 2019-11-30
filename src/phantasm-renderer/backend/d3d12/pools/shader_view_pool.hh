@@ -5,11 +5,12 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
+#include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/detail/page_allocator.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 #include <phantasm-renderer/backend/d3d12/common/d3d12_sanitized.hh>
+#include <phantasm-renderer/backend/d3d12/common/shared_com_ptr.hh>
 
 namespace pr::backend::d3d12
 {
@@ -93,7 +94,7 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
+    [[nodiscard]] handle::shader_view create(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs);
 
     void free(handle::shader_view sv)
     {
