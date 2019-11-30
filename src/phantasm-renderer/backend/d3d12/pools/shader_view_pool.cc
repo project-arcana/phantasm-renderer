@@ -181,6 +181,9 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::
                     uav_desc.Texture3D.WSize = uav.texture_info.array_size;
                     uav_desc.Texture3D.MipSlice = uav.texture_info.mip_start;
                     break;
+
+                default:
+                    break;
                 }
 
                 // Create a  without a counter resource

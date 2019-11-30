@@ -3,7 +3,7 @@
 #include <mutex>
 
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
-#include <phantasm-renderer/backend/types.hh>
+#include <phantasm-renderer/backend/arguments.hh>
 
 #include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
 
@@ -18,7 +18,7 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs);
+    [[nodiscard]] handle::shader_view create(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs);
 
     void free(handle::shader_view sv);
 

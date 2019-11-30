@@ -7,13 +7,18 @@
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
 
-pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<pr::backend::handle::resource> srvs, cc::span<pr::backend::handle::resource> uavs)
+pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs)
 {
     VkDescriptorSet res_raw;
     unsigned pool_index;
 
     // Create the layout
-    auto const layout = mAllocator.createLayoutFromShape(0, srvs.size(), uavs.size(), nullptr);
+
+    // NOTE:
+    // CONTINUE HERE
+    // Layout shapes are now more complicated, we have to map SRVs and UAVs accordingly to the descriptor types
+    // this might not be possible with the current shader_view_dimension
+    auto const layout = mAllocator.createLayoutFromShape(0, static_cast<unsigned>(srvs.size()), static_cast<unsigned>(uavs.size()), nullptr);
 
     // Do acquires requiring synchronization first
     {
@@ -31,19 +36,23 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
 
     // Perform the writes
     {
-        cc::capped_vector<VkWriteDescriptorSet, 2> writes;
-        cc::capped_vector<VkDescriptorBufferInfo, 8> uav_infos;
-        cc::capped_vector<VkDescriptorImageInfo, 8> srv_infos;
+        cc::capped_vector<VkWriteDescriptorSet, 8> writes;
+        cc::capped_vector<VkDescriptorBufferInfo, 8> buffer_infos;
+        cc::capped_vector<VkDescriptorImageInfo, 8> image_infos;
 
         if (!uavs.empty())
         {
+
+
+
+
             for (auto uav : uavs)
             {
-                auto& uav_info = uav_infos.emplace_back();
+                auto& uav_info = buffer_infos.emplace_back();
                 CC_RUNTIME_ASSERT(false && "TODO");
-//                uav_info.buffer = uav.buffer;
-//                uav_info.offset = uav.offset;
-//                uav_info.range = uav.range;
+                //                uav_info.buffer = uav.buffer;
+                //                uav_info.offset = uav.offset;
+                //                uav_info.range = uav.range;
             }
 
             auto& write = writes.emplace_back();
@@ -51,8 +60,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
             write.pNext = nullptr;
             write.dstSet = res_raw;
             write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-            write.descriptorCount = uint32_t(uav_infos.size());
-            write.pBufferInfo = uav_infos.data();
+            write.descriptorCount = uint32_t(buffer_infos.size());
+            write.pBufferInfo = buffer_infos.data();
             write.dstArrayElement = 0;
             write.dstBinding = spv::uav_binding_start;
         }
@@ -61,9 +70,9 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         {
             for (auto srv : srvs)
             {
-                auto& srv_info = srv_infos.emplace_back();
+                auto& srv_info = image_infos.emplace_back();
                 CC_RUNTIME_ASSERT(false && "TODO");
-//                srv_info.imageView = srv;
+                //                srv_info.imageView = srv;
                 srv_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
             }
 
@@ -72,8 +81,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
             write.pNext = nullptr;
             write.dstSet = res_raw;
             write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            write.descriptorCount = uint32_t(srv_infos.size());
-            write.pImageInfo = srv_infos.data();
+            write.descriptorCount = uint32_t(image_infos.size());
+            write.pImageInfo = image_infos.data();
             write.dstArrayElement = 0;
             write.dstBinding = spv::srv_binding_start;
         }
