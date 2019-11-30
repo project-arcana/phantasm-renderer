@@ -64,7 +64,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 auto& srv_info = srv_infos.emplace_back();
                 CC_RUNTIME_ASSERT(false && "TODO");
 //                srv_info.imageView = srv;
-                srv_info.imageLayout = to_image_layout(resource_state::shader_resource);
+                srv_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
             }
 
             auto& write = writes.emplace_back();

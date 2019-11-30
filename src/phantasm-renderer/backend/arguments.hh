@@ -71,7 +71,7 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 struct shader_stage
 {
     /// pointer to the (backend-dependent) shader binary data
-    std::byte const* binary_data;
+    std::byte* binary_data;
     size_t binary_size;
     /// the shader domain of this stage
     shader_domain domain;

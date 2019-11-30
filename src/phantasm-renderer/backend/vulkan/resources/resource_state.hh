@@ -6,156 +6,12 @@
 #include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
+#include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #include <phantasm-renderer/backend/vulkan/shader.hh>
 
 namespace pr::backend::vk
 {
-[[nodiscard]] inline constexpr VkAccessFlags to_access_flags(resource_state state)
-{
-    using rs = resource_state;
-    switch (state)
-    {
-    case rs::undefined:
-        return 0;
-    case rs::vertex_buffer:
-        return VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-    case rs::index_buffer:
-        return VK_ACCESS_INDEX_READ_BIT;
-
-    case rs::constant_buffer:
-        return VK_ACCESS_UNIFORM_READ_BIT;
-    case rs::shader_resource:
-        return VK_ACCESS_SHADER_READ_BIT;
-    case rs::unordered_access:
-        return VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-
-    case rs::render_target:
-        return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    case rs::depth_read:
-        return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    case rs::depth_write:
-        return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-    case rs::indirect_argument:
-        return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-
-    case rs::copy_src:
-        return VK_ACCESS_TRANSFER_READ_BIT;
-    case rs::copy_dest:
-        return VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    case rs::present:
-        return VK_ACCESS_MEMORY_READ_BIT;
-
-    case rs::raytrace_accel_struct:
-        return VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
-
-    // This does not apply to access flags
-    case rs::unknown:
-        return 0;
-    }
-}
-
-[[nodiscard]] inline constexpr VkImageLayout to_image_layout(resource_state state)
-{
-    using rs = resource_state;
-    switch (state)
-    {
-    case rs::undefined:
-        return VK_IMAGE_LAYOUT_UNDEFINED;
-
-    case rs::shader_resource:
-        return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    case rs::unordered_access:
-        return VK_IMAGE_LAYOUT_GENERAL;
-
-    case rs::render_target:
-        return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    case rs::depth_read:
-        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    case rs::depth_write:
-        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    case rs::copy_src:
-        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    case rs::copy_dest:
-        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-    case rs::present:
-        return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    // These do not apply to image layouts
-    case rs::unknown:
-    case rs::vertex_buffer:
-    case rs::index_buffer:
-    case rs::constant_buffer:
-    case rs::indirect_argument:
-    case rs::raytrace_accel_struct:
-        return VK_IMAGE_LAYOUT_UNDEFINED;
-    }
-}
-
-[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags(pr::backend::shader_domain domain)
-{
-    switch (domain)
-    {
-    case pr::backend::shader_domain::pixel:
-        return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    case pr::backend::shader_domain::vertex:
-        return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    case pr::backend::shader_domain::domain:
-        return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
-    case pr::backend::shader_domain::hull:
-        return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-    case pr::backend::shader_domain::geometry:
-        return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-    case pr::backend::shader_domain::compute:
-        return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    }
-}
-
-[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, shader_domain domain = shader_domain::pixel)
-{
-    using rs = resource_state;
-    switch (state)
-    {
-    case rs::vertex_buffer:
-    case rs::index_buffer:
-        return VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-    case rs::constant_buffer:
-    case rs::shader_resource:
-    case rs::unordered_access:
-        return to_pipeline_stage_flags(domain);
-
-    case rs::render_target:
-        return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    case rs::depth_read:
-    case rs::depth_write:
-        return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-
-    case rs::indirect_argument:
-        return VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-
-    case rs::copy_src:
-    case rs::copy_dest:
-        return VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-    case rs::present:
-        return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // TODO: Not entirely sure about this, possible BOTTOM_OF_PIPELINE instead
-
-    case rs::raytrace_accel_struct:
-        return VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV;
-
-    // This does not apply to dependencies, conservatively use ALL_GRAPHICS
-    case rs::undefined:
-    case rs::unknown:
-        return VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-    }
-}
-
 struct state_change
 {
     resource_state before;
@@ -191,8 +47,8 @@ struct stage_dependencies
 
     void add_change(state_change const& change)
     {
-        stages_before |= to_pipeline_stage_dependency(change.before, change.domain_before);
-        stages_after |= to_pipeline_stage_dependency(change.after, change.domain_after);
+        stages_before |= util::to_pipeline_stage_dependency(change.before, change.domain_before);
+        stages_after |= util::to_pipeline_stage_dependency(change.after, change.domain_after);
     }
 };
 

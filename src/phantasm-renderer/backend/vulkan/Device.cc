@@ -11,7 +11,7 @@
 void pr::backend::vk::Device::initialize(gpu_information const& device, VkSurfaceKHR surface, backend_config const& config)
 {
     mPhysicalDevice = device.physical_device;
-    CC_ASSERT(mDevice == VK_NULL_HANDLE);
+    CC_ASSERT(mDevice == nullptr);
 
     auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mPhysicalDevice);
 

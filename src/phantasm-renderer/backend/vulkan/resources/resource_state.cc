@@ -4,8 +4,8 @@ VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, co
 {
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = to_image_layout(state_change.before);
-    barrier.newLayout = to_image_layout(state_change.after);
+    barrier.oldLayout =util::to_image_layout(state_change.before);
+    barrier.newLayout = util::to_image_layout(state_change.after);
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image;
@@ -14,8 +14,8 @@ VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, co
     barrier.subresourceRange.levelCount = num_mips;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = num_layers;
-    barrier.srcAccessMask = to_access_flags(state_change.before);
-    barrier.dstAccessMask = to_access_flags(state_change.after);
+    barrier.srcAccessMask = util::to_access_flags(state_change.before);
+    barrier.dstAccessMask = util::to_access_flags(state_change.after);
     return barrier;
 }
 

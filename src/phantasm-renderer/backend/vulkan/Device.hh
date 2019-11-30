@@ -41,11 +41,11 @@ public:
 
 private:
     VkPhysicalDevice mPhysicalDevice;
-    VkDevice mDevice = VK_NULL_HANDLE;
+    VkDevice mDevice = nullptr;
 
-    VkQueue mQueueGraphics = VK_NULL_HANDLE;
-    VkQueue mQueueCompute = VK_NULL_HANDLE;
-    VkQueue mQueueCopy = VK_NULL_HANDLE;
+    VkQueue mQueueGraphics = nullptr;
+    VkQueue mQueueCompute = nullptr;
+    VkQueue mQueueCopy = nullptr;
     cc::array<int, 3> mQueueFamilies;
 
     // Miscellaneous info

@@ -2,6 +2,15 @@
 
 #include <cstddef>
 
+#include <clean-core/capped_vector.hh>
+#include <clean-core/vector.hh>
+
+#include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/limits.hh>
+#include <phantasm-renderer/backend/types.hh>
+
+#include "volk.hh"
+
 namespace pr::backend::vk::spv
 {
 // We will configure DXC to shift registers (per space) in the following way to match our bindings:
@@ -28,6 +37,27 @@ inline constexpr auto sampler_binding_start = 3000;
 
 namespace pr::backend::vk::util
 {
+struct spirv_desc_info
+{
+    unsigned set;
+    unsigned binding;
+    VkDescriptorType type;
+    VkShaderStageFlagBits visible_stage;
+};
+struct spirv_desc_range_info
+{
+    unsigned set;
+    unsigned binding_start;
+    unsigned binding_size;
+    VkDescriptorType type;
+    VkShaderStageFlagBits visible_stage;
+
+    constexpr bool operator==(spirv_desc_range_info const& rhs) const noexcept
+    {
+        return set == rhs.set && binding_start == rhs.binding_start && binding_size == rhs.binding_size && type == rhs.type && visible_stage == rhs.visible_stage;
+    }
+};
+
 struct patched_spirv
 {
     std::byte* bytecode;
@@ -37,11 +67,19 @@ struct patched_spirv
 /// we have to shift all CBVs up by [max num shader args] sets to make our API work in vulkan
 /// unlike the register-to-binding shift with -fvk-[x]-shift, this cannot be done with DXC flags
 /// instead we provide these helpers which use the spriv-reflect library to do the same
-[[nodiscard]] patched_spirv create_patched_spirv(std::byte* bytecode, size_t bytecode_size);
+[[nodiscard]] arg::shader_stage create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, cc::vector<spirv_desc_info>& out_desc_infos);
+
+[[nodiscard]] inline arg::shader_stage create_patched_spirv(arg::shader_stage const& val, cc::vector<spirv_desc_info>& out_desc_infos)
+{
+    return create_patched_spirv(val.binary_data, val.binary_size, out_desc_infos);
+}
 
 /// purely convenience, not to be used in final backend
-[[nodiscard]] patched_spirv create_patched_spirv_from_binary_file(char const* filename);
+[[nodiscard]] arg::shader_stage create_patched_spirv_from_binary_file(char const* filename, cc::vector<spirv_desc_info>& out_desc_infos);
 
-void free_patched_spirv(patched_spirv const& val);
+void free_patched_spirv(arg::shader_stage const& val);
+
+/// create a sorted, deduplicated vector of descriptor range infos from an unsorted raw output from previous patches
+[[nodiscard]] cc::vector<spirv_desc_range_info> merge_spirv_descriptors(cc::vector<spirv_desc_info>& desc_infos);
 
 }

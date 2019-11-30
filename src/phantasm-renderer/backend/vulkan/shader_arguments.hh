@@ -7,6 +7,7 @@
 #include <phantasm-renderer/backend/limits.hh>
 #include <phantasm-renderer/backend/types.hh>
 
+#include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
 namespace pr::backend::vk
@@ -54,11 +55,6 @@ struct pipeline_layout_params
     // (this is required as there are no "root descriptors" in vulkan, we do
     // it using spirv-reflect, see loader/spirv_patch_util for details)
 
-    static constexpr auto cbv_binding_start = 0;
-    static constexpr auto srv_binding_start = 1000;
-    static constexpr auto uav_binding_start = 2000;
-    static constexpr auto sampler_binding_start = 3000;
-
     struct descriptor_set_params
     {
         // one descriptor set, up to three bindings
@@ -71,7 +67,8 @@ struct pipeline_layout_params
 
         void initialize_from_cbv();
         void initialize_from_srvs_uavs(unsigned num_srvs, unsigned num_uavs);
-        void initialize_as_dummy();
+
+        void add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility);
 
         void add_implicit_sampler(VkSampler* sampler);
 
@@ -81,6 +78,8 @@ struct pipeline_layout_params
     cc::capped_vector<descriptor_set_params, limits::max_shader_arguments * 2> descriptor_sets;
 
     void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
+    void initialize_from_reflection_info(cc::span<util::spirv_desc_range_info const> range_infos);
+
     void add_implicit_sampler_to_first_set(VkSampler* sampler);
 };
 
@@ -92,6 +91,7 @@ struct pipeline_layout
     VkPipelineLayout raw_layout;
 
     void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos);
 
     void free(VkDevice device);
 

@@ -6,6 +6,7 @@
 
 #include <phantasm-renderer/backend/detail/unique_buffer.hh>
 
+#include "common/native_enum.hh"
 #include "common/verify.hh"
 #include "common/zero_struct.hh"
 
@@ -56,13 +57,13 @@ VkPipelineShaderStageCreateInfo pr::backend::vk::get_shader_create_info(const pr
 {
     VkPipelineShaderStageCreateInfo res;
     zero_info_struct(res, VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
-    res.stage = to_shader_stage_flags(shader.domain);
+    res.stage = util::to_shader_stage_flags(shader.domain);
     res.module = shader.module;
     res.pName = shader.entrypoint;
     return res;
 }
 
-void pr::backend::vk::initialize_shader(pr::backend::vk::shader& s, VkDevice device, const std::byte *data, size_t size, pr::backend::shader_domain domain)
+void pr::backend::vk::initialize_shader(pr::backend::vk::shader& s, VkDevice device, const std::byte* data, size_t size, pr::backend::shader_domain domain)
 {
     VkShaderModuleCreateInfo shader_info;
     zero_info_struct(shader_info, VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);

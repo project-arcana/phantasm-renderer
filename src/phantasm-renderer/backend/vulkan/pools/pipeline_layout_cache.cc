@@ -4,17 +4,17 @@ void pr::backend::vk::PipelineLayoutCache::initialize(unsigned size_estimate) { 
 
 void pr::backend::vk::PipelineLayoutCache::destroy(VkDevice device) { reset(device); }
 
-pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, arg::shader_argument_shapes arg_shapes)
+pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, cc::span<const util::spirv_desc_range_info> range_infos)
 {
-    if (auto const it = mCache.find(arg_shapes); it != mCache.end())
+    if (auto const it = mCache.find(range_infos); it != mCache.end())
     {
         return &it->second;
     }
     else
     {
-        auto [new_it, success] = mCache.emplace(arg_shapes, pipeline_layout{});
+        auto [new_it, success] = mCache.emplace(range_infos, pipeline_layout{});
         CC_ASSERT(success);
-        new_it->second.initialize(device, arg_shapes);
+        new_it->second.initialize(device, range_infos);
         return &new_it->second;
     }
 }

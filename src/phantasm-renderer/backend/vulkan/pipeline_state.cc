@@ -7,62 +7,6 @@
 #include "resources/resource_state.hh"
 #include "shader.hh"
 
-namespace
-{
-[[nodiscard]] inline constexpr VkPrimitiveTopology pr_to_native(pr::primitive_topology topology)
-{
-    switch (topology)
-    {
-    case pr::primitive_topology::triangles:
-        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    case pr::primitive_topology::lines:
-        return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    case pr::primitive_topology::points:
-        return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-    case pr::primitive_topology::patches:
-        return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
-    }
-}
-
-[[nodiscard]] inline constexpr VkCompareOp pr_to_native(pr::depth_function depth_func)
-{
-    switch (depth_func)
-    {
-    case pr::depth_function::none:
-        return VK_COMPARE_OP_LESS; // sane defaults
-    case pr::depth_function::less:
-        return VK_COMPARE_OP_LESS;
-    case pr::depth_function::less_equal:
-        return VK_COMPARE_OP_LESS_OR_EQUAL;
-    case pr::depth_function::greater:
-        return VK_COMPARE_OP_GREATER;
-    case pr::depth_function::greater_equal:
-        return VK_COMPARE_OP_GREATER_OR_EQUAL;
-    case pr::depth_function::equal:
-        return VK_COMPARE_OP_EQUAL;
-    case pr::depth_function::not_equal:
-        return VK_COMPARE_OP_NOT_EQUAL;
-    case pr::depth_function::always:
-        return VK_COMPARE_OP_ALWAYS;
-    case pr::depth_function::never:
-        return VK_COMPARE_OP_NEVER;
-    }
-}
-
-[[nodiscard]] inline constexpr VkCullModeFlags pr_to_native(pr::cull_mode cull_mode)
-{
-    switch (cull_mode)
-    {
-    case pr::cull_mode::none:
-        return VK_CULL_MODE_NONE;
-    case pr::cull_mode::back:
-        return VK_CULL_MODE_BACK_BIT;
-    case pr::cull_mode::front:
-        return VK_CULL_MODE_FRONT_BIT;
-    }
-}
-}
-
 VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)
 {
     auto const sample_bits = (config.samples == 1) ? VK_SAMPLE_COUNT_1_BIT : VK_SAMPLE_COUNT_8_BIT; // TODO
@@ -84,12 +28,12 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            desc.initialLayout = to_image_layout(resource_state::render_target);
-            desc.finalLayout = to_image_layout(resource_state::render_target);
+            desc.initialLayout = util::to_image_layout(resource_state::render_target);
+            desc.finalLayout = util::to_image_layout(resource_state::render_target);
 
             auto& ref = color_attachment_refs.emplace_back();
             ref.attachment = unsigned(color_attachment_refs.size() - 1);
-            ref.layout = to_image_layout(resource_state::render_target);
+            ref.layout = util::to_image_layout(resource_state::render_target);
         }
 
         for (format ds : framebuffer.depth_target)
@@ -102,11 +46,11 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
             desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            desc.initialLayout = to_image_layout(resource_state::depth_write);
-            desc.finalLayout = to_image_layout(resource_state::depth_write);
+            desc.initialLayout = util::to_image_layout(resource_state::depth_write);
+            desc.finalLayout = util::to_image_layout(resource_state::depth_write);
 
             depth_attachment_ref.attachment = unsigned(color_attachment_refs.size());
-            depth_attachment_ref.layout = to_image_layout(resource_state::depth_write);
+            depth_attachment_ref.layout = util::to_image_layout(resource_state::depth_write);
 
             depth_present = true;
         }
@@ -123,8 +67,8 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
         dependency.dstSubpass = 0;
         dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = to_access_flags(resource_state::undefined);
-        dependency.dstAccessMask = to_access_flags(resource_state::render_target);
+        dependency.srcAccessMask = util::to_access_flags(resource_state::undefined);
+        dependency.dstAccessMask = util::to_access_flags(resource_state::render_target);
 
         VkRenderPassCreateInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -150,7 +94,6 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
                                             uint32_t vertex_size)
 {
     bool const no_vertices = vertex_size == 0;
-
     if (no_vertices)
     {
         CC_ASSERT(vertex_attribs.empty() && "Did not expect vertex attributes for no-vertex mode");
@@ -158,6 +101,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     cc::capped_vector<shader, 6> shader_stages;
     cc::capped_vector<VkPipelineShaderStageCreateInfo, 6> shader_stage_create_infos;
+
     for (auto const& shader : shaders)
     {
         auto& new_shader = shader_stages.emplace_back();
@@ -180,7 +124,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
     input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    input_assembly.topology = no_vertices ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : pr_to_native(config.topology);
+    input_assembly.topology = no_vertices ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : util::to_native(config.topology);
     input_assembly.primitiveRestartEnable = VK_FALSE;
 
     // we use dynamic viewports and scissors, these initial values are irrelevant
@@ -211,7 +155,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = no_vertices ? VK_CULL_MODE_FRONT_BIT : pr_to_native(config.cull);
+    rasterizer.cullMode = no_vertices ? VK_CULL_MODE_FRONT_BIT : util::to_native(config.cull);
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -259,7 +203,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = config.depth == pr::depth_function::none ? VK_FALSE : VK_TRUE;
     depthStencil.depthWriteEnable = config.depth_readonly ? VK_FALSE : VK_TRUE;
-    depthStencil.depthCompareOp = pr_to_native(config.depth);
+    depthStencil.depthCompareOp = util::to_native(config.depth);
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.minDepthBounds = 0.0f; // Optional
     depthStencil.maxDepthBounds = 1.0f; // Optional
