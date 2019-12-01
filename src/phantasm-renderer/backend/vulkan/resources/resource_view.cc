@@ -5,6 +5,7 @@
 #include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/Device.hh>
+#include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 
@@ -111,6 +112,108 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cb
             binding.descriptorCount = 1;
             binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
             binding.pImmutableSamplers = immutable_sampler;
+        }
+    }
+
+    VkDescriptorSetLayoutCreateInfo layout_info = {};
+    layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_info.bindingCount = uint32_t(bindings.size());
+    layout_info.pBindings = bindings.data();
+
+    VkDescriptorSetLayout layout;
+    PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(mDevice, &layout_info, nullptr, &layout));
+    return layout;
+}
+
+VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::span<const arg::shader_view_element> srvs,
+                                                                          cc::span<const arg::shader_view_element> uavs,
+                                                                          cc::span<VkSampler const> immutable_samplers) const
+{
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+    cc::capped_vector<VkDescriptorSetLayoutBinding, 16> bindings;
+
+    {
+        if (!srvs.empty())
+        {
+            VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+            auto current_range = 0u;
+            auto current_binding_base = spv::srv_binding_start;
+
+            auto const flush_binding = [&]() {
+                if (current_range > 0u)
+                {
+                    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+                    binding = {};
+                    binding.binding = current_binding_base;
+                    binding.descriptorCount = current_range;
+                    binding.descriptorType = last_type;
+                    binding.stageFlags = argument_visibility;
+                    binding.pImmutableSamplers = nullptr; // Optional
+
+                    current_binding_base += current_range;
+                }
+
+                current_range = 0;
+            };
+
+            for (auto const& srv : srvs)
+            {
+                auto const native_type = util::to_native_srv_desc_type(srv.dimension);
+                if (native_type != last_type)
+                {
+                    flush_binding();
+                    last_type = native_type;
+                }
+                ++current_range;
+            }
+            flush_binding();
+        }
+
+        if (!uavs.empty())
+        {
+            VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+            auto current_range = 0u;
+            auto current_binding_base = spv::uav_binding_start;
+
+            auto const flush_binding = [&]() {
+                if (current_range > 0u)
+                {
+                    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+                    binding = {};
+                    binding.binding = current_binding_base;
+                    binding.descriptorCount = current_range;
+                    binding.descriptorType = last_type;
+                    binding.stageFlags = argument_visibility;
+                    binding.pImmutableSamplers = nullptr; // Optional
+
+                    current_binding_base += current_range;
+                }
+
+                current_range = 0;
+            };
+
+            for (auto const& srv : srvs)
+            {
+                auto const native_type = util::to_native_uav_desc_type(srv.dimension);
+                if (native_type != last_type)
+                {
+                    flush_binding();
+                    last_type = native_type;
+                }
+                ++current_range;
+            }
+            flush_binding();
+        }
+
+        if (!immutable_samplers.empty())
+        {
+            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+            binding = {};
+            binding.binding = spv::sampler_binding_start;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+            binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            binding.pImmutableSamplers = immutable_samplers.data();
+            binding.descriptorCount = static_cast<unsigned>(immutable_samplers.size());
         }
     }
 

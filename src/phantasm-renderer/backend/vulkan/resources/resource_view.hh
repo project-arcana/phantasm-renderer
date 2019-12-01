@@ -4,6 +4,8 @@
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
+#include <phantasm-renderer/backend/arguments.hh>
+
 namespace pr::backend::vk
 {
 /// Unsynchronized
@@ -24,6 +26,10 @@ public:
 
     // free-threaded
     [[nodiscard]] VkDescriptorSetLayout createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const;
+
+    [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<arg::shader_view_element const> srvs,
+                                                                       cc::span<arg::shader_view_element const> uavs,
+                                                                       cc::span<VkSampler const> immutable_samplers) const;
 
 
     [[nodiscard]] VkDevice getDevice() const { return mDevice; }

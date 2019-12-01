@@ -30,12 +30,16 @@ public:
     [[nodiscard]] VkDescriptorSet get(handle::shader_view sv) const { return mPool.get(static_cast<unsigned>(sv.index)).raw_desc_set; }
 
 private:
+    [[nodiscard]] VkImageView makeImageView(arg::shader_view_element const& sve) const;
+
+private:
     struct shader_view_node
     {
         VkDescriptorSet raw_desc_set;
     };
 
     // non-owning
+    VkDevice mDevice;
     ResourcePool* mResourcePool;
 
     /// The main pool data
