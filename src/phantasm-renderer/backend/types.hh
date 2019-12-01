@@ -197,6 +197,7 @@ enum class format : uint8_t
 
     // backbuffer formats
     rgba8un,
+    bgra8un,
 
     // depth stencil formats
     depth32f,

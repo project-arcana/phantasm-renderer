@@ -85,6 +85,8 @@ namespace pr::backend::d3d12::util
 
     case af::rgba8un:
         return DXGI_FORMAT_R8G8B8A8_UNORM;
+    case af::bgra8un:
+        return DXGI_FORMAT_B8G8R8A8_UNORM;
 
     case af::depth32f:
         return DXGI_FORMAT_D32_FLOAT;

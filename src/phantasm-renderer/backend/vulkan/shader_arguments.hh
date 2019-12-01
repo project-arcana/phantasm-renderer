@@ -123,11 +123,10 @@ struct descriptor_set_bundle
     }
 
     /// bind the n-th argument (no offset)
-    void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
+    void bind_argument_no_cbv(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
     {
         vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index + limits::max_shader_arguments, 1,
-                                &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
+      ////                          &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
     }
 };
 

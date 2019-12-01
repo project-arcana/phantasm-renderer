@@ -85,6 +85,8 @@ namespace pr::backend::vk::util
 
     case bf::rgba8un:
         return VK_FORMAT_R8G8B8A8_UNORM;
+    case bf::bgra8un:
+        return VK_FORMAT_B8G8R8A8_UNORM;
 
     case bf::depth32f:
         return VK_FORMAT_D32_SFLOAT;
@@ -96,5 +98,101 @@ namespace pr::backend::vk::util
         return VK_FORMAT_D24_UNORM_S8_UINT;
     }
     return VK_FORMAT_UNDEFINED;
+}
+
+[[nodiscard]] inline constexpr pr::backend::format to_pr_format(VkFormat format)
+{
+    using bf = backend::format;
+    switch (format)
+    {
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
+        return bf::rgba32f;
+    case VK_FORMAT_R32G32B32_SFLOAT:
+        return bf::rgb32f;
+    case VK_FORMAT_R32G32_SFLOAT:
+        return bf::rg32f;
+    case VK_FORMAT_R32_SFLOAT:
+        return bf::r32f;
+
+    case VK_FORMAT_R32G32B32A32_SINT:
+        return bf::rgba32i;
+    case VK_FORMAT_R32G32B32_SINT:
+        return bf::rgb32i;
+    case VK_FORMAT_R32G32_SINT:
+        return bf::rg32i;
+    case VK_FORMAT_R32_SINT:
+        return bf::r32i;
+
+    case VK_FORMAT_R32G32B32A32_UINT:
+        return bf::rgba32u;
+    case VK_FORMAT_R32G32B32_UINT:
+        return bf::rgb32u;
+    case VK_FORMAT_R32G32_UINT:
+        return bf::rg32u;
+    case VK_FORMAT_R32_UINT:
+        return bf::r32u;
+
+    case VK_FORMAT_R16G16B16A16_SINT:
+        return bf::rgba16i;
+    case VK_FORMAT_R16G16B16_SINT:
+        return bf::rgb16i;
+    case VK_FORMAT_R16G16_SINT:
+        return bf::rg16i;
+    case VK_FORMAT_R16_SINT:
+        return bf::r16i;
+
+    case VK_FORMAT_R16G16B16A16_UINT:
+        return bf::rgba16u;
+    case VK_FORMAT_R16G16B16_UINT:
+        return bf::rgb16u;
+    case VK_FORMAT_R16G16_UINT:
+        return bf::rg16u;
+    case VK_FORMAT_R16_UINT:
+        return bf::r16u;
+
+    case VK_FORMAT_R16G16B16A16_SFLOAT:
+        return bf::rgba16f;
+    case VK_FORMAT_R16G16B16_SFLOAT:
+        return bf::rgb16f;
+    case VK_FORMAT_R16G16_SFLOAT:
+        return bf::rg16f;
+    case VK_FORMAT_R16_SFLOAT:
+        return bf::r16f;
+
+    case VK_FORMAT_R8G8B8A8_SINT:
+        return bf::rgba8i;
+    case VK_FORMAT_R8G8B8_SINT:
+        return bf::rgb8i;
+    case VK_FORMAT_R8G8_SINT:
+        return bf::rg8i;
+    case VK_FORMAT_R8_SINT:
+        return bf::r8i;
+
+    case VK_FORMAT_R8G8B8A8_UINT:
+        return bf::rgba8u;
+    case VK_FORMAT_R8G8B8_UINT:
+        return bf::rgb8u;
+    case VK_FORMAT_R8G8_UINT:
+        return bf::rg8u;
+    case VK_FORMAT_R8_UINT:
+        return bf::r8u;
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+        return bf::rgba8un;
+    case VK_FORMAT_B8G8R8A8_UNORM:
+        return bf::bgra8un;
+
+    case VK_FORMAT_D32_SFLOAT:
+        return bf::depth32f;
+    case VK_FORMAT_D16_UNORM:
+        return bf::depth16un;
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+        return bf::depth32f_stencil8u;
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+        return bf::depth24un_stencil8u;
+
+    default:
+        return bf::rgba8u;
+    }
 }
 }
