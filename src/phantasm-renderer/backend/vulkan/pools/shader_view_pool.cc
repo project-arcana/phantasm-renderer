@@ -173,6 +173,13 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         flush_writes();
 
         vkUpdateDescriptorSets(mAllocator.getDevice(), uint32_t(writes.size()), writes.data(), 0, nullptr);
+
+        for (auto const& img_info : image_infos)
+        {
+            // NOTE: Maybe the lifetime of image views is required to be longer
+            // in that case, store them in the pool node as well
+            vkDestroyImageView(mDevice, img_info.imageView, nullptr);
+        }
     }
 
     return {static_cast<handle::index_t>(pool_index)};

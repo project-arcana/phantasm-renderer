@@ -12,6 +12,7 @@
 #include "pools/cmd_list_pool.hh"
 #include "pools/pipeline_pool.hh"
 #include "pools/resource_pool.hh"
+#include "pools/shader_view_pool.hh"
 
 namespace pr::backend::device
 {
@@ -47,8 +48,8 @@ private:
 
 public:
     VkInstance mInstance;
-    VkDebugUtilsMessengerEXT mDebugMessenger = VK_NULL_HANDLE;
-    VkSurfaceKHR mSurface = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT mDebugMessenger = nullptr;
+    VkSurfaceKHR mSurface = nullptr;
     Device mDevice;
     Swapchain mSwapchain;
     ResourceAllocator mAllocator;
@@ -58,7 +59,7 @@ public:
     ResourcePool mPoolResources;
     CommandListPool mPoolCmdLists;
     PipelinePool mPoolPipelines;
-    //    ShaderViewPool mPoolShaderViews;
+    ShaderViewPool mPoolShaderViews;
 
     // Logic
     struct per_thread_component;

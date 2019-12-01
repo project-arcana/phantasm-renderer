@@ -49,7 +49,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     PR_VK_ASSERT_SUCCESS(create_res);
 
     // Load Vulkan entrypoints (instance-based)
-    // TODO: volk is up to 7% slower if using this method (over i.e. volkLoadDevice(VkDevice))
+    // NOTE: volk is up to 7% slower if using this method (over i.e. volkLoadDevice(VkDevice))
     // We could possibly fastpath somehow for single-device use, or use volkLoadDeviceTable
     // See https://github.com/zeux/volk#optimizing-device-calls
     volkLoadInstance(mInstance);
@@ -83,6 +83,8 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     // Pool init
     mPoolPipelines.initialize(mDevice.getDevice(), config.max_num_pipeline_states);
     mPoolResources.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice(), config.max_num_resources);
+    mPoolShaderViews.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_shader_view_elements / 2, config.max_num_shader_view_elements / 2,
+                                config.max_num_shader_view_elements / 2, config.max_num_shader_view_elements / 2); // NOTE: slightly arbitrary mapping
 
     // Per-thread components and command list pool
     {
@@ -107,6 +109,7 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
     flushGPU();
     mSwapchain.destroy();
 
+    mPoolShaderViews.destroy();
     mPoolCmdLists.destroy();
     mPoolPipelines.destroy();
     mPoolResources.destroy();
