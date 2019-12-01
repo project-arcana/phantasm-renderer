@@ -46,7 +46,8 @@ namespace
 [[nodiscard]] constexpr pr::backend::shader_domain reflect_to_pr(SpvReflectShaderStageFlagBits shader_stage_flags)
 {
     using sd = pr::backend::shader_domain;
-    switch (shader_stage_flags) {
+    switch (shader_stage_flags)
+    {
     case SPV_REFLECT_SHADER_STAGE_VERTEX_BIT:
         return sd::vertex;
     case SPV_REFLECT_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
@@ -103,9 +104,7 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, VkShaderStageFlagBits
 
 }
 
-pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::byte const* bytecode,
-                                                                           size_t bytecode_size,
-                                                                           cc::vector<spirv_desc_info>& out_desc_infos)
+pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, cc::vector<spirv_desc_info>& out_desc_infos)
 {
     arg::shader_stage res;
 
@@ -133,8 +132,7 @@ void pr::backend::vk::util::free_patched_spirv(const arg::shader_stage& val)
     ::free(val.binary_data);
 }
 
-pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv_from_binary_file(const char* filename,
-                                                                                            cc::vector<spirv_desc_info>& out_desc_infos)
+pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv_from_binary_file(const char* filename, cc::vector<spirv_desc_info>& out_desc_infos)
 {
     auto const binary_data = detail::unique_buffer::create_from_binary_file(filename);
     CC_RUNTIME_ASSERT(binary_data.is_valid() && "Could not open SPIR-V binary");
@@ -179,6 +177,13 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
             new_range.binding_size = 1;
             new_range.visible_stage = di.visible_stage;
         }
+    }
+
+    // change the CBVs to UNIFORM_BUFFER_DYNAMIC
+    for (auto& range : sorted_merged_res)
+    {
+        if (range.set >= limits::max_shader_arguments && range.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            range.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     }
 
     return sorted_merged_res;
