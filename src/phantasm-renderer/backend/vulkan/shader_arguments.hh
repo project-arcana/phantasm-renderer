@@ -71,6 +71,7 @@ struct pipeline_layout_params
         void add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility);
 
         void add_implicit_sampler(VkSampler* sampler);
+        void fill_in_implicit_sampler(VkSampler* sampler);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };

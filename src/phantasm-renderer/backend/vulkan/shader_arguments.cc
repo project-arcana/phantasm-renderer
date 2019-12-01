@@ -73,6 +73,20 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
     binding.pImmutableSamplers = sampler;
 }
 
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_implicit_sampler(VkSampler *sampler)
+{
+    for (auto& binding : bindings)
+    {
+        if (binding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+        {
+            binding.pImmutableSamplers = sampler;
+            return;
+        }
+    }
+
+    CC_ASSERT(false && "Failed to fill in implicit sampler");
+}
+
 VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::create_layout(VkDevice device) const
 {
     VkDescriptorSetLayoutCreateInfo layout_info = {};
@@ -139,7 +153,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     if (has_sampler)
     {
         create_implicit_sampler(device);
-        params.add_implicit_sampler_to_first_set(&_implicit_sampler);
+        params.descriptor_sets[0].fill_in_implicit_sampler(&_implicit_sampler);
     }
 
     for (auto const& param_set : params.descriptor_sets)
