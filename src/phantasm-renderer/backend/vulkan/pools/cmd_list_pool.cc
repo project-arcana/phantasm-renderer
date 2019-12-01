@@ -27,9 +27,15 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
 
         PR_VK_VERIFY_SUCCESS(vkAllocateCommandBuffers(device, &info, _cmd_buffers.data()));
     }
+
+    _associated_framebuffers.reserve(num_cmd_lists * 3); // arbitrary
 }
 
-void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device) { vkDestroyCommandPool(device, _cmd_pool, nullptr); }
+void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device)
+{
+    do_reset(device);
+    vkDestroyCommandPool(device, _cmd_pool, nullptr);
+}
 
 VkCommandBuffer pr::backend::vk::cmd_allocator_node::acquire(VkDevice device)
 {
@@ -144,6 +150,13 @@ bool pr::backend::vk::cmd_allocator_node::try_reset_blocking(VkDevice device)
 void pr::backend::vk::cmd_allocator_node::do_reset(VkDevice device)
 {
     PR_VK_VERIFY_SUCCESS(vkResetCommandPool(device, _cmd_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+
+    for (auto fb : _associated_framebuffers)
+    {
+        vkDestroyFramebuffer(device, fb, nullptr);
+    }
+    _associated_framebuffers.clear();
+
     _num_in_flight = 0;
     _num_discarded = 0;
     _num_pending_execution = 0;

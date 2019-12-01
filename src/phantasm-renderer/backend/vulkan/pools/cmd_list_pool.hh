@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include <clean-core/array.hh>
+#include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
@@ -100,6 +101,9 @@ public:
     /// returns true if the allocator is usable afterwards
     [[nodiscard]] bool try_reset_blocking(VkDevice device);
 
+    /// add an associated framebuffer which will be destroyed on the next reset
+    void add_associated_framebuffer(VkFramebuffer fb) { _associated_framebuffers.push_back(fb); }
+
 private:
     bool is_submit_counter_up_to_date() const
     {
@@ -129,6 +133,11 @@ private:
 
     /// the most recent fence index, -1u if none
     std::atomic_uint _latest_fence = unsigned(-1);
+
+    /// a storage for VkFramebuffers which have been created during recording of the command buffers
+    /// created by this allocator. Recording threads add their created framebuffers, and the list gets
+    /// destroyed on reset, guaranteeing that all of them are no longer in flight
+    cc::vector<VkFramebuffer> _associated_framebuffers;
 };
 
 /// A bundle of single command allocators which automatically
@@ -178,18 +187,6 @@ public:
     void freeOnDiscard(handle::command_list cl);
 
 public:
-    [[nodiscard]] VkCommandBuffer getRawBuffer(handle::command_list cl) const { return mPool.get(static_cast<unsigned>(cl.index)).raw_buffer; }
-
-    [[nodiscard]] backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl)
-    {
-        return &mPool.get(static_cast<unsigned>(cl.index)).state_cache;
-    }
-
-public:
-    void initialize(BackendVulkan& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
-    void destroy();
-
-private:
     struct cmd_list_node
     {
         // an allocated node is always in the following state:
@@ -200,6 +197,28 @@ private:
         VkCommandBuffer raw_buffer;
     };
 
+public:
+    // internal API
+
+    [[nodiscard]] cmd_list_node const& getCommandListNode(handle::command_list cl) const { return mPool.get(static_cast<unsigned>(cl.index)); }
+
+    [[nodiscard]] VkCommandBuffer getRawBuffer(handle::command_list cl) const { return mPool.get(static_cast<unsigned>(cl.index)).raw_buffer; }
+
+    [[nodiscard]] backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl)
+    {
+        return &mPool.get(static_cast<unsigned>(cl.index)).state_cache;
+    }
+
+    void addAssociatedFramebuffer(handle::command_list cl, VkFramebuffer fb)
+    {
+        getCommandListNode(cl).responsible_allocator->add_associated_framebuffer(fb);
+    }
+
+public:
+    void initialize(BackendVulkan& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
+    void destroy();
+
+private:
     // non-owning
     VkDevice mDevice;
 
