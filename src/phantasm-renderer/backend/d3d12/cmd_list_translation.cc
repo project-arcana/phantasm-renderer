@@ -55,7 +55,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     for (uint8_t i = 0; i < begin_rp.render_targets.size(); ++i)
     {
         auto const& rt = begin_rp.render_targets[i];
-        auto const& sve = rt.view_info;
+        auto const& sve = rt.sve;
 
         auto* const resource = _globals.pool_resources->getRawResource(sve.resource);
         auto const rtv = dynamic_rtvs.get_index(i);
@@ -80,13 +80,13 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (begin_rp.depth_target.view_info.resource != handle::null_resource)
+    if (begin_rp.depth_target.sve.resource != handle::null_resource)
     {
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
-        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.view_info.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.sve.resource);
 
         // Create an DSV based on the supplied info
-        auto const dsv_desc = util::create_dsv_desc(begin_rp.depth_target.view_info);
+        auto const dsv_desc = util::create_dsv_desc(begin_rp.depth_target.sve);
         _globals.device->CreateDepthStencilView(resource, &dsv_desc, dynamic_dsv.get_start());
 
         if (begin_rp.depth_target.clear_type == cmd::begin_render_pass::rt_clear_type::clear)

@@ -15,17 +15,40 @@ void DescriptorAllocator::initialize(VkDevice device, uint32_t num_cbvs, uint32_
 {
     mDevice = device;
 
-    cc::array const type_count
-        = {VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, num_cbvs}, VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, num_srvs},
-           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLER, num_samplers}, VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, num_uavs}};
+    cc::capped_vector<VkDescriptorPoolSize, 6> type_sizes;
+
+    if (num_cbvs > 0)
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, num_cbvs});
+
+    if (num_samplers > 0)
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLER, num_samplers});
+
+    if (num_srvs > 0)
+    {
+        // SRV-only types
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, num_srvs});
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, num_srvs});
+    }
+
+    if (num_uavs > 0)
+    {
+        // UAV-only types
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, num_uavs});
+    }
+
+    if (num_srvs + num_uavs > 0)
+    {
+        // SRV or UAV types
+        type_sizes.push_back(VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, num_srvs + num_uavs});
+    }
 
     VkDescriptorPoolCreateInfo descriptor_pool = {};
     descriptor_pool.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptor_pool.pNext = nullptr;
     descriptor_pool.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    descriptor_pool.maxSets = 6000;
-    descriptor_pool.poolSizeCount = uint32_t(type_count.size());
-    descriptor_pool.pPoolSizes = type_count.data();
+    descriptor_pool.maxSets = num_srvs + num_uavs + num_cbvs + num_samplers;
+    descriptor_pool.poolSizeCount = uint32_t(type_sizes.size());
+    descriptor_pool.pPoolSizes = type_sizes.data();
 
     PR_VK_VERIFY_SUCCESS(vkCreateDescriptorPool(mDevice, &descriptor_pool, nullptr, &mPool));
 }

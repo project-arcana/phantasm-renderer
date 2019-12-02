@@ -29,7 +29,6 @@ public:
 
     [[nodiscard]] VkDescriptorSet get(handle::shader_view sv) const { return mPool.get(static_cast<unsigned>(sv.index)).raw_desc_set; }
 
-private:
     [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve) const;
 
 private:

@@ -23,13 +23,16 @@ void pr::backend::vk::command_list_translator::translateCommandList(
     _bound.reset();
     _state_cache->reset();
 
-    // auto const gpu_heaps = _globals.pool_shader_views->getGPURelevantHeaps();
-    //_cmd_list->SetDescriptorHeaps(UINT(gpu_heaps.size()), gpu_heaps.data());
-
     // translate all contained commands
     command_stream_parser parser(buffer, buffer_size);
     for (auto const& cmd : parser)
         cmd::detail::dynamic_dispatch(cmd, *this);
+
+    if (_bound.raw_render_pass != nullptr)
+    {
+        // end the last render pass
+        vkCmdEndRenderPass(_cmd_list);
+    }
 
     // close the list
     PR_VK_VERIFY_SUCCESS(vkEndCommandBuffer(_cmd_list));
@@ -41,7 +44,6 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::b
 {
     // We can't call vkCmdBeginRenderPass or anything yet
     _bound.current_render_pass = begin_rp;
-    util::set_viewport(_cmd_list, begin_rp.viewport.x, begin_rp.viewport.y);
 }
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::draw& draw)
@@ -49,8 +51,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     if (draw.pipeline_state != _bound.pipeline_state)
     {
         // a new handle::pipeline_state invalidates (!= always changes)
-        //      - The bound render pass
         //      - The bound pipeline layout
+        //      - The bound render pass
         //      - The bound pipeline
 
         _bound.pipeline_state = draw.pipeline_state;
@@ -77,15 +79,16 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
             // create a new framebuffer
             {
-                cc::capped_vector<VkImageView, 9> attachments;
+                cc::capped_vector<VkImageView, limits::max_render_targets + 1> attachments;
+
                 for (auto const& rt : _bound.current_render_pass.render_targets)
                 {
-
+                    attachments.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
                 }
 
-                if (_bound.current_render_pass.depth_target.view_info.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
                 {
-
+                    attachments.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
                 }
 
                 VkFramebufferCreateInfo fb_info = {};
@@ -97,10 +100,117 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 fb_info.width = static_cast<unsigned>(_bound.current_render_pass.viewport.x);
                 fb_info.height = static_cast<unsigned>(_bound.current_render_pass.viewport.y);
                 fb_info.layers = 1;
+
+                // Create the framebuffer
                 PR_VK_VERIFY_SUCCESS(vkCreateFramebuffer(_globals.device, &fb_info, nullptr, &_bound.raw_framebuffer));
+
+                // Associate it with the current command list so it will get cleaned up
                 _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer);
+
+                // discard image views
+                for (auto const imv : attachments)
+                {
+                    vkDestroyImageView(_globals.device, imv, nullptr);
+                }
+            }
+
+            // begin a new render pass
+            {
+                VkRenderPassBeginInfo rp_begin_info = {};
+                rp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+                rp_begin_info.renderPass = pso_node.associated_render_pass;
+                rp_begin_info.framebuffer = _bound.raw_framebuffer;
+                rp_begin_info.renderArea.offset = {0, 0};
+                rp_begin_info.renderArea.extent.width = static_cast<uint32_t>(_bound.current_render_pass.viewport.x);
+                rp_begin_info.renderArea.extent.height = static_cast<uint32_t>(_bound.current_render_pass.viewport.y);
+
+                cc::capped_vector<VkClearValue, limits::max_render_targets + 1> clear_values;
+
+                for (auto const& rt : _bound.current_render_pass.render_targets)
+                {
+                    auto& cv = clear_values.emplace_back();
+                    std::memcpy(&cv.color.float32, &rt.clear_value, sizeof(rt.clear_value));
+                }
+
+                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
+                {
+                    auto& cv = clear_values.emplace_back();
+                    cv.depthStencil = {_bound.current_render_pass.depth_target.clear_value_depth,
+                                       static_cast<uint32_t>(_bound.current_render_pass.depth_target.clear_value_stencil)};
+                }
+
+                rp_begin_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
+                rp_begin_info.pClearValues = clear_values.data();
+
+                util::set_viewport(_cmd_list, _bound.current_render_pass.viewport.x, _bound.current_render_pass.viewport.y);
+                vkCmdBeginRenderPass(_cmd_list, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
             }
         }
+
+        vkCmdBindPipeline(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pso_node.raw_pipeline);
+    }
+
+    // Index buffer (optional)
+    if (draw.index_buffer != _bound.index_buffer)
+    {
+        _bound.index_buffer = draw.index_buffer;
+        if (draw.index_buffer.is_valid())
+        {
+            vkCmdBindIndexBuffer(_cmd_list, _globals.pool_resources->getRawBuffer(draw.index_buffer), 0, VK_INDEX_TYPE_UINT32);
+        }
+        else
+        {
+            // TODO: can you un-bind index buffers in vulkan? (vkCmdBindIndexBuffer does not take nullptr)
+        }
+    }
+
+    // Vertex buffer
+    if (draw.vertex_buffer != _bound.vertex_buffer)
+    {
+        _bound.vertex_buffer = draw.vertex_buffer;
+        VkBuffer vertex_buffers[] = {_globals.pool_resources->getRawBuffer(draw.vertex_buffer)};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(_cmd_list, 0, 1, vertex_buffers, offsets);
+    }
+
+    // Shader arguments
+    {
+        auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
+        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+        for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
+        {
+            auto const& arg = draw.shader_arguments[i];
+
+            if (arg.constant_buffer != handle::null_resource)
+            {
+                // Unconditionally set the CBV
+                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
+                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
+            }
+
+            // Set the shader view if it has changed
+            if (_bound.shader_views[i] != arg.shader_view)
+            {
+                _bound.shader_views[i] = arg.shader_view;
+                if (arg.shader_view != handle::null_shader_view)
+                {
+                    auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
+                }
+            }
+        }
+    }
+
+    // Draw command
+    if (draw.index_buffer.is_valid())
+    {
+        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, 0, 0, 0);
+    }
+    else
+    {
+        vkCmdDraw(_cmd_list, draw.num_indices, 1, 0, 0);
     }
 }
 

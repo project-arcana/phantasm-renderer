@@ -24,6 +24,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // UAV:
     //      Texture* -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     //      Buffer   -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+
+    // TODO: eventual sampler support
     auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, {});
 
     // Do acquires requiring synchronization first

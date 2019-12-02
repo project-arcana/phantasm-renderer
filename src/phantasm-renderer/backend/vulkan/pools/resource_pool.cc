@@ -54,8 +54,8 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     image_info.pNext = nullptr;
     image_info.imageType = VK_IMAGE_TYPE_2D;
     image_info.format = util::to_vk_format(format);
-    image_info.extent.width = w;
-    image_info.extent.height = h;
+    image_info.extent.width = static_cast<uint32_t>(w);
+    image_info.extent.height = static_cast<uint32_t>(h);
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
@@ -132,11 +132,12 @@ void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
     CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
 
     resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
-    internalFree(freed_node);
 
     {
-        // This is a write access to the pool and must be synced
         auto lg = std::lock_guard(mMutex);
+        // This is a write access to mAllocatorDescriptors
+        internalFree(freed_node);
+        // This is a write access to the pool and must be synced
         mPool.release(static_cast<unsigned>(res.index));
     }
 }
@@ -144,6 +145,7 @@ void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
 void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources)
 {
     mAllocator.initialize(physical, device);
+    mAllocatorDescriptors.initialize(device, max_num_resources, 0, 0, 0);
     mPool.initialize(max_num_resources + 1); // 1 additional resource for the backbuffer
     mInjectedBackbufferResource = {static_cast<handle::index_t>(mPool.acquire())};
 }
@@ -165,27 +167,32 @@ void pr::backend::vk::ResourcePool::destroy()
     }
 
     mAllocator.destroy();
+    mAllocatorDescriptors.destroy();
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     VmaAllocation alloc, VkBuffer buffer, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
+    VkDescriptorSet cbv_desc_set;
     {
-        // This is a write access to the pool and must be synced
         auto lg = std::lock_guard(mMutex);
+        // This is a write access to the pool and must be synced
         res = mPool.acquire();
+        // This is a write access to mAllocator descriptors
+        cbv_desc_set = mAllocatorDescriptors.allocDescriptorFromShape(1, 0, 0, nullptr);
     }
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
-    new_node.buffer = buffer;
+    new_node.type = resource_node::resource_type::buffer;
+    new_node.buffer.raw_buffer = buffer;
+    new_node.buffer.raw_uniform_dynamic_ds = cbv_desc_set;
 
     new_node.master_state = initial_state;
 
     new_node.buffer_width = buffer_width;
     new_node.buffer_stride = buffer_stride;
     new_node.buffer_map = buffer_map;
-    new_node.type = resource_node::resource_type::buffer;
 
     return {static_cast<handle::index_t>(res)};
 }
@@ -199,14 +206,14 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(VmaAll
     }
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
-    new_node.image = image;
+    new_node.type = resource_node::resource_type::image;
+    new_node.image.raw_image = image;
 
     new_node.master_state = initial_state;
 
     new_node.buffer_width = 0;
     new_node.buffer_stride = 0;
     new_node.buffer_map = nullptr;
-    new_node.type = resource_node::resource_type::image;
 
     return {static_cast<handle::index_t>(res)};
 }
@@ -216,10 +223,12 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
     // This requires no synchronization, as VMA internally syncs
     if (node.type == resource_node::resource_type::image)
     {
-        vmaDestroyImage(mAllocator.getAllocator(), node.image, node.allocation);
+        vmaDestroyImage(mAllocator.getAllocator(), node.image.raw_image, node.allocation);
     }
     else
     {
-        vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer, node.allocation);
+        vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer.raw_buffer, node.allocation);
+        // This does require synchronization
+        mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);
     }
 }

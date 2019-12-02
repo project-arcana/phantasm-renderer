@@ -6,6 +6,7 @@
 #include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/memory/ResourceAllocator.hh>
+#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
 
 namespace pr::backend::vk
 {
@@ -44,8 +45,14 @@ public:
     // Raw VkBuffer / VkImage access
     //
 
-    [[nodiscard]] VkBuffer getRawBuffer(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).buffer; }
-    [[nodiscard]] VkImage getRawImage(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).image; }
+    [[nodiscard]] VkBuffer getRawBuffer(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).buffer.raw_buffer; }
+    [[nodiscard]] VkImage getRawImage(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).image.raw_image; }
+
+    // Raw CBV uniform buffer dynamic descriptor set access
+    [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const
+    {
+        return mPool.get(static_cast<unsigned>(res.index)).buffer.raw_uniform_dynamic_ds;
+    }
 
     //
     // Master state access
@@ -74,11 +81,24 @@ public:
 private:
     struct resource_node
     {
+        struct buffer_info
+        {
+            VkBuffer raw_buffer;
+            /// a descriptor set containing a single UNIFORM_BUFFER_DYNAMIC descriptor,
+            /// unconditionally created for all buffers
+            VkDescriptorSet raw_uniform_dynamic_ds;
+        };
+
+        struct image_info
+        {
+            VkImage raw_image;
+        };
+
         VmaAllocation allocation;
 
         union {
-            VkBuffer buffer;
-            VkImage image;
+            buffer_info buffer;
+            image_info image;
         };
 
         // additional information for (CPU) buffer views,
@@ -96,6 +116,7 @@ private:
         };
         resource_type type;
     };
+
 private:
     [[nodiscard]] handle::resource acquireBuffer(
         VmaAllocation alloc, VkBuffer buffer, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
@@ -105,14 +126,14 @@ private:
     void internalFree(resource_node& node);
 
 private:
-
     /// The main pool data
     backend::detail::linked_pool<resource_node, unsigned> mPool;
 
     handle::resource mInjectedBackbufferResource = handle::null_resource;
 
-    /// "Backing" allocator
+    /// "Backing" allocators
     ResourceAllocator mAllocator;
+    DescriptorAllocator mAllocatorDescriptors;
     std::mutex mMutex;
 };
 

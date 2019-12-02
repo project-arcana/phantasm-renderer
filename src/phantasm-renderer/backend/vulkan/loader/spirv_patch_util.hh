@@ -29,10 +29,10 @@ namespace pr::backend::vk::spv
 // (this is required as there are no "root descriptors" in vulkan, we do
 // it using spirv-reflect, see loader/spirv_patch_util for details)
 
-inline constexpr auto cbv_binding_start = 0;
-inline constexpr auto srv_binding_start = 1000;
-inline constexpr auto uav_binding_start = 2000;
-inline constexpr auto sampler_binding_start = 3000;
+inline constexpr auto cbv_binding_start = 0u;
+inline constexpr auto srv_binding_start = 1000u;
+inline constexpr auto uav_binding_start = 2000u;
+inline constexpr auto sampler_binding_start = 3000u;
 }
 
 namespace pr::backend::vk::util

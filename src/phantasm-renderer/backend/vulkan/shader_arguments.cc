@@ -152,6 +152,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
 
     if (has_sampler)
     {
+        // TODO: explicit sampler specification upon shader view creation
         create_implicit_sampler(device);
         params.descriptor_sets[0].fill_in_implicit_sampler(&_implicit_sampler);
     }
