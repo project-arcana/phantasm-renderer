@@ -125,8 +125,8 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cb
     return layout;
 }
 
-VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::span<const arg::shader_view_element> srvs,
-                                                                          cc::span<const arg::shader_view_element> uavs,
+VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::span<const shader_view_element> srvs,
+                                                                          cc::span<const shader_view_element> uavs,
                                                                           cc::span<VkSampler const> immutable_samplers) const
 {
     constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages

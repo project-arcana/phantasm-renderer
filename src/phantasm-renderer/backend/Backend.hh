@@ -23,9 +23,11 @@ public:
     //
 
     [[nodiscard]] virtual handle::resource acquireBackbuffer() = 0;
-    [[nodiscard]] virtual tg::ivec2 getBackbufferSize() = 0;
-    virtual void resize(int w, int h) = 0;
     virtual void present() = 0;
+    virtual void resize(int w, int h) = 0;
+
+    [[nodiscard]] virtual tg::ivec2 getBackbufferSize() const = 0;
+    [[nodiscard]] virtual format getBackbufferFormat() const = 0;
 
     //
     // Resource interface
@@ -51,7 +53,7 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs = {}) = 0;
+    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs = {}) = 0;
 
     virtual void free(handle::shader_view sv) = 0;
 

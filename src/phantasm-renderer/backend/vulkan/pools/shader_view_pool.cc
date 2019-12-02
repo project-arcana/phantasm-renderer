@@ -11,7 +11,7 @@
 
 #include "resource_pool.hh"
 
-pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs)
+pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs)
 {
     VkDescriptorSet res_raw;
     unsigned pool_index;
@@ -225,7 +225,7 @@ void pr::backend::vk::ShaderViewPool::destroy()
     mAllocator.destroy();
 }
 
-VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const pr::backend::arg::shader_view_element& sve) const
+VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_element& sve) const
 {
     VkImageViewCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

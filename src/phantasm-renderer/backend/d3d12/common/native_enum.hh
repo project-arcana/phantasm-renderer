@@ -190,4 +190,55 @@ namespace pr::backend::d3d12::util
     return to_native_uav_dim(sv_dim) != D3D12_UAV_DIMENSION_UNKNOWN;
 }
 
+[[nodiscard]] inline constexpr D3D12_RTV_DIMENSION to_native_rtv_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::buffer:
+        return D3D12_RTV_DIMENSION_BUFFER;
+    case shader_view_dimension::texture1d:
+        return D3D12_RTV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_RTV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_ms:
+        return D3D12_RTV_DIMENSION_TEXTURE2DMS;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture2d_ms_array:
+        return D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+    case shader_view_dimension::texture3d:
+        return D3D12_RTV_DIMENSION_TEXTURE3D;
+    default:
+        return D3D12_RTV_DIMENSION_UNKNOWN;
+    }
+}
+
+[[nodiscard]] inline constexpr bool is_valid_as_rtv_dim(shader_view_dimension sv_dim)
+{
+    return to_native_rtv_dim(sv_dim) != D3D12_RTV_DIMENSION_UNKNOWN;
+}
+
+[[nodiscard]] inline constexpr D3D12_DSV_DIMENSION to_native_dsv_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::texture1d:
+        return D3D12_DSV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_DSV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_ms:
+        return D3D12_DSV_DIMENSION_TEXTURE2DMS;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture2d_ms_array:
+        return D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+    default:
+        return D3D12_DSV_DIMENSION_UNKNOWN;
+    }
+}
+
 }

@@ -48,20 +48,30 @@ void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12Gra
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::begin_render_pass& begin_rp)
 {
-    util::set_viewport(_cmd_list, begin_rp.viewport);
+    util::set_viewport(_cmd_list, begin_rp.viewport.x, begin_rp.viewport.y);
 
     resource_view_cpu_only const dynamic_rtvs = _thread_local.lin_alloc_rtvs.allocate(begin_rp.render_targets.size());
 
     for (uint8_t i = 0; i < begin_rp.render_targets.size(); ++i)
     {
         auto const& rt = begin_rp.render_targets[i];
+        auto const& sve = rt.view_info;
 
-        auto* const resource = _globals.pool_resources->getRawResource(rt.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(sve.resource);
         auto const rtv = dynamic_rtvs.get_index(i);
 
         // create the default RTV on the fly
-        // TODO not a default RTV
-        _globals.device->CreateRenderTargetView(resource, nullptr, rtv);
+        if (_globals.pool_resources->isBackbuffer(sve.resource))
+        {
+            // Create a default RTV for the backbuffer
+            _globals.device->CreateRenderTargetView(resource, nullptr, rtv);
+        }
+        else
+        {
+            // Create an RTV based on the supplied info
+            auto const rtv_desc = util::create_rtv_desc(sve);
+            _globals.device->CreateRenderTargetView(resource, &rtv_desc, rtv);
+        }
 
         if (rt.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
         {
@@ -70,14 +80,14 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (begin_rp.depth_target.resource != handle::null_resource)
+    if (begin_rp.depth_target.view_info.resource != handle::null_resource)
     {
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
-        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.view_info.resource);
 
-        // create the default DSV on the fly
-        // TODO not a default DSV
-        _globals.device->CreateDepthStencilView(resource, nullptr, dynamic_dsv.get_start());
+        // Create an DSV based on the supplied info
+        auto const dsv_desc = util::create_dsv_desc(begin_rp.depth_target.view_info);
+        _globals.device->CreateDepthStencilView(resource, &dsv_desc, dynamic_dsv.get_start());
 
         if (begin_rp.depth_target.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
         {

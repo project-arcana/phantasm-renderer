@@ -231,4 +231,52 @@ enum class shader_view_dimension : uint8_t
     texturecube_array,
     raytracing_accel_struct
 };
+
+
+struct shader_view_element
+{
+    handle::resource resource;
+    format pixel_format;
+    shader_view_dimension dimension;
+
+    struct sve_texture_info
+    {
+        unsigned mip_start;   ///< index of the first usable mipmap (usually: 0)
+        unsigned mip_size;    ///< amount of usable mipmaps, starting from mip_start (usually: -1 / all)
+        unsigned array_start; ///< index of the first usable array element [if applicable] (usually: 0)
+        unsigned array_size;  ///< amount of usable array elements [if applicable]
+    };
+
+    struct sve_buffer_info
+    {
+        unsigned element_start;        ///< index of the first element in the buffer
+        unsigned element_size;         ///< amount of elements in the buffer
+        unsigned element_stride_bytes; ///< the stride of elements in bytes
+    };
+
+    union {
+        sve_texture_info texture_info;
+        sve_buffer_info buffer_info;
+    };
+
+    void init_as_null() { resource = handle::null_resource; }
+
+    void init_as_backbuffer(handle::resource res)
+    {
+        resource = res;
+        // cmdlist translation checks for this case and automatically chooses the right
+        // format, no need to specify anything else
+    }
+
+    void init_as_tex2d(handle::resource res, format pf, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+    {
+        resource = res;
+        pixel_format = pf;
+        dimension = shader_view_dimension::texture2d;
+        texture_info.mip_start = mip_start;
+        texture_info.mip_size = mip_size;
+        texture_info.array_start = 0;
+        texture_info.array_size = 1;
+    }
+};
 }

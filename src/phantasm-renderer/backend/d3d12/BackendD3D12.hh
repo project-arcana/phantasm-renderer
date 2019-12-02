@@ -36,12 +36,12 @@ public:
     //
 
     [[nodiscard]] handle::resource acquireBackbuffer() override;
-
-    [[nodiscard]] tg::ivec2 getBackbufferSize() override { return mSwapchain.getBackbufferSize(); }
-
+    void present() override { mSwapchain.present(); }
     void resize(int w, int h) override { mSwapchain.onResize(w, h); }
 
-    void present() override { mSwapchain.present(); }
+    [[nodiscard]] tg::ivec2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
+    [[nodiscard]] format getBackbufferFormat() const override;
+
 
     //
     // Resource interface
@@ -79,7 +79,7 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] handle::shader_view createShaderView(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs = {}) override
+    [[nodiscard]] handle::shader_view createShaderView(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs = {}) override
     {
         return mPoolShaderViews.create(srvs, uavs);
     }

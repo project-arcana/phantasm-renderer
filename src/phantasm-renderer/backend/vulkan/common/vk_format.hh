@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/assert.hh>
+
 #include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
@@ -192,6 +194,7 @@ namespace pr::backend::vk::util
         return bf::depth24un_stencil8u;
 
     default:
+        CC_ASSERT(false && "untranslatable VkFormat");
         return bf::rgba8u;
     }
 }

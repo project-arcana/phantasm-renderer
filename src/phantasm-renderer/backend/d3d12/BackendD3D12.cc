@@ -5,6 +5,7 @@
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "cmd_list_translation.hh"
+#include "common/dxgi_format.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -91,6 +92,8 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
     return mPoolResources.injectBackbufferResource(
         backbuffer.resource, backbuffer.state == D3D12_RESOURCE_STATE_RENDER_TARGET ? resource_state::render_target : resource_state::present);
 }
+
+pr::backend::format pr::backend::d3d12::BackendD3D12::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
 
 pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)
 {

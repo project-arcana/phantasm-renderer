@@ -6,6 +6,7 @@
 #include <cstdio>
 
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 
 cc::capped_vector<D3D12_INPUT_ELEMENT_DESC, 16> pr::backend::d3d12::util::get_native_vertex_format(cc::span<const pr::backend::vertex_attribute_info> attrib_info)
 {
@@ -41,4 +42,232 @@ void pr::backend::d3d12::util::set_object_name(ID3D12Object* object, const char*
         ::swprintf(name_wide, 1024, L"%S", name_formatted);
         object->SetName(name_wide);
     }
+}
+
+D3D12_SHADER_RESOURCE_VIEW_DESC pr::backend::d3d12::util::create_srv_desc(const pr::backend::shader_view_element& sve, ID3D12Resource* raw_resource)
+{
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+    srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv_desc.Format = util::to_dxgi_format(sve.pixel_format);
+    srv_desc.ViewDimension = util::to_native_srv_dim(sve.dimension);
+
+    using svd = shader_view_dimension;
+    switch (sve.dimension)
+    {
+    case svd::buffer:
+        srv_desc.Buffer.NumElements = sve.buffer_info.element_size;
+        srv_desc.Buffer.FirstElement = sve.buffer_info.element_start;
+        srv_desc.Buffer.StructureByteStride = sve.buffer_info.element_stride_bytes;
+        break;
+
+    case svd::raytracing_accel_struct:
+        srv_desc.RaytracingAccelerationStructure.Location = raw_resource->GetGPUVirtualAddress();
+        break;
+
+    case svd::texture1d:
+        srv_desc.Texture1D.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.Texture1D.MipLevels = sve.texture_info.mip_size;
+        srv_desc.Texture1D.ResourceMinLODClamp = 0.f;
+        break;
+
+    case svd::texture1d_array:
+        srv_desc.Texture1DArray.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.Texture1DArray.MipLevels = sve.texture_info.mip_size;
+        srv_desc.Texture1DArray.ResourceMinLODClamp = 0.f;
+        srv_desc.Texture1DArray.FirstArraySlice = sve.texture_info.array_start;
+        srv_desc.Texture1DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d:
+        srv_desc.Texture2D.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.Texture2D.MipLevels = sve.texture_info.mip_size;
+        srv_desc.Texture2D.ResourceMinLODClamp = 0.f;
+        srv_desc.Texture2D.PlaneSlice = 0u;
+        break;
+
+    case svd::texture2d_array:
+        srv_desc.Texture2DArray.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.Texture2DArray.MipLevels = sve.texture_info.mip_size;
+        srv_desc.Texture2DArray.ResourceMinLODClamp = 0.f;
+        srv_desc.Texture2DArray.PlaneSlice = 0u;
+        srv_desc.Texture2DArray.FirstArraySlice = sve.texture_info.array_start;
+        srv_desc.Texture2DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d_ms:
+        break;
+
+    case svd::texture2d_ms_array:
+        srv_desc.Texture2DMSArray.FirstArraySlice = sve.texture_info.array_start;
+        srv_desc.Texture2DMSArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture3d:
+        srv_desc.Texture3D.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.Texture3D.MipLevels = sve.texture_info.mip_size;
+        srv_desc.Texture3D.ResourceMinLODClamp = 0.f;
+        break;
+
+    case svd::texturecube:
+        srv_desc.TextureCube.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.TextureCube.MipLevels = sve.texture_info.mip_size;
+        srv_desc.TextureCube.ResourceMinLODClamp = 0.f;
+        break;
+
+    case svd::texturecube_array:
+        srv_desc.TextureCubeArray.MostDetailedMip = sve.texture_info.mip_start;
+        srv_desc.TextureCubeArray.MipLevels = sve.texture_info.mip_size;
+        srv_desc.TextureCubeArray.ResourceMinLODClamp = 0.f;
+        srv_desc.TextureCubeArray.First2DArrayFace = sve.texture_info.array_start;
+        srv_desc.TextureCubeArray.NumCubes = sve.texture_info.array_size;
+        break;
+    }
+
+    return srv_desc;
+}
+
+D3D12_UNORDERED_ACCESS_VIEW_DESC pr::backend::d3d12::util::create_uav_desc(const pr::backend::shader_view_element& sve)
+{
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
+    uav_desc.Format = util::to_dxgi_format(sve.pixel_format);
+    uav_desc.ViewDimension = util::to_native_uav_dim(sve.dimension);
+    CC_ASSERT(uav_desc.ViewDimension != D3D12_UAV_DIMENSION_UNKNOWN && "Invalid UAV dimension");
+
+    using svd = shader_view_dimension;
+    switch (sve.dimension)
+    {
+    case svd::buffer:
+        uav_desc.Buffer.NumElements = sve.buffer_info.element_size;
+        uav_desc.Buffer.FirstElement = sve.buffer_info.element_start;
+        uav_desc.Buffer.StructureByteStride = sve.buffer_info.element_stride_bytes;
+        break;
+
+    case svd::texture1d:
+        uav_desc.Texture1D.MipSlice = sve.texture_info.mip_start;
+        break;
+
+    case svd::texture1d_array:
+        uav_desc.Texture1DArray.MipSlice = sve.texture_info.mip_start;
+        uav_desc.Texture1DArray.FirstArraySlice = sve.texture_info.array_start;
+        uav_desc.Texture1DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d:
+        uav_desc.Texture2D.MipSlice = sve.texture_info.mip_start;
+        uav_desc.Texture2D.PlaneSlice = 0u;
+        break;
+
+    case svd::texture2d_array:
+        uav_desc.Texture2DArray.MipSlice = sve.texture_info.mip_start;
+        uav_desc.Texture2DArray.PlaneSlice = 0u;
+        uav_desc.Texture2DArray.FirstArraySlice = sve.texture_info.array_start;
+        uav_desc.Texture2DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture3d:
+        uav_desc.Texture3D.FirstWSlice = sve.texture_info.array_start;
+        uav_desc.Texture3D.WSize = sve.texture_info.array_size;
+        uav_desc.Texture3D.MipSlice = sve.texture_info.mip_start;
+        break;
+
+    default:
+        break;
+    }
+
+    return uav_desc;
+}
+
+D3D12_RENDER_TARGET_VIEW_DESC pr::backend::d3d12::util::create_rtv_desc(const pr::backend::shader_view_element& sve)
+{
+    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+    rtv_desc.Format = util::to_dxgi_format(sve.pixel_format);
+    rtv_desc.ViewDimension = util::to_native_rtv_dim(sve.dimension);
+
+    using svd = shader_view_dimension;
+    switch (sve.dimension)
+    {
+    case svd::buffer:
+        rtv_desc.Buffer.NumElements = sve.buffer_info.element_size;
+        rtv_desc.Buffer.FirstElement = sve.buffer_info.element_start;
+        break;
+
+    case svd::texture1d:
+        rtv_desc.Texture1D.MipSlice = sve.texture_info.mip_start;
+        break;
+
+    case svd::texture1d_array:
+        rtv_desc.Texture1DArray.MipSlice = sve.texture_info.mip_start;
+        rtv_desc.Texture1DArray.FirstArraySlice = sve.texture_info.array_start;
+        rtv_desc.Texture1DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d:
+        rtv_desc.Texture2D.MipSlice = sve.texture_info.mip_start;
+        rtv_desc.Texture2D.PlaneSlice = 0u;
+        break;
+
+    case svd::texture2d_array:
+        rtv_desc.Texture2DArray.MipSlice = sve.texture_info.mip_start;
+        rtv_desc.Texture2DArray.PlaneSlice = 0u;
+        rtv_desc.Texture2DArray.FirstArraySlice = sve.texture_info.array_start;
+        rtv_desc.Texture2DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d_ms_array:
+        rtv_desc.Texture2DMSArray.FirstArraySlice = sve.texture_info.array_start;
+        rtv_desc.Texture2DMSArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture3d:
+        rtv_desc.Texture3D.MipSlice = sve.texture_info.mip_start;
+        rtv_desc.Texture3D.FirstWSlice = sve.texture_info.array_start;
+        rtv_desc.Texture3D.WSize = sve.texture_info.array_size;
+        break;
+
+    default:
+        break;
+    }
+
+    return rtv_desc;
+}
+
+D3D12_DEPTH_STENCIL_VIEW_DESC pr::backend::d3d12::util::create_dsv_desc(const pr::backend::shader_view_element& sve)
+{
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
+    dsv_desc.Format = util::to_dxgi_format(sve.pixel_format);
+    dsv_desc.ViewDimension = util::to_native_dsv_dim(sve.dimension);
+
+    using svd = shader_view_dimension;
+    switch (sve.dimension)
+    {
+    case svd::texture1d:
+        dsv_desc.Texture1D.MipSlice = sve.texture_info.mip_start;
+        break;
+
+    case svd::texture1d_array:
+        dsv_desc.Texture1DArray.MipSlice = sve.texture_info.mip_start;
+        dsv_desc.Texture1DArray.FirstArraySlice = sve.texture_info.array_start;
+        dsv_desc.Texture1DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d:
+        dsv_desc.Texture2D.MipSlice = sve.texture_info.mip_start;
+        break;
+
+    case svd::texture2d_array:
+        dsv_desc.Texture2DArray.MipSlice = sve.texture_info.mip_start;
+        dsv_desc.Texture2DArray.FirstArraySlice = sve.texture_info.array_start;
+        dsv_desc.Texture2DArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    case svd::texture2d_ms_array:
+        dsv_desc.Texture2DMSArray.FirstArraySlice = sve.texture_info.array_start;
+        dsv_desc.Texture2DMSArray.ArraySize = sve.texture_info.array_size;
+        break;
+
+    default:
+        break;
+    }
+
+    return dsv_desc;
 }

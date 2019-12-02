@@ -83,7 +83,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
                 }
 
-                if (_bound.current_render_pass.depth_target.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.view_info.resource != handle::null_resource)
                 {
 
                 }

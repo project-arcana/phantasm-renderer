@@ -72,14 +72,14 @@ PR_DEFINE_CMD(begin_render_pass)
 
     struct render_target_info
     {
-        handle::resource resource;
+        shader_view_element view_info;
         float clear_value[4];
         rt_clear_type clear_type;
     };
 
     struct depth_stencil_info
     {
-        handle::resource resource = handle::null_resource;
+        shader_view_element view_info;
         float clear_value_depth;
         uint8_t clear_value_stencil;
         rt_clear_type clear_type;

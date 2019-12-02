@@ -27,8 +27,8 @@ public:
     // free-threaded
     [[nodiscard]] VkDescriptorSetLayout createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const;
 
-    [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<arg::shader_view_element const> srvs,
-                                                                       cc::span<arg::shader_view_element const> uavs,
+    [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<shader_view_element const> srvs,
+                                                                       cc::span<shader_view_element const> uavs,
                                                                        cc::span<VkSampler const> immutable_samplers) const;
 
 

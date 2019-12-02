@@ -18,7 +18,7 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(cc::span<arg::shader_view_element const> srvs, cc::span<arg::shader_view_element const> uavs);
+    [[nodiscard]] handle::shader_view create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs);
 
     void free(handle::shader_view sv);
 
@@ -30,7 +30,7 @@ public:
     [[nodiscard]] VkDescriptorSet get(handle::shader_view sv) const { return mPool.get(static_cast<unsigned>(sv.index)).raw_desc_set; }
 
 private:
-    [[nodiscard]] VkImageView makeImageView(arg::shader_view_element const& sve) const;
+    [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve) const;
 
 private:
     struct shader_view_node
