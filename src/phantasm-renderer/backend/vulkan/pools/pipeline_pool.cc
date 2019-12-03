@@ -11,6 +11,7 @@
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,
                                                                                        pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                       arg::shader_sampler_configs shader_samplers,
                                                                                        pr::backend::arg::shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
 {
@@ -40,7 +41,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, shader_descriptor_ranges);
+        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges, shader_samplers});
         render_pass = mRenderPassCache.getOrCreate(mDevice, framebuffer_format, primitive_config);
         pool_index = mPool.acquire();
     }

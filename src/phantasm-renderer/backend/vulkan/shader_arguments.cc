@@ -1,5 +1,6 @@
 #include "shader_arguments.hh"
 
+#include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
 #include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
@@ -62,29 +63,18 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
     binding.pImmutableSamplers = nullptr; // Optional
 }
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_implicit_sampler(VkSampler* sampler)
-{
-    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-    binding = {};
-    binding.binding = spv::sampler_binding_start;
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-    binding.descriptorCount = 1;
-    binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-    binding.pImmutableSamplers = sampler;
-}
-
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_implicit_sampler(VkSampler* sampler)
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_samplers(cc::span<VkSampler const> samplers)
 {
     for (auto& binding : bindings)
     {
         if (binding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
         {
-            binding.pImmutableSamplers = sampler;
+            binding.pImmutableSamplers = samplers.data();
             return;
         }
     }
 
-    CC_ASSERT(false && "Failed to fill in implicit sampler");
+    CC_ASSERT(false && "Failed to fill in samplers");
 }
 
 VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::create_layout(VkDevice device) const
@@ -99,63 +89,25 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, pr::backend::arg::shader_argument_shapes arg_shapes)
-{
-    detail::pipeline_layout_params params;
-    params.initialize_from_shape(arg_shapes);
-
-    bool has_srvs = false;
-    for (auto const& shape : arg_shapes)
-    {
-        if (shape.num_srvs > 0)
-        {
-            has_srvs = true;
-            break;
-        }
-    }
-
-    if (has_srvs)
-    {
-        create_implicit_sampler(device);
-        params.add_implicit_sampler_to_first_set(&_implicit_sampler);
-    }
-
-    for (auto const& param_set : params.descriptor_sets)
-    {
-        descriptor_set_layouts.push_back(param_set.create_layout(device));
-    }
-
-    VkPipelineLayoutCreateInfo layout_info = {};
-    layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layout_info.setLayoutCount = uint32_t(descriptor_set_layouts.size());
-    layout_info.pSetLayouts = descriptor_set_layouts.data();
-    layout_info.pushConstantRangeCount = 0;
-    layout_info.pPushConstantRanges = nullptr;
-
-    PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));
-}
-
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const pr::backend::vk::util::spirv_desc_range_info> range_infos)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const pr::backend::vk::util::spirv_desc_range_info> range_infos, arg::shader_sampler_configs samplers)
 {
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
 
-    // check for the existence of samplers,
-    // and copy pipeline stage visibilities
-    bool has_sampler = false;
+    // copy pipeline stage visibilities
     for (auto const& range : range_infos)
     {
-        if (range.type == VK_DESCRIPTOR_TYPE_SAMPLER)
-            has_sampler = true;
-
         descriptor_set_visibilities.push_back(range.visible_pipeline_stages);
     }
 
-    if (has_sampler)
+    for (auto const& sampler_config : samplers)
     {
-        // TODO: explicit sampler specification upon shader view creation
-        create_implicit_sampler(device);
-        params.descriptor_sets[0].fill_in_implicit_sampler(&_implicit_sampler);
+        create_sampler(device, sampler_config);
+    }
+
+    if (!_samplers.empty())
+    {
+        params.descriptor_sets[0].fill_in_samplers(_samplers);
     }
 
     for (auto const& param_set : params.descriptor_sets)
@@ -180,26 +132,33 @@ void pr::backend::vk::pipeline_layout::free(VkDevice device)
 
     vkDestroyPipelineLayout(device, raw_layout, nullptr);
 
-    if (_implicit_sampler != nullptr)
+    for (auto const s : _samplers)
     {
-        vkDestroySampler(device, _implicit_sampler, nullptr);
+        vkDestroySampler(device, s, nullptr);
     }
 }
 
-void pr::backend::vk::pipeline_layout::create_implicit_sampler(VkDevice device)
+void pr::backend::vk::pipeline_layout::create_sampler(VkDevice device, const sampler_config& config)
 {
     VkSamplerCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    info.magFilter = VK_FILTER_LINEAR;
-    info.minFilter = VK_FILTER_LINEAR;
-    info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    info.minLod = -1000;
-    info.maxLod = 1000;
-    info.maxAnisotropy = 16.0f;
-    PR_VK_VERIFY_SUCCESS(vkCreateSampler(device, &info, nullptr, &_implicit_sampler));
+    info.minFilter = util::to_min_filter(config.filter);
+    info.magFilter = util::to_mag_filter(config.filter);
+    info.mipmapMode = util::to_mipmap_filter(config.filter);
+    info.addressModeU = util::to_native(config.address_u);
+    info.addressModeV = util::to_native(config.address_v);
+    info.addressModeW = util::to_native(config.address_w);
+    info.minLod = config.min_lod;
+    info.maxLod = config.max_lod;
+    info.mipLodBias = config.lod_bias;
+    info.anisotropyEnable = config.filter == sampler_filter::anisotropic ? VK_TRUE : VK_FALSE;
+    info.maxAnisotropy = static_cast<float>(config.max_anisotropy);
+    info.borderColor = util::to_native(config.border_color);
+    info.compareEnable = config.compare_func != sampler_compare_func::disabled ? VK_TRUE : VK_FALSE;
+    info.compareOp = util::to_native(config.compare_func);
+
+    auto& new_sampler = _samplers.emplace_back();
+    PR_VK_VERIFY_SUCCESS(vkCreateSampler(device, &info, nullptr, &new_sampler));
 }
 
 void pr::backend::vk::detail::pipeline_layout_params::initialize_from_shape(pr::backend::arg::shader_argument_shapes arg_shapes)
@@ -242,11 +201,6 @@ void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection
 
         descriptor_sets.back().add_range(range.type, range.binding_start, range.binding_size, range.visible_stages);
     }
-}
-
-void pr::backend::vk::detail::pipeline_layout_params::add_implicit_sampler_to_first_set(VkSampler* sampler)
-{
-    descriptor_sets[0].add_implicit_sampler(sampler);
 }
 
 void pr::backend::vk::descriptor_set_bundle::initialize(pr::backend::vk::DescriptorAllocator& allocator, const pr::backend::vk::pipeline_layout& layout)

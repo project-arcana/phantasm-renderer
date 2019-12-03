@@ -321,4 +321,117 @@ namespace pr::backend::vk::util
     }
 }
 
+
+[[nodiscard]] inline constexpr VkFilter to_min_filter(sampler_filter filter)
+{
+    switch (filter)
+    {
+    case sampler_filter::min_mag_mip_point:
+    case sampler_filter::min_point_mag_linear_mip_point:
+    case sampler_filter::min_point_mag_mip_linear:
+    case sampler_filter::min_mag_point_mip_linear:
+        return VK_FILTER_NEAREST;
+    case sampler_filter::min_linear_mag_mip_point:
+    case sampler_filter::min_mag_linear_mip_point:
+    case sampler_filter::min_linear_mag_point_mip_linear:
+    case sampler_filter::min_mag_mip_linear:
+    case sampler_filter::anisotropic:
+        return VK_FILTER_LINEAR;
+    }
+}
+
+[[nodiscard]] inline constexpr VkFilter to_mag_filter(sampler_filter filter)
+{
+    switch (filter)
+    {
+    case sampler_filter::min_mag_mip_point:
+    case sampler_filter::min_linear_mag_mip_point:
+    case sampler_filter::min_mag_point_mip_linear:
+    case sampler_filter::min_linear_mag_point_mip_linear:
+        return VK_FILTER_NEAREST;
+    case sampler_filter::min_point_mag_linear_mip_point:
+    case sampler_filter::min_point_mag_mip_linear:
+    case sampler_filter::min_mag_linear_mip_point:
+    case sampler_filter::min_mag_mip_linear:
+    case sampler_filter::anisotropic:
+        return VK_FILTER_LINEAR;
+    }
+}
+
+[[nodiscard]] inline constexpr VkSamplerMipmapMode to_mipmap_filter(sampler_filter filter)
+{
+    switch (filter)
+    {
+    case sampler_filter::min_mag_mip_point:
+    case sampler_filter::min_linear_mag_mip_point:
+    case sampler_filter::min_mag_linear_mip_point:
+    case sampler_filter::min_point_mag_linear_mip_point:
+        return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    case sampler_filter::min_mag_point_mip_linear:
+    case sampler_filter::min_linear_mag_point_mip_linear:
+    case sampler_filter::min_point_mag_mip_linear:
+    case sampler_filter::min_mag_mip_linear:
+    case sampler_filter::anisotropic:
+        return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    }
+}
+
+[[nodiscard]] inline constexpr VkSamplerAddressMode to_native(sampler_address_mode mode)
+{
+    switch (mode)
+    {
+    case sampler_address_mode::wrap:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    case sampler_address_mode::clamp:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    case sampler_address_mode::clamp_border:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    case sampler_address_mode::mirror:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    }
+}
+
+[[nodiscard]] inline constexpr VkCompareOp to_native(sampler_compare_func mode)
+{
+    switch (mode)
+    {
+    case sampler_compare_func::never:
+    case sampler_compare_func::disabled:
+        return VK_COMPARE_OP_NEVER;
+    case sampler_compare_func::less:
+        return VK_COMPARE_OP_LESS;
+    case sampler_compare_func::equal:
+        return VK_COMPARE_OP_EQUAL;
+    case sampler_compare_func::less_equal:
+        return VK_COMPARE_OP_LESS_OR_EQUAL;
+    case sampler_compare_func::greater:
+        return VK_COMPARE_OP_GREATER;
+    case sampler_compare_func::not_equal:
+        return VK_COMPARE_OP_NOT_EQUAL;
+    case sampler_compare_func::greater_equal:
+        return VK_COMPARE_OP_GREATER_OR_EQUAL;
+    case sampler_compare_func::always:
+        return VK_COMPARE_OP_ALWAYS;
+    }
+}
+
+[[nodiscard]] inline constexpr VkBorderColor to_native(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+        return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    case sampler_border_color::black_transparent_int:
+        return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+    case sampler_border_color::black_float:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    case sampler_border_color::black_int:
+        return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    case sampler_border_color::white_float:
+        return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    case sampler_border_color::white_int:
+        return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+    }
+}
+
 }

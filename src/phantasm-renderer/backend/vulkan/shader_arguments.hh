@@ -70,8 +70,7 @@ struct pipeline_layout_params
 
         void add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility);
 
-        void add_implicit_sampler(VkSampler* sampler);
-        void fill_in_implicit_sampler(VkSampler* sampler);
+        void fill_in_samplers(cc::span<VkSampler const> samplers);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };
@@ -80,8 +79,6 @@ struct pipeline_layout_params
 
     void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
     void initialize_from_reflection_info(cc::span<util::spirv_desc_range_info const> range_infos);
-
-    void add_implicit_sampler_to_first_set(VkSampler* sampler);
 };
 
 }
@@ -99,8 +96,7 @@ struct pipeline_layout
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
 
-    void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);
-    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos, arg::shader_sampler_configs samplers);
 
     void free(VkDevice device);
 
@@ -113,9 +109,9 @@ struct pipeline_layout
     }
 
 private:
-    void create_implicit_sampler(VkDevice device);
+    void create_sampler(VkDevice device, sampler_config const& config);
 
-    VkSampler _implicit_sampler = nullptr;
+    cc::capped_vector<VkSampler, limits::max_shader_samplers> _samplers;
 };
 
 class DescriptorAllocator;

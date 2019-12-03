@@ -99,10 +99,11 @@ public:
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                              arg::framebuffer_format framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
+                                                             arg::shader_sampler_configs shader_samplers,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
-        return mPoolPipelines.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_stages, primitive_config);
+        return mPoolPipelines.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_samplers, shader_stages, primitive_config);
     }
 
     void free(handle::pipeline_state ps) override { mPoolPipelines.free(ps); }
