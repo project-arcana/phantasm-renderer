@@ -253,6 +253,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
 
             state_change const change = state_change(before, transition.target_state, before_dep, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
+            // NOTE: in both cases we transition the entire resource (all subresources in D3D12 terms),
+            // using stored information from the resource pool (img_info / buf_info respectively)
             if (_globals.pool_resources->isImage(transition.resource))
             {
                 auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
