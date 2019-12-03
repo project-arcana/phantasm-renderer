@@ -25,7 +25,6 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     //      Texture* -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     //      Buffer   -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
 
-    // TODO: eventual sampler support
     auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, {});
 
     // Do acquires requiring synchronization first
@@ -34,9 +33,6 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         res_raw = mAllocator.allocDescriptor(layout);
         pool_index = mPool.acquire();
     }
-
-    // Clean up the layout
-    vkDestroyDescriptorSetLayout(mAllocator.getDevice(), layout, nullptr);
 
     // Populate new node
     shader_view_node& new_node = mPool.get(pool_index);
@@ -180,13 +176,18 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
 
         vkUpdateDescriptorSets(mAllocator.getDevice(), uint32_t(writes.size()), writes.data(), 0, nullptr);
 
+        // Store these image views in the new node
+        // This is an allocating container, however it is not accessed in a hot path
+        // We only do this because they have to stay alive until this shader view is freed
+        new_node.image_views.reserve(image_infos.size());
         for (auto const& img_info : image_infos)
         {
-            // NOTE: Maybe the lifetime of image views is required to be longer
-            // in that case, store them in the pool node as well
-            vkDestroyImageView(mDevice, img_info.imageView, nullptr);
+            new_node.image_views.push_back(img_info.imageView);
         }
     }
+
+    // Clean up the layout
+    vkDestroyDescriptorSetLayout(mAllocator.getDevice(), layout, nullptr);
 
     return {static_cast<handle::index_t>(pool_index)};
 }
@@ -196,6 +197,13 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
     // TODO: dangle check
 
     shader_view_node& freed_node = mPool.get(static_cast<unsigned>(sv.index));
+
+    // Destroy the contained image views
+    for (auto const iv : freed_node.image_views)
+    {
+        vkDestroyImageView(mDevice, iv, nullptr);
+    }
+    freed_node.image_views.clear();
 
     {
         // This is a write access to the pool and allocator, and must be synced
@@ -238,11 +246,7 @@ VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_ele
     info.image = mResourcePool->getRawImage(sve.resource);
     info.viewType = util::to_native_image_view_type(sve.dimension);
     info.format = util::to_vk_format(sve.pixel_format);
-    if (is_depth_format(sve.pixel_format))
-        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    else
-        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
+    info.subresourceRange.aspectMask = util::to_native_image_aspect(sve.pixel_format);
     info.subresourceRange.baseMipLevel = sve.texture_info.mip_start;
     info.subresourceRange.levelCount = sve.texture_info.mip_size;
     info.subresourceRange.baseArrayLayer = sve.texture_info.array_start;

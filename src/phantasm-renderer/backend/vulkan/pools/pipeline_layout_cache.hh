@@ -10,6 +10,9 @@
 
 namespace pr::backend::vk
 {
+
+class DescriptorAllocator;
+
 /// Persistent cache for pipeline layouts
 /// Unsynchronized, only used inside of pipeline pool
 class PipelineLayoutCache
@@ -22,14 +25,14 @@ public:
     };
 
     void initialize(unsigned size_estimate = 50);
-    void destroy(VkDevice device);
+    void destroy(VkDevice device, DescriptorAllocator& desc_alloc);
 
     /// receive an existing root signature matching the shape, or create a new one
     /// returns a pointer (which remains stable, §23.2.5/13 C++11)
-    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, key_t key);
+    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, key_t key, DescriptorAllocator& desc_alloc);
 
     /// destroys all elements inside, and clears the map
-    void reset(VkDevice device);
+    void reset(VkDevice device, DescriptorAllocator& desc_alloc);
 
 private:
     struct key_hasher_functor

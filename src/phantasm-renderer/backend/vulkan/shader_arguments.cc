@@ -59,7 +59,12 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
     binding.binding = range_start;
     binding.descriptorType = type;
     binding.descriptorCount = range_size;
-    binding.stageFlags = visibility;
+
+    // TODO: We have access to precise visibility constraints _in this function_, in the `visibility` argument
+    // however, in shader_view_pool, DescriptorSets must be created without this knowledge, which is why
+    // the pool falls back to VK_SHADER_STAGE_ALL_GRAPHICS for its temporary layouts. And since the descriptors would
+    // be incompatible, we have to use the same thing here
+    binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
     binding.pImmutableSamplers = nullptr; // Optional
 }
 
@@ -74,7 +79,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fil
         }
     }
 
-    CC_ASSERT(false && "Failed to fill in samplers");
+    CC_ASSERT(false && "Failed to fill in samplers - not present in shader");
 }
 
 VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::create_layout(VkDevice device) const
@@ -84,12 +89,17 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     layout_info.bindingCount = uint32_t(bindings.size());
     layout_info.pBindings = bindings.data();
 
+
     VkDescriptorSetLayout res;
     PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &res));
+
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const pr::backend::vk::util::spirv_desc_range_info> range_infos, arg::shader_sampler_configs samplers)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device,
+                                                  cc::span<const pr::backend::vk::util::spirv_desc_range_info> range_infos,
+                                                  arg::shader_sampler_configs samplers,
+                                                  DescriptorAllocator& desc_allocator)
 {
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
@@ -107,12 +117,47 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
 
     if (!_samplers.empty())
     {
-        params.descriptor_sets[0].fill_in_samplers(_samplers);
+        params.descriptor_sets[spv::static_sampler_descriptor_set].fill_in_samplers(_samplers);
     }
 
     for (auto const& param_set : params.descriptor_sets)
     {
         descriptor_set_layouts.push_back(param_set.create_layout(device));
+    }
+
+    if (!_samplers.empty())
+    {
+        _sampler_descriptor_set = desc_allocator.allocDescriptor(descriptor_set_layouts[spv::static_sampler_descriptor_set]);
+
+        // Perform the initial update to this descriptor set
+        cc::capped_vector<VkDescriptorImageInfo, limits::max_shader_samplers> image_infos;
+        {
+            for (auto const sampler : _samplers)
+            {
+                auto& info = image_infos.emplace_back();
+                info = {};
+                info.sampler = sampler;
+                info.imageView = nullptr;
+                info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            }
+        }
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+        write.dstSet = _sampler_descriptor_set;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        write.dstArrayElement = 0;
+        write.dstBinding = spv::sampler_binding_start;
+        write.descriptorCount = static_cast<uint32_t>(samplers.size());
+
+        write.pImageInfo = image_infos.data();
+
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    }
+    else
+    {
+        _sampler_descriptor_set = nullptr;
     }
 
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -125,8 +170,13 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));
 }
 
-void pr::backend::vk::pipeline_layout::free(VkDevice device)
+void pr::backend::vk::pipeline_layout::free(VkDevice device, DescriptorAllocator& desc_allocator)
 {
+    if (_sampler_descriptor_set != nullptr)
+    {
+        desc_allocator.free(_sampler_descriptor_set);
+    }
+
     for (auto const layout : descriptor_set_layouts)
         vkDestroyDescriptorSetLayout(device, layout, nullptr);
 

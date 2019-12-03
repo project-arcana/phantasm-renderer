@@ -142,7 +142,7 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
     }
     else
     {
-        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), resource_state::present);
+        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), resource_state::present, mSwapchain.getCurrentBackbufferView());
     }
 }
 
@@ -234,6 +234,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
             VkCommandBuffer t_cmd_list;
             barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
             barriers.record(t_cmd_list);
+            vkEndCommandBuffer(t_cmd_list);
             submit_batch.push_back(t_cmd_list);
         }
 

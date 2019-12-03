@@ -8,6 +8,7 @@
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
+#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
 
 #include "pipeline_layout_cache.hh"
 #include "render_pass_cache.hh"
@@ -51,6 +52,7 @@ private:
     VkDevice mDevice;
     PipelineLayoutCache mLayoutCache;
     RenderPassCache mRenderPassCache;
+    DescriptorAllocator mDescriptorAllocator;
     backend::detail::linked_pool<pso_node, unsigned> mPool;
     std::mutex mMutex;
 };

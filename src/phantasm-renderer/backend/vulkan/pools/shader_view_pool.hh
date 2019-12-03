@@ -4,6 +4,7 @@
 
 #include <clean-core/span.hh>
 #include <clean-core/capped_vector.hh>
+#include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/arguments.hh>
@@ -43,6 +44,8 @@ private:
         VkDescriptorSet raw_desc_set;
         // handles contained in this shader view, for state tracking
         cc::capped_vector<handle::resource, 16> resources;
+        // image views in use by this shader view
+        cc::vector<VkImageView> image_views;
     };
 
     // non-owning

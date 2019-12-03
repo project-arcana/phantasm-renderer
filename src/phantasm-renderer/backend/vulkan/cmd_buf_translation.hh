@@ -83,9 +83,10 @@ private:
 
         cc::array<handle::shader_view, limits::max_shader_arguments> shader_views;
 
-        VkPipelineLayout raw_pipeline_layout;
         VkRenderPass raw_render_pass;
         VkFramebuffer raw_framebuffer;
+        VkDescriptorSet raw_sampler_descriptor_set;
+        VkPipelineLayout raw_pipeline_layout;
 
         cmd::begin_render_pass current_render_pass;
 
@@ -107,6 +108,7 @@ private:
                 sv = handle::null_shader_view;
 
             raw_pipeline_layout = raw;
+            raw_sampler_descriptor_set = nullptr;
         }
 
     } _bound;

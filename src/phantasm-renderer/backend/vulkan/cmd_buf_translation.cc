@@ -84,7 +84,14 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
                 for (auto const& rt : _bound.current_render_pass.render_targets)
                 {
-                    attachments.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
+                    if (_globals.pool_resources->isBackbuffer(rt.sve.resource))
+                    {
+                        attachments.push_back(_globals.pool_resources->getBackbufferView());
+                    }
+                    else
+                    {
+                        attachments.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
+                    }
                 }
 
                 if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
@@ -105,14 +112,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 // Create the framebuffer
                 PR_VK_VERIFY_SUCCESS(vkCreateFramebuffer(_globals.device, &fb_info, nullptr, &_bound.raw_framebuffer));
 
-                // Associate it with the current command list so it will get cleaned up
-                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer);
-
-                // discard image views
-                for (auto const imv : attachments)
-                {
-                    vkDestroyImageView(_globals.device, imv, nullptr);
-                }
+                // Associate the framebuffer and all created image views with the current command list so they will get cleaned up
+                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer, attachments);
             }
 
             // begin a new render pass
@@ -178,6 +179,13 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     {
         auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
         pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+        if (_bound.raw_sampler_descriptor_set != pipeline_layout.get_sampler_descriptor_set())
+        {
+            _bound.raw_sampler_descriptor_set = pipeline_layout.get_sampler_descriptor_set();
+            vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, spv::static_sampler_descriptor_set, 1,
+                                    &_bound.raw_sampler_descriptor_set, 0, nullptr);
+        }
 
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {

@@ -1,5 +1,7 @@
 #include "resource_view.hh"
 
+#include <iostream>
+
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 #include <clean-core/capped_vector.hh>
@@ -82,7 +84,9 @@ void DescriptorAllocator::free(VkDescriptorSet descriptor_set) { vkFreeDescripto
 
 VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const
 {
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+    // NOTE: Eventually arguments could be constrained to stages
+    // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
     cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
 
     {
@@ -133,7 +137,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cb
             binding.binding = spv::sampler_binding_start;
             binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
             binding.descriptorCount = 1;
-            binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            binding.stageFlags = argument_visibility;
             binding.pImmutableSamplers = immutable_sampler;
         }
     }
@@ -152,7 +156,11 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
                                                                           cc::span<const shader_view_element> uavs,
                                                                           cc::span<VkSampler const> immutable_samplers) const
 {
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
+    // NOTE: Eventually arguments could be constrained to stages
+    // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
+    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
+
+
     cc::capped_vector<VkDescriptorSetLayoutBinding, 16> bindings;
 
     {
@@ -247,6 +255,10 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 
     VkDescriptorSetLayout layout;
     PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(mDevice, &layout_info, nullptr, &layout));
+
+    // nocheckin
+    std::cout << "Created descriptor set layout " << layout << ", has " << bindings.size() << " bindings" << std::endl;
+
     return layout;
 }
 }

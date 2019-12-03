@@ -126,7 +126,11 @@ public:
     // the first of either Backend::present or Backend::resize
     //
 
-    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state);
+    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state, VkImageView backbuffer_view);
+
+    [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
+
+    [[nodiscard]] VkImageView getBackbufferView() const { return mInjectedBackbufferView; }
 
 private:
     [[nodiscard]] handle::resource acquireBuffer(
@@ -143,7 +147,12 @@ private:
     /// The main pool data
     backend::detail::linked_pool<resource_node, unsigned> mPool;
 
+    /// The handle of the injected backbuffer resource
     handle::resource mInjectedBackbufferResource = handle::null_resource;
+
+    /// The image view of the currently injected backbuffer, stored separately to
+    /// not take up space in resource_node, there is always just a single injected backbuffer
+    VkImageView mInjectedBackbufferView = nullptr;
 
     /// "Backing" allocators
     ResourceAllocator mAllocator;

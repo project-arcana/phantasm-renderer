@@ -41,7 +41,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges, shader_samplers});
+        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges, shader_samplers}, mDescriptorAllocator);
         render_pass = mRenderPassCache.getOrCreate(mDevice, framebuffer_format, primitive_config);
         pool_index = mPool.acquire();
     }
@@ -87,6 +87,7 @@ void pr::backend::vk::PipelinePool::initialize(VkDevice device, unsigned max_num
     // almost arbitrary, but this is not a hard max, just reserving
     mLayoutCache.initialize(max_num_psos / 2);
     mRenderPassCache.initialize(max_num_psos / 2);
+    mDescriptorAllocator.initialize(mDevice, 0, 0, 0, max_num_psos);
 }
 
 void pr::backend::vk::PipelinePool::destroy()
@@ -102,6 +103,7 @@ void pr::backend::vk::PipelinePool::destroy()
         std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::pipeline_state object" << (num_leaks == 1 ? "" : "s") << std::endl;
     }
 
-    mLayoutCache.destroy(mDevice);
+    mLayoutCache.destroy(mDevice, mDescriptorAllocator);
     mRenderPassCache.destroy(mDevice);
+    mDescriptorAllocator.destroy();
 }

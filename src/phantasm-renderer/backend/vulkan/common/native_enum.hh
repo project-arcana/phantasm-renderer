@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/assert.hh>
+
 #include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
@@ -301,6 +303,7 @@ namespace pr::backend::vk::util
 
     case pr::backend::shader_view_dimension::buffer:
     case pr::backend::shader_view_dimension::raytracing_accel_struct:
+        CC_ASSERT(false);
         return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     }
 }

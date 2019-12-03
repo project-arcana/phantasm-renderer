@@ -33,6 +33,9 @@ inline constexpr auto cbv_binding_start = 0u;
 inline constexpr auto srv_binding_start = 1000u;
 inline constexpr auto uav_binding_start = 2000u;
 inline constexpr auto sampler_binding_start = 3000u;
+
+inline constexpr auto static_sampler_descriptor_set = limits::max_shader_arguments * 2;
+
 }
 
 namespace pr::backend::vk::util

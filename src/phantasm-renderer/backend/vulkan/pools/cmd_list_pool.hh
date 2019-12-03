@@ -34,6 +34,7 @@ public:
     /// thread safe
     [[nodiscard]] bool isFenceSignalled(VkDevice device, unsigned index) const
     {
+        CC_ASSERT(mFences[index].ref_count.load() > 0);
         return vkGetFenceStatus(device, mFences[index].raw_fence) == VK_SUCCESS;
     }
 
@@ -103,7 +104,12 @@ public:
     [[nodiscard]] bool try_reset_blocking(VkDevice device);
 
     /// add an associated framebuffer which will be destroyed on the next reset
-    void add_associated_framebuffer(VkFramebuffer fb) { _associated_framebuffers.push_back(fb); }
+    void add_associated_framebuffer(VkFramebuffer fb, cc::span<VkImageView const> image_views)
+    {
+        _associated_framebuffers.push_back(fb);
+        for (auto iv : image_views)
+            _associated_framebuffer_image_views.push_back(iv);
+    }
 
 private:
     bool is_submit_counter_up_to_date() const
@@ -139,6 +145,9 @@ private:
     /// created by this allocator. Recording threads add their created framebuffers, and the list gets
     /// destroyed on reset, guaranteeing that all of them are no longer in flight
     cc::vector<VkFramebuffer> _associated_framebuffers;
+
+    /// Framebuffers require their image views to stay alive as well
+    cc::vector<VkImageView> _associated_framebuffer_image_views;
 };
 
 /// A bundle of single command allocators which automatically
@@ -210,9 +219,9 @@ public:
         return &mPool.get(static_cast<unsigned>(cl.index)).state_cache;
     }
 
-    void addAssociatedFramebuffer(handle::command_list cl, VkFramebuffer fb)
+    void addAssociatedFramebuffer(handle::command_list cl, VkFramebuffer fb, cc::span<VkImageView const> imgviews)
     {
-        getCommandListNode(cl).responsible_allocator->add_associated_framebuffer(fb);
+        getCommandListNode(cl).responsible_allocator->add_associated_framebuffer(fb, imgviews);
     }
 
 public:

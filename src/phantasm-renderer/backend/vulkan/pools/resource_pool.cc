@@ -3,10 +3,12 @@
 #include <iostream>
 
 #include <clean-core/bit_cast.hh>
+#include <clean-core/utility.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
+#include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/memory/VMA.hh>
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture2D(pr::backend::format format, int w, int h, int mips)
@@ -171,13 +173,14 @@ void pr::backend::vk::ResourcePool::destroy()
     mAllocatorDescriptors.destroy();
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image, pr::backend::resource_state state)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image, pr::backend::resource_state state, VkImageView backbuffer_view)
 {
     resource_node& backbuffer_node = mPool.get(static_cast<unsigned>(mInjectedBackbufferResource.index));
     backbuffer_node.type = resource_node::resource_type::image;
     backbuffer_node.image.raw_image = raw_image;
     backbuffer_node.master_state = state;
     backbuffer_node.master_state_dependency = util::to_pipeline_stage_dependency(state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+    mInjectedBackbufferView = backbuffer_view;
     return mInjectedBackbufferResource;
 }
 
@@ -185,6 +188,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     VmaAllocation alloc, VkBuffer buffer, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
+    VkDescriptorSetLayout cbv_desc_set_layout;
     VkDescriptorSet cbv_desc_set;
     {
         auto lg = std::lock_guard(mMutex);
@@ -192,7 +196,38 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
         res = mPool.acquire();
         // This is a write access to mAllocator descriptors
         cbv_desc_set = mAllocatorDescriptors.allocDescriptorFromShape(1, 0, 0, nullptr);
+
+        cbv_desc_set_layout = mAllocatorDescriptors.createLayoutFromShape(1, 0, 0, nullptr);
+        cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
     }
+
+    // Perform the initial update to the CBV descriptor set
+
+    // TODO: UNIFORM_BUFFER(_DYNAMIC) cannot be larger than some
+    // platform-specific limit, this right here is just a hack
+    // We require separate paths in the resource pool (and therefore in the entire API)
+    // for "CBV" buffers, and other buffers.
+    if (buffer_width < 65536)
+    {
+        VkDescriptorBufferInfo cbv_info = {};
+        cbv_info.buffer = buffer;
+        cbv_info.offset = 0;
+        cbv_info.range = cc::min(256u, buffer_width);
+
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = nullptr;
+        write.dstSet = cbv_desc_set;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        write.descriptorCount = 1; // Just one CBV
+        write.pBufferInfo = &cbv_info;
+        write.dstArrayElement = 0;
+        write.dstBinding = spv::cbv_binding_start;
+
+        vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), 1, &write, 0, nullptr);
+        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
+    }
+
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
     new_node.type = resource_node::resource_type::buffer;
@@ -239,6 +274,9 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
     }
     else
     {
+        if (node.buffer.map != nullptr)
+            vmaUnmapMemory(mAllocator.getAllocator(), node.allocation);
+
         vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer.raw_buffer, node.allocation);
         // This does require synchronization
         mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);

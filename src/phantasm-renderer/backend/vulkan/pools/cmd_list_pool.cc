@@ -29,6 +29,7 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
     }
 
     _associated_framebuffers.reserve(num_cmd_lists * 3); // arbitrary
+    _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1));
 }
 
 void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device)
@@ -62,7 +63,7 @@ void pr::backend::vk::cmd_allocator_node::on_submit(unsigned num, unsigned fence
 {
     // first, update the latest fence
     auto const previous_fence = _latest_fence.exchange(fence_index);
-    if (previous_fence != unsigned(-1))
+    if (previous_fence != unsigned(-1) && previous_fence != fence_index)
     {
         // release previous fence
         _fence_ring->decrementRefcount(previous_fence);
@@ -157,6 +158,13 @@ void pr::backend::vk::cmd_allocator_node::do_reset(VkDevice device)
     }
     _associated_framebuffers.clear();
 
+    for (auto iv : _associated_framebuffer_image_views)
+    {
+        vkDestroyImageView(device, iv, nullptr);
+    }
+
+    _associated_framebuffer_image_views.clear();
+
     _num_in_flight = 0;
     _num_discarded = 0;
     _num_pending_execution = 0;
@@ -211,6 +219,7 @@ unsigned pr::backend::vk::FenceRingbuffer::acquireFence(VkDevice device, VkFence
 void pr::backend::vk::FenceRingbuffer::waitForFence(VkDevice device, unsigned index) const
 {
     auto& node = mFences[index];
+    CC_ASSERT(node.ref_count.load() > 0);
     auto const vkres = vkWaitForFences(device, 1, &node.raw_fence, VK_TRUE, UINT64_MAX);
     CC_ASSERT(vkres == VK_SUCCESS); // other cases are TIMEOUT (2^64 ns > 584 years) or DEVICE_LOST (dead anyway)
 }
