@@ -8,11 +8,12 @@ namespace handle
 {
 using index_t = int32_t;
 inline constexpr index_t null_handle_index = index_t(-1);
+
 #define PR_DEFINE_HANDLE(_type_)                                                                          \
     struct _type_                                                                                         \
     {                                                                                                     \
         index_t index;                                                                                    \
-        [[nodiscard]] constexpr bool is_valid() const { return index != null_handle_index; }              \
+        [[nodiscard]] constexpr bool is_valid() const noexcept { return index != null_handle_index; }     \
         [[nodiscard]] constexpr bool operator==(_type_ rhs) const noexcept { return index == rhs.index; } \
         [[nodiscard]] constexpr bool operator!=(_type_ rhs) const noexcept { return index != rhs.index; } \
     };                                                                                                    \

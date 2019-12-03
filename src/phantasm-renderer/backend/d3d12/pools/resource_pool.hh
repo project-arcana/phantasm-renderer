@@ -82,8 +82,6 @@ public:
         return {data.resource->GetGPUVirtualAddress(), data.buffer_width};
     }
 
-    [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
-
     //
     // Swapchain backbuffer resource injection
     // Swapchain backbuffers are exposed as handle::resource, so they can be interchangably
@@ -93,6 +91,8 @@ public:
     //
 
     [[nodiscard]] handle::resource injectBackbufferResource(ID3D12Resource* raw_resource, resource_state state);
+
+    [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
 
 private:
     [[nodiscard]] handle::resource acquireResource(

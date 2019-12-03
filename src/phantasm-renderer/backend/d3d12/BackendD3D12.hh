@@ -25,11 +25,14 @@ namespace pr::backend::d3d12
 class BackendD3D12 final : public Backend
 {
 public:
-    void initialize(backend_config const& config, device::Window& window);
+    void initialize(backend_config const& config, device::Window& window) override;
     ~BackendD3D12() override;
 
 public:
     // Virtual interface
+
+    /// flush all pending work on the GPU
+    void flushGPU() override;
 
     //
     // Swapchain interface
@@ -118,8 +121,6 @@ public:
     [[nodiscard]] ID3D12Device& getDevice() { return mDevice.getDevice(); }
     [[nodiscard]] ID3D12CommandQueue& getDirectQueue() { return mGraphicsQueue.getQueue(); }
 
-    /// flush all pending work on the GPU
-    void flushGPU();
 
 private:
     // Core components

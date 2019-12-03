@@ -6,6 +6,11 @@
 #include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
+namespace pr::backend::device
+{
+class Window;
+};
+
 namespace pr::backend
 {
 class Backend
@@ -17,6 +22,10 @@ public:
     Backend& operator=(Backend const&) = delete;
     Backend& operator=(Backend&&) = delete;
     virtual ~Backend() = default;
+
+    virtual void initialize(backend_config const& config, device::Window& window) = 0;
+
+    virtual void flushGPU() = 0;
 
     //
     // Swapchain interface

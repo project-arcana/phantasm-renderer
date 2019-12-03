@@ -75,9 +75,6 @@ pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signatu
 
 void pr::backend::d3d12::detail::root_signature_params::add_sampler(const sampler_config& config)
 {
-    // implicitly create a sampler (TODO)
-    // static samplers cost no dwords towards this size
-    // Note this sampler is created in space0
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
     sampler.Init(static_cast<UINT>(samplers.size() - 1),                                                //
                  util::to_native(config.filter, config.compare_func != sampler_compare_func::disabled), //
