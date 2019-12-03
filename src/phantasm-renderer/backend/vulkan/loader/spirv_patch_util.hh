@@ -43,21 +43,8 @@ struct spirv_desc_info
     unsigned binding;
     VkDescriptorType type;
     VkShaderStageFlagBits visible_stage;
+    VkPipelineStageFlags visible_pipeline_stage;
 };
-struct spirv_desc_range_info
-{
-    unsigned set;
-    unsigned binding_start;
-    unsigned binding_size;
-    VkDescriptorType type;
-    VkShaderStageFlagBits visible_stage;
-
-    constexpr bool operator==(spirv_desc_range_info const& rhs) const noexcept
-    {
-        return set == rhs.set && binding_start == rhs.binding_start && binding_size == rhs.binding_size && type == rhs.type && visible_stage == rhs.visible_stage;
-    }
-};
-
 struct patched_spirv
 {
     std::byte* bytecode;
@@ -78,6 +65,23 @@ struct patched_spirv
 [[nodiscard]] arg::shader_stage create_patched_spirv_from_binary_file(char const* filename, cc::vector<spirv_desc_info>& out_desc_infos);
 
 void free_patched_spirv(arg::shader_stage const& val);
+
+
+struct spirv_desc_range_info
+{
+    unsigned set;
+    unsigned binding_start;
+    unsigned binding_size;
+    VkDescriptorType type;
+    VkShaderStageFlagBits visible_stages;
+    // Semantically the same as visible_stages, just pre-converted (translating later would be more complicated)
+    VkPipelineStageFlags visible_pipeline_stages;
+
+    constexpr bool operator==(spirv_desc_range_info const& rhs) const noexcept
+    {
+        return set == rhs.set && binding_start == rhs.binding_start && binding_size == rhs.binding_size && type == rhs.type && visible_stages == rhs.visible_stages;
+    }
+};
 
 /// create a sorted, deduplicated vector of descriptor range infos from an unsorted raw output from previous patches
 [[nodiscard]] cc::vector<spirv_desc_range_info> merge_spirv_descriptors(cc::vector<spirv_desc_info>& desc_infos);

@@ -4,12 +4,8 @@
 
 #include <phantasm-renderer/backend/command_stream.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/vk_incomplete_state_cache.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
-
-namespace pr::backend::detail
-{
-struct incomplete_state_cache;
-}
 
 namespace pr::backend::vk
 {
@@ -52,7 +48,7 @@ struct command_list_translator
         _thread_local.initialize(_globals.device);
     }
 
-    void translateCommandList(VkCommandBuffer list, handle::command_list list_handle, pr::backend::detail::incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
+    void translateCommandList(VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
 
     void execute(cmd::begin_render_pass const& begin_rp);
 
@@ -74,7 +70,7 @@ private:
     translator_thread_local_memory _thread_local;
 
     // non-owning dynamic
-    pr::backend::detail::incomplete_state_cache* _state_cache = nullptr;
+    vk_incomplete_state_cache* _state_cache = nullptr;
     VkCommandBuffer _cmd_list = nullptr;
     handle::command_list _cmd_list_handle = handle::null_command_list;
 

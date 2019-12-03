@@ -33,7 +33,46 @@ public:
     void free(handle::resource res);
 
     /// only valid for resources created with createMappedBuffer
-    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer_map; }
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer.map; }
+
+public:
+    struct resource_node
+    {
+        struct buffer_info
+        {
+            VkBuffer raw_buffer;
+            /// a descriptor set containing a single UNIFORM_BUFFER_DYNAMIC descriptor,
+            /// unconditionally created for all buffers
+            VkDescriptorSet raw_uniform_dynamic_ds;
+            uint32_t width;
+            uint32_t stride; ///< vertex size or index size
+            std::byte* map;
+        };
+
+        struct image_info
+        {
+            VkImage raw_image;
+            format pixel_format;
+            unsigned num_mips;
+            unsigned num_array_layers;
+        };
+
+        VmaAllocation allocation;
+
+        union {
+            buffer_info buffer;
+            image_info image;
+        };
+
+        resource_state master_state;
+
+        enum class resource_type : uint8_t
+        {
+            buffer,
+            image
+        };
+        resource_type type;
+    };
 
 public:
     // internal API
@@ -45,15 +84,16 @@ public:
     // Raw VkBuffer / VkImage access
     //
 
-    [[nodiscard]] VkBuffer getRawBuffer(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).buffer.raw_buffer; }
-    [[nodiscard]] VkImage getRawImage(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).image.raw_image; }
+    [[nodiscard]] VkBuffer getRawBuffer(handle::resource res) const { return internalGet(res).buffer.raw_buffer; }
+    [[nodiscard]] VkImage getRawImage(handle::resource res) const { return internalGet(res).image.raw_image; }
 
     // Raw CBV uniform buffer dynamic descriptor set access
-    [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const
-    {
-        return mPool.get(static_cast<unsigned>(res.index)).buffer.raw_uniform_dynamic_ds;
-    }
+    [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const { return internalGet(res).buffer.raw_uniform_dynamic_ds; }
 
+    // Additional information
+    [[nodiscard]] bool isImage(handle::resource res) const { return internalGet(res).type == resource_node::resource_type::image; }
+    [[nodiscard]] resource_node::image_info const& getImageInfo(handle::resource res) const { return internalGet(res).image; }
+    [[nodiscard]] resource_node::buffer_info const& getBufferInfo(handle::resource res) const { return internalGet(res).buffer; }
     //
     // Master state access
     //
@@ -65,7 +105,7 @@ public:
         // This is a write access to the pool, however we require
         // no sync since it would not interfere with unrelated allocs and frees
         // and this call assumes exclusive access to the given resource
-        mPool.get(static_cast<unsigned>(res.index)).master_state = new_state;
+        internalGet(res).master_state = new_state;
     }
 
     //
@@ -79,49 +119,13 @@ public:
     [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state);
 
 private:
-    struct resource_node
-    {
-        struct buffer_info
-        {
-            VkBuffer raw_buffer;
-            /// a descriptor set containing a single UNIFORM_BUFFER_DYNAMIC descriptor,
-            /// unconditionally created for all buffers
-            VkDescriptorSet raw_uniform_dynamic_ds;
-        };
-
-        struct image_info
-        {
-            VkImage raw_image;
-        };
-
-        VmaAllocation allocation;
-
-        union {
-            buffer_info buffer;
-            image_info image;
-        };
-
-        // additional information for (CPU) buffer views,
-        // only valid if the resource was created with ::createBuffer
-        uint32_t buffer_width;
-        uint32_t buffer_stride; ///< vertex size or index size
-        std::byte* buffer_map;
-
-        resource_state master_state;
-
-        enum class resource_type : uint8_t
-        {
-            buffer,
-            image
-        };
-        resource_type type;
-    };
-
-private:
     [[nodiscard]] handle::resource acquireBuffer(
         VmaAllocation alloc, VkBuffer buffer, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
-    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, resource_state initial_state);
+    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, resource_state initial_state, unsigned num_mips, unsigned num_array_layers);
+
+    [[nodiscard]] resource_node const& internalGet(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)); }
+    [[nodiscard]] resource_node& internalGet(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)); }
 
     void internalFree(resource_node& node);
 

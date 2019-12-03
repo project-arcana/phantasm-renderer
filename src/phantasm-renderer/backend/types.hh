@@ -199,14 +199,20 @@ enum class format : uint8_t
     rgba8un,
     bgra8un,
 
-    // depth stencil formats
+    // depth formats
     depth32f,
     depth16un,
+
+    // depth stencil formats
     depth32f_stencil8u,
     depth24un_stencil8u,
 };
 
+/// returns true if the format is a depth OR depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
+
+/// returns true if the format is a depth stencil format
+[[nodiscard]] inline constexpr bool is_depth_stencil_format(format fmt) { return fmt >= format::depth32f_stencil8u; }
 
 /// information about a single vertex attribute
 struct vertex_attribute_info

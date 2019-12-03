@@ -21,7 +21,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture2D(pr:
     image_info.extent.height = uint32_t(h);
     image_info.extent.depth = 1;
     image_info.mipLevels = uint32_t(mips);
-    image_info.arrayLayers = uint32_t(0u);
+    image_info.arrayLayers = 1;
 
     image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -44,7 +44,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture2D(pr:
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
-    return acquireImage(res_alloc, res_image, resource_state::undefined);
+    return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h)
@@ -81,7 +81,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
-    return acquireImage(res_alloc, res_image, resource_state::undefined);
+    return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state, unsigned stride_bytes)
@@ -187,16 +187,16 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     new_node.type = resource_node::resource_type::buffer;
     new_node.buffer.raw_buffer = buffer;
     new_node.buffer.raw_uniform_dynamic_ds = cbv_desc_set;
+    new_node.buffer.width = buffer_width;
+    new_node.buffer.stride = buffer_stride;
+    new_node.buffer.map = buffer_map;
 
     new_node.master_state = initial_state;
 
-    new_node.buffer_width = buffer_width;
-    new_node.buffer_stride = buffer_stride;
-    new_node.buffer_map = buffer_map;
-
     return {static_cast<handle::index_t>(res)};
 }
-pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(VmaAllocation alloc, VkImage image, pr::backend::resource_state initial_state)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(
+    VmaAllocation alloc, VkImage image, format pixel_format, pr::backend::resource_state initial_state, unsigned num_mips, unsigned num_array_layers)
 {
     unsigned res;
     {
@@ -208,12 +208,11 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(VmaAll
     new_node.allocation = alloc;
     new_node.type = resource_node::resource_type::image;
     new_node.image.raw_image = image;
+    new_node.image.pixel_format = pixel_format;
+    new_node.image.num_mips = num_mips;
+    new_node.image.num_array_layers = num_array_layers;
 
     new_node.master_state = initial_state;
-
-    new_node.buffer_width = 0;
-    new_node.buffer_stride = 0;
-    new_node.buffer_map = nullptr;
 
     return {static_cast<handle::index_t>(res)};
 }

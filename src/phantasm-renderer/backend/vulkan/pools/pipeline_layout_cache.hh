@@ -36,7 +36,7 @@ private:
             for (auto const& elem : v)
             {
                 auto const elem_hash = hash::detail::hash_combine(hash::detail::hash(elem.set, elem.type, elem.binding_size, elem.binding_start),
-                                                                  hash::detail::hash(elem.visible_stage));
+                                                                  hash::detail::hash(elem.visible_stages));
                 res = hash::detail::hash_combine(res, elem_hash);
             }
             return res;

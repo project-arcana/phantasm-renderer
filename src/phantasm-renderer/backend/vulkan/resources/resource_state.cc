@@ -1,21 +1,35 @@
 #include "resource_state.hh"
 
-VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, const state_change& state_change, bool is_depth, unsigned num_mips, unsigned num_layers)
+VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, const state_change& state_change, VkImageAspectFlags aspect, unsigned num_mips, unsigned num_layers)
 {
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout =util::to_image_layout(state_change.before);
+    barrier.oldLayout = util::to_image_layout(state_change.before);
     barrier.newLayout = util::to_image_layout(state_change.after);
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image;
-    barrier.subresourceRange.aspectMask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.aspectMask = aspect;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = num_mips;
     barrier.subresourceRange.baseArrayLayer = 0;
     barrier.subresourceRange.layerCount = num_layers;
     barrier.srcAccessMask = util::to_access_flags(state_change.before);
     barrier.dstAccessMask = util::to_access_flags(state_change.after);
+    return barrier;
+}
+
+VkBufferMemoryBarrier pr::backend::vk::get_buffer_memory_barrier(VkBuffer buffer, const pr::backend::vk::state_change& state_change, unsigned buffer_size)
+{
+    VkBufferMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = buffer;
+    barrier.srcAccessMask = util::to_access_flags(state_change.before);
+    barrier.dstAccessMask = util::to_access_flags(state_change.after);
+    barrier.offset = 0;
+    barrier.size = buffer_size;
     return barrier;
 }
 

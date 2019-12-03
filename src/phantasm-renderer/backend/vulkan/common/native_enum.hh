@@ -111,7 +111,7 @@ namespace pr::backend::vk::util
     }
 }
 
-[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, shader_domain domain = shader_domain::pixel)
+[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, VkPipelineStageFlags shader_flags)
 {
     using rs = resource_state;
     switch (state)
@@ -123,7 +123,7 @@ namespace pr::backend::vk::util
     case rs::constant_buffer:
     case rs::shader_resource:
     case rs::unordered_access:
-        return to_pipeline_stage_flags(domain);
+        return shader_flags;
 
     case rs::render_target:
         return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -150,6 +150,11 @@ namespace pr::backend::vk::util
     case rs::unknown:
         return VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
     }
+}
+
+[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, shader_domain domain = shader_domain::pixel)
+{
+    return to_pipeline_stage_dependency(state, to_pipeline_stage_flags(domain));
 }
 
 [[nodiscard]] inline constexpr VkPrimitiveTopology to_native(pr::primitive_topology topology)
@@ -297,6 +302,22 @@ namespace pr::backend::vk::util
     case pr::backend::shader_view_dimension::buffer:
     case pr::backend::shader_view_dimension::raytracing_accel_struct:
         return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    }
+}
+
+[[nodiscard]] inline constexpr VkImageAspectFlags to_native_image_aspect(format format)
+{
+    if (is_depth_stencil_format(format))
+    {
+        return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+    else if (is_depth_format(format))
+    {
+        return VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+    else
+    {
+        return VK_IMAGE_ASPECT_COLOR_BIT;
     }
 }
 

@@ -12,9 +12,10 @@
 #include "pools/pipeline_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
+#include "resources/resource_state.hh"
 
 void pr::backend::vk::command_list_translator::translateCommandList(
-    VkCommandBuffer list, handle::command_list list_handle, pr::backend::detail::incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)
+    VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)
 {
     _cmd_list = list;
     _cmd_list_handle = list_handle;
@@ -181,10 +182,14 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
             auto const& arg = draw.shader_arguments[i];
+            auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
 
             if (arg.constant_buffer != handle::null_resource)
             {
                 // Unconditionally set the CBV
+
+                _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
+
                 auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
                 vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
                                         &cbv_desc_set, 1, &arg.constant_buffer_offset);
@@ -196,6 +201,13 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 _bound.shader_views[i] = arg.shader_view;
                 if (arg.shader_view != handle::null_shader_view)
                 {
+                    // touch all contained resources in the state cache
+                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
+                    {
+                        // NOTE: this is pretty inefficient
+                        _state_cache->touch_resource_in_shader(res, arg_vis);
+                    }
+
                     auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
                 }
@@ -218,3 +230,46 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::e
 {
     // do nothing
 }
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::transition_resources& transition_res)
+{
+    barrier_bundle<limits::max_resource_transitions, limits::max_resource_transitions, limits::max_resource_transitions> barriers;
+
+    for (auto const& transition : transition_res.transitions)
+    {
+        resource_state before;
+        VkPipelineStageFlags before_dep;
+        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before, before_dep);
+
+        if (before_known && before != transition.target_state)
+        {
+            // The transition is neither the implicit initial one, nor redundant
+
+            // TODO: if the target state requires a pipeline stage in order to resolve
+            // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
+            // there are two ways to fix this:
+            // defer all barriers requiring shader info until the draw call (where shader views are updated)
+            // or require an explicit target shader domain in cmd::transition_resources
+
+            state_change const change = state_change(before, transition.target_state, before_dep, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+
+            if (_globals.pool_resources->isImage(transition.resource))
+            {
+                auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
+                barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format), img_info.num_mips,
+                                           img_info.num_array_layers);
+            }
+            else
+            {
+                auto const& buf_info = _globals.pool_resources->getBufferInfo(transition.resource);
+                barriers.add_buffer_barrier(buf_info.raw_buffer, change, buf_info.width);
+            }
+        }
+    }
+
+    barriers.record(_cmd_list);
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer& copy_buf) {}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text) {}

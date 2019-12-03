@@ -87,6 +87,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         current_binding_base = spv::uav_binding_start;
         for (auto const& uav : uavs)
         {
+            new_node.resources.push_back(uav.resource);
+
             auto const uav_native_type = util::to_native_uav_desc_type(uav.dimension);
             if (last_type != uav_native_type)
             {
@@ -122,6 +124,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         current_binding_base = spv::srv_binding_start;
         for (auto const& srv : srvs)
         {
+            new_node.resources.push_back(srv.resource);
+
             auto const uav_native_type = util::to_native_srv_desc_type(srv.dimension);
             if (last_type != uav_native_type)
             {

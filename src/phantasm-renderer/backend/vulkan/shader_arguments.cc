@@ -73,7 +73,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
     binding.pImmutableSamplers = sampler;
 }
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_implicit_sampler(VkSampler *sampler)
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_implicit_sampler(VkSampler* sampler)
 {
     for (auto& binding : bindings)
     {
@@ -140,14 +140,15 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
 
+    // check for the existence of samplers,
+    // and copy pipeline stage visibilities
     bool has_sampler = false;
     for (auto const& range : range_infos)
     {
         if (range.type == VK_DESCRIPTOR_TYPE_SAMPLER)
-        {
             has_sampler = true;
-            break;
-        }
+
+        descriptor_set_visibilities.push_back(range.visible_pipeline_stages);
     }
 
     if (has_sampler)
@@ -239,7 +240,7 @@ void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection
                 descriptor_sets.emplace_back();
         }
 
-        descriptor_sets.back().add_range(range.type, range.binding_start, range.binding_size, range.visible_stage);
+        descriptor_sets.back().add_range(range.type, range.binding_start, range.binding_size, range.visible_stages);
     }
 }
 

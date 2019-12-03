@@ -63,8 +63,10 @@ namespace
     }
 }
 
-void patchSpvReflectShader(SpvReflectShaderModule& module, VkShaderStageFlagBits current_stage, cc::vector<pr::backend::vk::util::spirv_desc_info>& out_desc_infos)
+void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_domain current_stage, cc::vector<pr::backend::vk::util::spirv_desc_info>& out_desc_infos)
 {
+    using namespace pr::backend::vk;
+
     // shift CBVs up by [max_shader_arguments] sets
     {
         uint32_t num_bindings;
@@ -97,7 +99,8 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, VkShaderStageFlagBits
             new_info.set = b->set;
             new_info.binding = b->binding;
             new_info.type = reflect_to_native(b->descriptor_type);
-            new_info.visible_stage = current_stage;
+            new_info.visible_stage = util::to_shader_stage_flags(current_stage);
+            new_info.visible_pipeline_stage = util::to_pipeline_stage_flags(current_stage);
         }
     }
 }
@@ -112,7 +115,7 @@ pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::
     spvReflectCreateShaderModule(bytecode_size, bytecode, &module);
 
     res.domain = reflect_to_pr(module.shader_stage);
-    patchSpvReflectShader(module, util::to_shader_stage_flags(res.domain), out_desc_infos);
+    patchSpvReflectShader(module, res.domain, out_desc_infos);
 
     res.binary_size = spvReflectGetCodeSize(&module);
     res.binary_data = cc::bit_cast<std::byte*>(module._internal->spirv_code);
@@ -164,7 +167,8 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
         {
             // this element mirrors the precursor, bit-OR the shader stage bits
             CC_ASSERT(curr_range->type == di.type && "SPIR-V descriptor overlap detected");
-            curr_range->visible_stage = static_cast<VkShaderStageFlagBits>(curr_range->visible_stage | di.visible_stage);
+            curr_range->visible_stages = static_cast<VkShaderStageFlagBits>(curr_range->visible_stages | di.visible_stage);
+            curr_range->visible_pipeline_stages = static_cast<VkPipelineStageFlags>(curr_range->visible_pipeline_stages | di.visible_pipeline_stage);
             ++curr_range->binding_size;
         }
         else
@@ -175,7 +179,8 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
             new_range.type = di.type;
             new_range.binding_start = di.binding;
             new_range.binding_size = 1;
-            new_range.visible_stage = di.visible_stage;
+            new_range.visible_stages = di.visible_stage;
+            new_range.visible_pipeline_stages = di.visible_pipeline_stage;
         }
     }
 

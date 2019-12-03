@@ -9,6 +9,7 @@
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
+#include <phantasm-renderer/backend/vulkan/common/vk_incomplete_state_cache.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
 namespace pr::backend::vk
@@ -193,7 +194,7 @@ public:
         // - the command list is freshly reset using an appropriate allocator
         // - the responsible_allocator must be informed on submit or discard
         cmd_allocator_node* responsible_allocator;
-        backend::detail::incomplete_state_cache state_cache;
+        vk_incomplete_state_cache state_cache;
         VkCommandBuffer raw_buffer;
     };
 
@@ -204,7 +205,7 @@ public:
 
     [[nodiscard]] VkCommandBuffer getRawBuffer(handle::command_list cl) const { return mPool.get(static_cast<unsigned>(cl.index)).raw_buffer; }
 
-    [[nodiscard]] backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl)
+    [[nodiscard]] vk_incomplete_state_cache* getStateCache(handle::command_list cl)
     {
         return &mPool.get(static_cast<unsigned>(cl.index)).state_cache;
     }

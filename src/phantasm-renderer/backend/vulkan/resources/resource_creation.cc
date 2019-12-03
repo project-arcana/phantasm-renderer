@@ -55,7 +55,7 @@ pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk
     // Upload Image
     {
         {
-            auto const barrier = get_image_memory_barrier(res.image, state_change{resource_state::undefined, resource_state::copy_dest}, false,
+            auto const barrier = get_image_memory_barrier(res.image, state_change{resource_state::undefined, resource_state::copy_dest}, VK_IMAGE_ASPECT_COLOR_BIT,
                                                           img_size.num_mipmaps, img_size.array_size);
             vkCmdPipelineBarrier(upload_heap.getCommandBuffer(), VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
         }
@@ -94,7 +94,7 @@ pr::backend::vk::image pr::backend::vk::create_texture_from_file(pr::backend::vk
         // prepare to shader read
         //
         {
-            auto const barrier = get_image_memory_barrier(res.image, state_change{resource_state::copy_dest, resource_state::shader_resource}, false,
+            auto const barrier = get_image_memory_barrier(res.image, state_change{resource_state::copy_dest, resource_state::shader_resource}, VK_IMAGE_ASPECT_COLOR_BIT,
                                                           img_size.num_mipmaps, img_size.array_size);
             vkCmdPipelineBarrier(upload_heap.getCommandBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr,
                                  0, nullptr, 1, &barrier);

@@ -5,8 +5,8 @@
 
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
+#include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #include <phantasm-renderer/backend/vulkan/shader.hh>
 
@@ -16,23 +16,17 @@ struct state_change
 {
     resource_state before;
     resource_state after;
-    shader_domain domain_before = shader_domain::pixel;
-    shader_domain domain_after = shader_domain::pixel;
+    VkPipelineStageFlags stages_before;
+    VkPipelineStageFlags stages_after;
 
-    explicit state_change(resource_state before, resource_state after) : before(before), after(after) {}
-
-    explicit state_change(resource_state before, shader_domain domain_before, resource_state after)
-      : before(before), after(after), domain_before(domain_before)
-    {
-    }
-
-    explicit state_change(resource_state before, resource_state after, shader_domain domain_after)
-      : before(before), after(after), domain_after(domain_after)
-    {
-    }
-
-    explicit state_change(resource_state before, shader_domain domain_before, resource_state after, shader_domain domain_after)
-      : before(before), after(after), domain_before(domain_before), domain_after(domain_after)
+    explicit state_change(resource_state before,
+                          resource_state after,
+                          VkPipelineStageFlags shader_stages_before = VK_PIPELINE_STAGE_HOST_BIT,
+                          VkPipelineStageFlags shader_stages_after = VK_PIPELINE_STAGE_HOST_BIT)
+      : before(before),
+        after(after),
+        stages_before(util::to_pipeline_stage_dependency(before, shader_stages_before)),
+        stages_after(util::to_pipeline_stage_dependency(after, shader_stages_after))
     {
     }
 };
@@ -47,13 +41,21 @@ struct stage_dependencies
 
     void add_change(state_change const& change)
     {
-        stages_before |= util::to_pipeline_stage_dependency(change.before, change.domain_before);
-        stages_after |= util::to_pipeline_stage_dependency(change.after, change.domain_after);
+        stages_before |= util::to_pipeline_stage_dependency(change.before, change.stages_before);
+        stages_after |= util::to_pipeline_stage_dependency(change.after, change.stages_after);
+    }
+
+    void add_change(resource_state state_before, resource_state state_after, VkPipelineStageFlags shader_dep_before, VkPipelineStageFlags shader_dep_after)
+    {
+        stages_before |= util::to_pipeline_stage_dependency(state_before, shader_dep_before);
+        stages_after |= util::to_pipeline_stage_dependency(state_after, shader_dep_after);
     }
 };
 
 [[nodiscard]] VkImageMemoryBarrier get_image_memory_barrier(
-    VkImage image, state_change const& state_change, bool is_depth = false, unsigned num_mips = 1, unsigned num_layers = 1);
+    VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned num_mips = 1, unsigned num_layers = 1);
+
+[[nodiscard]] VkBufferMemoryBarrier get_buffer_memory_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size);
 
 
 void submit_barriers(VkCommandBuffer cmd_buf,
@@ -81,14 +83,24 @@ struct barrier_bundle
     cc::capped_vector<VkBufferMemoryBarrier, Nbuf> barriers_buf;
     cc::capped_vector<VkMemoryBarrier, Nmem> barriers_mem;
 
-    void add_image_barrier(VkImage image, state_change const& state_change, bool is_depth = false, unsigned num_mips = 1, unsigned num_layers = 1)
+    void add_image_barrier(VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned num_mips = 1, unsigned num_layers = 1)
     {
         dependencies.add_change(state_change);
-        barriers_img.push_back(get_image_memory_barrier(image, state_change, is_depth, num_mips, num_layers));
+        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, num_mips, num_layers));
+    }
+
+    void add_buffer_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size)
+    {
+        dependencies.add_change(state_change);
+        barriers_buf.push_back(get_buffer_memory_barrier(buffer, state_change, buffer_size));
     }
 
     /// Record contained barriers to the given cmd buffer
-    void record(VkCommandBuffer cmd_buf) { submit_barriers(cmd_buf, dependencies, barriers_img, barriers_buf, barriers_mem); }
+    void record(VkCommandBuffer cmd_buf)
+    {
+        if (!barriers_img.empty() || !barriers_buf.empty() || !barriers_mem.empty())
+            submit_barriers(cmd_buf, dependencies, barriers_img, barriers_buf, barriers_mem);
+    }
 
     /// Record contained barriers to the given cmd buffer, close it, and submit it on the given queue
     void submit(VkCommandBuffer cmd_buf, VkQueue queue)

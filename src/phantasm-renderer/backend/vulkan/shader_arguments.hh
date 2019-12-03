@@ -88,13 +88,29 @@ struct pipeline_layout_params
 
 struct pipeline_layout
 {
+    /// The descriptor set layouts, two per shader argument:
+    /// One for samplers, SRVs and UAVs, one for CBVs, shifted behind the first types
     cc::capped_vector<VkDescriptorSetLayout, limits::max_shader_arguments * 2> descriptor_set_layouts;
+
+    /// The pipeline stages (shader domains only) which have access to
+    /// the respective descriptor sets (parallel array)
+    cc::capped_vector<VkPipelineStageFlags, limits::max_shader_arguments> descriptor_set_visibilities;
+
+    /// The pipeline layout itself
     VkPipelineLayout raw_layout;
 
     void initialize(VkDevice device, arg::shader_argument_shapes arg_shapes);
     void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos);
 
     void free(VkDevice device);
+
+    [[nodiscard]] VkPipelineStageFlags get_argument_visibility(unsigned arg_i) const
+    {
+        if (arg_i >= limits::max_shader_arguments)
+            arg_i -= limits::max_shader_arguments;
+
+        return descriptor_set_visibilities[arg_i];
+    }
 
 private:
     void create_implicit_sampler(VkDevice device);
@@ -126,7 +142,7 @@ struct descriptor_set_bundle
     void bind_argument_no_cbv(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
     {
         vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
-      ////                          &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
+        ////                          &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
     }
 };
 
