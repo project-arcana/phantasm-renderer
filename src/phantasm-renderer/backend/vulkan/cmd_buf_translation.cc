@@ -248,8 +248,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
             // TODO: if the target state requires a pipeline stage in order to resolve
             // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
             // there are two ways to fix this:
-            // defer all barriers requiring shader info until the draw call (where shader views are updated)
-            // or require an explicit target shader domain in cmd::transition_resources
+            // - defer all barriers requiring shader info until the draw call (where shader views are updated)
+            // - or require an explicit target shader domain in cmd::transition_resources
 
             state_change const change = state_change(before, transition.target_state, before_dep, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
@@ -272,6 +272,31 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
     barriers.record(_cmd_list);
 }
 
-void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer& copy_buf) {}
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer& copy_buf)
+{
+    auto const src_buffer = _globals.pool_resources->getRawBuffer(copy_buf.source);
+    auto const dest_buffer = _globals.pool_resources->getRawBuffer(copy_buf.destination);
 
-void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text) {}
+    VkBufferCopy region = {};
+    region.size = copy_buf.size;
+    region.srcOffset = copy_buf.source_offset;
+    region.dstOffset = copy_buf.dest_offset;
+    vkCmdCopyBuffer(_cmd_list, src_buffer, dest_buffer, 1, &region);
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
+{
+    auto const src_buffer = _globals.pool_resources->getRawBuffer(copy_text.source);
+    auto const dest_image = _globals.pool_resources->getRawImage(copy_text.destination);
+
+    VkBufferImageCopy region = {};
+    region.bufferOffset = uint32_t(copy_text.source_offset);
+    region.imageSubresource.aspectMask = util::to_native_image_aspect(copy_text.texture_format);
+    region.imageSubresource.baseArrayLayer = copy_text.dest_array_index;
+    region.imageSubresource.layerCount = 1;
+    region.imageSubresource.mipLevel = copy_text.dest_mip_index;
+    region.imageExtent.width = copy_text.dest_width;
+    region.imageExtent.height = copy_text.dest_height;
+    region.imageExtent.depth = 1;
+    vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}

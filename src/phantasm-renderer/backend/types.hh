@@ -211,7 +211,7 @@ enum class format : uint8_t
 /// returns true if the format is a depth OR depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
 
-/// returns true if the format is a depth stencil format
+/// returns true if the format is a depth stencil format+
 [[nodiscard]] inline constexpr bool is_depth_stencil_format(format fmt) { return fmt >= format::depth32f_stencil8u; }
 
 /// information about a single vertex attribute
@@ -285,4 +285,91 @@ struct shader_view_element
         texture_info.array_size = 1;
     }
 };
+
+enum class sampler_filter : uint8_t
+{
+    min_mag_mip_point,
+    min_point_mag_linear_mip_point,
+    min_linear_mag_mip_point,
+    min_mag_linear_mip_point,
+    min_point_mag_mip_linear,
+    min_linear_mag_point_mip_linear,
+    min_mag_point_mip_linear,
+    min_mag_mip_linear,
+    anisotropic
+};
+
+enum class sampler_address_mode : uint8_t
+{
+    wrap,
+    clamp,
+    clamp_border,
+    mirror
+};
+
+enum class sampler_compare_func : uint8_t
+{
+    never,
+    less,
+    equal,
+    less_equal,
+    greater,
+    not_equal,
+    greater_equal,
+    always,
+
+    disabled
+};
+
+enum class sampler_border_color : uint8_t
+{
+    black_transparent_float,
+    black_transparent_int,
+    black_float,
+    black_int,
+    white_float,
+    white_int
+};
+
+struct sampler_config
+{
+    sampler_filter filter;
+    sampler_address_mode address_u;
+    sampler_address_mode address_v;
+    sampler_address_mode address_w;
+    float min_lod;
+    float max_lod;
+    float lod_bias;          ///< offset from the calculated MIP level (sampled = calculated + lod_bias)
+    unsigned max_anisotropy; ///< maximum amount of anisotropy in [1, 16], req. sampler_filter::anisotropic
+    sampler_compare_func compare_func;
+    sampler_border_color border_color; ///< the border color to use, req. sampler_filter::clamp_border
+
+    void init_default(sampler_filter filter, unsigned anisotropy = 16u)
+    {
+        this->filter = filter;
+        address_u = sampler_address_mode::wrap;
+        address_v = sampler_address_mode::wrap;
+        address_w = sampler_address_mode::wrap;
+        min_lod = 0.f;
+        max_lod = 100000.f;
+        lod_bias = 0.f;
+        max_anisotropy = anisotropy;
+        compare_func = sampler_compare_func::disabled;
+        border_color = sampler_border_color::black_transparent_float;
+    }
+};
+
+inline bool operator==(sampler_config const& lhs, sampler_config const& rhs) noexcept
+{
+    return lhs.filter == rhs.filter &&                 //
+           lhs.address_u == rhs.address_u &&           //
+           lhs.address_v == rhs.address_v &&           //
+           lhs.address_w == rhs.address_w &&           //
+           lhs.min_lod == rhs.min_lod &&               //
+           lhs.max_lod == rhs.max_lod &&               //
+           lhs.lod_bias == rhs.lod_bias &&             //
+           lhs.max_anisotropy == rhs.max_anisotropy && //
+           lhs.compare_func == rhs.compare_func &&     //
+           lhs.border_color == rhs.border_color;       //
+}
 }

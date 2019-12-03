@@ -134,10 +134,11 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
     handle::resource destination;
     handle::resource source;
     size_t source_offset;
-    unsigned mip_width;
-    unsigned mip_height;
-    unsigned subresource_index;
-    unsigned row_pitch;
+    unsigned dest_width;       ///< width of the destination texture (in the specified MIP map and array element)
+    unsigned dest_height;      ///< height of the destination texture (in the specified MIP map and array element)
+    unsigned dest_mip_size;    ///< amount of MIP maps in the destination texture
+    unsigned dest_mip_index;   ///< index of the MIP map to copy
+    unsigned dest_array_index; ///< index of the array element to copy (usually: 0)
     format texture_format;
 };
 

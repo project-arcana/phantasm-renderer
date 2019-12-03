@@ -23,6 +23,7 @@ public:
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                              arg::framebuffer_format framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
+                                                             arg::shader_sampler_configs shader_samplers,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config);
 

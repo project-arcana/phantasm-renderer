@@ -9,6 +9,7 @@
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                                      pr::backend::arg::framebuffer_format framebuffer_format,
                                                                                                      pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                                     arg::shader_sampler_configs shader_samplers,
                                                                                                      pr::backend::arg::shader_stages shader_stages,
                                                                                                      const pr::primitive_pipeline_config& primitive_config)
 {
@@ -17,7 +18,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes, shader_samplers});
         pool_index = mPool.acquire();
     }
 

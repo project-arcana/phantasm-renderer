@@ -1,10 +1,11 @@
 #include "root_signature.hh"
 
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
-                                                                   cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
-                                                                   cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
+                                                               cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
+                                                               cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
 {
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.data();
@@ -72,17 +73,32 @@ pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signatu
     return res_map;
 }
 
-void pr::backend::d3d12::detail::root_signature_params::add_implicit_sampler()
+void pr::backend::d3d12::detail::root_signature_params::add_sampler(const sampler_config& config)
 {
     // implicitly create a sampler (TODO)
     // static samplers cost no dwords towards this size
     // Note this sampler is created in space0
     CD3DX12_STATIC_SAMPLER_DESC& sampler = samplers.emplace_back();
-    sampler.Init(0, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, 0,
-                 16, D3D12_COMPARISON_FUNC_LESS_EQUAL, D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE);
+    sampler.Init(static_cast<UINT>(samplers.size() - 1),                                                //
+                 util::to_native(config.filter, config.compare_func != sampler_compare_func::disabled), //
+                 util::to_native(config.address_u),                                                     //
+                 util::to_native(config.address_v),                                                     //
+                 util::to_native(config.address_w),                                                     //
+                 config.lod_bias,                                                                       //
+                 config.max_anisotropy,                                                                 //
+                 util::to_native(config.compare_func),                                                  //
+                 util::to_native(config.border_color),                                                  //
+                 config.min_lod,                                                                        //
+                 config.max_lod,                                                                        //
+                 D3D12_SHADER_VISIBILITY_ALL,                                                           //
+                 0                                                                                      // space 0
+    );
 }
 
-void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_signature &root_sig, ID3D12Device &device, pr::backend::arg::shader_argument_shapes payload_shape)
+void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_signature& root_sig,
+                                                   ID3D12Device& device,
+                                                   pr::backend::arg::shader_argument_shapes payload_shape,
+                                                   arg::shader_sampler_configs samplers)
 {
     detail::root_signature_params parameters;
 
@@ -91,6 +107,10 @@ void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_sign
         root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
     }
 
-    parameters.add_implicit_sampler();
+    for (auto const& sampler : samplers)
+    {
+        parameters.add_sampler(sampler);
+    }
+
     root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
 }

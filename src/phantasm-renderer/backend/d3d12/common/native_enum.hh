@@ -241,4 +241,112 @@ namespace pr::backend::d3d12::util
     }
 }
 
+[[nodiscard]] inline constexpr D3D12_FILTER to_native(sampler_filter filter, bool with_compare)
+{
+    if (with_compare)
+    {
+        switch (filter)
+        {
+        case sampler_filter::min_mag_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+        case sampler_filter::min_point_mag_linear_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_linear_mag_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+        case sampler_filter::min_mag_linear_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_point_mag_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+        case sampler_filter::min_linear_mag_point_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_point_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+        case sampler_filter::anisotropic:
+            return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+        }
+    }
+    else
+    {
+        switch (filter)
+        {
+        case sampler_filter::min_mag_mip_point:
+            return D3D12_FILTER_MIN_MAG_MIP_POINT;
+        case sampler_filter::min_point_mag_linear_mip_point:
+            return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_linear_mag_mip_point:
+            return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+        case sampler_filter::min_mag_linear_mip_point:
+            return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_point_mag_mip_linear:
+            return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+        case sampler_filter::min_linear_mag_point_mip_linear:
+            return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_point_mip_linear:
+            return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_mip_linear:
+            return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        case sampler_filter::anisotropic:
+            return D3D12_FILTER_ANISOTROPIC;
+        }
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_TEXTURE_ADDRESS_MODE to_native(sampler_address_mode mode)
+{
+    switch (mode)
+    {
+    case sampler_address_mode::wrap:
+        return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    case sampler_address_mode::clamp:
+        return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    case sampler_address_mode::clamp_border:
+        return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    case sampler_address_mode::mirror:
+        return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(sampler_compare_func mode)
+{
+    switch (mode)
+    {
+    case sampler_compare_func::never:
+    case sampler_compare_func::disabled:
+        return D3D12_COMPARISON_FUNC_NEVER;
+    case sampler_compare_func::less:
+        return D3D12_COMPARISON_FUNC_LESS;
+    case sampler_compare_func::equal:
+        return D3D12_COMPARISON_FUNC_EQUAL;
+    case sampler_compare_func::less_equal:
+        return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    case sampler_compare_func::greater:
+        return D3D12_COMPARISON_FUNC_GREATER;
+    case sampler_compare_func::not_equal:
+        return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+    case sampler_compare_func::greater_equal:
+        return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+    case sampler_compare_func::always:
+        return D3D12_COMPARISON_FUNC_ALWAYS;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_STATIC_BORDER_COLOR to_native(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+        return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    }
+}
+
+
 }

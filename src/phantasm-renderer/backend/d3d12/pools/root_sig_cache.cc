@@ -6,17 +6,17 @@ void pr::backend::d3d12::RootSignatureCache::initialize(unsigned size_estimate) 
 
 void pr::backend::d3d12::RootSignatureCache::destroy() { reset(); }
 
-pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getOrCreate(ID3D12Device& device, pr::backend::d3d12::RootSignatureCache::key_t arg_shapes)
+pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getOrCreate(ID3D12Device& device, pr::backend::d3d12::RootSignatureCache::key_t key)
 {
-    if (auto const it = mCache.find(arg_shapes); it != mCache.end())
+    if (auto const it = mCache.find(key); it != mCache.end())
     {
         return &it->second;
     }
     else
     {
-        auto [new_it, success] = mCache.emplace(arg_shapes, root_signature{});
+        auto [new_it, success] = mCache.emplace(key, root_signature{});
         CC_ASSERT(success);
-        initialize_root_signature(new_it->second, device, arg_shapes);
+        initialize_root_signature(new_it->second, device, key.arg_shapes, key.arg_samplers);
         util::set_object_name(new_it->second.raw_root_sig, "RootSignatureCache root sig");
         return &new_it->second;
     }

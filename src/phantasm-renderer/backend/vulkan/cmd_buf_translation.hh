@@ -54,7 +54,7 @@ struct command_list_translator
 
     void execute(cmd::draw const& draw);
 
-    void execute(cmd::end_render_pass const& /*end_rp*/);
+    void execute(cmd::end_render_pass const& end_rp);
 
     void execute(cmd::transition_resources const& transition_res);
 

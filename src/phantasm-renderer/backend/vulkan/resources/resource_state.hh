@@ -95,10 +95,12 @@ struct barrier_bundle
         barriers_buf.push_back(get_buffer_memory_barrier(buffer, state_change, buffer_size));
     }
 
+    [[nodiscard]] bool empty() const { return barriers_img.empty() && barriers_buf.empty() && barriers_mem.empty(); }
+
     /// Record contained barriers to the given cmd buffer
     void record(VkCommandBuffer cmd_buf)
     {
-        if (!barriers_img.empty() || !barriers_buf.empty() || !barriers_mem.empty())
+        if (!empty())
             submit_barriers(cmd_buf, dependencies, barriers_img, barriers_buf, barriers_mem);
     }
 

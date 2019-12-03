@@ -4,18 +4,21 @@
 #include <iostream>
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
+#include "cmd_buf_translation.hh"
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
+#include "common/vk_format.hh"
 #include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
+#include "resources/resource_state.hh"
 
 namespace pr::backend::vk
 {
 struct BackendVulkan::per_thread_component
 {
-    //    command_list_translator translator;
+    command_list_translator translator;
     CommandAllocatorBundle cmd_list_allocator;
 };
 }
@@ -96,7 +99,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
         for (auto& thread_comp : mThreadComponents)
         {
-            //            thread_comp.translator.initialize(&device, &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
+            thread_comp.translator.initialize(mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPipelines, &mPoolCmdLists);
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
@@ -123,11 +126,27 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
     mAllocator.destroy();
     mDevice.destroy();
 
-    if (mDebugMessenger != VK_NULL_HANDLE)
+    if (mDebugMessenger != nullptr)
         vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
 
     vkDestroyInstance(mInstance, nullptr);
 }
+
+pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer()
+{
+    auto const acquire_success = mSwapchain.waitForBackbuffer();
+
+    if (!acquire_success)
+    {
+        return handle::null_resource;
+    }
+    else
+    {
+        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), resource_state::present);
+    }
+}
+
+pr::backend::format pr::backend::vk::BackendVulkan::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
 
 pr::backend::handle::command_list pr::backend::vk::BackendVulkan::recordCommandList(std::byte* buffer, size_t size)
 {
@@ -135,7 +154,7 @@ pr::backend::handle::command_list pr::backend::vk::BackendVulkan::recordCommandL
 
     VkCommandBuffer raw_list;
     auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator);
-    //    thread_comp.translator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
+    thread_comp.translator.translateCommandList(raw_list, res, mPoolCmdLists.getStateCache(res), buffer, size);
     return res;
 }
 
@@ -144,7 +163,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
     constexpr auto c_batch_size = 16;
 
     cc::capped_vector<VkCommandBuffer, c_batch_size * 2> submit_batch;
-    //    cc::capped_vector<handle::command_list, c_batch_size> barrier_lists;
+    cc::capped_vector<handle::command_list, c_batch_size> barrier_lists;
     unsigned last_cl_index = 0;
     unsigned num_cls_in_batch = 0;
 
@@ -165,11 +184,11 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mDevice.getQueueGraphics(), 1, &submit_info, submit_fence));
 
-        //        mPoolCmdLists.freeOnSubmit(barrier_lists, submit_fence_index);
+        mPoolCmdLists.freeOnSubmit(barrier_lists, submit_fence_index);
         mPoolCmdLists.freeOnSubmit(cls.subspan(last_cl_index, num_cls_in_batch), submit_fence_index);
 
         submit_batch.clear();
-        //        barrier_lists.clear();
+        barrier_lists.clear();
         last_cl_index += num_cls_in_batch;
         num_cls_in_batch = 0;
     };
@@ -179,33 +198,44 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
         if (cl == handle::null_command_list)
             continue;
 
-        //        auto const* const state_cache = mPoolCmdLists.getStateCache(cl);
-        //        cc::capped_vector<D3D12_RESOURCE_BARRIER, 32> barriers;
+        auto const* const state_cache = mPoolCmdLists.getStateCache(cl);
+        barrier_bundle<32, 32, 32> barriers;
 
-        //        for (auto const& entry : state_cache->cache)
-        //        {
-        //            auto const master_before = mPoolResources.getResourceState(entry.ptr);
+        for (auto const& entry : state_cache->cache)
+        {
+            auto const master_before = mPoolResources.getResourceState(entry.ptr);
 
-        //            if (master_before != entry.required_initial)
-        //            {
-        //                // transition to the state required as the initial one
-        //                auto& barrier = barriers.emplace_back();
-        //                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), util::to_native(master_before),
-        //                                            util::to_native(entry.required_initial));
-        //            }
+            if (master_before != entry.required_initial)
+            {
+                auto const master_dep_before = mPoolResources.getResourceStageDependency(entry.ptr);
 
-        //            // set the master state to the one in which this resource is left
-        //            mPoolResources.setResourceState(entry.ptr, entry.current);
-        //        }
+                // transition to the state required as the initial one
+                state_change const change = state_change(master_before, entry.required_initial, master_dep_before, entry.initial_shader_dependency);
 
-        //        if (!barriers.empty())
-        //        {
-        //            ID3D12GraphicsCommandList* t_cmd_list;
-        //            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
-        //            t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
-        //            t_cmd_list->Close();
-        //            submit_batch.push_back(t_cmd_list);
-        //        }
+                if (mPoolResources.isImage(entry.ptr))
+                {
+                    auto const& img_info = mPoolResources.getImageInfo(entry.ptr);
+                    barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format), img_info.num_mips,
+                                               img_info.num_array_layers);
+                }
+                else
+                {
+                    auto const& buf_info = mPoolResources.getBufferInfo(entry.ptr);
+                    barriers.add_buffer_barrier(buf_info.raw_buffer, change, buf_info.width);
+                }
+            }
+
+            // set the master state to the one in which this resource is left
+            mPoolResources.setResourceState(entry.ptr, entry.current, entry.current_shader_dependency);
+        }
+
+        if (!barriers.empty())
+        {
+            VkCommandBuffer t_cmd_list;
+            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
+            barriers.record(t_cmd_list);
+            submit_batch.push_back(t_cmd_list);
+        }
 
         submit_batch.push_back(mPoolCmdLists.getRawBuffer(cl));
         ++num_cls_in_batch;

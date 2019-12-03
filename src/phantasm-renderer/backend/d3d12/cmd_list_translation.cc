@@ -229,18 +229,19 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
     D3D12_SUBRESOURCE_FOOTPRINT footprint;
     footprint.Format = format_dxgi;
-    footprint.Width = copy_text.mip_width;
-    footprint.Height = copy_text.mip_height;
+    footprint.Width = copy_text.dest_width;
+    footprint.Height = copy_text.dest_height;
     footprint.Depth = 1;
-    footprint.RowPitch = copy_text.row_pitch;
-    //    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.mip_width, 256);
+    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.dest_width, 256);
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint;
     placed_footprint.Offset = copy_text.source_offset;
     placed_footprint.Footprint = footprint;
 
+    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * copy_text.dest_mip_size;
+
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
-    CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), copy_text.subresource_index);
+    CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), subres_index);
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
 }
 

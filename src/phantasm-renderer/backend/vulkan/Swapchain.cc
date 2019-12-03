@@ -179,7 +179,7 @@ void pr::backend::vk::Swapchain::present()
 
 bool pr::backend::vk::Swapchain::waitForBackbuffer()
 {
-    auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
+    auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, nullptr, &mActiveImageIndex);
 
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
     {

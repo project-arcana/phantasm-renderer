@@ -4,6 +4,7 @@
 
 #include <clean-core/bit_cast.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/memory/VMA.hh>
@@ -170,6 +171,16 @@ void pr::backend::vk::ResourcePool::destroy()
     mAllocatorDescriptors.destroy();
 }
 
+pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image, pr::backend::resource_state state)
+{
+    resource_node& backbuffer_node = mPool.get(static_cast<unsigned>(mInjectedBackbufferResource.index));
+    backbuffer_node.type = resource_node::resource_type::image;
+    backbuffer_node.image.raw_image = raw_image;
+    backbuffer_node.master_state = state;
+    backbuffer_node.master_state_dependency = util::to_pipeline_stage_dependency(state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+    return mInjectedBackbufferResource;
+}
+
 pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     VmaAllocation alloc, VkBuffer buffer, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
@@ -192,6 +203,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     new_node.buffer.map = buffer_map;
 
     new_node.master_state = initial_state;
+    new_node.master_state_dependency = util::to_pipeline_stage_dependency(initial_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
     return {static_cast<handle::index_t>(res)};
 }
@@ -213,6 +225,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(
     new_node.image.num_array_layers = num_array_layers;
 
     new_node.master_state = initial_state;
+    new_node.master_state_dependency = util::to_pipeline_stage_dependency(initial_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
 
     return {static_cast<handle::index_t>(res)};
 }

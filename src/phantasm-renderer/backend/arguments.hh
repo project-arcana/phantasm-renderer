@@ -52,6 +52,9 @@ struct shader_argument_shape
 /// A shader payload consists of [1, 4] shader arguments
 using shader_argument_shapes = cc::span<shader_argument_shape const>;
 
+/// A shader payload has up to 999 (immutable) samplers in space0
+using shader_sampler_configs = cc::span<sampler_config const>;
+
 /// A shader stage
 struct shader_stage
 {
@@ -65,9 +68,26 @@ struct shader_stage
 /// A shader bundle consists of up to 1 stage per domain
 using shader_stages = cc::span<shader_stage const>;
 
+struct shader_sampler
+{
 
+};
 
 inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes const& rhs) noexcept
+{
+    if (lhs.size() != rhs.size())
+        return false;
+
+    for (auto i = 0u; i < lhs.size(); ++i)
+    {
+        if (!(lhs[i] == rhs[i]))
+            return false;
+    }
+
+    return true;
+}
+
+inline bool operator==(shader_sampler_configs const& lhs, shader_sampler_configs const& rhs) noexcept
 {
     if (lhs.size() != rhs.size())
         return false;

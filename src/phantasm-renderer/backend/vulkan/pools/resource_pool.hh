@@ -38,6 +38,13 @@ public:
 public:
     struct resource_node
     {
+    public:
+        enum class resource_type : uint8_t
+        {
+            buffer,
+            image
+        };
+
         struct buffer_info
         {
             VkBuffer raw_buffer;
@@ -57,6 +64,7 @@ public:
             unsigned num_array_layers;
         };
 
+    public:
         VmaAllocation allocation;
 
         union {
@@ -64,13 +72,8 @@ public:
             image_info image;
         };
 
+        VkPipelineStageFlags master_state_dependency;
         resource_state master_state;
-
-        enum class resource_type : uint8_t
-        {
-            buffer,
-            image
-        };
         resource_type type;
     };
 
@@ -94,18 +97,25 @@ public:
     [[nodiscard]] bool isImage(handle::resource res) const { return internalGet(res).type == resource_node::resource_type::image; }
     [[nodiscard]] resource_node::image_info const& getImageInfo(handle::resource res) const { return internalGet(res).image; }
     [[nodiscard]] resource_node::buffer_info const& getBufferInfo(handle::resource res) const { return internalGet(res).buffer; }
+
     //
     // Master state access
     //
 
     [[nodiscard]] resource_state getResourceState(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).master_state; }
+    [[nodiscard]] VkPipelineStageFlags getResourceStageDependency(handle::resource res) const
+    {
+        return mPool.get(static_cast<unsigned>(res.index)).master_state_dependency;
+    }
 
-    void setResourceState(handle::resource res, resource_state new_state)
+    void setResourceState(handle::resource res, resource_state new_state, VkPipelineStageFlags new_state_dep)
     {
         // This is a write access to the pool, however we require
         // no sync since it would not interfere with unrelated allocs and frees
         // and this call assumes exclusive access to the given resource
-        internalGet(res).master_state = new_state;
+        auto& node = internalGet(res);
+        node.master_state = new_state;
+        node.master_state_dependency = new_state_dep;
     }
 
     //

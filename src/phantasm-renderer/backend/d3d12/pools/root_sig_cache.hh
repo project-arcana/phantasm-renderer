@@ -15,7 +15,11 @@ namespace pr::backend::d3d12
 class RootSignatureCache
 {
 public:
-    using key_t = arg::shader_argument_shapes;
+    struct key_t
+    {
+        arg::shader_argument_shapes arg_shapes;
+        arg::shader_sampler_configs arg_samplers;
+    };
 
     void initialize(unsigned size_estimate = 50);
     void destroy();
@@ -28,7 +32,23 @@ public:
     void reset();
 
 private:
-    std::unordered_map<key_t, root_signature, hash::compute_functor> mCache;
+    struct key_hasher_functor
+    {
+        std::size_t operator()(key_t const& v) const noexcept
+        {
+            return hash::detail::hash_combine(hash::compute(v.arg_shapes), hash::compute(v.arg_samplers));
+        }
+    };
+
+    struct key_equal_op
+    {
+        bool operator()(key_t const& lhs, key_t const& rhs) const noexcept
+        {
+            return arg::operator==(lhs.arg_shapes, rhs.arg_shapes) && arg::operator==(lhs.arg_samplers, rhs.arg_samplers);
+        }
+    };
+
+    std::unordered_map<key_t, root_signature, key_hasher_functor, key_equal_op> mCache;
 };
 
 }
