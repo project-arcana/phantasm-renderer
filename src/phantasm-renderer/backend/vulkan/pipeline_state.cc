@@ -2,6 +2,8 @@
 
 #include <clean-core/array.hh>
 
+#include <phantasm-renderer/backend/limits.hh>
+
 #include "common/verify.hh"
 #include "common/vk_format.hh"
 #include "resources/resource_state.hh"
@@ -13,8 +15,8 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
 
     VkRenderPass render_pass;
     {
-        cc::capped_vector<VkAttachmentDescription, 7> attachments;
-        cc::capped_vector<VkAttachmentReference, 6> color_attachment_refs;
+        cc::capped_vector<VkAttachmentDescription, limits::max_render_targets + 1> attachments;
+        cc::capped_vector<VkAttachmentReference, limits::max_render_targets> color_attachment_refs;
         VkAttachmentReference depth_attachment_ref = {};
         bool depth_present = false;
 
@@ -67,7 +69,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
         dependency.dstSubpass = 0;
         dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = util::to_access_flags(resource_state::undefined);
+        dependency.srcAccessMask = util::to_access_flags(resource_state::render_target);
         dependency.dstAccessMask = util::to_access_flags(resource_state::render_target);
 
         VkRenderPassCreateInfo renderPassInfo = {};

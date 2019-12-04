@@ -245,6 +245,11 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::e
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::transition_resources& transition_res)
 {
+    // NOTE: Barriers adhere to some special rules in the vulkan backend:
+    // 1. They must not occur within an active render pass
+    // 2. Render passes always expect all render targets to be transitioned to resource_state::render_target
+    //    and depth targets to be transitioned to resource_state::depth_write
+
     barrier_bundle<limits::max_resource_transitions, limits::max_resource_transitions, limits::max_resource_transitions> barriers;
 
     for (auto const& transition : transition_res.transitions)
