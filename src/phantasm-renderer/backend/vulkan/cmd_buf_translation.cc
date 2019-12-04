@@ -102,6 +102,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
                 {
                     fb_image_views.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
+                    fb_image_views_to_clean_up.push_back(fb_image_views.back());
                 }
 
                 VkFramebufferCreateInfo fb_info = {};

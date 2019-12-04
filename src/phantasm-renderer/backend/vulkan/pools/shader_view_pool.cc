@@ -204,6 +204,7 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
         vkDestroyImageView(mDevice, iv, nullptr);
     }
     freed_node.image_views.clear();
+    freed_node.resources.clear();
 
     {
         // This is a write access to the pool and allocator, and must be synced
@@ -228,7 +229,15 @@ void pr::backend::vk::ShaderViewPool::destroy()
     auto num_leaks = 0;
     mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node) {
         ++num_leaks;
+
         mAllocator.free(leaked_node.raw_desc_set);
+
+        // Destroy the contained image views
+        for (auto const iv : leaked_node.image_views)
+        {
+            vkDestroyImageView(mDevice, iv, nullptr);
+        }
+        leaked_node.image_views.clear();
     });
 
     if (num_leaks > 0)

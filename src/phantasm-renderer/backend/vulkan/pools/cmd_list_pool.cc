@@ -165,7 +165,6 @@ void pr::backend::vk::cmd_allocator_node::do_reset(VkDevice device)
     {
         vkDestroyImageView(device, iv, nullptr);
     }
-
     _associated_framebuffer_image_views.clear();
 
     _num_in_flight = 0;
