@@ -236,7 +236,11 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::end_render_pass&)
 {
-    // do nothing
+    if (_bound.raw_render_pass != nullptr)
+    {
+        vkCmdEndRenderPass(_cmd_list);
+        _bound.raw_render_pass = nullptr;
+    }
 }
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::transition_resources& transition_res)
@@ -266,8 +270,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
             if (_globals.pool_resources->isImage(transition.resource))
             {
                 auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
-                barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format), img_info.num_mips,
-                                           img_info.num_array_layers);
+                barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format));
             }
             else
             {

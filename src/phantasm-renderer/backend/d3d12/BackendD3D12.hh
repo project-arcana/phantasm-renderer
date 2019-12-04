@@ -115,6 +115,12 @@ public:
 
     void submit(cc::span<handle::command_list const> cls) override;
 
+    //
+    // Debug interface
+    //
+
+    void printInformation(handle::resource res) const override {};
+
 public:
     // backend-internal
 

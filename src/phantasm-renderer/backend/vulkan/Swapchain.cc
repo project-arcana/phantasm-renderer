@@ -248,7 +248,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
         swapchain_info.presentMode = choose_present_mode(present_format_info.present_modes, mSyncMode);
 
         swapchain_info.clipped = true;
-        swapchain_info.oldSwapchain = VK_NULL_HANDLE;
+        swapchain_info.oldSwapchain = nullptr;
 
         PR_VK_VERIFY_SUCCESS(vkCreateSwapchainKHR(mDevice, &swapchain_info, nullptr, &mSwapchain));
     }
@@ -270,6 +270,8 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
 
         // Image
         backbuffer.image = backbuffer_images[i];
+
+        backbuffer.state = resource_state::undefined;
 
         // RTV
         {

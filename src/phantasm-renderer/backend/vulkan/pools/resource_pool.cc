@@ -63,7 +63,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
-    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_info.initialLayout = util::to_image_layout(resource_state::undefined);
     image_info.queueFamilyIndexCount = 0;
     image_info.pQueueFamilyIndices = nullptr;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

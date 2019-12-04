@@ -83,10 +83,10 @@ struct barrier_bundle
     cc::capped_vector<VkBufferMemoryBarrier, Nbuf> barriers_buf;
     cc::capped_vector<VkMemoryBarrier, Nmem> barriers_mem;
 
-    void add_image_barrier(VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned num_mips = 1, unsigned num_layers = 1)
+    void add_image_barrier(VkImage image, state_change const& state_change, VkImageAspectFlags aspect)
     {
         dependencies.add_change(state_change);
-        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, num_mips, num_layers));
+        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, VK_REMAINING_MIP_LEVELS, VK_REMAINING_ARRAY_LAYERS));
     }
 
     void add_buffer_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size)

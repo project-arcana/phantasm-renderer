@@ -1,7 +1,9 @@
 #include "BackendVulkan.hh"
 
-#include <clean-core/array.hh>
 #include <iostream>
+
+#include <clean-core/array.hh>
+
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "cmd_buf_translation.hh"
@@ -142,7 +144,8 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
     }
     else
     {
-        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), resource_state::present, mSwapchain.getCurrentBackbufferView());
+        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
+                                                       mSwapchain.getCurrentBackbufferView());
     }
 }
 
@@ -215,8 +218,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
                 if (mPoolResources.isImage(entry.ptr))
                 {
                     auto const& img_info = mPoolResources.getImageInfo(entry.ptr);
-                    barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format), img_info.num_mips,
-                                               img_info.num_array_layers);
+                    barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format));
                 }
                 else
                 {
@@ -247,6 +249,29 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
     if (num_cls_in_batch > 0)
         submit_flush();
+}
+
+void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resource res) const
+{
+    std::cout << "[pr][vk] Inspecting resource " << res.index << std::endl;
+    if (!res.is_valid())
+        std::cout << "  invalid (== handle::null_resource)" << std::endl;
+    else
+    {
+        if (mPoolResources.isImage(res))
+        {
+            auto const& info = mPoolResources.getImageInfo(res);
+            std::cout << "[pr][vk]  image, raw pointer: " << info.raw_image << std::endl;
+            std::cout << "[pr][vk]  " << info.num_mips << " mips, " << info.num_array_layers << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
+        }
+        else
+        {
+            auto const& info = mPoolResources.getBufferInfo(res);
+            std::cout << "[pr][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
+            std::cout << "[pr][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
+            std::cout << "[pr][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
+        }
+    }
 }
 
 void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDevice()); }

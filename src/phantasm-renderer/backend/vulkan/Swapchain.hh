@@ -49,6 +49,7 @@ public:
 
     [[nodiscard]] unsigned getCurrentBackbufferIndex() const { return mActiveImageIndex; }
     [[nodiscard]] VkImage getCurrentBackbuffer() const { return mBackbuffers[mActiveImageIndex].image; }
+    [[nodiscard]] resource_state getCurrentBackbufferState() const { return mBackbuffers[mActiveImageIndex].state; }
     [[nodiscard]] VkImageView getCurrentBackbufferView() const { return mBackbuffers[mActiveImageIndex].view; }
     [[nodiscard]] VkFramebuffer getCurrentFramebuffer() const { return mBackbuffers[mActiveImageIndex].framebuffer; }
 
@@ -91,6 +92,8 @@ private:
         VkImage image;
         VkImageView view;
         VkFramebuffer framebuffer;
+
+        resource_state state;
     };
 
     cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers;

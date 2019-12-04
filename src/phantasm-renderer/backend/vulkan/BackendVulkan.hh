@@ -24,7 +24,7 @@ namespace pr::backend::vk
 class BackendVulkan final : public Backend
 {
 public:
-    void initialize(backend_config const& config, device::Window& window);
+    void initialize(backend_config const& config, device::Window& window) override;
     ~BackendVulkan() override;
 
 public:
@@ -118,12 +118,17 @@ public:
 
     void submit(cc::span<handle::command_list const> cls) override;
 
+    //
+    // Debug interface
+    //
+
+    void printInformation(handle::resource res) const override;
 
 public:
     // backend-internal
 
     /// flush all pending work on the GPU
-    void flushGPU();
+    void flushGPU() override;
 
 private:
     void createDebugMessenger();

@@ -1,7 +1,5 @@
 #include "resource_view.hh"
 
-#include <iostream>
-
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 #include <clean-core/capped_vector.hh>
@@ -255,9 +253,6 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 
     VkDescriptorSetLayout layout;
     PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(mDevice, &layout_info, nullptr, &layout));
-
-    // nocheckin
-    std::cout << "Created descriptor set layout " << layout << ", has " << bindings.size() << " bindings" << std::endl;
 
     return layout;
 }

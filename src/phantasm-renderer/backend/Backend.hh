@@ -90,6 +90,12 @@ public:
 
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
+    //
+    // Debug interface
+    //
+
+    virtual void printInformation(handle::resource res) const = 0;
+
 protected:
     Backend() = default;
 
