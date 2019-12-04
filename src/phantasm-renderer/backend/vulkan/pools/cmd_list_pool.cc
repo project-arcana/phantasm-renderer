@@ -30,6 +30,8 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
 
     _associated_framebuffers.reserve(num_cmd_lists * 3); // arbitrary
     _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1));
+
+    _latest_fence.store(unsigned(-1));
 }
 
 void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device)
@@ -61,6 +63,7 @@ VkCommandBuffer pr::backend::vk::cmd_allocator_node::acquire(VkDevice device)
 
 void pr::backend::vk::cmd_allocator_node::on_submit(unsigned num, unsigned fence_index)
 {
+
     // first, update the latest fence
     auto const previous_fence = _latest_fence.exchange(fence_index);
     if (previous_fence != unsigned(-1) && previous_fence != fence_index)
@@ -331,7 +334,41 @@ void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const pr::backend::
     if (!unique_allocators._nodes.empty())
     {
         // the given fence_index has a reference count of 1, increment it to the amount of unique allocators responsible
-        mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
+        if (unique_allocators._nodes.size() > 1)
+            mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
+
+        // notify all unique allocators
+        for (auto const& unique_alloc : unique_allocators._nodes)
+        {
+            unique_alloc.key->on_submit(unique_alloc.val, fence_index);
+        }
+    }
+}
+
+void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const cc::span<const pr::backend::handle::command_list>> cls_nested, unsigned fence_index)
+{
+    backend::detail::capped_flat_map<cmd_allocator_node*, unsigned, 24> unique_allocators;
+
+    // free the cls in the pool and gather the unique allocators
+    {
+        auto lg = std::lock_guard(mMutex);
+        for (auto const& cls : cls_nested)
+            for (auto const& cl : cls)
+            {
+                if (cl == handle::null_command_list)
+                    continue;
+
+                cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
+                unique_allocators.get_value(freed_node.responsible_allocator, 0u) += 1;
+                mPool.release(static_cast<unsigned>(cl.index));
+            }
+    }
+
+    if (!unique_allocators._nodes.empty())
+    {
+        // the given fence_index has a reference count of 1, increment it to the amount of unique allocators responsible
+        if (unique_allocators._nodes.size() > 1)
+            mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
 
         // notify all unique allocators
         for (auto const& unique_alloc : unique_allocators._nodes)

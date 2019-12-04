@@ -187,8 +187,8 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mDevice.getQueueGraphics(), 1, &submit_info, submit_fence));
 
-        mPoolCmdLists.freeOnSubmit(barrier_lists, submit_fence_index);
-        mPoolCmdLists.freeOnSubmit(cls.subspan(last_cl_index, num_cls_in_batch), submit_fence_index);
+        cc::array<cc::span<handle::command_list const>, 2> submit_spans = {barrier_lists, cls.subspan(last_cl_index, num_cls_in_batch)};
+        mPoolCmdLists.freeOnSubmit(submit_spans, submit_fence_index);
 
         submit_batch.clear();
         barrier_lists.clear();

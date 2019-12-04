@@ -194,6 +194,10 @@ public:
     /// the fence index is now consumed and must not be reused
     void freeOnSubmit(cc::span<handle::command_list const> cls, unsigned fence_index);
 
+    /// to be called when the given command lists have been submitted, alongside the fence index that was used
+    /// the fence index is now consumed and must not be reused
+    void freeOnSubmit(cc::span<cc::span<handle::command_list const> const> cls_nested, unsigned fence_index);
+
     void freeOnDiscard(handle::command_list cl);
 
 public:
