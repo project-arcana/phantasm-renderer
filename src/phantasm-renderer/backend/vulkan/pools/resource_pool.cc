@@ -63,12 +63,15 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
     image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
+
+    // only undefined or preinitialized are legal options
     image_info.initialLayout = util::to_image_layout(resource_state::undefined);
+
     image_info.queueFamilyIndexCount = 0;
     image_info.pQueueFamilyIndices = nullptr;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
+    image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     if (backend::is_depth_format(format))
         image_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     else
@@ -225,8 +228,9 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
         write.dstBinding = spv::cbv_binding_start;
 
         vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), 1, &write, 0, nullptr);
-        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
     }
+
+    vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
 
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
