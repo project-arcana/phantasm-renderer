@@ -108,7 +108,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
 
                 auto& img_info = image_infos.emplace_back();
                 img_info.imageView = makeImageView(uav);
-                img_info.imageLayout = util::to_image_layout(mResourcePool->getResourceState(uav.resource));
+                img_info.imageLayout = util::to_image_layout(resource_state::unordered_access);
                 img_info.sampler = nullptr;
 
                 ++current_image_range;
@@ -165,7 +165,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
 
                 auto& img_info = image_infos.emplace_back();
                 img_info.imageView = makeImageView(srv);
-                img_info.imageLayout = util::to_image_layout(mResourcePool->getResourceState(srv.resource));
+                img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
                 img_info.sampler = nullptr;
 
                 ++current_image_range;

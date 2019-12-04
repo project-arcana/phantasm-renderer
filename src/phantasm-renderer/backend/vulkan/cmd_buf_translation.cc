@@ -80,31 +80,31 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
             // create a new framebuffer
             {
-                cc::capped_vector<VkImageView, limits::max_render_targets + 1> attachments;
+                cc::capped_vector<VkImageView, limits::max_render_targets + 1> fb_image_views;
 
                 for (auto const& rt : _bound.current_render_pass.render_targets)
                 {
                     if (_globals.pool_resources->isBackbuffer(rt.sve.resource))
                     {
-                        attachments.push_back(_globals.pool_resources->getBackbufferView());
+                        fb_image_views.push_back(_globals.pool_resources->getBackbufferView());
                     }
                     else
                     {
-                        attachments.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
+                        fb_image_views.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
                     }
                 }
 
                 if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
                 {
-                    attachments.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
+                    fb_image_views.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
                 }
 
                 VkFramebufferCreateInfo fb_info = {};
                 fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
                 fb_info.pNext = nullptr;
                 fb_info.renderPass = pso_node.associated_render_pass;
-                fb_info.attachmentCount = static_cast<unsigned>(attachments.size());
-                fb_info.pAttachments = attachments.data();
+                fb_info.attachmentCount = static_cast<unsigned>(fb_image_views.size());
+                fb_info.pAttachments = fb_image_views.data();
                 fb_info.width = static_cast<unsigned>(_bound.current_render_pass.viewport.x);
                 fb_info.height = static_cast<unsigned>(_bound.current_render_pass.viewport.y);
                 fb_info.layers = 1;
@@ -113,7 +113,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 PR_VK_VERIFY_SUCCESS(vkCreateFramebuffer(_globals.device, &fb_info, nullptr, &_bound.raw_framebuffer));
 
                 // Associate the framebuffer and all created image views with the current command list so they will get cleaned up
-                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer, attachments);
+                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer, fb_image_views);
             }
 
             // begin a new render pass
