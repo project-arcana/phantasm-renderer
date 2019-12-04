@@ -80,7 +80,11 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
             // create a new framebuffer
             {
+                // the image views used in this framebuffer
                 cc::capped_vector<VkImageView, limits::max_render_targets + 1> fb_image_views;
+                // the image views used in this framebuffer, EXCLUDING possible backbuffer views
+                // these are the ones which will get deleted alongside this framebuffer
+                cc::capped_vector<VkImageView, limits::max_render_targets + 1> fb_image_views_to_clean_up;
 
                 for (auto const& rt : _bound.current_render_pass.render_targets)
                 {
@@ -91,6 +95,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     else
                     {
                         fb_image_views.push_back(_globals.pool_shader_views->makeImageView(rt.sve));
+                        fb_image_views_to_clean_up.push_back(fb_image_views.back());
                     }
                 }
 
@@ -113,7 +118,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 PR_VK_VERIFY_SUCCESS(vkCreateFramebuffer(_globals.device, &fb_info, nullptr, &_bound.raw_framebuffer));
 
                 // Associate the framebuffer and all created image views with the current command list so they will get cleaned up
-                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer, fb_image_views);
+                _globals.pool_cmd_lists->addAssociatedFramebuffer(_cmd_list_handle, _bound.raw_framebuffer, fb_image_views_to_clean_up);
             }
 
             // begin a new render pass
