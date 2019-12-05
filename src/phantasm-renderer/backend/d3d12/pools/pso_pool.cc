@@ -57,7 +57,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 {
     mDevice = device;
     mPool.initialize(max_num_psos);
-    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, but this is not a hard max, just reserving
+    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, revisit if this blows up
 }
 
 void pr::backend::d3d12::PipelineStateObjectPool::destroy()
