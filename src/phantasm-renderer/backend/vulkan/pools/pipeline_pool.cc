@@ -84,9 +84,11 @@ void pr::backend::vk::PipelinePool::initialize(VkDevice device, unsigned max_num
     mDevice = device;
     mPool.initialize(max_num_psos);
 
-    // almost arbitrary, but this is not a hard max, just reserving
+    // almost arbitrary, revisit upon crashes
     mLayoutCache.initialize(max_num_psos / 2);
     mRenderPassCache.initialize(max_num_psos / 2);
+
+    // precise
     mDescriptorAllocator.initialize(mDevice, 0, 0, 0, max_num_psos);
 }
 

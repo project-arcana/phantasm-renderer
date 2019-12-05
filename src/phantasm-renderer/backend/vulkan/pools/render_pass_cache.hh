@@ -1,10 +1,9 @@
 #pragma once
 
-#include <unordered_map>
-
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/detail/cache_map.hh>
 #include <phantasm-renderer/backend/detail/hash.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
@@ -17,7 +16,7 @@ namespace pr::backend::vk
 class RenderPassCache
 {
 public:
-    void initialize(unsigned size_estimate = 50);
+    void initialize(unsigned max_elements);
     void destroy(VkDevice device);
 
     /// receive an existing render pass matching the framebuffer formats and config, or create a new one
@@ -27,29 +26,12 @@ public:
     void reset(VkDevice device);
 
 private:
-    struct key_t
+    static size_t hashKey(arg::framebuffer_format rt_formats, pr::primitive_pipeline_config const& prim_conf)
     {
-        arg::framebuffer_format rt_formats;
-        pr::primitive_pipeline_config prim_conf;
+        return hash::detail::hash_combine(hash::compute(rt_formats), hash::compute(prim_conf));
+    }
 
-        constexpr bool operator==(key_t const& rhs) const noexcept
-        {
-            return rt_formats == rhs.rt_formats
-                   && (prim_conf.cull == rhs.prim_conf.cull && prim_conf.depth == rhs.prim_conf.depth & prim_conf.samples == rhs.prim_conf.samples
-                       && prim_conf.topology == rhs.prim_conf.topology && prim_conf.depth == rhs.prim_conf.depth
-                       && prim_conf.depth_readonly == rhs.prim_conf.depth_readonly);
-        }
-    };
-
-    struct key_hasher_functor
-    {
-        std::size_t operator()(key_t const& v) const noexcept
-        {
-            return hash::detail::hash_combine(hash::compute(v.rt_formats), hash::compute(v.prim_conf));
-        }
-    };
-
-    std::unordered_map<key_t, VkRenderPass, key_hasher_functor> mCache;
+    backend::detail::cache_map<VkRenderPass> mCache;
 };
 
 }
