@@ -68,14 +68,6 @@ enum class adapter_preference : uint8_t
     explicit_index
 };
 
-enum class adapter_vendor : uint8_t
-{
-    amd,
-    intel,
-    nvidia,
-    unknown
-};
-
 enum class validation_level : uint8_t
 {
     off,
@@ -373,4 +365,13 @@ inline bool operator==(sampler_config const& lhs, sampler_config const& rhs) noe
            lhs.compare_func == rhs.compare_func &&     //
            lhs.border_color == rhs.border_color;       //
 }
+
+
+enum class rt_clear_type : uint8_t
+{
+    clear,
+    dont_care,
+    load
+};
+
 }

@@ -63,13 +63,6 @@ using cmd_vector = backend::detail::trivial_capped_vector<T, N>;
 
 PR_DEFINE_CMD(begin_render_pass)
 {
-    enum class rt_clear_type : uint8_t
-    {
-        clear,
-        dont_care,
-        load
-    };
-
     struct render_target_info
     {
         shader_view_element sve;

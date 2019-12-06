@@ -1,5 +1,7 @@
 #include "Adapter.hh"
 
+#include <iostream>
+
 #include <clean-core/assert.hh>
 
 #include "adapter_choice_util.hh"
@@ -20,7 +22,7 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
         auto const candidates = get_adapter_candidates();
         auto const chosen_adapter_index = config.adapter_preference == adapter_preference::explicit_index
                                               ? config.explicit_adapter_index
-                                              : get_preferred_adapter_index(candidates, config.adapter_preference);
+                                              : candidates[get_preferred_gpu(candidates, config.adapter_preference)].index;
 
         CC_RUNTIME_ASSERT(chosen_adapter_index != uint32_t(-1));
 

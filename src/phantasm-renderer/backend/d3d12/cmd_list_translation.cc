@@ -73,7 +73,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
             _globals.device->CreateRenderTargetView(resource, &rtv_desc, rtv);
         }
 
-        if (rt.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
+        if (rt.clear_type == rt_clear_type::clear)
         {
             _cmd_list->ClearRenderTargetView(rtv, rt.clear_value, 0, nullptr);
         }
@@ -89,7 +89,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         auto const dsv_desc = util::create_dsv_desc(begin_rp.depth_target.sve);
         _globals.device->CreateDepthStencilView(resource, &dsv_desc, dynamic_dsv.get_start());
 
-        if (begin_rp.depth_target.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
+        if (begin_rp.depth_target.clear_type == rt_clear_type::clear)
         {
             _cmd_list->ClearDepthStencilView(dynamic_dsv.get_start(), D3D12_CLEAR_FLAG_DEPTH, begin_rp.depth_target.clear_value_depth,
                                              begin_rp.depth_target.clear_value_stencil, 0, nullptr);
