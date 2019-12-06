@@ -8,7 +8,7 @@
 
 namespace pr::backend::vk
 {
-struct gpu_information;
+struct vulkan_gpu_info;
 
 class Device
 { // reference type
@@ -20,7 +20,7 @@ public:
 
     Device() = default;
 
-    void initialize(gpu_information const& device, VkSurfaceKHR surface, backend_config const& config);
+    void initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config);
     void destroy();
 
     VkQueue getQueueGraphics() const { return mQueueGraphics; }

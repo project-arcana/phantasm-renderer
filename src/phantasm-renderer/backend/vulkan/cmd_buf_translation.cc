@@ -66,7 +66,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
             _bound.set_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
         }
 
-        if (pso_node.associated_render_pass != _bound.raw_render_pass)
+        auto const render_pass = _globals.pool_pipeline_states->getOrCreateRenderPass(pso_node, _bound.current_render_pass);
+        if (render_pass != _bound.raw_render_pass)
         {
             if (_bound.raw_render_pass != nullptr)
             {
@@ -76,7 +77,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
             // a render pass always changes
             //      - The framebuffer
             //      - The vkCmdBeginRenderPass/vkCmdEndRenderPass state
-            _bound.raw_render_pass = pso_node.associated_render_pass;
+            _bound.raw_render_pass = render_pass;
 
             // create a new framebuffer
             {
@@ -108,7 +109,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 VkFramebufferCreateInfo fb_info = {};
                 fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
                 fb_info.pNext = nullptr;
-                fb_info.renderPass = pso_node.associated_render_pass;
+                fb_info.renderPass = render_pass;
                 fb_info.attachmentCount = static_cast<unsigned>(fb_image_views.size());
                 fb_info.pAttachments = fb_image_views.data();
                 fb_info.width = static_cast<unsigned>(_bound.current_render_pass.viewport.x);
@@ -126,7 +127,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
             {
                 VkRenderPassBeginInfo rp_begin_info = {};
                 rp_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-                rp_begin_info.renderPass = pso_node.associated_render_pass;
+                rp_begin_info.renderPass = render_pass;
                 rp_begin_info.framebuffer = _bound.raw_framebuffer;
                 rp_begin_info.renderArea.offset = {0, 0};
                 rp_begin_info.renderArea.extent.width = static_cast<uint32_t>(_bound.current_render_pass.viewport.x);

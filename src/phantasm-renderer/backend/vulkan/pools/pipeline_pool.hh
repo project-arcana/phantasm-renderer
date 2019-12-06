@@ -2,6 +2,8 @@
 
 #include <mutex>
 
+#include <clean-core/capped_vector.hh>
+
 #include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
@@ -36,8 +38,10 @@ public:
     {
         VkPipeline raw_pipeline;
         pipeline_layout* associated_pipeline_layout;
-        VkRenderPass associated_render_pass;
-        //        D3D12_PRIMITIVE_TOPOLOGY primitive_topology;
+
+        // info stored which is required for creating render passes
+        cc::capped_vector<format, limits::max_render_targets> rt_formats;
+        int num_msaa_samples;
     };
 
 public:
@@ -47,6 +51,8 @@ public:
     void destroy();
 
     [[nodiscard]] pso_node const& get(handle::pipeline_state ps) const { return mPool.get(static_cast<unsigned>(ps.index)); }
+
+    [[nodiscard]] VkRenderPass getOrCreateRenderPass(pso_node const& node, cmd::begin_render_pass const& brp_cmd);
 
 private:
     VkDevice mDevice;

@@ -1,13 +1,16 @@
 #pragma once
 
-#include <phantasm-renderer/primitive_pipeline_config.hh>
+#include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/detail/cache_map.hh>
-#include <phantasm-renderer/backend/detail/hash.hh>
+#include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
-#include <phantasm-renderer/backend/vulkan/shader_arguments.hh>
+
+namespace pr::backend::cmd
+{
+struct begin_render_pass;
+}
 
 namespace pr::backend::vk
 {
@@ -20,16 +23,15 @@ public:
     void destroy(VkDevice device);
 
     /// receive an existing render pass matching the framebuffer formats and config, or create a new one
-    [[nodiscard]] VkRenderPass getOrCreate(VkDevice device, arg::framebuffer_format rt_formats, pr::primitive_pipeline_config const& prim_conf);
+    /// While pixel format information IS present in cmd::begin_render_pass, it is invalid if that RT is a backbuffer, which is why
+    /// the additional override_rt_formats span is passed
+    [[nodiscard]] VkRenderPass getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, int num_samples, cc::span<format const> override_rt_formats);
 
     /// destroys all elements inside, and clears the map
     void reset(VkDevice device);
 
 private:
-    static size_t hashKey(arg::framebuffer_format rt_formats, pr::primitive_pipeline_config const& prim_conf)
-    {
-        return hash::detail::hash_combine(hash::compute(rt_formats), hash::compute(prim_conf));
-    }
+    static size_t hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats);
 
     backend::detail::cache_map<VkRenderPass> mCache;
 };

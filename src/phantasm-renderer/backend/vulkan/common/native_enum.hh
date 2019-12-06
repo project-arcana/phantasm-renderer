@@ -437,4 +437,40 @@ namespace pr::backend::vk::util
     }
 }
 
+[[nodiscard]] inline constexpr VkSampleCountFlagBits to_native_sample_flags(int num_samples)
+{
+    switch (num_samples)
+    {
+    case 1:
+        return VK_SAMPLE_COUNT_1_BIT;
+    case 2:
+        return VK_SAMPLE_COUNT_2_BIT;
+    case 4:
+        return VK_SAMPLE_COUNT_4_BIT;
+    case 8:
+        return VK_SAMPLE_COUNT_8_BIT;
+    case 16:
+        return VK_SAMPLE_COUNT_16_BIT;
+    case 32:
+        return VK_SAMPLE_COUNT_32_BIT;
+    case 64:
+        return VK_SAMPLE_COUNT_64_BIT;
+    default:
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
+}
+
+[[nodiscard]] inline constexpr VkAttachmentLoadOp to_native(rt_clear_type clear_type)
+{
+    switch (clear_type)
+    {
+    case rt_clear_type::load:
+        return VK_ATTACHMENT_LOAD_OP_LOAD;
+    case rt_clear_type::clear:
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    case rt_clear_type::dont_care:
+        return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    }
+}
+
 }

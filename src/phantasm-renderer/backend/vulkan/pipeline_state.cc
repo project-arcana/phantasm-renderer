@@ -4,6 +4,7 @@
 
 #include <phantasm-renderer/backend/limits.hh>
 
+#include "common/native_enum.hh"
 #include "common/verify.hh"
 #include "common/vk_format.hh"
 #include "resources/resource_state.hh"
@@ -11,7 +12,7 @@
 
 VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)
 {
-    auto const sample_bits = (config.samples == 1) ? VK_SAMPLE_COUNT_1_BIT : VK_SAMPLE_COUNT_8_BIT; // TODO
+    auto const sample_bits = util::to_native_sample_flags(config.samples);
 
     VkRenderPass render_pass;
     {
@@ -26,7 +27,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
             desc = {};
             desc.format = util::to_vk_format(rt);
             desc.samples = sample_bits;
-            desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -45,7 +46,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
             desc.format = util::to_vk_format(ds);
             desc.samples = sample_bits;
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             desc.initialLayout = util::to_image_layout(resource_state::depth_write);
@@ -85,6 +86,84 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
     }
 
     return render_pass;
+}
+
+VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, int num_samples, cc::span<const format> override_rt_formats)
+{
+    auto const sample_bits = util::to_native_sample_flags(num_samples);
+
+    cc::capped_vector<VkAttachmentDescription, limits::max_render_targets + 1> attachments;
+    cc::capped_vector<VkAttachmentReference, limits::max_render_targets> color_attachment_refs;
+    VkAttachmentReference depth_attachment_ref = {};
+    bool depth_present = false;
+
+    for (uint8_t i = 0u; i < begin_rp.render_targets.size(); ++i)
+    {
+        auto const& rt = begin_rp.render_targets[i];
+
+        auto& desc = attachments.emplace_back();
+        desc = {};
+        desc.format = util::to_vk_format(override_rt_formats[i]);
+        desc.samples = sample_bits;
+        desc.loadOp = util::to_native(rt.clear_type);
+        desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // by default, render passes always store
+        desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        desc.initialLayout = util::to_image_layout(resource_state::render_target);
+        desc.finalLayout = util::to_image_layout(resource_state::render_target);
+
+        auto& ref = color_attachment_refs.emplace_back();
+        ref.attachment = unsigned(color_attachment_refs.size() - 1);
+        ref.layout = util::to_image_layout(resource_state::render_target);
+    }
+
+    if (begin_rp.depth_target.sve.resource != handle::null_resource)
+    {
+        auto const& ds = begin_rp.depth_target;
+        auto& desc = attachments.emplace_back();
+        desc = {};
+        desc.format = util::to_vk_format(ds.sve.pixel_format);
+        desc.samples = sample_bits;
+        desc.loadOp = util::to_native(ds.clear_type);
+        desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        desc.stencilLoadOp = util::to_native(ds.clear_type);
+        desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        desc.initialLayout = util::to_image_layout(resource_state::depth_write);
+        desc.finalLayout = util::to_image_layout(resource_state::depth_write);
+
+        depth_attachment_ref.attachment = unsigned(color_attachment_refs.size());
+        depth_attachment_ref.layout = util::to_image_layout(resource_state::depth_write);
+
+        depth_present = true;
+    }
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = unsigned(color_attachment_refs.size());
+    subpass.pColorAttachments = color_attachment_refs.data();
+    if (depth_present)
+        subpass.pDepthStencilAttachment = &depth_attachment_ref;
+
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = util::to_access_flags(resource_state::render_target);
+    dependency.dstAccessMask = util::to_access_flags(resource_state::render_target);
+
+    VkRenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = unsigned(attachments.size());
+    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
+    VkRenderPass res_rp;
+    PR_VK_VERIFY_SUCCESS(vkCreateRenderPass(device, &renderPassInfo, nullptr, &res_rp));
+    return res_rp;
 }
 
 VkPipeline pr::backend::vk::create_pipeline(VkDevice device,

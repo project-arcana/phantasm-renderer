@@ -67,22 +67,19 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
     window.createVulkanSurface(mInstance, mSurface);
 
-    // TODO: Adapter choice
-    auto const gpus = get_physical_devices(mInstance);
-    for (auto const gpu : gpus)
+    // GPU choice and device init
     {
-        auto const info = get_gpu_information(gpu, mSurface);
+        auto const vk_gpu_infos = get_all_vulkan_gpu_infos(mInstance, mSurface);
+        auto const gpu_infos = get_available_gpus(vk_gpu_infos);
+        auto const chosen_index = get_preferred_gpu(gpu_infos, config.adapter_preference);
+        CC_RUNTIME_ASSERT(chosen_index != gpu_infos.size());
 
-        if (info.is_suitable)
-        {
-            mDevice.initialize(info, mSurface, config);
+        auto const& chosen_gpu = gpu_infos[chosen_index];
+        auto const& chosen_vk_gpu = vk_gpu_infos[chosen_gpu.index];
 
-            mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
-
-            mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
-
-            break;
-        }
+        mDevice.initialize(chosen_vk_gpu, mSurface, config);
+        mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
+        mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
     }
 
     // Pool init
@@ -262,7 +259,8 @@ void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resou
         {
             auto const& info = mPoolResources.getImageInfo(res);
             std::cout << "[pr][vk]  image, raw pointer: " << info.raw_image << std::endl;
-            std::cout << "[pr][vk]  " << info.num_mips << " mips, " << info.num_array_layers << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
+            std::cout << "[pr][vk]  " << info.num_mips << " mips, " << info.num_array_layers
+                      << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
         }
         else
         {

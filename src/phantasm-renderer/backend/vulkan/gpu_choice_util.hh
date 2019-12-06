@@ -1,7 +1,9 @@
 #pragma once
 
 #include <clean-core/array.hh>
+#include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/gpu_info.hh>
 #include <phantasm-renderer/backend/types.hh>
 
 #include "layer_extension_util.hh"
@@ -10,7 +12,7 @@
 
 namespace pr::backend::vk
 {
-struct gpu_information
+struct vulkan_gpu_info
 {
     VkPhysicalDevice physical_device;
     cc::array<VkSurfaceFormatKHR> backbuffer_formats;
@@ -28,10 +30,16 @@ struct backbuffer_information
     cc::array<VkPresentModeKHR> present_modes;
 };
 
+/// receive all physical devices visible to the instance
 [[nodiscard]] cc::array<VkPhysicalDevice> get_physical_devices(VkInstance instance);
 
 /// receive full information about a GPU, relatively slow
-[[nodiscard]] gpu_information get_gpu_information(VkPhysicalDevice device, VkSurfaceKHR surface);
+[[nodiscard]] vulkan_gpu_info get_vulkan_gpu_info(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+[[nodiscard]] cc::array<vulkan_gpu_info> get_all_vulkan_gpu_infos(VkInstance instance, VkSurfaceKHR surface);
+
+[[nodiscard]] cc::vector<gpu_info> get_available_gpus(cc::span<vulkan_gpu_info const> vk_gpu_infos);
+
 
 /// receive only backbuffer-related information
 [[nodiscard]] backbuffer_information get_backbuffer_information(VkPhysicalDevice device, VkSurfaceKHR surface);

@@ -10,7 +10,7 @@
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,
-                                                                                       pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                       pr::backend::arg::shader_argument_shapes /*shader_arg_shapes*/,
                                                                                        arg::shader_sampler_configs shader_samplers,
                                                                                        pr::backend::arg::shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
@@ -36,27 +36,37 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 
 
     pipeline_layout* layout;
-    VkRenderPass render_pass;
     unsigned pool_index;
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
         layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges, shader_samplers}, mDescriptorAllocator);
-        render_pass = mRenderPassCache.getOrCreate(mDevice, framebuffer_format, primitive_config);
         pool_index = mPool.acquire();
     }
 
     // Populate new node
     pso_node& new_node = mPool.get(pool_index);
     new_node.associated_pipeline_layout = layout;
-    new_node.associated_render_pass = render_pass;
+
+    // write meta info
+    {
+        new_node.rt_formats.clear();
+        for (auto const rtf : framebuffer_format.render_targets)
+            new_node.rt_formats.push_back(rtf);
+
+        new_node.num_msaa_samples = primitive_config.samples;
+    }
 
     {
         // Create VkPipeline
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
 
-        new_node.raw_pipeline = create_pipeline(mDevice, new_node.associated_render_pass, new_node.associated_pipeline_layout->raw_layout,
-                                                patched_shader_stages, primitive_config, vert_format_native, vertex_format.vertex_size_bytes);
+        VkRenderPass dummy_render_pass = create_render_pass(mDevice, framebuffer_format, primitive_config);
+
+        new_node.raw_pipeline = create_pipeline(mDevice, dummy_render_pass, new_node.associated_pipeline_layout->raw_layout, patched_shader_stages,
+                                                primitive_config, vert_format_native, vertex_format.vertex_size_bytes);
+
+        vkDestroyRenderPass(mDevice, dummy_render_pass, nullptr);
     }
 
     //    new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
@@ -108,4 +118,13 @@ void pr::backend::vk::PipelinePool::destroy()
     mLayoutCache.destroy(mDevice, mDescriptorAllocator);
     mRenderPassCache.destroy(mDevice);
     mDescriptorAllocator.destroy();
+}
+
+VkRenderPass pr::backend::vk::PipelinePool::getOrCreateRenderPass(const pso_node& node, const pr::backend::cmd::begin_render_pass& brp_cmd)
+{
+    // NOTE: This is a mutex acquire on the hot path (in the DRAW CALL)
+    // Its not quite trivial to fix this, all solutions involve tradeoffs,
+    // either restricting API free-threadedness, or making clear types part of the handle::pipeline_state
+    auto lg = std::lock_guard(mMutex);
+    return mRenderPassCache.getOrCreate(mDevice, brp_cmd, node.num_msaa_samples, node.rt_formats);
 }

@@ -11,7 +11,7 @@
 namespace pr::backend::vk
 {
 class Device;
-struct gpu_information;
+struct vulkan_gpu_info;
 
 class Swapchain
 {
