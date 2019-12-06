@@ -78,17 +78,17 @@ size_t pr::backend::get_preferred_gpu(cc::span<const pr::backend::gpu_info> cand
 
     if (verbose)
     {
+        std::cout << "[pr][backend] ";
         if (choice < candidates.size())
         {
             auto const& chosen = candidates[choice];
-            std::cout << "[pr][backend] chose gpu #" << chosen.index << " (" << chosen.description.c_str() << ") from " << candidates.size()
-                      << " candidates, preference: " << get_preference_literal(preference) << std::endl;
+            std::cout << "chose gpu #" << chosen.index << " (" << chosen.description.c_str() << ")";
         }
         else
         {
-            std::cout << "[pr][backend] failed to choose gpu from " << candidates.size()
-                      << " candidates, preference: " << get_preference_literal(preference) << std::endl;
+            std::cout << "failed to choose gpu";
         }
+        std::cout << " from " << candidates.size() << " candidate" << (candidates.size() == 1 ? "" : "s") << ", preference: " << get_preference_literal(preference) << std::endl;
     }
 
     return choice;
