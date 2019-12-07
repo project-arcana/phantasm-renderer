@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdlib>
+
 #include <clean-core/array.hh>
 #include <clean-core/new.hh>
 
@@ -13,17 +15,31 @@ struct linked_pool
     static_assert(sizeof(T) >= sizeof(T*), "linked_pool element type must be large enough to accomodate a pointer");
     using index_t = IdxT;
 
+    linked_pool() = default;
+    linked_pool(linked_pool const&) = delete;
+    linked_pool(linked_pool&&) noexcept = delete;
+    linked_pool& operator=(linked_pool const&) = delete;
+    linked_pool& operator=(linked_pool&&) = delete;
+
+    ~linked_pool()
+    {
+        if (_pool)
+            std::free(_pool);
+    }
+
     void initialize(size_t size)
     {
         if (size == 0)
             return;
 
-        CC_ASSERT(size < index_t(-1));
+        CC_ASSERT(size < index_t(-1) && "linked_pool size too large for index type");
+        CC_ASSERT(_pool == nullptr && "re-initialized linked_pool");
 
-        _pool = cc::array<T>::uninitialized(size);
+        _pool_size = size;
+        _pool = static_cast<T*>(std::malloc(sizeof(T) * _pool_size));
 
         // initialize linked list
-        for (auto i = 0u; i < _pool.size() - 1; ++i)
+        for (auto i = 0u; i < _pool_size - 1; ++i)
         {
             T* node_ptr = &_pool[i];
             new (cc::placement_new, node_ptr) T*(&_pool[i + 1]);
@@ -31,7 +47,7 @@ struct linked_pool
 
         // initialize linked list tail
         {
-            T* tail_ptr = &_pool[_pool.size() - 1];
+            T* tail_ptr = &_pool[_pool_size - 1];
             new (cc::placement_new, tail_ptr) T*(nullptr);
         }
 
@@ -48,7 +64,7 @@ struct linked_pool
         // call the constructor
         new (cc::placement_new, acquired_node) T();
 
-        return static_cast<index_t>(acquired_node - _pool.begin());
+        return static_cast<index_t>(acquired_node - _pool);
     }
 
     void release(index_t index)
@@ -72,19 +88,19 @@ struct linked_pool
     template <class F>
     void iterate_allocated_nodes(F&& func)
     {
-        cc::array<size_t> free_indices(_pool.size());
+        cc::array<size_t> free_indices(_pool_size);
         size_t num_free_indices = 0;
 
         T* cursor = _first_free_node;
         while (cursor != nullptr)
         {
-            free_indices[num_free_indices++] = (cursor - _pool.begin());
+            free_indices[num_free_indices++] = (cursor - _pool);
             cursor = *reinterpret_cast<T**>(cursor);
         }
 
         // NOTE: this could be sped up significantly with a sort
 
-        for (auto i = 0u; i < _pool.size(); ++i)
+        for (auto i = 0u; i < _pool_size; ++i)
         {
             bool is_index_free = false;
             for (auto j = 0u; j < num_free_indices; ++j)
@@ -105,7 +121,8 @@ struct linked_pool
 
 private:
     T* _first_free_node = nullptr;
-    cc::array<T> _pool;
+    T* _pool = nullptr;
+    size_t _pool_size = 0;
 };
 
 }
