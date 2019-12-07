@@ -6,6 +6,7 @@
 #include <clean-core/span.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/detail/page_allocator.hh>
 #include <phantasm-renderer/backend/types.hh>
 
@@ -35,7 +36,7 @@ public:
     using handle_t = int;
 
 public:
-    void initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int num_descriptors, int page_size = 8);
+    void initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned num_descriptors, unsigned page_size = 8);
 
     [[nodiscard]] handle_t allocate(int num_descriptors)
     {
@@ -94,26 +95,25 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs);
+    [[nodiscard]] handle::shader_view create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs, cc::span<sampler_config const> samplers);
 
-    void free(handle::shader_view sv)
-    {
-        auto lg = std::lock_guard(mMutex);
-        mSRVUAVAllocator.free(sv.index);
-    }
+    void free(handle::shader_view sv);
 
 public:
     // internal API
 
-    void initialize(ID3D12Device* device, ResourcePool* res_pool, int num_srvs_uavs);
+    void initialize(ID3D12Device* device, ResourcePool* res_pool, unsigned num_shader_views, unsigned num_srvs_uavs, unsigned num_samplers);
 
-    // NOTE: is CPU even required?
-    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE getCPUStart(handle::shader_view sv) const { return mSRVUAVAllocator.getCPUStart(sv.index); }
-
-    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getGPUStart(handle::shader_view sv) const
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getSRVUAVGPUHandle(handle::shader_view sv) const
     {
         // cached fastpath
-        return mShaderViewData[static_cast<size_t>(sv.index)].gpu_handle;
+        return mPool.get(static_cast<unsigned>(sv.index)).srv_uav_handle;
+    }
+
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getSamplerGPUHandle(handle::shader_view sv) const
+    {
+        // cached fastpath
+        return mPool.get(static_cast<unsigned>(sv.index)).sampler_handle;
     }
 
     //
@@ -122,36 +122,43 @@ public:
 
     [[nodiscard]] cc::span<handle::resource const> getSRVs(handle::shader_view sv) const
     {
-        auto const& data = mShaderViewData[static_cast<size_t>(sv.index)];
+        auto const& data = mPool.get(static_cast<unsigned>(sv.index));
         return cc::span{data.resources.data(), static_cast<size_t>(data.num_srvs)};
     }
 
     [[nodiscard]] cc::span<handle::resource const> getUAVs(handle::shader_view sv) const
     {
-        auto const& data = mShaderViewData[static_cast<size_t>(sv.index)];
+        auto const& data = mPool.get(static_cast<unsigned>(sv.index));
         return cc::span{data.resources.data() + data.num_srvs, static_cast<size_t>(data.num_uavs)};
     }
 
-    cc::array<ID3D12DescriptorHeap*, 1> getGPURelevantHeaps() const { return {mSRVUAVAllocator.getHeap()}; }
+    cc::array<ID3D12DescriptorHeap*, 2> getGPURelevantHeaps() const { return {mSRVUAVAllocator.getHeap(), mSamplerAllocator.getHeap()}; }
 
 private:
     struct shader_view_data
     {
-        // pre-constructed gpu handle
-        D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
+        // pre-constructed gpu handles
+        D3D12_GPU_DESCRIPTOR_HANDLE srv_uav_handle;
+        D3D12_GPU_DESCRIPTOR_HANDLE sampler_handle;
+
         // handles contained in this shader view, for state tracking
         // handles correspond to num_srvs SRVs first, num_uavs UAVs second
         cc::capped_vector<handle::resource, 16> resources;
         cc::uint16 num_srvs;
         cc::uint16 num_uavs;
+
+        // Descriptor allocator handles
+        DescriptorPageAllocator::handle_t srv_uav_alloc_handle;
+        DescriptorPageAllocator::handle_t sampler_alloc_handle;
     };
 
     // non-owning
     ID3D12Device* mDevice;
     ResourcePool* mResourcePool;
 
-    cc::array<shader_view_data> mShaderViewData;
+    backend::detail::linked_pool<shader_view_data, unsigned> mPool;
     DescriptorPageAllocator mSRVUAVAllocator;
+    DescriptorPageAllocator mSamplerAllocator;
     std::mutex mMutex;
 };
 }

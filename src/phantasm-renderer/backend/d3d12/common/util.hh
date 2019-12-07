@@ -44,4 +44,7 @@ void set_object_name(ID3D12Object* object, char const* name, ...);
 
 /// create a DSV description based on a shader_view_element
 [[nodiscard]] D3D12_DEPTH_STENCIL_VIEW_DESC create_dsv_desc(shader_view_element const& sve);
+
+/// create a Sampler description based on a sampler config
+[[nodiscard]] D3D12_SAMPLER_DESC create_sampler_desc(sampler_config const& config);
 }

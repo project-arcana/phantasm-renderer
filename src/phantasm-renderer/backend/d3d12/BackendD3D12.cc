@@ -37,7 +37,7 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     {
         mPoolResources.initialize(device, config.max_num_resources);
         mPoolPSOs.initialize(&device, config.max_num_pipeline_states);
-        mPoolShaderViews.initialize(&device, &mPoolResources, int(config.max_num_shader_view_elements));
+        mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
     }
 
     // Per-thread components and command list pool

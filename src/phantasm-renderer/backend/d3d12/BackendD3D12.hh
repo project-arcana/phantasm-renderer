@@ -82,9 +82,11 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] handle::shader_view createShaderView(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs = {}) override
+    [[nodiscard]] handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
+                                                       cc::span<shader_view_element const> uavs,
+                                                       cc::span<sampler_config const> samplers) override
     {
-        return mPoolShaderViews.create(srvs, uavs);
+        return mPoolShaderViews.create(srvs, uavs, samplers);
     }
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }
@@ -96,11 +98,10 @@ public:
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                              arg::framebuffer_format framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
-                                                             arg::shader_sampler_configs shader_samplers,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
-        return mPoolPSOs.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_samplers, shader_stages, primitive_config);
+        return mPoolPSOs.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_stages, primitive_config);
     }
 
     void free(handle::pipeline_state ps) override { mPoolPSOs.free(ps); }
@@ -119,7 +120,7 @@ public:
     // Debug interface
     //
 
-    void printInformation(handle::resource res) const override {};
+    void printInformation(handle::resource res) const override{};
 
 public:
     // backend-internal

@@ -168,14 +168,20 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
                 _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
             }
 
-            if (map.descriptor_table_param != uint32_t(-1))
+            // Set the shader view if it has changed
+            if (_bound.shader_views[i] != arg.shader_view)
+                _bound.shader_views[i] = arg.shader_view;
             {
-                // Set the shader view if it has changed
-                if (_bound.shader_views[i] != arg.shader_view)
+                if (map.srv_uav_table_param != uint32_t(-1))
                 {
-                    _bound.shader_views[i] = arg.shader_view;
-                    auto const sv_desc_table = _globals.pool_shader_views->getGPUStart(arg.shader_view);
-                    _cmd_list->SetGraphicsRootDescriptorTable(map.descriptor_table_param, sv_desc_table);
+                    auto const sv_desc_table = _globals.pool_shader_views->getSRVUAVGPUHandle(arg.shader_view);
+                    _cmd_list->SetGraphicsRootDescriptorTable(map.srv_uav_table_param, sv_desc_table);
+                }
+
+                if (map.sampler_table_param != uint32_t(-1))
+                {
+                    auto const sampler_desc_table = _globals.pool_shader_views->getSamplerGPUHandle(arg.shader_view);
+                    _cmd_list->SetGraphicsRootDescriptorTable(map.sampler_table_param, sampler_desc_table);
                 }
             }
         }

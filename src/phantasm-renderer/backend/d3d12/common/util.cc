@@ -271,3 +271,27 @@ D3D12_DEPTH_STENCIL_VIEW_DESC pr::backend::d3d12::util::create_dsv_desc(const pr
 
     return dsv_desc;
 }
+
+D3D12_SAMPLER_DESC pr::backend::d3d12::util::create_sampler_desc(const pr::backend::sampler_config& config)
+{
+    D3D12_SAMPLER_DESC sampler_desc = {};
+    sampler_desc.Filter = util::to_native(config.filter, config.compare_func != sampler_compare_func::disabled);
+    sampler_desc.AddressU = util::to_native(config.address_u);
+    sampler_desc.AddressV = util::to_native(config.address_v);
+    sampler_desc.AddressW = util::to_native(config.address_w);
+    sampler_desc.MipLODBias = config.lod_bias;
+    sampler_desc.MaxAnisotropy = config.max_anisotropy;
+    sampler_desc.ComparisonFunc = util::to_native(config.compare_func);
+
+    sampler_desc.MinLOD = config.min_lod;
+    sampler_desc.MaxLOD = config.max_lod;
+
+    auto const border_opaque = util::to_opaque_border_color(config.border_color);
+    auto const border_alpha = util::to_border_color_alpha(config.border_color);
+    sampler_desc.BorderColor[0] = border_opaque;
+    sampler_desc.BorderColor[1] = border_opaque;
+    sampler_desc.BorderColor[2] = border_opaque;
+    sampler_desc.BorderColor[3] = border_alpha;
+
+    return sampler_desc;
+}

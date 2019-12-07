@@ -17,7 +17,6 @@ public:
     struct key_t
     {
         arg::shader_argument_shapes arg_shapes;
-        arg::shader_sampler_configs arg_samplers;
     };
 
     void initialize(unsigned max_num_root_sigs);
@@ -31,7 +30,7 @@ public:
     void reset();
 
 private:
-    static size_t hashKey(key_t const& v) { return hash::detail::hash_combine(hash::compute(v.arg_shapes), hash::compute(v.arg_samplers)); }
+    static size_t hashKey(key_t const& v) { return hash::compute(v.arg_shapes); }
 
     backend::detail::cache_map<root_signature> mCache;
 };

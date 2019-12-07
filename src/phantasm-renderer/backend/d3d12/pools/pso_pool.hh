@@ -3,11 +3,11 @@
 #include <mutex>
 
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
-#include <phantasm-renderer/backend/detail/linked_pool.hh>
 
 #include "root_sig_cache.hh"
 
@@ -23,7 +23,6 @@ public:
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                              arg::framebuffer_format framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
-                                                             arg::shader_sampler_configs shader_samplers,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config);
 

@@ -349,4 +349,35 @@ namespace pr::backend::d3d12::util
 }
 
 
+[[nodiscard]] inline constexpr float to_opaque_border_color(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+        return 0.f;
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return 1.f;
+    }
+}
+
+[[nodiscard]] inline constexpr float to_border_color_alpha(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+        return 0.f;
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return 1.f;
+    }
+}
+
+
 }
