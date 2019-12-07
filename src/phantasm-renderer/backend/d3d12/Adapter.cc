@@ -41,7 +41,7 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
         {
             debug_controller->EnableDebugLayer();
 
-            if (config.validation == validation_level::on_extended)
+            if (config.validation >= validation_level::on_extended)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
                 PR_D3D12_VERIFY(debug_controller.get_interface(debug_controller_v3));

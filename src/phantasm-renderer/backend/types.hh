@@ -78,7 +78,13 @@ enum class validation_level : uint8_t
 
     // D3D12: Whether to additionally enable GPU based validation (slow)
     // Vulkan: No additional effect
-    on_extended
+    on_extended,
+
+    // D3D12: Whether to additionally enable DRED (Device Removed Extended Data)
+    // with automatic breadcrumbs and pagefault recovery (very slow)
+    // see: https://docs.microsoft.com/en-us/windows/win32/direct3d12/use-dred
+    // Vulkan: No additional effect
+    on_extended_dred
 };
 
 enum class present_mode : uint8_t

@@ -5,6 +5,15 @@
 
 void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend_config& config)
 {
+    if (config.validation >= validation_level::on_extended_dred)
+    {
+        PR_D3D12_VERIFY(D3D12GetDebugInterface(PR_COM_WRITE(mDREDSettings)));
+
+        mDREDSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+        mDREDSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+       // mDREDSettings->SetWatsonDumpEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+    }
+
     PR_D3D12_VERIFY(::D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, PR_COM_WRITE(mDevice)));
 
     // Capability checks

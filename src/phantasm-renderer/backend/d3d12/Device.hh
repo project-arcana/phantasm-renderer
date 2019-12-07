@@ -27,6 +27,7 @@ public:
     [[nodiscard]] shared_com_ptr<ID3D12Device> const& getDeviceShared() const { return mDevice; }
 
 private:
+    shared_com_ptr<ID3D12DeviceRemovedExtendedDataSettings> mDREDSettings;
     shared_com_ptr<ID3D12Device> mDevice;
     shared_com_ptr<ID3D12Device5> mDeviceRaytracing;
 

@@ -42,7 +42,7 @@ bool pr::backend::d3d12::cmd_allocator_node::try_reset()
         // full, and all acquired cmdlists have been either submitted or discarded, check the fence
 
         auto const fence_current = _fence.getCurrentValue();
-        CC_ASSERT(fence_current <= _submit_counter && "fence counter overflow, did application run > 400 million years?");
+        CC_ASSERT(fence_current <= _submit_counter && "counter overflow (after > 4*10^8 years)");
         if (fence_current == _submit_counter)
         {
             // can reset, and the fence has reached its goal

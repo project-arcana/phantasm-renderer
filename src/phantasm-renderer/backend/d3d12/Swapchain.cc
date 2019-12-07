@@ -85,7 +85,7 @@ void pr::backend::d3d12::Swapchain::setFullscreen(bool fullscreen) { PR_D3D12_VE
 
 void pr::backend::d3d12::Swapchain::present()
 {
-    PR_D3D12_VERIFY(mSwapchain->Present(0, mPresentMode == present_mode::allow_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0));
+    PR_D3D12_VERIFY_FULL(mSwapchain->Present(0, mPresentMode == present_mode::allow_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0), mParentDevice);
 
     auto const backbuffer_i = mSwapchain->GetCurrentBackBufferIndex();
     mBackbuffers[backbuffer_i].fence.issueFence(*mParentDirectQueue);
