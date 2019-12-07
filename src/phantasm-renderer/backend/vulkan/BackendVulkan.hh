@@ -36,13 +36,9 @@ public:
 
     [[nodiscard]] handle::resource acquireBackbuffer() override;
 
-    void present() override
-    {
-        mSwapchain.performPresentSubmit();
-        mSwapchain.present();
-    }
+    void present() override;
 
-    void resize(int w, int h) override { mSwapchain.onResize(w, h); }
+    void onResize(int w, int h) override;
 
     [[nodiscard]] tg::ivec2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
 

@@ -30,7 +30,7 @@ public:
 
     /// present the active backbuffer to the screen
     /// can trigger a resize instead of presenting if the swapchain is stale
-    void present();
+    bool present();
 
     /// wait for the next backbuffer
     /// this has to be called before calls to getCurrent<X>

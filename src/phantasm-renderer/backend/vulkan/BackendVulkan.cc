@@ -135,6 +135,7 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
 
     if (!acquire_success)
     {
+        onInternalResize();
         return handle::null_resource;
     }
     else
@@ -142,6 +143,21 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
         return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
                                                        mSwapchain.getCurrentBackbufferView());
     }
+}
+
+void pr::backend::vk::BackendVulkan::present()
+{
+    mSwapchain.performPresentSubmit();
+    if (!mSwapchain.present())
+    {
+        onInternalResize();
+    }
+}
+
+void pr::backend::vk::BackendVulkan::onResize(int w, int h)
+{
+    onInternalResize();
+    mSwapchain.onResize(w, h);
 }
 
 pr::backend::format pr::backend::vk::BackendVulkan::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }

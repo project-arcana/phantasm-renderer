@@ -145,7 +145,7 @@ void pr::backend::vk::Swapchain::onResize(int width_hint, int height_hint)
     createSwapchain(width_hint, height_hint);
 }
 
-void pr::backend::vk::Swapchain::present()
+bool pr::backend::vk::Swapchain::present()
 {
     VkPresentInfoKHR present = {};
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -162,7 +162,7 @@ void pr::backend::vk::Swapchain::present()
     if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR)
     {
         onResize(0, 0);
-        return;
+        return false;
     }
     else
     {
@@ -174,6 +174,7 @@ void pr::backend::vk::Swapchain::present()
         mActiveFenceIndex -= mBackbuffers.size();
 
     vkWaitForFences(mDevice, 1, &mBackbuffers[mActiveFenceIndex].fence_command_buf_executed, VK_TRUE, UINT64_MAX);
+    return true;
 }
 
 bool pr::backend::vk::Swapchain::waitForBackbuffer()

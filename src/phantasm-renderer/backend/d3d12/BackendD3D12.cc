@@ -93,6 +93,12 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
         backbuffer.resource, backbuffer.state == D3D12_RESOURCE_STATE_RENDER_TARGET ? resource_state::render_target : resource_state::present);
 }
 
+void pr::backend::d3d12::BackendD3D12::onResize(int w, int h)
+{
+    onInternalResize();
+    mSwapchain.onResize(w, h);
+}
+
 pr::backend::format pr::backend::d3d12::BackendD3D12::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
 
 pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)

@@ -31,12 +31,38 @@ public:
     // Swapchain interface
     //
 
+    /// acquires a resource handle for use as a render target
+    /// if the returned handle is handle::null_resource, the current frame must be discarded
+    /// can cause an internal resize
     [[nodiscard]] virtual handle::resource acquireBackbuffer() = 0;
-    virtual void present() = 0;
-    virtual void resize(int w, int h) = 0;
 
+    /// attempts to present,
+    /// can fail and cause an internal resize
+    virtual void present() = 0;
+
+    /// causes an internal resize
+    virtual void onResize(int w, int h) = 0;
+
+    /// gets the current backbuffer size
     [[nodiscard]] virtual tg::ivec2 getBackbufferSize() const = 0;
+
+    /// gets the backbuffer pixel format
     [[nodiscard]] virtual format getBackbufferFormat() const = 0;
+
+    /// Clears pending internal resize events, returns true if the
+    /// backbuffer has resized since the last call
+    [[nodiscard]] bool clearPendingResize()
+    {
+        if (mHasResized)
+        {
+            mHasResized = false;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     //
     // Resource interface
@@ -101,6 +127,9 @@ public:
 protected:
     Backend() = default;
 
+    void onInternalResize() { mHasResized = true; }
+
 private:
+    bool mHasResized = true;
 };
 }
