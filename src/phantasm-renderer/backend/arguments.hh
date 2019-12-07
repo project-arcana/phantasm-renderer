@@ -79,18 +79,4 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 
     return true;
 }
-
-// inline bool operator==(shader_sampler_configs const& lhs, shader_sampler_configs const& rhs) noexcept
-//{
-//    if (lhs.size() != rhs.size())
-//        return false;
-
-//    for (auto i = 0u; i < lhs.size(); ++i)
-//    {
-//        if (!(lhs[i] == rhs[i]))
-//            return false;
-//    }
-
-//    return true;
-//}
 }
