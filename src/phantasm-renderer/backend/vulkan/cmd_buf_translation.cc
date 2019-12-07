@@ -167,19 +167,18 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         {
             vkCmdBindIndexBuffer(_cmd_list, _globals.pool_resources->getRawBuffer(draw.index_buffer), 0, VK_INDEX_TYPE_UINT32);
         }
-        else
-        {
-            // TODO: can you un-bind index buffers in vulkan? (vkCmdBindIndexBuffer does not take nullptr)
-        }
     }
 
     // Vertex buffer
     if (draw.vertex_buffer != _bound.vertex_buffer)
     {
         _bound.vertex_buffer = draw.vertex_buffer;
-        VkBuffer vertex_buffers[] = {_globals.pool_resources->getRawBuffer(draw.vertex_buffer)};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(_cmd_list, 0, 1, vertex_buffers, offsets);
+        if (draw.vertex_buffer.is_valid())
+        {
+            VkBuffer vertex_buffers[] = {_globals.pool_resources->getRawBuffer(draw.vertex_buffer)};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(_cmd_list, 0, 1, vertex_buffers, offsets);
+        }
     }
 
     // Shader arguments

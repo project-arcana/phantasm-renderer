@@ -17,10 +17,11 @@ enum class gpu_vendor : uint8_t
     imgtec,
     arm,
     qualcomm,
+
     unknown
 };
 
-// opaque, API-specific capability level, more is better
+// opaque, API-specific capability level, higher is better
 enum class gpu_capabilities : uint8_t
 {
     insufficient,

@@ -136,7 +136,8 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         }
         else
         {
-            _cmd_list->IASetIndexBuffer(nullptr);
+            // TODO: does this even make sense?
+            //  _cmd_list->IASetIndexBuffer(nullptr);
         }
     }
 
@@ -144,8 +145,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     if (draw.vertex_buffer != _bound.vertex_buffer)
     {
         _bound.vertex_buffer = draw.vertex_buffer;
-        auto const vbv = _globals.pool_resources->getVertexBufferView(draw.vertex_buffer);
-        _cmd_list->IASetVertexBuffers(0, 1, &vbv);
+        if (draw.vertex_buffer.is_valid())
+        {
+            auto const vbv = _globals.pool_resources->getVertexBufferView(draw.vertex_buffer);
+            _cmd_list->IASetVertexBuffers(0, 1, &vbv);
+        }
     }
 
     // Shader arguments

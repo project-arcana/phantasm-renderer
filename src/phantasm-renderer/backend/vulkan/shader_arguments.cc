@@ -130,30 +130,30 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device,
         _sampler_descriptor_set = desc_allocator.allocDescriptor(descriptor_set_layouts[spv::static_sampler_descriptor_set]);
 
         // Perform the initial update to this descriptor set
-        cc::capped_vector<VkDescriptorImageInfo, limits::max_shader_samplers> image_infos;
-        {
-            for (auto const sampler : _samplers)
-            {
-                auto& info = image_infos.emplace_back();
-                info = {};
-                info.sampler = sampler;
-                info.imageView = nullptr;
-                info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-            }
-        }
+//        cc::capped_vector<VkDescriptorImageInfo, limits::max_shader_samplers> image_infos;
+//        {
+//            for (auto const sampler : _samplers)
+//            {
+//                auto& info = image_infos.emplace_back();
+//                info = {};
+//                info.sampler = sampler;
+//                info.imageView = nullptr;
+//                info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+//            }
+//        }
 
-        VkWriteDescriptorSet write = {};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.pNext = nullptr;
-        write.dstSet = _sampler_descriptor_set;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-        write.dstArrayElement = 0;
-        write.dstBinding = spv::sampler_binding_start;
-        write.descriptorCount = static_cast<uint32_t>(samplers.size());
+//        VkWriteDescriptorSet write = {};
+//        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+//        write.pNext = nullptr;
+//        write.dstSet = _sampler_descriptor_set;
+//        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+//        write.dstArrayElement = 0;
+//        write.dstBinding = spv::sampler_binding_start;
+//        write.descriptorCount = static_cast<uint32_t>(samplers.size());
 
-        write.pImageInfo = image_infos.data();
+//        write.pImageInfo = image_infos.data();
 
-        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+//        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
     else
     {
