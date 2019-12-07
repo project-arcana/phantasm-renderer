@@ -12,25 +12,6 @@
 
 namespace pr::backend::vk
 {
-struct uav_buffer_view
-{
-    VkBuffer buffer;
-    uint32_t range = 0;
-    uint32_t offset = 0;
-};
-
-namespace legacy
-{
-struct shader_argument
-{
-    VkBuffer cbv = nullptr;
-    uint32_t cbv_view_size = 0;
-    uint32_t cbv_view_offset = 0;
-    cc::capped_vector<VkImageView, 8> srvs;
-    cc::capped_vector<uav_buffer_view, 8> uavs;
-};
-}
-
 namespace detail
 {
 // 1 pipeline layout - n descriptor set layouts
@@ -117,34 +98,6 @@ private:
 
     cc::capped_vector<VkSampler, limits::max_shader_samplers> _samplers;
     VkDescriptorSet _sampler_descriptor_set;
-};
-
-class DescriptorAllocator;
-
-struct descriptor_set_bundle
-{
-    cc::capped_vector<VkDescriptorSet, limits::max_shader_arguments * 2> descriptor_sets;
-
-    void initialize(DescriptorAllocator& allocator, pipeline_layout const& layout);
-    void free(DescriptorAllocator& allocator);
-
-    /// update the n-th argument
-    void update_argument(VkDevice device, uint32_t argument_index, legacy::shader_argument const& argument);
-
-    /// bind the n-th argument at a dynamic offset
-    void bind_argument(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index, uint32_t cb_offset)
-    {
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index + limits::max_shader_arguments, 1,
-                                &descriptor_sets[argument_index + limits::max_shader_arguments], 1, &cb_offset);
-    }
-
-    /// bind the n-th argument (no offset)
-    void bind_argument_no_cbv(VkCommandBuffer cmd_buf, VkPipelineLayout layout, uint32_t argument_index)
-    {
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, argument_index, 1, &descriptor_sets[argument_index], 0, nullptr);
-        ////                          &descriptor_sets[argument_index + limits::max_shader_arguments], 0, nullptr);
-    }
 };
 
 }

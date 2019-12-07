@@ -7,7 +7,7 @@
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
-#include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
+#include <phantasm-renderer/backend/vulkan/resources/transition_barrier.hh>
 
 #include "resource_pool.hh"
 

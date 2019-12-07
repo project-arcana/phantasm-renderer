@@ -5,7 +5,7 @@
 #include <phantasm-renderer/backend/detail/hash.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
-#include <phantasm-renderer/backend/vulkan/shader_arguments.hh>
+#include <phantasm-renderer/backend/vulkan/pipeline_layout.hh>
 
 namespace pr::backend::vk
 {

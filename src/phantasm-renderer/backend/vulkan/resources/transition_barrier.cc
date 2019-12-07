@@ -1,6 +1,4 @@
-#include "resource_state.hh"
-
-//#include <iostream>
+#include "transition_barrier.hh"
 
 VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, const state_change& state_change, VkImageAspectFlags aspect, unsigned num_mips, unsigned num_layers)
 {
@@ -18,7 +16,6 @@ VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, co
     barrier.subresourceRange.layerCount = num_layers;
     barrier.srcAccessMask = util::to_access_flags(state_change.before);
     barrier.dstAccessMask = util::to_access_flags(state_change.after);
-//    std::cout << "Transitioning image " << image << " from " << barrier.oldLayout << " to " << barrier.newLayout << std::endl;
     return barrier;
 }
 

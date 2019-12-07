@@ -1,7 +1,7 @@
 #include "render_pass_cache.hh"
 
 #include <phantasm-renderer/backend/detail/hash.hh>
-#include <phantasm-renderer/backend/vulkan/pipeline_state.hh>
+#include <phantasm-renderer/backend/vulkan/render_pass_pipeline.hh>
 
 void pr::backend::vk::RenderPassCache::initialize(unsigned max_elements) { mCache.initialize(max_elements); }
 

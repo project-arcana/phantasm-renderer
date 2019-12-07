@@ -14,7 +14,7 @@
 #include "gpu_choice_util.hh"
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
-#include "resources/resource_state.hh"
+#include "resources/transition_barrier.hh"
 
 namespace pr::backend::vk
 {

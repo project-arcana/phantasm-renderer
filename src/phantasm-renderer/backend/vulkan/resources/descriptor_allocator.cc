@@ -1,4 +1,4 @@
-#include "resource_view.hh"
+#include "descriptor_allocator.hh"
 
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>

@@ -6,7 +6,7 @@
 
 #include <phantasm-renderer/backend/vulkan/common/util.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
-#include <phantasm-renderer/backend/vulkan/pipeline_state.hh>
+#include <phantasm-renderer/backend/vulkan/render_pass_pipeline.hh>
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,

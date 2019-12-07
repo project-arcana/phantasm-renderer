@@ -33,26 +33,6 @@ namespace
 }
 }
 
-pr::backend::vk::shader pr::backend::vk::create_shader_from_data(VkDevice device, void* data, size_t size, shader_domain domain, const char* entrypoint)
-{
-    VkShaderModuleCreateInfo shader_info;
-    zero_info_struct(shader_info, VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-    shader_info.codeSize = size;
-    shader_info.pCode = static_cast<uint32_t const*>(data);
-
-    shader res;
-    res.domain = domain;
-    res.entrypoint = entrypoint;
-    PR_VK_VERIFY_SUCCESS(vkCreateShaderModule(device, &shader_info, nullptr, &res.module));
-    return res;
-}
-
-pr::backend::vk::shader pr::backend::vk::create_shader_from_spirv_file(VkDevice device, const char* filename, shader_domain domain, const char* entrypoint)
-{
-    auto const binary = pr::backend::detail::unique_buffer::create_from_binary_file(filename);
-    return create_shader_from_data(device, binary.get(), binary.size(), domain, entrypoint != nullptr ? entrypoint : get_default_entrypoint(domain));
-}
-
 VkPipelineShaderStageCreateInfo pr::backend::vk::get_shader_create_info(const pr::backend::vk::shader& shader)
 {
     VkPipelineShaderStageCreateInfo res;

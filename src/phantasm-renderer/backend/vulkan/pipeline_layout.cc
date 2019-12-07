@@ -1,9 +1,9 @@
-#include "shader_arguments.hh"
+#include "pipeline_layout.hh"
 
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
-#include <phantasm-renderer/backend/vulkan/resources/resource_state.hh>
-#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
+#include <phantasm-renderer/backend/vulkan/resources/transition_barrier.hh>
+#include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_cbv()
 {
@@ -130,30 +130,30 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device,
         _sampler_descriptor_set = desc_allocator.allocDescriptor(descriptor_set_layouts[spv::static_sampler_descriptor_set]);
 
         // Perform the initial update to this descriptor set
-//        cc::capped_vector<VkDescriptorImageInfo, limits::max_shader_samplers> image_infos;
-//        {
-//            for (auto const sampler : _samplers)
-//            {
-//                auto& info = image_infos.emplace_back();
-//                info = {};
-//                info.sampler = sampler;
-//                info.imageView = nullptr;
-//                info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-//            }
-//        }
+        //        cc::capped_vector<VkDescriptorImageInfo, limits::max_shader_samplers> image_infos;
+        //        {
+        //            for (auto const sampler : _samplers)
+        //            {
+        //                auto& info = image_infos.emplace_back();
+        //                info = {};
+        //                info.sampler = sampler;
+        //                info.imageView = nullptr;
+        //                info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        //            }
+        //        }
 
-//        VkWriteDescriptorSet write = {};
-//        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-//        write.pNext = nullptr;
-//        write.dstSet = _sampler_descriptor_set;
-//        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-//        write.dstArrayElement = 0;
-//        write.dstBinding = spv::sampler_binding_start;
-//        write.descriptorCount = static_cast<uint32_t>(samplers.size());
+        //        VkWriteDescriptorSet write = {};
+        //        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        //        write.pNext = nullptr;
+        //        write.dstSet = _sampler_descriptor_set;
+        //        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        //        write.dstArrayElement = 0;
+        //        write.dstBinding = spv::sampler_binding_start;
+        //        write.descriptorCount = static_cast<uint32_t>(samplers.size());
 
-//        write.pImageInfo = image_infos.data();
+        //        write.pImageInfo = image_infos.data();
 
-//        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+        //        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
     else
     {
@@ -251,95 +251,4 @@ void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection
 
         descriptor_sets.back().add_range(range.type, range.binding_start, range.binding_size, range.visible_stages);
     }
-}
-
-void pr::backend::vk::descriptor_set_bundle::initialize(pr::backend::vk::DescriptorAllocator& allocator, const pr::backend::vk::pipeline_layout& layout)
-{
-    for (auto const& set_layout : layout.descriptor_set_layouts)
-    {
-        descriptor_sets.push_back(allocator.allocDescriptor(set_layout));
-    }
-}
-
-void pr::backend::vk::descriptor_set_bundle::free(pr::backend::vk::DescriptorAllocator& allocator)
-{
-    for (auto desc_set : descriptor_sets)
-        allocator.free(desc_set);
-}
-
-void pr::backend::vk::descriptor_set_bundle::update_argument(VkDevice device, uint32_t argument_index, const pr::backend::vk::legacy::shader_argument& argument)
-{
-    auto const& desc_set = descriptor_sets[argument_index];
-
-    cc::capped_vector<VkWriteDescriptorSet, 3> writes;
-    VkDescriptorBufferInfo cbv_info;
-
-    if (argument.cbv != nullptr)
-    {
-        // bind CBV
-        auto const& cbv_desc_set = descriptor_sets[argument_index + limits::max_shader_arguments];
-
-        cbv_info = {};
-        cbv_info.buffer = argument.cbv;
-        cbv_info.offset = argument.cbv_view_offset;
-        cbv_info.range = argument.cbv_view_size;
-
-        auto& write = writes.emplace_back();
-        write = {};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.pNext = nullptr;
-        write.dstSet = cbv_desc_set;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        write.descriptorCount = 1; // Just one CBV
-        write.pBufferInfo = &cbv_info;
-        write.dstArrayElement = 0;
-        write.dstBinding = spv::cbv_binding_start; // CBVs always in binding 0
-    }
-
-    cc::capped_vector<VkDescriptorBufferInfo, 8> uav_infos;
-
-    if (!argument.uavs.empty())
-    {
-        for (auto uav : argument.uavs)
-        {
-            auto& srv_info = uav_infos.emplace_back();
-            srv_info.buffer = uav.buffer;
-            srv_info.offset = uav.offset;
-            srv_info.range = uav.range;
-        }
-
-        auto& write = writes.emplace_back();
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.pNext = nullptr;
-        write.dstSet = desc_set;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        write.descriptorCount = uint32_t(uav_infos.size());
-        write.pBufferInfo = uav_infos.data();
-        write.dstArrayElement = 0;
-        write.dstBinding = spv::uav_binding_start;
-    }
-
-    cc::capped_vector<VkDescriptorImageInfo, 8> srv_infos;
-
-    if (!argument.srvs.empty())
-    {
-        for (auto srv : argument.srvs)
-        {
-            auto& srv_info = srv_infos.emplace_back();
-            srv_info.imageView = srv;
-            srv_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
-        }
-
-        auto& write = writes.emplace_back();
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.pNext = nullptr;
-        write.dstSet = desc_set;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        write.descriptorCount = uint32_t(srv_infos.size());
-        write.pImageInfo = srv_infos.data();
-        write.dstArrayElement = 0;
-        write.dstBinding = spv::srv_binding_start;
-    }
-
-    vkUpdateDescriptorSets(device, uint32_t(writes.size()), writes.data(), 0, nullptr);
 }

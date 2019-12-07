@@ -1,4 +1,4 @@
-#include "pipeline_state.hh"
+#include "render_pass_pipeline.hh"
 
 #include <clean-core/array.hh>
 
@@ -7,7 +7,7 @@
 #include "common/native_enum.hh"
 #include "common/verify.hh"
 #include "common/vk_format.hh"
-#include "resources/resource_state.hh"
+#include "resources/transition_barrier.hh"
 #include "shader.hh"
 
 VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)

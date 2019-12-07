@@ -6,7 +6,7 @@
 #include <phantasm-renderer/backend/types.hh>
 
 #include <phantasm-renderer/backend/vulkan/memory/ResourceAllocator.hh>
-#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
+#include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 
 namespace pr::backend::vk
 {

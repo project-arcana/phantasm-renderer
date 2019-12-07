@@ -12,7 +12,7 @@
 #include "pools/pipeline_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
-#include "resources/resource_state.hh"
+#include "resources/transition_barrier.hh"
 
 void pr::backend::vk::command_list_translator::translateCommandList(
     VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)

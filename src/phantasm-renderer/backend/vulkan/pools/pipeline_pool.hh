@@ -10,7 +10,7 @@
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
-#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
+#include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 
 #include "pipeline_layout_cache.hh"
 #include "render_pass_cache.hh"

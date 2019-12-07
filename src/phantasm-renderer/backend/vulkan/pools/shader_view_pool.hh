@@ -9,7 +9,7 @@
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/arguments.hh>
 
-#include <phantasm-renderer/backend/vulkan/resources/resource_view.hh>
+#include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 
 namespace pr::backend::vk
 {
