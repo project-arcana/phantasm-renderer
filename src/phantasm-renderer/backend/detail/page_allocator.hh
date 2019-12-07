@@ -14,11 +14,11 @@ constexpr T int_div_ceil(T a, T b)
 
 struct page_allocator
 {
-    void initialize(int num_elements, int num_elems_per_page)
+    void initialize(unsigned num_elements, unsigned num_elems_per_page)
     {
         auto const num_pages = int_div_ceil(num_elements, num_elems_per_page);
-        this->_page_size = num_elems_per_page;
-        _pages = cc::array<int>::filled(unsigned(num_pages), 0);
+        this->_page_size = static_cast<int>(num_elems_per_page);
+        _pages = cc::array<int>::filled(num_pages, 0);
     }
 
     /// allocate a block of the given size, returns the resulting page or -1

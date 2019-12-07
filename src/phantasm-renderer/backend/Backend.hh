@@ -62,7 +62,10 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs = {}) = 0;
+    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
+                                                               cc::span<shader_view_element const> uavs,
+                                                               cc::span<sampler_config const> samplers)
+        = 0;
 
     virtual void free(handle::shader_view sv) = 0;
 
@@ -73,7 +76,6 @@ public:
     [[nodiscard]] virtual handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                                      arg::framebuffer_format framebuffer_format,
                                                                      arg::shader_argument_shapes shader_arg_shapes,
-                                                                     arg::shader_sampler_configs shader_samplers,
                                                                      arg::shader_stages shader_stages,
                                                                      pr::primitive_pipeline_config const& primitive_config)
         = 0;

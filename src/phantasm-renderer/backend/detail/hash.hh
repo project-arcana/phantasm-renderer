@@ -37,7 +37,7 @@ size_t hash(T1 const& a, T2 const& b, T3 const& c, T4 const& d)
 }
 }
 
-inline size_t compute(arg::shader_argument_shape const& v) { return detail::hash(v.num_srvs, v.num_uavs, v.has_cb); }
+inline size_t compute(arg::shader_argument_shape const& v) { return detail::hash(v.num_srvs, v.num_uavs, v.num_samplers, v.has_cb); }
 
 inline size_t compute(arg::shader_argument_shapes const v)
 {
@@ -73,14 +73,6 @@ inline size_t compute(sampler_config const& v)
         detail::hash(v.compare_func, v.border_color)                      //
 
     );
-}
-
-inline size_t compute(arg::shader_sampler_configs const v)
-{
-    size_t res = 0;
-    for (auto const& e_ssc : v)
-        res = detail::hash_combine(res, compute(e_ssc));
-    return res;
 }
 
 struct compute_functor

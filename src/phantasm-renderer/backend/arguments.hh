@@ -41,19 +41,17 @@ struct shader_argument_shape
 {
     unsigned num_srvs = 0;
     unsigned num_uavs = 0;
+    unsigned num_samplers = 0;
     bool has_cb = false;
 
     constexpr bool operator==(shader_argument_shape const& rhs) const noexcept
     {
-        return num_srvs == rhs.num_srvs && num_uavs == rhs.num_uavs && has_cb == rhs.has_cb;
+        return num_srvs == rhs.num_srvs && num_uavs == rhs.num_uavs && has_cb == rhs.has_cb && num_samplers == rhs.num_samplers;
     }
 };
 
 /// A shader payload consists of [1, 4] shader arguments
 using shader_argument_shapes = cc::span<shader_argument_shape const>;
-
-/// A shader payload has up to 999 (immutable) samplers in space0
-using shader_sampler_configs = cc::span<sampler_config const>;
 
 /// A shader stage
 struct shader_stage
@@ -67,11 +65,6 @@ struct shader_stage
 
 /// A shader bundle consists of up to 1 stage per domain
 using shader_stages = cc::span<shader_stage const>;
-
-struct shader_sampler
-{
-
-};
 
 inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes const& rhs) noexcept
 {
@@ -87,17 +80,17 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
     return true;
 }
 
-inline bool operator==(shader_sampler_configs const& lhs, shader_sampler_configs const& rhs) noexcept
-{
-    if (lhs.size() != rhs.size())
-        return false;
+// inline bool operator==(shader_sampler_configs const& lhs, shader_sampler_configs const& rhs) noexcept
+//{
+//    if (lhs.size() != rhs.size())
+//        return false;
 
-    for (auto i = 0u; i < lhs.size(); ++i)
-    {
-        if (!(lhs[i] == rhs[i]))
-            return false;
-    }
+//    for (auto i = 0u; i < lhs.size(); ++i)
+//    {
+//        if (!(lhs[i] == rhs[i]))
+//            return false;
+//    }
 
-    return true;
-}
+//    return true;
+//}
 }

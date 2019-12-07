@@ -119,7 +119,10 @@ struct backend_config
     /// resource limits
     unsigned max_num_resources = 2048;
     unsigned max_num_pipeline_states = 1024;
-    unsigned max_num_shader_view_elements = 4096;
+    unsigned max_num_cbvs = 2048;
+    unsigned max_num_srvs = 2048;
+    unsigned max_num_uavs = 2048;
+    unsigned max_num_samplers = 1024;
 
     /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;
