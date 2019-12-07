@@ -8,7 +8,6 @@
 
 #include "common/native_enum.hh"
 #include "common/verify.hh"
-#include "common/zero_struct.hh"
 
 namespace
 {
@@ -35,8 +34,8 @@ namespace
 
 VkPipelineShaderStageCreateInfo pr::backend::vk::get_shader_create_info(const pr::backend::vk::shader& shader)
 {
-    VkPipelineShaderStageCreateInfo res;
-    zero_info_struct(res, VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+    VkPipelineShaderStageCreateInfo res = {};
+    res.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     res.stage = util::to_shader_stage_flags(shader.domain);
     res.module = shader.module;
     res.pName = shader.entrypoint;
@@ -45,8 +44,8 @@ VkPipelineShaderStageCreateInfo pr::backend::vk::get_shader_create_info(const pr
 
 void pr::backend::vk::initialize_shader(pr::backend::vk::shader& s, VkDevice device, const std::byte* data, size_t size, pr::backend::shader_domain domain)
 {
-    VkShaderModuleCreateInfo shader_info;
-    zero_info_struct(shader_info, VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
+    VkShaderModuleCreateInfo shader_info = {};
+    shader_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     shader_info.codeSize = size;
     shader_info.pCode = cc::bit_cast<uint32_t const*>(data);
 

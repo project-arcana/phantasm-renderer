@@ -10,7 +10,6 @@
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
 #include "common/vk_format.hh"
-#include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
@@ -29,8 +28,8 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
 
-    VkApplicationInfo app_info;
-    zero_info_struct(app_info, VK_STRUCTURE_TYPE_APPLICATION_INFO);
+    VkApplicationInfo app_info = {};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pApplicationName = "phantasm-renderer application";
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName = "phantasm-renderer";
@@ -39,8 +38,8 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
     auto const active_lay_ext = get_used_instance_lay_ext(get_available_instance_lay_ext(), config);
 
-    VkInstanceCreateInfo instance_info;
-    zero_info_struct(instance_info, VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
+    VkInstanceCreateInfo instance_info = {};
+    instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instance_info.pApplicationInfo = &app_info;
     instance_info.enabledExtensionCount = uint32_t(active_lay_ext.extensions.size());
     instance_info.ppEnabledExtensionNames = active_lay_ext.extensions.empty() ? nullptr : active_lay_ext.extensions.data();
@@ -176,8 +175,8 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
         VkFence submit_fence;
         auto const submit_fence_index = mPoolCmdLists.acquireFence(submit_fence);
 
-        VkSubmitInfo submit_info;
-        zero_info_struct(submit_info, VK_STRUCTURE_TYPE_SUBMIT_INFO);
+        VkSubmitInfo submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pWaitDstStageMask = &submitWaitStage;
         submit_info.commandBufferCount = unsigned(submit_batch.size());
         submit_info.pCommandBuffers = submit_batch.data();
@@ -276,8 +275,8 @@ void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDe
 
 void pr::backend::vk::BackendVulkan::createDebugMessenger()
 {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    zero_info_struct(createInfo, VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
+    VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
                                  | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT

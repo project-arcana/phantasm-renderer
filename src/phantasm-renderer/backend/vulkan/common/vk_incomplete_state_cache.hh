@@ -1,6 +1,6 @@
 #pragma once
 
-#include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
+#include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 

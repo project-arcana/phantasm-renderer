@@ -4,7 +4,6 @@
 #include <clean-core/capped_vector.hh>
 
 #include "common/verify.hh"
-#include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 #include "queue_util.hh"
 
@@ -15,8 +14,8 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
 
     auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mPhysicalDevice);
 
-    VkDeviceCreateInfo device_info;
-    zero_info_struct(device_info, VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
+    VkDeviceCreateInfo device_info = {};
+    device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_info.enabledExtensionCount = uint32_t(active_lay_ext.extensions.size());
     device_info.ppEnabledExtensionNames = active_lay_ext.extensions.empty() ? nullptr : active_lay_ext.extensions.data();
     device_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
@@ -32,7 +31,8 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
             continue;
 
         auto& queue_info = queue_create_infos.emplace_back();
-        zero_info_struct(queue_info, VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO);
+        queue_info = {};
+        queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_info.queueCount = 1;
         queue_info.queueFamilyIndex = uint32_t(queue_family_index);
         queue_info.pQueuePriorities = &global_queue_priority;

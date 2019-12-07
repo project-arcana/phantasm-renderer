@@ -3,9 +3,9 @@
 #include <iostream>
 
 VkBool32 pr::backend::vk::detail::debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-                                                 VkDebugUtilsMessageTypeFlagsEXT type,
+                                                 VkDebugUtilsMessageTypeFlagsEXT /*type*/,
                                                  const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-                                                 void* user_data)
+                                                 void* /*user_data*/)
 {
     if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
