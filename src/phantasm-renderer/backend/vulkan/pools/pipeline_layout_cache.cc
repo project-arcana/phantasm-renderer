@@ -2,9 +2,9 @@
 
 void pr::backend::vk::PipelineLayoutCache::initialize(unsigned max_elements) { mCache.initialize(max_elements); }
 
-void pr::backend::vk::PipelineLayoutCache::destroy(VkDevice device, DescriptorAllocator& desc_alloc) { reset(device, desc_alloc); }
+void pr::backend::vk::PipelineLayoutCache::destroy(VkDevice device) { reset(device); }
 
-pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, key_t key, DescriptorAllocator& desc_alloc)
+pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, key_t key)
 {
     auto const hash = hashKey(key);
 
@@ -14,13 +14,13 @@ pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCre
     else
     {
         auto* const insertion = mCache.insert(hash, pipeline_layout{});
-        insertion->initialize(device, key.reflected_ranges, key.arg_samplers, desc_alloc);
+        insertion->initialize(device, key.reflected_ranges);
         return insertion;
     }
 }
 
-void pr::backend::vk::PipelineLayoutCache::reset(VkDevice device, DescriptorAllocator& desc_alloc)
+void pr::backend::vk::PipelineLayoutCache::reset(VkDevice device)
 {
-    mCache.iterate_elements([&](pipeline_layout& elem) { elem.free(device, desc_alloc); });
+    mCache.iterate_elements([&](pipeline_layout& elem) { elem.free(device); });
     mCache.clear();
 }

@@ -84,8 +84,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     // Pool init
     mPoolPipelines.initialize(mDevice.getDevice(), config.max_num_pipeline_states);
     mPoolResources.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice(), config.max_num_resources);
-    mPoolShaderViews.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_shader_view_elements / 2, config.max_num_shader_view_elements / 2,
-                                config.max_num_shader_view_elements / 2, config.max_num_shader_view_elements / 2); // NOTE: slightly arbitrary mapping
+    mPoolShaderViews.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_cbvs, config.max_num_srvs, config.max_num_uavs, config.max_num_samplers);
 
     // Per-thread components and command list pool
     {

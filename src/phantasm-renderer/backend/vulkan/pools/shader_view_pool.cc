@@ -11,11 +11,10 @@
 
 #include "resource_pool.hh"
 
-pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs)
+pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs,
+                                                                         cc::span<shader_view_element const> uavs,
+                                                                         cc::span<const sampler_config> sampler_configs)
 {
-    VkDescriptorSet res_raw;
-    unsigned pool_index;
-
     // Create the layout, maps as follows:
     // SRV:
     //      Texture* -> VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
@@ -24,10 +23,11 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // UAV:
     //      Texture* -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     //      Buffer   -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, static_cast<unsigned>(sampler_configs.size()));
 
-    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, {});
-
-    // Do acquires requiring synchronization first
+    // Do acquires requiring synchronization
+    VkDescriptorSet res_raw;
+    unsigned pool_index;
     {
         auto lg = std::lock_guard(mMutex);
         res_raw = mAllocator.allocDescriptor(layout);
@@ -40,9 +40,9 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
 
     // Perform the writes
     {
-        cc::capped_vector<VkWriteDescriptorSet, 24> writes;
-        cc::capped_vector<VkDescriptorBufferInfo, 16> buffer_infos;
-        cc::capped_vector<VkDescriptorImageInfo, 16> image_infos;
+        cc::capped_vector<VkWriteDescriptorSet, 16> writes;
+        cc::capped_vector<VkDescriptorBufferInfo, 64> buffer_infos;
+        cc::capped_vector<VkDescriptorImageInfo, 64 + limits::max_shader_samplers> image_infos;
 
         VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
         auto current_buffer_range = 0u;
@@ -172,12 +172,32 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
             }
         }
 
+        if (sampler_configs.size() > 0)
+        {
+            flush_writes();
+            last_type = VK_DESCRIPTOR_TYPE_SAMPLER;
+            current_binding_base = spv::sampler_binding_start;
+
+            new_node.samplers.reserve(sampler_configs.size());
+            for (auto const& sampler_conf : sampler_configs)
+            {
+                new_node.samplers.push_back(makeSampler(sampler_conf));
+
+                auto& img_info = image_infos.emplace_back();
+                img_info.imageView = nullptr;
+                img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
+                img_info.sampler = new_node.samplers.back();
+
+                ++current_image_range;
+            }
+        }
+
         flush_writes();
 
         vkUpdateDescriptorSets(mAllocator.getDevice(), uint32_t(writes.size()), writes.data(), 0, nullptr);
 
-        // Store these image views in the new node
-        // This is an allocating container, however it is not accessed in a hot path
+        // Store image views in the new node
+        // These are allocating containers, however they are not accessed in a hot path
         // We only do this because they have to stay alive until this shader view is freed
         new_node.image_views.reserve(image_infos.size());
         for (auto const& img_info : image_infos)
@@ -197,14 +217,7 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
     // TODO: dangle check
 
     shader_view_node& freed_node = mPool.get(static_cast<unsigned>(sv.index));
-
-    // Destroy the contained image views
-    for (auto const iv : freed_node.image_views)
-    {
-        vkDestroyImageView(mDevice, iv, nullptr);
-    }
-    freed_node.image_views.clear();
-    freed_node.resources.clear();
+    internalFree(freed_node);
 
     {
         // This is a write access to the pool and allocator, and must be synced
@@ -214,7 +227,7 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
     }
 }
 
-void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* res_pool, int num_cbvs, int num_srvs, int num_uavs, int num_samplers)
+void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* res_pool, unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, unsigned num_samplers)
 {
     mDevice = device;
     mResourcePool = res_pool;
@@ -230,14 +243,8 @@ void pr::backend::vk::ShaderViewPool::destroy()
     mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node) {
         ++num_leaks;
 
+        internalFree(leaked_node);
         mAllocator.free(leaked_node.raw_desc_set);
-
-        // Destroy the contained image views
-        for (auto const iv : leaked_node.image_views)
-        {
-            vkDestroyImageView(mDevice, iv, nullptr);
-        }
-        leaked_node.image_views.clear();
     });
 
     if (num_leaks > 0)
@@ -265,4 +272,47 @@ VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_ele
     auto const vr = vkCreateImageView(mDevice, &info, nullptr, &res);
     CC_ASSERT(vr == VK_SUCCESS);
     return res;
+}
+
+VkSampler pr::backend::vk::ShaderViewPool::makeSampler(const pr::backend::sampler_config& config) const
+{
+    VkSamplerCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    info.minFilter = util::to_min_filter(config.filter);
+    info.magFilter = util::to_mag_filter(config.filter);
+    info.mipmapMode = util::to_mipmap_filter(config.filter);
+    info.addressModeU = util::to_native(config.address_u);
+    info.addressModeV = util::to_native(config.address_v);
+    info.addressModeW = util::to_native(config.address_w);
+    info.minLod = config.min_lod;
+    info.maxLod = config.max_lod;
+    info.mipLodBias = config.lod_bias;
+    info.anisotropyEnable = config.filter == sampler_filter::anisotropic ? VK_TRUE : VK_FALSE;
+    info.maxAnisotropy = static_cast<float>(config.max_anisotropy);
+    info.borderColor = util::to_native(config.border_color);
+    info.compareEnable = config.compare_func != sampler_compare_func::disabled ? VK_TRUE : VK_FALSE;
+    info.compareOp = util::to_native(config.compare_func);
+
+    VkSampler res;
+    PR_VK_VERIFY_SUCCESS(vkCreateSampler(mDevice, &info, nullptr, &res));
+    return res;
+}
+
+void pr::backend::vk::ShaderViewPool::internalFree(pr::backend::vk::ShaderViewPool::shader_view_node& node) const
+{
+    // Destroy the contained image views
+    for (auto const iv : node.image_views)
+    {
+        vkDestroyImageView(mDevice, iv, nullptr);
+    }
+    node.image_views.clear();
+
+    // Destroy the contained samplers
+    for (auto const s : node.samplers)
+    {
+        vkDestroySampler(mDevice, s, nullptr);
+    }
+    node.samplers.clear();
+
+    node.resources.clear();
 }

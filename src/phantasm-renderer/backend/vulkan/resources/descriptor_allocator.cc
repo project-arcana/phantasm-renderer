@@ -152,7 +152,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cb
 
 VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::span<const shader_view_element> srvs,
                                                                           cc::span<const shader_view_element> uavs,
-                                                                          cc::span<VkSampler const> immutable_samplers) const
+                                                                          unsigned num_samplers) const
 {
     // NOTE: Eventually arguments could be constrained to stages
     // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
@@ -234,15 +234,15 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
             flush_binding();
         }
 
-        if (!immutable_samplers.empty())
+        if (num_samplers > 0)
         {
             VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
             binding = {};
             binding.binding = spv::sampler_binding_start;
             binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
             binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-            binding.pImmutableSamplers = immutable_samplers.data();
-            binding.descriptorCount = static_cast<unsigned>(immutable_samplers.size());
+            binding.pImmutableSamplers = nullptr;
+            binding.descriptorCount = num_samplers;
         }
     }
 

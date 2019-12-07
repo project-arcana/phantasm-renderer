@@ -70,7 +70,7 @@ struct pipeline_layout
 {
     /// The descriptor set layouts, two per shader argument:
     /// One for samplers, SRVs and UAVs, one for CBVs, shifted behind the first types
-    cc::capped_vector<VkDescriptorSetLayout, (limits::max_shader_arguments * 2) + 1> descriptor_set_layouts;
+    cc::capped_vector<VkDescriptorSetLayout, limits::max_shader_arguments * 2> descriptor_set_layouts;
 
     /// The pipeline stages (shader domains only) which have access to
     /// the respective descriptor sets (parallel array)
@@ -79,9 +79,9 @@ struct pipeline_layout
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
 
-    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos, arg::shader_sampler_configs samplers, DescriptorAllocator& desc_allocator);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos);
 
-    void free(VkDevice device, DescriptorAllocator& desc_allocator);
+    void free(VkDevice device);
 
     [[nodiscard]] VkPipelineStageFlags get_argument_visibility(unsigned arg_i) const
     {
@@ -90,14 +90,6 @@ struct pipeline_layout
 
         return descriptor_set_visibilities[arg_i];
     }
-
-    [[nodiscard]] VkDescriptorSet get_sampler_descriptor_set() const { return _sampler_descriptor_set; }
-
-private:
-    void create_sampler(VkDevice device, sampler_config const& config);
-
-    cc::capped_vector<VkSampler, limits::max_shader_samplers> _samplers;
-    VkDescriptorSet _sampler_descriptor_set;
 };
 
 }

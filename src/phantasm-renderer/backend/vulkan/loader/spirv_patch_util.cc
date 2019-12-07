@@ -81,10 +81,6 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
                 auto const new_set = b->set + pr::backend::limits::max_shader_arguments;
                 spvReflectChangeDescriptorBindingNumbers(&module, b, b->binding, new_set);
             }
-            else if (b->resource_type == SPV_REFLECT_RESOURCE_FLAG_SAMPLER)
-            {
-                spvReflectChangeDescriptorBindingNumbers(&module, b, b->binding, pr::backend::vk::spv::static_sampler_descriptor_set);
-            }
         }
     }
 
@@ -107,6 +103,8 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
             new_info.visible_pipeline_stage = util::to_pipeline_stage_flags(current_stage);
         }
     }
+
+    return;
 }
 
 }

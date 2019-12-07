@@ -19,18 +19,17 @@ public:
     struct key_t
     {
         cc::span<util::spirv_desc_range_info const> reflected_ranges;
-        arg::shader_sampler_configs arg_samplers;
     };
 
     void initialize(unsigned max_elements);
-    void destroy(VkDevice device, DescriptorAllocator& desc_alloc);
+    void destroy(VkDevice device);
 
     /// receive an existing root signature matching the shape, or create a new one
     /// returns a pointer (which remains stable, §23.2.5/13 C++11)
-    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, key_t key, DescriptorAllocator& desc_alloc);
+    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, key_t key);
 
     /// destroys all elements inside, and clears the map
-    void reset(VkDevice device, DescriptorAllocator& desc_alloc);
+    void reset(VkDevice device);
 
 private:
     static size_t hashKey(key_t const& v)
@@ -42,7 +41,7 @@ private:
                                                               hash::detail::hash(elem.visible_stages));
             res = hash::detail::hash_combine(res, elem_hash);
         }
-        return hash::detail::hash_combine(res, hash::compute(v.arg_samplers));
+        return res;
     }
 
     backend::detail::cache_map<pipeline_layout> mCache;

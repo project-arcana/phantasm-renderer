@@ -186,13 +186,6 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
         pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
 
-        if (_bound.raw_sampler_descriptor_set != pipeline_layout.get_sampler_descriptor_set())
-        {
-            _bound.raw_sampler_descriptor_set = pipeline_layout.get_sampler_descriptor_set();
-            vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, spv::static_sampler_descriptor_set, 1,
-                                    &_bound.raw_sampler_descriptor_set, 0, nullptr);
-        }
-
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
             auto const& arg = draw.shader_arguments[i];

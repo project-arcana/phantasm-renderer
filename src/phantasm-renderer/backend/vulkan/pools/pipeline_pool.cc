@@ -11,7 +11,6 @@
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,
                                                                                        pr::backend::arg::shader_argument_shapes /*shader_arg_shapes*/,
-                                                                                       arg::shader_sampler_configs shader_samplers,
                                                                                        pr::backend::arg::shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
 {
@@ -40,7 +39,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges, shader_samplers}, mDescriptorAllocator);
+        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges});
         pool_index = mPool.acquire();
     }
 
@@ -115,7 +114,7 @@ void pr::backend::vk::PipelinePool::destroy()
         std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::pipeline_state object" << (num_leaks == 1 ? "" : "s") << std::endl;
     }
 
-    mLayoutCache.destroy(mDevice, mDescriptorAllocator);
+    mLayoutCache.destroy(mDevice);
     mRenderPassCache.destroy(mDevice);
     mDescriptorAllocator.destroy();
 }
