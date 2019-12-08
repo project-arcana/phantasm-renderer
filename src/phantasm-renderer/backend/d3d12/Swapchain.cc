@@ -1,9 +1,5 @@
 #include "Swapchain.hh"
 
-#include <iostream>
-
-#include <phantasm-renderer/backend/detail/string_array_util.hh>
-
 #include "common/util.hh"
 #include "common/verify.hh"
 
@@ -31,7 +27,8 @@ void pr::backend::d3d12::Swapchain::initialize(
     {
         for (auto i = 0u; i < mBackbuffers.size(); ++i)
         {
-            mBackbuffers[i].fence.initialize(*mParentDevice, pr::backend::detail::formatted_stl_string("swapchain fence %i", i).c_str());
+            mBackbuffers[i].fence.initialize(*mParentDevice);
+            util::set_object_name(mBackbuffers[i].fence.getRawFence(), "swapchain fence #%u", i);
         }
     }
 

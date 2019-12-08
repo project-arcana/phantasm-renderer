@@ -13,7 +13,9 @@ void pr::backend::d3d12::cmd_allocator_node::initialize(ID3D12Device& device, D3
     _num_discarded = 0;
     _full_and_waiting = false;
 
-    _fence.initialize(device, "cmd_list allocator_node fence");
+    _fence.initialize(device);
+    util::set_object_name(_fence.getRawFence(), "cmd_allocator_node fence for %zx", this);
+
     PR_D3D12_VERIFY(device.CreateCommandAllocator(type, IID_PPV_ARGS(&_allocator)));
 }
 
@@ -187,7 +189,7 @@ void pr::backend::d3d12::CommandAllocatorBundle::initialize(ID3D12Device& device
             {
                 PR_D3D12_VERIFY(device.CreateCommandList(0, list_type, raw_alloc, nullptr, IID_PPV_ARGS(&initial_lists[cmdlist_i])));
                 initial_lists[cmdlist_i]->Close();
-                util::set_object_name(initial_lists[cmdlist_i], "pool cmdlist #%d", cmdlist_i);
+                util::set_object_name(initial_lists[cmdlist_i], "pool cmdlist #%d, alloc_bundle %zx", cmdlist_i, this);
                 ++cmdlist_i;
             }
         }
