@@ -18,7 +18,9 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
     }
 
     // Adapter init
+    bool is_intel_gpu = false;
     {
+        // choose the adapter
         auto const candidates = get_adapter_candidates();
         auto const chosen_adapter_index = config.adapter_preference == adapter_preference::explicit_index
                                               ? config.explicit_adapter_index
@@ -26,6 +28,17 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 
         CC_RUNTIME_ASSERT(chosen_adapter_index != uint32_t(-1));
 
+        // detect intel GPUs for GBV workaround
+        for (auto const& candidate : candidates)
+        {
+            if (candidate.index == chosen_adapter_index)
+            {
+                is_intel_gpu = candidate.vendor == gpu_vendor::intel;
+                break;
+            }
+        }
+
+        // create the adapter
         shared_com_ptr<IDXGIAdapter> temp_adapter;
         mFactory->EnumAdapters(chosen_adapter_index, temp_adapter.override());
         PR_D3D12_VERIFY(temp_adapter.get_interface(mAdapter));
@@ -43,20 +56,27 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 
             if (config.validation >= validation_level::on_extended)
             {
-                shared_com_ptr<ID3D12Debug3> debug_controller_v3;
-                bool const gbv_init_success = detail::hr_succeeded(debug_controller.get_interface(debug_controller_v3));
-
-                if (gbv_init_success && debug_controller_v3.is_valid())
+                if (is_intel_gpu)
                 {
-                    // TODO: even if this succeeded, we could have still
-                    // launched from inside NSight, where SetEnableSynchronizedCommandQueueValidation
-                    // will crash
-                    debug_controller_v3->SetEnableGPUBasedValidation(true);
-                    debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
+                    std::cout << "[pr][backend][d3d12] info: GPU-based validation requested on an Intel GPU, disabling due to known crashes" << std::endl;
                 }
                 else
                 {
-                    std::cerr << "[pr][backend[d3d12] warning: failed to enable GPU-based validation" << std::endl;
+                    shared_com_ptr<ID3D12Debug3> debug_controller_v3;
+                    bool const gbv_init_success = detail::hr_succeeded(debug_controller.get_interface(debug_controller_v3));
+
+                    if (gbv_init_success && debug_controller_v3.is_valid())
+                    {
+                        // TODO: even if this succeeded, we could have still
+                        // launched from inside NSight, where SetEnableSynchronizedCommandQueueValidation
+                        // will crash
+                        debug_controller_v3->SetEnableGPUBasedValidation(true);
+                        debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
+                    }
+                    else
+                    {
+                        std::cerr << "[pr][backend[d3d12] warning: failed to enable GPU-based validation" << std::endl;
+                    }
                 }
             }
         }
