@@ -64,20 +64,28 @@ void print_dred_information(ID3D12Device* device)
         auto hr1 = dred->GetAutoBreadcrumbsOutput(&DredAutoBreadcrumbsOutput);
         auto hr2 = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput);
 
-        ::DebugBreak();
+        //::DebugBreak();
 
         if (SUCCEEDED(hr1))
         {
             // TODO: Breadcrumb output
             D3D12_AUTO_BREADCRUMB_NODE const* breadcrumb = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
-            while (breadcrumb != nullptr)
+            auto num_breadcrumbs = 0u;
+            while (breadcrumb != nullptr && num_breadcrumbs < 10)
             {
-                std::cerr << "[pr][backend][d3d12][DRED] breadcrumb " << breadcrumb->BreadcrumbCount << std::endl;
-                std::cerr << "[pr][backend][d3d12][DRED] referencing command list " << breadcrumb->pCommandListDebugNameA << " on queue "
-                          << breadcrumb->pCommandQueueDebugNameA << std::endl;
+                std::wcerr << "[pr][backend][d3d12][DRED] bc #" << breadcrumb->BreadcrumbCount;
+
+                if (breadcrumb->pCommandListDebugNameA != nullptr)
+                    std::wcerr << " on list \"" << breadcrumb->pCommandListDebugNameA << "\"";
+                if (breadcrumb->pCommandQueueDebugNameA != nullptr)
+                    std::wcerr << " on queue \"" << breadcrumb->pCommandQueueDebugNameA << "\"";
+
+                std::wcerr << std::endl;
 
                 breadcrumb = breadcrumb->pNext;
+                ++num_breadcrumbs;
             }
+            std::cerr << "[pr][backend][d3d12][DRED] end of breadcrumb data" << std::endl;
         }
         else
         {
@@ -91,18 +99,20 @@ void print_dred_information(ID3D12Device* device)
             D3D12_DRED_ALLOCATION_NODE const* freed_node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
             while (freed_node != nullptr)
             {
-                std::cerr << "[pr][backend][d3d12][DRED] recently freed: " << freed_node->ObjectNameA << std::endl;
+                if (freed_node->ObjectNameA)
+                    std::wcerr << "[pr][backend][d3d12][DRED] recently freed: " << freed_node->ObjectNameA << std::endl;
                 freed_node = freed_node->pNext;
             }
 
             D3D12_DRED_ALLOCATION_NODE const* allocated_node = DredPageFaultOutput.pHeadExistingAllocationNode;
             while (allocated_node != nullptr)
             {
-                std::cerr << "[pr][backend][d3d12][DRED] allocated: " << allocated_node->ObjectNameA << std::endl;
+                if (allocated_node->ObjectNameA)
+                    std::wcerr << "[pr][backend][d3d12][DRED] allocated: " << allocated_node->ObjectNameA << std::endl;
                 allocated_node = allocated_node->pNext;
             }
 
-            // TODO: Breadcrumb output
+            std::cerr << "[pr][backend][d3d12][DRED] end of page fault data" << std::endl;
         }
         else
         {

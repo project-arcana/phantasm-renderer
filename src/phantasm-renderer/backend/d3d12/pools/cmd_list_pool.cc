@@ -1,6 +1,7 @@
 #include "cmd_list_pool.hh"
 
 #include <phantasm-renderer/backend/d3d12/BackendD3D12.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 void pr::backend::d3d12::cmd_allocator_node::initialize(ID3D12Device& device, D3D12_COMMAND_LIST_TYPE type, int max_num_cmdlists)
@@ -186,6 +187,7 @@ void pr::backend::d3d12::CommandAllocatorBundle::initialize(ID3D12Device& device
             {
                 PR_D3D12_VERIFY(device.CreateCommandList(0, list_type, raw_alloc, nullptr, IID_PPV_ARGS(&initial_lists[cmdlist_i])));
                 initial_lists[cmdlist_i]->Close();
+                util::set_object_name(initial_lists[cmdlist_i], "pool cmdlist #%d", cmdlist_i);
                 ++cmdlist_i;
             }
         }

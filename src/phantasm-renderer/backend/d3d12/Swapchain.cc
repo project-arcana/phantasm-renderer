@@ -65,7 +65,7 @@ void pr::backend::d3d12::Swapchain::initialize(
         rtv_heap_desc.NodeMask = 0;
 
         PR_D3D12_VERIFY(mParentDevice->CreateDescriptorHeap(&rtv_heap_desc, PR_COM_WRITE(mRTVHeap)));
-        util::set_object_name(mRTVHeap, "Swapchain RTV Heap");
+        util::set_object_name(mRTVHeap, "swapchain RTV heap");
 
         updateBackbuffers();
     }
@@ -115,7 +115,7 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
         backbuffer.rtv.ptr += rtv_size * i;
 
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
-        util::set_object_name(backbuffer.resource, "Swapchain backbuffer %u", i);
+        util::set_object_name(backbuffer.resource, "swapchain backbuffer #%u", i);
 
         mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
 

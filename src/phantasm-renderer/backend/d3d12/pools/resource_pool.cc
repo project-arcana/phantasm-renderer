@@ -53,7 +53,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture2D(
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(util::to_dxgi_format(format), UINT(w), UINT(h), 1, UINT16(mips), 1, 0, D3D12_RESOURCE_FLAG_NONE);
 
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
-    util::set_object_name(alloc->GetResource(), "ResourcePool texture 2D");
+    util::set_object_name(alloc->GetResource(), "respool texture2D");
     return acquireResource(alloc, initial_state);
 }
 
@@ -74,7 +74,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
                                                        samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
-        util::set_object_name(alloc->GetResource(), "ResourcePool depth stencil target");
+        util::set_object_name(alloc->GetResource(), "respool depth stencil target");
         return acquireResource(alloc, initial_state);
     }
     else
@@ -93,7 +93,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
                                                        samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
-        util::set_object_name(alloc->GetResource(), "ResourcePool render target");
+        util::set_object_name(alloc->GetResource(), "respool render target");
         return acquireResource(alloc, initial_state);
     }
 }
@@ -102,7 +102,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
-    util::set_object_name(alloc->GetResource(), "ResourcePool buffer");
+    util::set_object_name(alloc->GetResource(), "respool buffer");
     return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
 }
 
@@ -113,7 +113,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuff
 
     void* data_start_void;
     alloc->GetResource()->Map(0, nullptr, &data_start_void);
-    util::set_object_name(alloc->GetResource(), "ResourcePool mapped buffer");
+    util::set_object_name(alloc->GetResource(), "respool mapped buffer");
     return acquireResource(alloc, resource_state::unknown, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
 }
 

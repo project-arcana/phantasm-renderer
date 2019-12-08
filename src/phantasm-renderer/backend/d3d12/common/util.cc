@@ -1,6 +1,5 @@
 #include "util.hh"
 
-#include <corecrt_wstdio.h>
 #include <varargs.h>
 #include <cstdarg>
 #include <cstdio>
@@ -38,9 +37,9 @@ void pr::backend::d3d12::util::set_object_name(ID3D12Object* object, const char*
             va_end(args);
         }
 
-        wchar_t name_wide[1024];
-        ::swprintf(name_wide, 1024, L"%S", name_formatted);
-        object->SetName(name_wide);
+        // Since recently, d3d12 object names can be set using non-wide strings
+        // even though it doesn't look like it, this works perfectly with validation layers, PIX, Renderdoc, NSight and DRED
+        object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(strlen(name_formatted)), name_formatted);
     }
 }
 
