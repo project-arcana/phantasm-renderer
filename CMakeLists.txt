@@ -53,7 +53,6 @@ target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
     reflector
-    polymesh
 )
 
 
