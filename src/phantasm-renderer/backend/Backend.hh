@@ -1,6 +1,6 @@
 #pragma once
 
-#include <typed-geometry/types/vec.hh>
+#include <typed-geometry/types/size.hh>
 
 #include <phantasm-renderer/fwd.hh>
 
@@ -37,10 +37,10 @@ public:
     virtual void present() = 0;
 
     /// causes an internal resize
-    virtual void onResize(tg::ivec2 size) = 0;
+    virtual void onResize(tg::isize2 size) = 0;
 
     /// gets the current backbuffer size
-    [[nodiscard]] virtual tg::ivec2 getBackbufferSize() const = 0;
+    [[nodiscard]] virtual tg::isize2 getBackbufferSize() const = 0;
 
     /// gets the backbuffer pixel format
     [[nodiscard]] virtual format getBackbufferFormat() const = 0;

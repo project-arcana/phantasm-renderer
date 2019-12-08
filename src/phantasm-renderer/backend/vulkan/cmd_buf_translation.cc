@@ -112,8 +112,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 fb_info.renderPass = render_pass;
                 fb_info.attachmentCount = static_cast<unsigned>(fb_image_views.size());
                 fb_info.pAttachments = fb_image_views.data();
-                fb_info.width = static_cast<unsigned>(_bound.current_render_pass.viewport.x);
-                fb_info.height = static_cast<unsigned>(_bound.current_render_pass.viewport.y);
+                fb_info.width = static_cast<unsigned>(_bound.current_render_pass.viewport.width);
+                fb_info.height = static_cast<unsigned>(_bound.current_render_pass.viewport.height);
                 fb_info.layers = 1;
 
                 // Create the framebuffer
@@ -130,8 +130,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 rp_begin_info.renderPass = render_pass;
                 rp_begin_info.framebuffer = _bound.raw_framebuffer;
                 rp_begin_info.renderArea.offset = {0, 0};
-                rp_begin_info.renderArea.extent.width = static_cast<uint32_t>(_bound.current_render_pass.viewport.x);
-                rp_begin_info.renderArea.extent.height = static_cast<uint32_t>(_bound.current_render_pass.viewport.y);
+                rp_begin_info.renderArea.extent.width = static_cast<uint32_t>(_bound.current_render_pass.viewport.width);
+                rp_begin_info.renderArea.extent.height = static_cast<uint32_t>(_bound.current_render_pass.viewport.height);
 
                 cc::capped_vector<VkClearValue, limits::max_render_targets + 1> clear_values;
 
@@ -151,7 +151,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 rp_begin_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
                 rp_begin_info.pClearValues = clear_values.data();
 
-                util::set_viewport(_cmd_list, _bound.current_render_pass.viewport.x, _bound.current_render_pass.viewport.y);
+                util::set_viewport(_cmd_list, _bound.current_render_pass.viewport);
                 vkCmdBeginRenderPass(_cmd_list, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
             }
         }

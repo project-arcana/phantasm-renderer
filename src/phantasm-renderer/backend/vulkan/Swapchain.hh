@@ -2,7 +2,7 @@
 
 #include <clean-core/capped_array.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
 
 #include <phantasm-renderer/backend/types.hh>
 
@@ -42,7 +42,7 @@ public:
 
 public:
     [[nodiscard]] VkFormat getBackbufferFormat() const { return mBackbufferFormat.format; }
-    [[nodiscard]] tg::ivec2 getBackbufferSize() const { return mBackbufferSize; }
+    [[nodiscard]] tg::isize2 getBackbufferSize() const { return mBackbufferSize; }
     [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
 
     [[nodiscard]] VkRenderPass getRenderPass() const { return mRenderPass; }
@@ -103,7 +103,7 @@ private:
 
     VkSurfaceFormatKHR mBackbufferFormat;
 
-    tg::ivec2 mBackbufferSize;
+    tg::isize2 mBackbufferSize;
     bool mBackbufferHasResized = true;
 
     present_mode mSyncMode;

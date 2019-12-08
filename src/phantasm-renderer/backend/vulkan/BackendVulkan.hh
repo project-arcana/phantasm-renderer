@@ -38,9 +38,9 @@ public:
 
     void present() override;
 
-    void onResize(tg::ivec2 size) override;
+    void onResize(tg::isize2 size) override;
 
-    [[nodiscard]] tg::ivec2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
+    [[nodiscard]] tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
 
     [[nodiscard]] format getBackbufferFormat() const override;
 

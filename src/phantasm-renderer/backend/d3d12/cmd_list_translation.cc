@@ -48,7 +48,7 @@ void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12Gra
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::begin_render_pass& begin_rp)
 {
-    util::set_viewport(_cmd_list, begin_rp.viewport.x, begin_rp.viewport.y);
+    util::set_viewport(_cmd_list, begin_rp.viewport);
 
     resource_view_cpu_only const dynamic_rtvs = _thread_local.lin_alloc_rtvs.allocate(begin_rp.render_targets.size());
 

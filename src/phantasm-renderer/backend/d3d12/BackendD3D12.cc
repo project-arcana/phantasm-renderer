@@ -93,10 +93,10 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
         backbuffer.resource, backbuffer.state == D3D12_RESOURCE_STATE_RENDER_TARGET ? resource_state::render_target : resource_state::present);
 }
 
-void pr::backend::d3d12::BackendD3D12::onResize(tg::ivec2 size)
+void pr::backend::d3d12::BackendD3D12::onResize(tg::isize2 size)
 {
     onInternalResize();
-    mSwapchain.onResize(size.x, size.y);
+    mSwapchain.onResize(size);
 }
 
 pr::backend::format pr::backend::d3d12::BackendD3D12::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }

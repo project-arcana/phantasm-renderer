@@ -10,7 +10,7 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
     mDevice = device.getDevice();
     mPhysicalDevice = device.getPhysicalDevice();
     mPresentQueue = device.getQueueGraphics();
-    mBackbufferSize = tg::ivec2(-1, -1);
+    mBackbufferSize = tg::isize2(-1, -1);
     mSyncMode = sync;
 
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
@@ -223,7 +223,7 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
     auto const present_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
     auto const new_extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(width_hint), unsigned(height_hint)});
-    mBackbufferSize = tg::ivec2{int(new_extent.width), int(new_extent.height)};
+    mBackbufferSize = tg::isize2{int(new_extent.width), int(new_extent.height)};
     mBackbufferHasResized = true;
 
     // Create swapchain

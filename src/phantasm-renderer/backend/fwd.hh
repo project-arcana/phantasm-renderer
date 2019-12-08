@@ -13,4 +13,7 @@ struct sampler_config;
 struct backend_config;
 struct vertex_attribute_info;
 struct shader_argument;
+
+struct command_stream_parser;
+struct command_stream_writer;
 }

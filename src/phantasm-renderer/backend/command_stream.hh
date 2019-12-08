@@ -5,7 +5,7 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/utility.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
 
 #include "detail/trivial_capped_vector.hh"
 #include "limits.hh"
@@ -80,7 +80,7 @@ PR_DEFINE_CMD(begin_render_pass)
 
     cmd_vector<render_target_info, limits::max_render_targets> render_targets;
     depth_stencil_info depth_target;
-    tg::ivec2 viewport;
+    tg::isize2 viewport;
 };
 
 PR_DEFINE_CMD(end_render_pass){

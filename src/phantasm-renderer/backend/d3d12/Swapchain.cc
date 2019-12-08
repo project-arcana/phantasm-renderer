@@ -73,11 +73,12 @@ void pr::backend::d3d12::Swapchain::initialize(
 
 pr::backend::d3d12::Swapchain::~Swapchain() { releaseBackbuffers(); }
 
-void pr::backend::d3d12::Swapchain::onResize(int width, int height)
+void pr::backend::d3d12::Swapchain::onResize(tg::isize2 size)
 {
-    mBackbufferSize = tg::ivec2(width, height);
+    mBackbufferSize = size;
     releaseBackbuffers();
-    PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(width), UINT(height), s_backbuffer_format, get_swapchain_flags(mPresentMode)));
+    PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(mBackbufferSize.width), UINT(mBackbufferSize.height),
+                                              s_backbuffer_format, get_swapchain_flags(mPresentMode)));
     updateBackbuffers();
 }
 

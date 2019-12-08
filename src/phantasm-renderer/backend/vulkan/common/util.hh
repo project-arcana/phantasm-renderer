@@ -1,5 +1,7 @@
 #pragma once
 
+#include <typed-geometry/types/size.hh>
+
 #include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
@@ -9,7 +11,7 @@
 
 namespace pr::backend::vk::util
 {
-inline void set_viewport(VkCommandBuffer command_buf, int size_x, int size_y, int start_x = 0, int start_y = 0)
+inline void set_viewport(VkCommandBuffer command_buf, tg::isize2 size, int start_x = 0, int start_y = 0)
 {
     // vulkans viewport has a flipped y axis
     // this can be remedied by setting a negative height, see
@@ -21,15 +23,15 @@ inline void set_viewport(VkCommandBuffer command_buf, int size_x, int size_y, in
     VkViewport viewport = {};
     viewport.x = float(start_x);
     viewport.y = float(start_y);
-    viewport.width = float(size_x);
-    viewport.height = float(size_y);
+    viewport.width = float(size.width);
+    viewport.height = float(size.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
     scissor.offset = {0, 0};
-    scissor.extent.width = unsigned(size_x);
-    scissor.extent.height = unsigned(size_y);
+    scissor.extent.width = unsigned(size.width);
+    scissor.extent.height = unsigned(size.height);
 
     vkCmdSetViewport(command_buf, 0, 1, &viewport);
     vkCmdSetScissor(command_buf, 0, 1, &scissor);
