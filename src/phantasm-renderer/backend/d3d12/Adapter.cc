@@ -35,24 +35,38 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
     if (config.validation != validation_level::off)
     {
         shared_com_ptr<ID3D12Debug> debug_controller;
-        bool const debug_init_success = SUCCEEDED(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));
+        bool const debug_init_success = detail::hr_succeeded(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));
 
-        if (debug_init_success)
+        if (debug_init_success && debug_controller.is_valid())
         {
             debug_controller->EnableDebugLayer();
 
             if (config.validation >= validation_level::on_extended)
             {
                 shared_com_ptr<ID3D12Debug3> debug_controller_v3;
-                PR_D3D12_VERIFY(debug_controller.get_interface(debug_controller_v3));
-                debug_controller_v3->SetEnableGPUBasedValidation(true);
-                debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
+                bool const gbv_init_success = detail::hr_succeeded(debug_controller.get_interface(debug_controller_v3));
+
+                if (gbv_init_success && debug_controller_v3.is_valid())
+                {
+                    // TODO: even if this succeeded, we could have still
+                    // launched from inside NSight, where SetEnableSynchronizedCommandQueueValidation
+                    // will crash
+                    debug_controller_v3->SetEnableGPUBasedValidation(true);
+                    debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
+                }
+                else
+                {
+                    std::cerr << "[pr][backend[d3d12] warning: failed to enable GPU-based validation" << std::endl;
+                }
             }
         }
         else
         {
-            // TODO: Log that the D3D12 SDK is missing
-            // refer to https://docs.microsoft.com/en-us/windows/uwp/gaming/use-the-directx-runtime-and-visual-studio-graphics-diagnostic-features
+            std::cerr << "[pr][backend[d3d12] warning: failed to enable validation" << std::endl;
+            std::cerr << "  verify that the D3D12 SDK is installed on this machine" << std::endl;
+            std::cerr << "  refer to "
+                         "https://docs.microsoft.com/en-us/windows/uwp/gaming/use-the-directx-runtime-and-visual-studio-graphics-diagnostic-features"
+                      << std::endl;
         }
     }
 }
