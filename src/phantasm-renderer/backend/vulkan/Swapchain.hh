@@ -30,6 +30,7 @@ public:
 
     /// present the active backbuffer to the screen
     /// can trigger a resize instead of presenting if the swapchain is stale
+    /// returns true on a successful present, false if a resize occured instead
     bool present();
 
     /// wait for the next backbuffer
