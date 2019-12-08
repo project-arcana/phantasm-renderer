@@ -5,20 +5,14 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/utility.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
 
 #include "detail/trivial_capped_vector.hh"
+#include "limits.hh"
 #include "types.hh"
 
 namespace pr::backend
 {
-namespace limits
-{
-inline constexpr auto max_render_targets = 8u;
-inline constexpr auto max_resource_transitions = 4u;
-inline constexpr auto max_shader_arguments = 4u;
-}
-
 namespace cmd
 {
 namespace detail
@@ -69,23 +63,16 @@ using cmd_vector = backend::detail::trivial_capped_vector<T, N>;
 
 PR_DEFINE_CMD(begin_render_pass)
 {
-    enum class rt_clear_type : uint8_t
-    {
-        clear,
-        dont_care,
-        load
-    };
-
     struct render_target_info
     {
-        handle::resource resource;
+        shader_view_element sve;
         float clear_value[4];
         rt_clear_type clear_type;
     };
 
     struct depth_stencil_info
     {
-        handle::resource resource = handle::null_resource;
+        shader_view_element sve;
         float clear_value_depth;
         uint8_t clear_value_stencil;
         rt_clear_type clear_type;
@@ -93,7 +80,7 @@ PR_DEFINE_CMD(begin_render_pass)
 
     cmd_vector<render_target_info, limits::max_render_targets> render_targets;
     depth_stencil_info depth_target;
-    tg::ivec2 viewport;
+    tg::isize2 viewport;
 };
 
 PR_DEFINE_CMD(end_render_pass){
@@ -140,10 +127,11 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
     handle::resource destination;
     handle::resource source;
     size_t source_offset;
-    unsigned mip_width;
-    unsigned mip_height;
-    unsigned subresource_index;
-    unsigned row_pitch;
+    unsigned dest_width;       ///< width of the destination texture (in the specified MIP map and array element)
+    unsigned dest_height;      ///< height of the destination texture (in the specified MIP map and array element)
+    unsigned dest_mip_size;    ///< amount of MIP maps in the destination texture
+    unsigned dest_mip_index;   ///< index of the MIP map to copy
+    unsigned dest_array_index; ///< index of the array element to copy (usually: 0)
     format texture_format;
 };
 

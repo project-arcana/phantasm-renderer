@@ -27,9 +27,18 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
 
         PR_VK_VERIFY_SUCCESS(vkAllocateCommandBuffers(device, &info, _cmd_buffers.data()));
     }
+
+    _associated_framebuffers.reserve(num_cmd_lists * 3); // arbitrary
+    _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1));
+
+    _latest_fence.store(unsigned(-1));
 }
 
-void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device) { vkDestroyCommandPool(device, _cmd_pool, nullptr); }
+void pr::backend::vk::cmd_allocator_node::destroy(VkDevice device)
+{
+    do_reset(device);
+    vkDestroyCommandPool(device, _cmd_pool, nullptr);
+}
 
 VkCommandBuffer pr::backend::vk::cmd_allocator_node::acquire(VkDevice device)
 {
@@ -54,9 +63,10 @@ VkCommandBuffer pr::backend::vk::cmd_allocator_node::acquire(VkDevice device)
 
 void pr::backend::vk::cmd_allocator_node::on_submit(unsigned num, unsigned fence_index)
 {
+
     // first, update the latest fence
     auto const previous_fence = _latest_fence.exchange(fence_index);
-    if (previous_fence != unsigned(-1))
+    if (previous_fence != unsigned(-1) && previous_fence != fence_index)
     {
         // release previous fence
         _fence_ring->decrementRefcount(previous_fence);
@@ -144,6 +154,19 @@ bool pr::backend::vk::cmd_allocator_node::try_reset_blocking(VkDevice device)
 void pr::backend::vk::cmd_allocator_node::do_reset(VkDevice device)
 {
     PR_VK_VERIFY_SUCCESS(vkResetCommandPool(device, _cmd_pool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+
+    for (auto fb : _associated_framebuffers)
+    {
+        vkDestroyFramebuffer(device, fb, nullptr);
+    }
+    _associated_framebuffers.clear();
+
+    for (auto iv : _associated_framebuffer_image_views)
+    {
+        vkDestroyImageView(device, iv, nullptr);
+    }
+    _associated_framebuffer_image_views.clear();
+
     _num_in_flight = 0;
     _num_discarded = 0;
     _num_pending_execution = 0;
@@ -198,6 +221,7 @@ unsigned pr::backend::vk::FenceRingbuffer::acquireFence(VkDevice device, VkFence
 void pr::backend::vk::FenceRingbuffer::waitForFence(VkDevice device, unsigned index) const
 {
     auto& node = mFences[index];
+    CC_ASSERT(node.ref_count.load() > 0);
     auto const vkres = vkWaitForFences(device, 1, &node.raw_fence, VK_TRUE, UINT64_MAX);
     CC_ASSERT(vkres == VK_SUCCESS); // other cases are TIMEOUT (2^64 ns > 584 years) or DEVICE_LOST (dead anyway)
 }
@@ -309,7 +333,41 @@ void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const pr::backend::
     if (!unique_allocators._nodes.empty())
     {
         // the given fence_index has a reference count of 1, increment it to the amount of unique allocators responsible
-        mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
+        if (unique_allocators._nodes.size() > 1)
+            mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
+
+        // notify all unique allocators
+        for (auto const& unique_alloc : unique_allocators._nodes)
+        {
+            unique_alloc.key->on_submit(unique_alloc.val, fence_index);
+        }
+    }
+}
+
+void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const cc::span<const pr::backend::handle::command_list>> cls_nested, unsigned fence_index)
+{
+    backend::detail::capped_flat_map<cmd_allocator_node*, unsigned, 24> unique_allocators;
+
+    // free the cls in the pool and gather the unique allocators
+    {
+        auto lg = std::lock_guard(mMutex);
+        for (auto const& cls : cls_nested)
+            for (auto const& cl : cls)
+            {
+                if (cl == handle::null_command_list)
+                    continue;
+
+                cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
+                unique_allocators.get_value(freed_node.responsible_allocator, 0u) += 1;
+                mPool.release(static_cast<unsigned>(cl.index));
+            }
+    }
+
+    if (!unique_allocators._nodes.empty())
+    {
+        // the given fence_index has a reference count of 1, increment it to the amount of unique allocators responsible
+        if (unique_allocators._nodes.size() > 1)
+            mFenceRing.incrementRefcount(fence_index, int(unique_allocators._nodes.size()) - 1);
 
         // notify all unique allocators
         for (auto const& unique_alloc : unique_allocators._nodes)

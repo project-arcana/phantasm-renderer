@@ -3,11 +3,11 @@
 #include <mutex>
 
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
-#include <phantasm-renderer/backend/detail/linked_pool.hh>
 
 #include "root_sig_cache.hh"
 

@@ -14,7 +14,8 @@ namespace pr::backend::d3d12
 struct shader_argument_map
 {
     unsigned cbv_param;
-    unsigned descriptor_table_param;
+    unsigned srv_uav_table_param;
+    unsigned sampler_table_param;
 };
 
 namespace detail
@@ -26,7 +27,7 @@ struct root_signature_params
     cc::capped_vector<CD3DX12_STATIC_SAMPLER_DESC, 16> samplers;
 
     [[nodiscard]] shader_argument_map add_shader_argument_shape(arg::shader_argument_shape const& shape);
-    void add_implicit_sampler();
+    void add_static_sampler(sampler_config const& config);
 
 private:
     unsigned _space = 0;

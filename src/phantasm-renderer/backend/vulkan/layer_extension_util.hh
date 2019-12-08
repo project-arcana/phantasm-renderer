@@ -8,7 +8,6 @@
 #include <phantasm-renderer/backend/types.hh>
 
 #include "common/unique_name_set.hh"
-#include "common/zero_struct.hh"
 #include "loader/volk.hh"
 
 namespace pr::backend::vk
@@ -18,7 +17,7 @@ struct layer_extension_bundle
     VkLayerProperties layer_properties;
     std::vector<VkExtensionProperties> extension_properties;
 
-    layer_extension_bundle() { zero_struct(layer_properties); }
+    layer_extension_bundle() { layer_properties = {}; }
     layer_extension_bundle(VkLayerProperties layer_props) : layer_properties(layer_props) {}
 
     void fill_with_instance_extensions(char const* layername = nullptr);

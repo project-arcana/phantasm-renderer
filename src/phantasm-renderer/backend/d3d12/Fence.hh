@@ -4,6 +4,7 @@
 
 #include "common/d3d12_sanitized.hh"
 #include "common/shared_com_ptr.hh"
+#include "common/verify.hh"
 
 namespace pr::backend::d3d12
 {
@@ -25,7 +26,14 @@ public:
     void waitCPU(uint64_t val);
     void waitGPU(uint64_t val, ID3D12CommandQueue& queue);
 
-    [[nodiscard]] uint64_t getCurrentValue() const { return mFence->GetCompletedValue(); }
+    [[nodiscard]] uint64_t getCurrentValue() const
+    {
+        auto const res = mFence->GetCompletedValue();
+#ifdef CC_ENABLE_ASSERTIONS
+        PR_D3D12_DRED_ASSERT(res != UINT64_MAX, mFence);
+#endif
+        return res;
+    }
 
     [[nodiscard]] ID3D12Fence* getRawFence() const { return mFence.get(); }
     [[nodiscard]] HANDLE getRawEvent() const { return mEvent; }

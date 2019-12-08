@@ -2,11 +2,13 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <string>
+
+#include <iostream>
 
 #include <clean-core/assert.hh>
 
 #include "d3d12_sanitized.hh"
+#include "shared_com_ptr.hh"
 
 namespace
 {
@@ -42,48 +44,119 @@ char const* get_general_error_literal(HRESULT hr)
         CASE_STRINGIFY_RETURN(E_NOINTERFACE);
         CASE_STRINGIFY_RETURN(DXGI_ERROR_DEVICE_REMOVED);
     default:
-        return nullptr;
+        return "Unknown HRESULT";
     }
 }
 
 #undef CASE_STRINGIFY_RETURN
 
-std::string get_error_string(HRESULT hr, ID3D12Device* device)
+void print_dred_information(ID3D12Device* device)
 {
-    std::string res = "";
+    HRESULT removal_reason = device->GetDeviceRemovedReason();
+    std::cerr << "[pr][backend][d3d12][DRED] device removal reason: " << get_device_error_literal(removal_reason) << std::endl;
 
-    auto const general_error_literal = get_general_error_literal(hr);
-
-    if (general_error_literal != nullptr)
-        res = general_error_literal;
-    else
-        res = std::to_string(static_cast<int>(hr));
-
-    if (hr == DXGI_ERROR_DEVICE_REMOVED && device)
+    pr::backend::d3d12::shared_com_ptr<ID3D12DeviceRemovedExtendedData> dred;
+    if (SUCCEEDED(device->QueryInterface(PR_COM_WRITE(dred))))
     {
-        HRESULT removal_reason = device->GetDeviceRemovedReason();
-        res += std::string(", removal reason: ") + get_device_error_literal(removal_reason);
+        std::cerr << "[pr][backend][d3d12][DRED] DRED detected, querying outputs" << std::endl;
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT DredAutoBreadcrumbsOutput;
+        D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
+        auto hr1 = dred->GetAutoBreadcrumbsOutput(&DredAutoBreadcrumbsOutput);
+        auto hr2 = dred->GetPageFaultAllocationOutput(&DredPageFaultOutput);
+
+        ::DebugBreak();
+
+        if (SUCCEEDED(hr1))
+        {
+            // TODO: Breadcrumb output
+            D3D12_AUTO_BREADCRUMB_NODE const* breadcrumb = DredAutoBreadcrumbsOutput.pHeadAutoBreadcrumbNode;
+            while (breadcrumb != nullptr)
+            {
+                std::cerr << "[pr][backend][d3d12][DRED] breadcrumb " << breadcrumb->BreadcrumbCount << std::endl;
+                std::cerr << "[pr][backend][d3d12][DRED] referencing command list " << breadcrumb->pCommandListDebugNameA << " on queue "
+                          << breadcrumb->pCommandQueueDebugNameA << std::endl;
+
+                breadcrumb = breadcrumb->pNext;
+            }
+        }
+        else
+        {
+            std::cerr << "[pr][backend][d3d12][DRED] DRED breadcrumb output query failed" << std::endl;
+            std::cerr << "[pr][backend][d3d12][DRED] use validation_level::on_extended_dred" << std::endl;
+        }
+
+        if (SUCCEEDED(hr2))
+        {
+            std::cerr << "[pr][backend][d3d12][DRED] page fault VA: " << DredPageFaultOutput.PageFaultVA << std::endl;
+            D3D12_DRED_ALLOCATION_NODE const* freed_node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
+            while (freed_node != nullptr)
+            {
+                std::cerr << "[pr][backend][d3d12][DRED] recently freed: " << freed_node->ObjectNameA << std::endl;
+                freed_node = freed_node->pNext;
+            }
+
+            D3D12_DRED_ALLOCATION_NODE const* allocated_node = DredPageFaultOutput.pHeadExistingAllocationNode;
+            while (allocated_node != nullptr)
+            {
+                std::cerr << "[pr][backend][d3d12][DRED] allocated: " << allocated_node->ObjectNameA << std::endl;
+                allocated_node = allocated_node->pNext;
+            }
+
+            // TODO: Breadcrumb output
+        }
+        else
+        {
+            std::cerr << "[pr][backend][d3d12][DRED] DRED pagefault output query failed" << std::endl;
+            std::cerr << "[pr][backend][d3d12][DRED] use validation_level::on_extended_dred" << std::endl;
+        }
     }
-
-    return res;
+    else
+    {
+        std::cerr << "[pr][backend][d3d12][DRED] no DRED active, use validation_level::on_extended_dred" << std::endl;
+    }
 }
 }
 
 
-void pr::backend::d3d12::detail::d3d12_verify_failure_handler(HRESULT hr, const char* expression, const char* filename, int line, ID3D12Device* device)
+void pr::backend::d3d12::detail::verify_failure_handler(HRESULT hr, const char* expression, const char* filename, int line, ID3D12Device* device)
 {
     // Make sure this really is a failed HRESULT
-    CC_ASSERT(FAILED(hr));
-
-    auto const error_string = get_error_string(hr, device);
+    CC_RUNTIME_ASSERT(FAILED(hr));
 
     // TODO: Proper logging
     fprintf(stderr, "[pr][backend][d3d12] backend verify on `%s' failed.\n", expression);
-    fprintf(stderr, "  error: %s\n", error_string.c_str());
+    fprintf(stderr, "  error: %s\n", get_general_error_literal(hr));
     fprintf(stderr, "  file %s:%d\n", filename, line);
     fflush(stderr);
+
+    if (hr == DXGI_ERROR_DEVICE_REMOVED && device)
+    {
+        print_dred_information(device);
+    }
 
     // TODO: Graceful shutdown
     std::abort();
 }
 
+void pr::backend::d3d12::detail::dred_assert_handler(void* device_child, const char* expression, const char* filename, int line)
+{
+    fprintf(stderr, "[pr][backend][d3d12] DRED assert on `%s' failed.\n", expression);
+    fprintf(stderr, "  file %s:%d\n", filename, line);
+    fflush(stderr);
+
+    auto* const as_device_child = static_cast<ID3D12DeviceChild*>(device_child);
+
+    shared_com_ptr<ID3D12Device> recovered_device;
+    auto const hr = as_device_child->GetDevice(PR_COM_WRITE(recovered_device));
+    if (hr_succeeded(hr) && recovered_device.is_valid())
+    {
+        print_dred_information(recovered_device);
+    }
+    else
+    {
+        std::cerr << "[pr][backend][d3d12] Failed to recover device from ID3D12DeviceChild " << device_child << std::endl;
+    }
+
+    // TODO: Graceful shutdown
+    std::abort();
+}

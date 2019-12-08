@@ -41,17 +41,30 @@ struct shader_argument_shape
 {
     unsigned num_srvs = 0;
     unsigned num_uavs = 0;
+    unsigned num_samplers = 0;
     bool has_cb = false;
 
     constexpr bool operator==(shader_argument_shape const& rhs) const noexcept
     {
-        return num_srvs == rhs.num_srvs && num_uavs == rhs.num_uavs && has_cb == rhs.has_cb;
+        return num_srvs == rhs.num_srvs && num_uavs == rhs.num_uavs && has_cb == rhs.has_cb && num_samplers == rhs.num_samplers;
     }
 };
 
 /// A shader payload consists of [1, 4] shader arguments
 using shader_argument_shapes = cc::span<shader_argument_shape const>;
 
+/// A shader stage
+struct shader_stage
+{
+    /// pointer to the (backend-dependent) shader binary data
+    std::byte* binary_data;
+    size_t binary_size;
+    /// the shader domain of this stage
+    shader_domain domain;
+};
+
+/// A shader bundle consists of up to 1 stage per domain
+using shader_stages = cc::span<shader_stage const>;
 
 inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes const& rhs) noexcept
 {
@@ -66,18 +79,4 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 
     return true;
 }
-
-/// A shader stage
-struct shader_stage
-{
-    /// pointer to the (backend-dependent) shader binary data
-    std::byte const* binary_data;
-    size_t binary_size;
-    /// the shader domain of this stage
-    shader_domain domain;
-};
-
-/// A shader bundle consists of up to 1 stage per domain
-using shader_stages = cc::span<shader_stage const>;
-
 }

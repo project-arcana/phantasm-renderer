@@ -1,10 +1,13 @@
 #include "shader_view_pool.hh"
 
+#include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
+#include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 #include "resource_pool.hh"
 
-void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, int num_descriptors, int page_size)
+void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& device, D3D12_DESCRIPTOR_HEAP_TYPE type, unsigned num_descriptors, unsigned page_size)
 {
     mPageAllocator.initialize(num_descriptors, page_size);
     mDescriptorSize = device.GetDescriptorHandleIncrementSize(type);
@@ -15,60 +18,105 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    mHeap->SetName(L"DescriptorPageAllocator::mHeap");
+    util::set_object_name(mHeap, "DescriptorPageAllocator t%d, s%d", int(type), int(num_descriptors));
 
     mHeapStartCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
 }
 
-pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::span<pr::backend::handle::resource> srvs, cc::span<pr::backend::handle::resource> uavs)
+pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::span<shader_view_element const> srvs,
+                                                                            cc::span<shader_view_element const> uavs,
+                                                                            cc::span<sampler_config const> samplers)
 {
-    auto const total_size = int(srvs.size() + uavs.size());
-    DescriptorPageAllocator::handle_t res_alloc;
+    auto const srv_uav_size = int(srvs.size() + uavs.size());
+    DescriptorPageAllocator::handle_t srv_uav_alloc;
+    DescriptorPageAllocator::handle_t sampler_alloc;
+    unsigned pool_index;
     {
         auto lg = std::lock_guard(mMutex);
-        res_alloc = mSRVUAVAllocator.allocate(total_size);
+        srv_uav_alloc = mSRVUAVAllocator.allocate(srv_uav_size);
+        sampler_alloc = mSamplerAllocator.allocate(static_cast<int>(samplers.size()));
+        pool_index = mPool.acquire();
     }
 
     // Populate the data entry and fill out descriptors
     {
-        auto& data = mShaderViewData[unsigned(res_alloc)];
-        data.resources.clear();
+        auto& data = mPool.get(pool_index);
+        data.sampler_alloc_handle = sampler_alloc;
+        data.srv_uav_alloc_handle = srv_uav_alloc;
 
         // Create the descriptors in-place
+        // SRVs and UAVs
         {
-            auto const cpu_base = mSRVUAVAllocator.getCPUStart(res_alloc);
-            auto descriptor_index = 0u;
+            auto const srv_uav_cpu_base = mSRVUAVAllocator.getCPUStart(srv_uav_alloc);
+            auto srv_uav_desc_index = 0u;
 
-            for (auto const srv : srvs)
+            for (auto const& srv : srvs)
             {
-                data.resources.push_back(srv);
+                data.resources.push_back(srv.resource);
 
-                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(srv);
-                auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(cpu_base, descriptor_index++);
+                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(srv.resource);
+                auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(srv_uav_cpu_base, srv_uav_desc_index++);
 
-                // Create a default SRV
-                // (NOTE: Eventually we need more detailed views)
-                mDevice->CreateShaderResourceView(raw_resource, nullptr, cpu_handle);
+                // Create a SRV based on the shader_view_element
+                auto const srv_desc = util::create_srv_desc(srv, raw_resource);
+                mDevice->CreateShaderResourceView(raw_resource, &srv_desc, cpu_handle);
             }
 
-            for (auto const uav : uavs)
+            for (auto const& uav : uavs)
             {
-                data.resources.push_back(uav);
+                data.resources.push_back(uav.resource);
 
-                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(uav);
-                auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(cpu_base, descriptor_index++);
+                ID3D12Resource* const raw_resource = mResourcePool->getRawResource(uav.resource);
+                auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(srv_uav_cpu_base, srv_uav_desc_index++);
 
-                // Create a default UAV, without a counter resource
-                // (NOTE: Eventually we need more detailed views)
-                mDevice->CreateUnorderedAccessView(raw_resource, nullptr, nullptr, cpu_handle);
+                // Create a UAV (without a counter resource) based on the shader_view_element
+                auto const uav_desc = util::create_uav_desc(uav);
+                mDevice->CreateUnorderedAccessView(raw_resource, nullptr, &uav_desc, cpu_handle);
             }
         }
 
-        data.gpu_handle = mSRVUAVAllocator.getGPUStart(res_alloc);
+        // Samplers
+        {
+            auto const sampler_cpu_base = mSamplerAllocator.getCPUStart(sampler_alloc);
+            auto sampler_desc_index = 0u;
+
+            for (auto const& sampler_conf : samplers)
+            {
+                auto const cpu_handle = mSamplerAllocator.incrementToIndex(sampler_cpu_base, sampler_desc_index++);
+
+                // Create a Sampler based on the shader configuration
+                auto const sampler_desc = util::create_sampler_desc(sampler_conf);
+                mDevice->CreateSampler(&sampler_desc, cpu_handle);
+            }
+        }
+
+        data.srv_uav_handle = mSRVUAVAllocator.getGPUStart(srv_uav_alloc);
+        data.sampler_handle = mSamplerAllocator.getGPUStart(sampler_alloc);
         data.num_srvs = cc::uint16(srvs.size());
         data.num_uavs = cc::uint16(uavs.size());
     }
 
-    return {res_alloc};
+    return {static_cast<handle::index_t>(pool_index)};
+}
+
+void pr::backend::d3d12::ShaderViewPool::free(pr::backend::handle::shader_view sv)
+{
+    auto& data = mPool.get(static_cast<unsigned>(sv.index));
+    data.resources.clear();
+    {
+        auto lg = std::lock_guard(mMutex);
+        mSRVUAVAllocator.free(data.srv_uav_alloc_handle);
+        mSamplerAllocator.free(data.sampler_alloc_handle);
+        mPool.release(static_cast<unsigned>(sv.index));
+    }
+}
+
+void pr::backend::d3d12::ShaderViewPool::initialize(ID3D12Device* device, pr::backend::d3d12::ResourcePool* res_pool, unsigned num_shader_views, unsigned num_srvs_uavs, unsigned num_samplers)
+{
+    mDevice = device;
+    mResourcePool = res_pool;
+    mSRVUAVAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, num_srvs_uavs);
+    mSamplerAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, num_samplers);
+    mPool.initialize(num_shader_views);
 }

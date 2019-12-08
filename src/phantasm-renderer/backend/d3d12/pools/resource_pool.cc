@@ -7,6 +7,7 @@
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
+#include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 
 void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned max_num_resources)
@@ -52,10 +53,11 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture2D(
     auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(util::to_dxgi_format(format), UINT(w), UINT(h), 1, UINT16(mips), 1, 0, D3D12_RESOURCE_FLAG_NONE);
 
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
+    util::set_object_name(alloc->GetResource(), "ResourcePool texture 2D");
     return acquireResource(alloc, initial_state);
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h, int samples)
 {
     auto const format_dxgi = util::to_dxgi_format(format);
     if (is_depth_format(format))
@@ -68,9 +70,11 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
         clear_value.DepthStencil.Depth = 1;
         clear_value.DepthStencil.Stencil = 0;
 
-        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 1, UINT(samples),
+                                                       samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
+        util::set_object_name(alloc->GetResource(), "ResourcePool depth stencil target");
         return acquireResource(alloc, initial_state);
     }
     else
@@ -85,9 +89,11 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
         clear_value.Color[2] = 0.0f;
         clear_value.Color[3] = 1.0f;
 
-        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 1, UINT(samples),
+                                                       samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
+        util::set_object_name(alloc->GetResource(), "ResourcePool render target");
         return acquireResource(alloc, initial_state);
     }
 }
@@ -96,6 +102,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
+    util::set_object_name(alloc->GetResource(), "ResourcePool buffer");
     return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
 }
 
@@ -106,6 +113,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuff
 
     void* data_start_void;
     alloc->GetResource()->Map(0, nullptr, &data_start_void);
+    util::set_object_name(alloc->GetResource(), "ResourcePool mapped buffer");
     return acquireResource(alloc, resource_state::unknown, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
 }
 
@@ -114,8 +122,6 @@ void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
     CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
 
     // TODO: dangle check
-    // TODO: Do we internally keep the resource alive until it is no longer used, or
-    // do we require this to only happen after that point?
 
     // This requires no synchronization, as D3D12MA internally syncs
     resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
@@ -126,11 +132,6 @@ void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
         auto lg = std::lock_guard(mMutex);
         mPool.release(static_cast<unsigned>(res.index));
     }
-}
-
-std::byte* pr::backend::d3d12::ResourcePool::getMappedMemory(pr::backend::handle::resource res)
-{
-    return mPool.get(static_cast<unsigned>(res.index)).buffer_map;
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(

@@ -15,27 +15,46 @@ namespace pr::backend::detail
 ///     4. creates barriers for all cache entries, transitioning from (known) <before> to cache_entry::required_initial
 ///     5. executes small "barrier" command list, then executes the proper command list, now with all states correctly in place
 ///     6. updates master cache with all the cache_entry::current states
-struct incomplete_state_cache
+template<class StateT>
+struct generic_incomplete_state_cache
 {
 public:
     /// signal a resource transition to a given state
     /// returns true if the before state is known, or false otherwise
-    bool transition_resource(handle::resource res, resource_state after, resource_state& out_before);
+    bool transition_resource(handle::resource res, StateT after, StateT& out_before)
+    {
+        for (auto& entry : cache)
+        {
+            if (entry.ptr == res)
+            {
+                // resource is in cache
+                out_before = entry.current;
+                entry.current = after;
+                return true;
+            }
+        }
+
+        cache.push_back({res, after, after});
+        return false;
+    }
 
     void reset() { cache.clear(); }
 
 public:
     struct cache_entry
     {
-        /// (const) the raw resource pointer
+        /// (const) the resource handle
         handle::resource ptr;
         /// (const) the <after> state of the initial barrier (<before> is unknown)
-        resource_state required_initial;
+        StateT required_initial;
         /// latest state of this resource
-        resource_state current;
+        StateT current;
     };
 
     // linear "map" for now, might want to benchmark this
     cc::capped_vector<cache_entry, 32> cache;
 };
+
+using incomplete_state_cache = generic_incomplete_state_cache<resource_state>;
+
 }

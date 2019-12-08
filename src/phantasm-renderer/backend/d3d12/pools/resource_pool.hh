@@ -21,7 +21,7 @@ public:
     [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h);
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);
@@ -32,7 +32,7 @@ public:
     void free(handle::resource res);
 
     /// only valid for resources created with createMappedBuffer
-    [[nodiscard]] std::byte* getMappedMemory(handle::resource res);
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer_map; }
 
 public:
     // internal API
@@ -91,6 +91,8 @@ public:
     //
 
     [[nodiscard]] handle::resource injectBackbufferResource(ID3D12Resource* raw_resource, resource_state state);
+
+    [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
 
 private:
     [[nodiscard]] handle::resource acquireResource(

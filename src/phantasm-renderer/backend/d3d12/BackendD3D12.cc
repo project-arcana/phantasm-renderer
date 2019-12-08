@@ -1,12 +1,11 @@
 #include "BackendD3D12.hh"
 
-#include <iostream> //nocheckin
-
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "cmd_list_translation.hh"
+#include "common/dxgi_format.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -28,7 +27,8 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
         mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(), config.num_backbuffers);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(),
+                              config.num_backbuffers, config.present_mode);
     }
 
     auto& device = mDevice.getDevice();
@@ -37,7 +37,7 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     {
         mPoolResources.initialize(device, config.max_num_resources);
         mPoolPSOs.initialize(&device, config.max_num_pipeline_states);
-        mPoolShaderViews.initialize(&device, &mPoolResources, int(config.max_num_shader_view_elements));
+        mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
     }
 
     // Per-thread components and command list pool
@@ -92,6 +92,14 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
     return mPoolResources.injectBackbufferResource(
         backbuffer.resource, backbuffer.state == D3D12_RESOURCE_STATE_RENDER_TARGET ? resource_state::render_target : resource_state::present);
 }
+
+void pr::backend::d3d12::BackendD3D12::onResize(tg::isize2 size)
+{
+    onInternalResize();
+    mSwapchain.onResize(size);
+}
+
+pr::backend::format pr::backend::d3d12::BackendD3D12::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
 
 pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)
 {

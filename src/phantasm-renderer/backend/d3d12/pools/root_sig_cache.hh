@@ -1,8 +1,7 @@
 #pragma once
 
-#include <unordered_map>
-
 #include <phantasm-renderer/backend/arguments.hh>
+#include <phantasm-renderer/backend/detail/cache_map.hh>
 #include <phantasm-renderer/backend/detail/hash.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
@@ -15,20 +14,25 @@ namespace pr::backend::d3d12
 class RootSignatureCache
 {
 public:
-    using key_t = arg::shader_argument_shapes;
+    struct key_t
+    {
+        arg::shader_argument_shapes arg_shapes;
+    };
 
-    void initialize(unsigned size_estimate = 50);
+    void initialize(unsigned max_num_root_sigs);
     void destroy();
 
     /// receive an existing root signature matching the shape, or create a new one
-    /// returns a pointer (which remains stable, §23.2.5/13 C++11)
+    /// returns a pointer which remains stable
     [[nodiscard]] root_signature* getOrCreate(ID3D12Device& device, key_t arg_shapes);
 
     /// destroys all elements inside, and clears the map
     void reset();
 
 private:
-    std::unordered_map<key_t, root_signature, hash::compute_functor> mCache;
+    static size_t hashKey(key_t const& v) { return hash::compute(v.arg_shapes); }
+
+    backend::detail::cache_map<root_signature> mCache;
 };
 
 }
