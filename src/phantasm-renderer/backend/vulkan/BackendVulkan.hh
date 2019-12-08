@@ -56,9 +56,9 @@ public:
     }
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h) override
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples) override
     {
-        return mPoolResources.createRenderTarget(format, w, h);
+        return mPoolResources.createRenderTarget(format, w, h, samples);
     }
 
     /// create a buffer, with an element stride if its an index or vertex buffer

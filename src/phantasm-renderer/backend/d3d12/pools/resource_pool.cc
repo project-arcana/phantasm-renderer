@@ -57,7 +57,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture2D(
     return acquireResource(alloc, initial_state);
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h, int samples)
 {
     auto const format_dxgi = util::to_dxgi_format(format);
     if (is_depth_format(format))
@@ -70,7 +70,8 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
         clear_value.DepthStencil.Depth = 1;
         clear_value.DepthStencil.Stencil = 0;
 
-        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 1, UINT(samples),
+                                                       samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         util::set_object_name(alloc->GetResource(), "ResourcePool depth stencil target");
@@ -88,7 +89,8 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
         clear_value.Color[2] = 0.0f;
         clear_value.Color[3] = 1.0f;
 
-        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 1, UINT(samples),
+                                                       samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         util::set_object_name(alloc->GetResource(), "ResourcePool render target");

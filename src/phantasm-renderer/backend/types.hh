@@ -276,11 +276,11 @@ struct shader_view_element
         // format, no need to specify anything else
     }
 
-    void init_as_tex2d(handle::resource res, format pf, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+    void init_as_tex2d(handle::resource res, format pf, bool multisampled = false, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
     {
         resource = res;
         pixel_format = pf;
-        dimension = shader_view_dimension::texture2d;
+        dimension = multisampled ? shader_view_dimension::texture2d_ms : shader_view_dimension::texture2d;
         texture_info.mip_start = mip_start;
         texture_info.mip_size = mip_size;
         texture_info.array_start = 0;

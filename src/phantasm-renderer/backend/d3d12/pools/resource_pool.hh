@@ -21,7 +21,7 @@ public:
     [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h);
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);

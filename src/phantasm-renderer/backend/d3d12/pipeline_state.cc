@@ -2,15 +2,15 @@
 
 #include <phantasm-renderer/backend/d3d12/common/d3dx12.hh>
 #include <phantasm-renderer/backend/d3d12/common/dxgi_format.hh>
-#include <phantasm-renderer/backend/d3d12/common/verify.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
+#include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& device,
-                                                                  ID3D12RootSignature* root_sig,
-                                                                  cc::span<const D3D12_INPUT_ELEMENT_DESC> vertex_input_layout,
-                                                                  pr::backend::arg::framebuffer_format framebuffer_format,
-                                                                  pr::backend::arg::shader_stages shader_stages,
-                                                                  const pr::primitive_pipeline_config& config)
+                                                               ID3D12RootSignature* root_sig,
+                                                               cc::span<const D3D12_INPUT_ELEMENT_DESC> vertex_input_layout,
+                                                               pr::backend::arg::framebuffer_format framebuffer_format,
+                                                               pr::backend::arg::shader_stages shader_stages,
+                                                               const pr::primitive_pipeline_config& config)
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {!vertex_input_layout.empty() ? vertex_input_layout.data() : nullptr, UINT(vertex_input_layout.size())};
@@ -64,6 +64,7 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
     pso_desc.DSVFormat = pso_desc.DepthStencilState.DepthEnable ? util::to_dxgi_format(framebuffer_format.depth_target[0]) : DXGI_FORMAT_UNKNOWN;
 
     pso_desc.SampleDesc.Count = UINT(config.samples);
+    pso_desc.SampleDesc.Quality = config.samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0;
     pso_desc.NodeMask = 0;
     pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 

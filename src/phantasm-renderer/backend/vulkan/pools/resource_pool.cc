@@ -50,7 +50,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture2D(pr:
     return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h, int samples)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -62,7 +62,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
-    image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
+    image_info.samples = util::to_native_sample_flags(samples);
 
     // only undefined or preinitialized are legal options
     image_info.initialLayout = util::to_image_layout(resource_state::undefined);
