@@ -1,15 +1,11 @@
 #pragma once
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/vec.hh>
+
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
-#include <phantasm-renderer/backend/types.hh>
-#include <phantasm-renderer/primitive_pipeline_config.hh>
-
-namespace pr::backend::device
-{
-class Window;
-};
+#include <phantasm-renderer/backend/fwd.hh>
 
 namespace pr::backend
 {
@@ -41,7 +37,7 @@ public:
     virtual void present() = 0;
 
     /// causes an internal resize
-    virtual void onResize(int w, int h) = 0;
+    virtual void onResize(tg::ivec2 size) = 0;
 
     /// gets the current backbuffer size
     [[nodiscard]] virtual tg::ivec2 getBackbufferSize() const = 0;

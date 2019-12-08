@@ -19,7 +19,7 @@ struct linked_pool
     linked_pool(linked_pool const&) = delete;
     linked_pool(linked_pool&&) noexcept = delete;
     linked_pool& operator=(linked_pool const&) = delete;
-    linked_pool& operator=(linked_pool&&) = delete;
+    linked_pool& operator=(linked_pool&&) noexcept = delete;
 
     ~linked_pool()
     {
@@ -78,10 +78,10 @@ struct linked_pool
         _first_free_node = released_node;
     }
 
-    T& get(index_t index) { return _pool[static_cast<size_t>(index)]; }
-    T const& get(index_t index) const { return _pool[static_cast<size_t>(index)]; }
+    [[nodiscard]] T& get(index_t index) { return _pool[static_cast<size_t>(index)]; }
+    [[nodiscard]] T const& get(index_t index) const { return _pool[static_cast<size_t>(index)]; }
 
-    bool is_full() const { return _first_free_node == nullptr; }
+    [[nodiscard]] bool is_full() const { return _first_free_node == nullptr; }
 
     /// pass a lambda that is called with a T& of each allocated node
     /// This operation is extremely slow and should not occur in normal operation

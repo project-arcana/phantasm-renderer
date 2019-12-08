@@ -154,10 +154,10 @@ void pr::backend::vk::BackendVulkan::present()
     }
 }
 
-void pr::backend::vk::BackendVulkan::onResize(int w, int h)
+void pr::backend::vk::BackendVulkan::onResize(tg::ivec2 size)
 {
     onInternalResize();
-    mSwapchain.onResize(w, h);
+    mSwapchain.onResize(size.x, size.y);
 }
 
 pr::backend::format pr::backend::vk::BackendVulkan::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
