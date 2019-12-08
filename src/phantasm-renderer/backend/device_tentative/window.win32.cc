@@ -136,10 +136,10 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 #ifdef PR_BACKEND_VULKAN
 namespace
 {
-cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
+constexpr cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
 }
 
-cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
+cc::span<char const* const> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
 
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
 {

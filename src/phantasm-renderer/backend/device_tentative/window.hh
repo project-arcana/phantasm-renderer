@@ -51,7 +51,7 @@ public:
 
 public:
 #ifdef PR_BACKEND_VULKAN
-    static cc::span<char const*> getRequiredInstanceExtensions();
+    static cc::span<const char * const> getRequiredInstanceExtensions();
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
 #endif
 
