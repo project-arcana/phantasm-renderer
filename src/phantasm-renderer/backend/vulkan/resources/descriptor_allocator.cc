@@ -8,6 +8,7 @@
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
+#include <phantasm-renderer/backend/vulkan/pipeline_layout.hh>
 
 namespace pr::backend::vk
 {
@@ -70,75 +71,25 @@ VkDescriptorSet DescriptorAllocator::allocDescriptor(VkDescriptorSetLayout layou
     return res;
 }
 
-VkDescriptorSet DescriptorAllocator::allocDescriptorFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler)
-{
-    auto const layout = createLayoutFromShape(num_cbvs, num_srvs, num_uavs, immutable_sampler);
-    auto const res = allocDescriptor(layout);
-    vkDestroyDescriptorSetLayout(mDevice, layout, nullptr);
-    return res;
-}
-
 void DescriptorAllocator::free(VkDescriptorSet descriptor_set) { vkFreeDescriptorSets(mDevice, mPool, 1, &descriptor_set); }
 
-VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const
+VkDescriptorSetLayout DescriptorAllocator::createSingleCBVLayout() const
 {
     // NOTE: Eventually arguments could be constrained to stages
     // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
     constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
-    cc::capped_vector<VkDescriptorSetLayoutBinding, 4> bindings;
+    cc::capped_vector<VkDescriptorSetLayoutBinding, 1> bindings;
 
     {
-        if (num_cbvs > 0)
-        {
-            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-            binding = {};
-            binding.binding = spv::cbv_binding_start; // CBV always in (0)
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            binding.descriptorCount = num_cbvs;
-            binding.stageFlags = argument_visibility;
-            binding.pImmutableSamplers = nullptr; // Optional
-        }
-
-        if (num_uavs > 0)
-        {
-            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-            binding = {};
-            binding.binding = spv::uav_binding_start;
-
-            // NOTE: UAVs map the following way to SPIR-V:
-            // RWBuffer<T> -> VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-            // RWTextureX<T> -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-            // In other words this is an incomplete way of mapping
-            // See https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#textures
-
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-            binding.descriptorCount = num_uavs;
-            binding.stageFlags = argument_visibility;
-            binding.pImmutableSamplers = nullptr; // Optional
-        }
-
-        if (num_srvs > 0)
-        {
-            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-            binding = {};
-            binding.binding = spv::srv_binding_start;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            binding.descriptorCount = num_srvs;
-            binding.stageFlags = argument_visibility;
-            binding.pImmutableSamplers = nullptr; // Optional
-        }
-
-        if (immutable_sampler != nullptr)
-        {
-            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-            binding = {};
-            binding.binding = spv::sampler_binding_start;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-            binding.descriptorCount = 1;
-            binding.stageFlags = argument_visibility;
-            binding.pImmutableSamplers = immutable_sampler;
-        }
+        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
+        binding = {};
+        binding.binding = spv::cbv_binding_start; // CBV always in (0)
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        binding.descriptorCount = 1;
+        binding.stageFlags = argument_visibility;
+        binding.pImmutableSamplers = nullptr; // Optional
     }
+
 
     VkDescriptorSetLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -158,8 +109,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
     // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
     constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
 
-
-    cc::capped_vector<VkDescriptorSetLayoutBinding, 16> bindings;
+    detail::pipeline_layout_params::descriptor_set_params params;
 
     {
         if (!srvs.empty())
@@ -171,14 +121,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
             auto const flush_binding = [&]() {
                 if (current_range > 0u)
                 {
-                    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-                    binding = {};
-                    binding.binding = current_binding_base;
-                    binding.descriptorCount = current_range;
-                    binding.descriptorType = last_type;
-                    binding.stageFlags = argument_visibility;
-                    binding.pImmutableSamplers = nullptr; // Optional
-
+                    params.add_range(last_type, current_binding_base, current_range, argument_visibility);
                     current_binding_base += current_range;
                 }
 
@@ -207,14 +150,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
             auto const flush_binding = [&]() {
                 if (current_range > 0u)
                 {
-                    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-                    binding = {};
-                    binding.binding = current_binding_base;
-                    binding.descriptorCount = current_range;
-                    binding.descriptorType = last_type;
-                    binding.stageFlags = argument_visibility;
-                    binding.pImmutableSamplers = nullptr; // Optional
-
+                    params.add_range(last_type, current_binding_base, current_range, argument_visibility);
                     current_binding_base += current_range;
                 }
 
@@ -236,20 +172,14 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 
         if (num_samplers > 0)
         {
-            VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-            binding = {};
-            binding.binding = spv::sampler_binding_start;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-            binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-            binding.pImmutableSamplers = nullptr;
-            binding.descriptorCount = num_samplers;
+            params.add_range(VK_DESCRIPTOR_TYPE_SAMPLER, spv::sampler_binding_start, 1, argument_visibility);
         }
     }
 
     VkDescriptorSetLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layout_info.bindingCount = uint32_t(bindings.size());
-    layout_info.pBindings = bindings.data();
+    layout_info.bindingCount = uint32_t(params.bindings.size());
+    layout_info.pBindings = params.bindings.data();
 
     VkDescriptorSetLayout layout;
     PR_VK_VERIFY_SUCCESS(vkCreateDescriptorSetLayout(mDevice, &layout_info, nullptr, &layout));

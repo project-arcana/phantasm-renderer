@@ -44,53 +44,31 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         cc::capped_vector<VkDescriptorBufferInfo, 64> buffer_infos;
         cc::capped_vector<VkDescriptorImageInfo, 64 + limits::max_shader_samplers> image_infos;
 
-        VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-        auto current_buffer_range = 0u;
-        auto current_image_range = 0u;
-        auto current_binding_base = 0u;
+        auto const perform_write = [&](VkDescriptorType type, unsigned dest_binding, bool is_image) {
+            auto& write = writes.emplace_back();
+            write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.pNext = nullptr;
+            write.dstSet = res_raw;
+            write.descriptorType = type;
+            write.dstArrayElement = 0;
+            write.dstBinding = dest_binding;
+            write.descriptorCount = 1;
 
-        auto const flush_writes = [&]() {
-            if (current_buffer_range + current_image_range > 0u)
-            {
-                auto& write = writes.emplace_back();
-                write = {};
-                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.pNext = nullptr;
-                write.dstSet = res_raw;
-                write.descriptorType = last_type;
-                write.dstArrayElement = 0;
-                write.dstBinding = current_binding_base;
-
-                if (current_buffer_range > 0)
-                {
-                    write.descriptorCount = current_buffer_range;
-                    write.pBufferInfo = buffer_infos.data() + (buffer_infos.size() - current_buffer_range);
-                    current_buffer_range = 0;
-                }
-                else
-                {
-                    // current_image_range > 0
-                    write.descriptorCount = current_image_range;
-                    write.pImageInfo = image_infos.data() + (image_infos.size() - current_image_range);
-                    current_image_range = 0;
-                }
-
-
-                current_binding_base += write.descriptorCount;
-            }
+            if (is_image)
+                write.pImageInfo = image_infos.data() + (image_infos.size() - 1);
+            else
+                write.pBufferInfo = buffer_infos.data() + (buffer_infos.size() - 1);
         };
 
-        current_binding_base = spv::uav_binding_start;
-        for (auto const& uav : uavs)
+        for (auto i = 0u; i < uavs.size(); ++i)
         {
+            auto const& uav = uavs[i];
+
             new_node.resources.push_back(uav.resource);
 
             auto const uav_native_type = util::to_native_uav_desc_type(uav.dimension);
-            if (last_type != uav_native_type)
-            {
-                flush_writes();
-                last_type = uav_native_type;
-            }
+            auto const binding = spv::uav_binding_start + i;
 
             if (uav.dimension == shader_view_dimension::buffer)
             {
@@ -99,7 +77,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 uav_info.offset = uav.buffer_info.element_start;
                 uav_info.range = uav.buffer_info.element_size;
 
-                ++current_buffer_range;
+                perform_write(uav_native_type, binding, false);
             }
             else
             {
@@ -111,23 +89,18 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 img_info.imageLayout = util::to_image_layout(resource_state::unordered_access);
                 img_info.sampler = nullptr;
 
-                ++current_image_range;
+                perform_write(uav_native_type, binding, true);
             }
         }
 
-        flush_writes();
-
-        current_binding_base = spv::srv_binding_start;
-        for (auto const& srv : srvs)
+        for (auto i = 0u; i < srvs.size(); ++i)
         {
+            auto const& srv = srvs[i];
             new_node.resources.push_back(srv.resource);
 
-            auto const uav_native_type = util::to_native_srv_desc_type(srv.dimension);
-            if (last_type != uav_native_type)
-            {
-                flush_writes();
-                last_type = uav_native_type;
-            }
+
+            auto const srv_native_type = util::to_native_srv_desc_type(srv.dimension);
+            auto const binding = spv::srv_binding_start + i;
 
             if (srv.dimension == shader_view_dimension::buffer)
             {
@@ -136,7 +109,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 uav_info.offset = srv.buffer_info.element_start;
                 uav_info.range = srv.buffer_info.element_size;
 
-                ++current_buffer_range;
+                perform_write(srv_native_type, binding, false);
             }
             else if (srv.dimension == shader_view_dimension::raytracing_accel_struct)
             {
@@ -154,10 +127,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 write.dstSet = res_raw;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
                 write.dstArrayElement = 0;
-                write.dstBinding = current_binding_base;
+                write.dstBinding = binding;
                 write.descriptorCount = 1;
-
-                current_binding_base += write.descriptorCount;
             }
             else
             {
@@ -168,19 +139,16 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
                 img_info.sampler = nullptr;
 
-                ++current_image_range;
+                perform_write(srv_native_type, binding, true);
             }
         }
 
         if (sampler_configs.size() > 0)
         {
-            flush_writes();
-            last_type = VK_DESCRIPTOR_TYPE_SAMPLER;
-            current_binding_base = spv::sampler_binding_start;
-
             new_node.samplers.reserve(sampler_configs.size());
-            for (auto const& sampler_conf : sampler_configs)
+            for (auto i = 0u; i < sampler_configs.size(); ++i)
             {
+                auto const& sampler_conf = sampler_configs[i];
                 new_node.samplers.push_back(makeSampler(sampler_conf));
 
                 auto& img_info = image_infos.emplace_back();
@@ -188,11 +156,9 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
                 img_info.sampler = new_node.samplers.back();
 
-                ++current_image_range;
+                perform_write(VK_DESCRIPTOR_TYPE_SAMPLER, spv::sampler_binding_start + i, true);
             }
         }
-
-        flush_writes();
 
         vkUpdateDescriptorSets(mAllocator.getDevice(), uint32_t(writes.size()), writes.data(), 0, nullptr);
 

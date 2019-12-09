@@ -19,13 +19,10 @@ public:
     [[nodiscard]] VkDescriptorSet allocDescriptor(VkDescriptorSetLayout descriptorLayout);
 
     // requires sync
-    [[nodiscard]] VkDescriptorSet allocDescriptorFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler);
-
-    // requires sync
     void free(VkDescriptorSet descriptor_set);
 
     // free-threaded
-    [[nodiscard]] VkDescriptorSetLayout createLayoutFromShape(unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, VkSampler* immutable_sampler) const;
+    [[nodiscard]] VkDescriptorSetLayout createSingleCBVLayout() const;
 
     [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<shader_view_element const> srvs,
                                                                        cc::span<shader_view_element const> uavs,

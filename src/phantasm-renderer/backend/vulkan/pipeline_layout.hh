@@ -44,10 +44,9 @@ struct pipeline_layout_params
         // 3. Samplers
         // OR, CBVs which are padded to the sets 4,5,6,7
         // 1. CBV (UNIFORM_BUFFER_DYNAMIC)
-        cc::capped_vector<VkDescriptorSetLayoutBinding, 3> bindings;
+        cc::capped_vector<VkDescriptorSetLayoutBinding, 64> bindings;
 
         void initialize_from_cbv();
-        void initialize_from_srvs_uavs(unsigned num_srvs, unsigned num_uavs);
 
         void add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility);
 
@@ -56,9 +55,8 @@ struct pipeline_layout_params
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };
 
-    cc::capped_vector<descriptor_set_params, (limits::max_shader_arguments * 2) + 1> descriptor_sets;
+    cc::capped_vector<descriptor_set_params, limits::max_shader_arguments * 2> descriptor_sets;
 
-    void initialize_from_shape(arg::shader_argument_shapes arg_shapes);
     void initialize_from_reflection_info(cc::span<util::spirv_desc_range_info const> range_infos);
 };
 

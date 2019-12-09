@@ -198,9 +198,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
         // This is a write access to the pool and must be synced
         res = mPool.acquire();
         // This is a write access to mAllocator descriptors
-        cbv_desc_set = mAllocatorDescriptors.allocDescriptorFromShape(1, 0, 0, nullptr);
-
-        cbv_desc_set_layout = mAllocatorDescriptors.createLayoutFromShape(1, 0, 0, nullptr);
+        cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout();
         cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
     }
 
