@@ -31,7 +31,7 @@ public:
     void reset(VkDevice device);
 
 private:
-    static size_t hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats);
+    static cc::hash_t hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats);
 
     backend::detail::cache_map<VkRenderPass> mCache;
 };

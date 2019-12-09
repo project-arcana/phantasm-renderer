@@ -29,9 +29,9 @@ void pr::backend::vk::RenderPassCache::reset(VkDevice device)
     mCache.clear();
 }
 
-size_t pr::backend::vk::RenderPassCache::hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats)
+cc::hash_t pr::backend::vk::RenderPassCache::hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats)
 {
-    size_t res = 0;
+    cc::hash_t res = 0;
     for (uint8_t i = 0u; i < brp.render_targets.size(); ++i)
     {
         res = cc::hash_combine(res, hash::detail::hash(brp.render_targets[i].clear_type, override_rt_formats[i]));
