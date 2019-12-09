@@ -10,7 +10,7 @@
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,
-                                                                                       pr::backend::arg::shader_argument_shapes /*shader_arg_shapes*/,
+                                                                                       pr::backend::arg::shader_argument_shapes shader_arg_shapes,
                                                                                        pr::backend::arg::shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
 {
@@ -31,6 +31,10 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
         }
 
         shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info);
+
+        // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
+        // amount declared in the shader arg shapes is the same
+        CC_ASSERT(util::check_consistency(shader_descriptor_ranges, shader_arg_shapes) && "Reflected SPIR-V descriptors inconsistent with shader argument shapes");
     }
 
 

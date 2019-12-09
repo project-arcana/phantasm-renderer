@@ -195,3 +195,18 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
 
     return sorted_merged_res;
 }
+
+bool pr::backend::vk::util::check_consistency(cc::span<const pr::backend::vk::util::spirv_desc_range_info> spirv_ranges, pr::backend::arg::shader_argument_shapes arg_shapes)
+{
+    auto num_descriptors = 0u;
+    for (auto const& range : spirv_ranges)
+    {
+        num_descriptors += range.binding_size;
+    }
+    auto num_nominal_descriptors = 0u;
+    for (auto const& shape : arg_shapes)
+    {
+        num_nominal_descriptors += shape.num_srvs + shape.num_uavs + shape.num_samplers + (shape.has_cb ? 1 : 0);
+    }
+    return num_descriptors == num_nominal_descriptors;
+}

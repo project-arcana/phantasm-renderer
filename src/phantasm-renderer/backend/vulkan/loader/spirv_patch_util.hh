@@ -87,4 +87,8 @@ struct spirv_desc_range_info
 /// create a sorted, deduplicated vector of descriptor range infos from an unsorted raw output from previous patches
 [[nodiscard]] cc::vector<spirv_desc_range_info> merge_spirv_descriptors(cc::vector<spirv_desc_info>& desc_infos);
 
+/// returns true if the reflected descriptors are consistent with the passed arguments
+/// currently only checks if the amounts are equal
+[[nodiscard]] bool check_consistency(cc::span<spirv_desc_range_info const> spirv_ranges, arg::shader_argument_shapes arg_shapes);
+
 }
