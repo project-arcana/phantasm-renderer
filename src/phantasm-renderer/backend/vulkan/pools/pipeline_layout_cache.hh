@@ -37,8 +37,8 @@ private:
         size_t res = 0;
         for (auto const& elem : v.reflected_ranges)
         {
-            auto const elem_hash = cc::hash_combine(hash::detail::hash(elem.set, elem.type, elem.binding_size, elem.binding_start),
-                                                              hash::detail::hash(elem.visible_stages));
+            auto const elem_hash = cc::hash_combine(cc::make_hash(elem.set, elem.type, elem.binding_size, elem.binding_start),
+                                                              cc::make_hash(elem.visible_stages));
             res = cc::hash_combine(res, elem_hash);
         }
         return res;

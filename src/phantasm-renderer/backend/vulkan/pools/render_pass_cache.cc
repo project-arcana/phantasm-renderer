@@ -34,13 +34,13 @@ cc::hash_t pr::backend::vk::RenderPassCache::hashKey(cmd::begin_render_pass cons
     cc::hash_t res = 0;
     for (uint8_t i = 0u; i < brp.render_targets.size(); ++i)
     {
-        res = cc::hash_combine(res, hash::detail::hash(brp.render_targets[i].clear_type, override_rt_formats[i]));
+        res = cc::hash_combine(res, cc::make_hash(brp.render_targets[i].clear_type, override_rt_formats[i]));
     }
     if (brp.depth_target.sve.resource != handle::null_resource)
     {
         auto const& ds = brp.depth_target;
-        res = cc::hash_combine(res, hash::detail::hash(ds.clear_type, ds.sve.pixel_format));
+        res = cc::hash_combine(res, cc::make_hash(ds.clear_type, ds.sve.pixel_format));
     }
 
-    return cc::hash_combine(res, hash::detail::hash(num_samples));
+    return cc::hash_combine(res, cc::make_hash(num_samples));
 }
