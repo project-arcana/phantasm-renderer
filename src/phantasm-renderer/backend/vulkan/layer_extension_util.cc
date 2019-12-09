@@ -163,16 +163,18 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         {
             if (!add_required_layer("VK_LAYER_KHRONOS_validation"))
             {
-                std::cerr << "[pr][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
-                std::cerr << "[pr][vk] Download the LunarG SDK for your operating system," << std::endl;
-                std::cerr << "[pr][vk] then set the VK_LAYER_PATH environment variable to the" << std::endl;
-                std::cerr << "[pr][vk] absolute path towards <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
+                std::cerr << "[pr][backend][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
+                std::cerr << "[pr][backend][vk] Download the LunarG SDK for your operating system," << std::endl;
+                std::cerr << "[pr][backend][vk] then set these environment variables: (all paths absolute)" << std::endl;
+                std::cerr << "[pr][backend][vk] VK_LAYER_PATH - <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
+                std::cerr << "[pr][backend][vk] VULKAN_SDK - <sdk>/x86_64/bin" << std::endl;
+                std::cerr << "[pr][backend][vk] LD_LIBRARY_PATH - <VALUE>:<sdk>/x86_64/lib (append)" << std::endl;
             }
         }
 
         if (!add_required_ext("VK_EXT_debug_utils"))
         {
-            std::cerr << "Missing debug utils extension" << std::endl;
+            std::cerr << "[pr][backend][vk] Missing debug utils extension" << std::endl;
         }
     }
 
@@ -180,7 +182,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
     for (char const* const required_device_ext : device::Window::getRequiredInstanceExtensions())
     {
         if (!add_required_ext(required_device_ext))
-            std::cerr << "[pr][vk] Missing required extension " << required_device_ext << std::endl;
+            std::cerr << "[pr][backend][vk] Missing required extension " << required_device_ext << std::endl;
     }
 
 
@@ -213,7 +215,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
 
     if (!add_required_ext(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
     {
-        std::cerr << "[pr][vk] Missing swapchain extension" << std::endl;
+        std::cerr << "[pr][backend][vk] Missing swapchain extension" << std::endl;
     }
 
     return used_res;

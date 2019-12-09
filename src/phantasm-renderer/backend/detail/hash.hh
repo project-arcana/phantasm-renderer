@@ -31,7 +31,7 @@ size_t hash(T1 const& a, T2 const& b, T3 const& c)
 template <class T1, class T2, class T3, class T4>
 size_t hash(T1 const& a, T2 const& b, T3 const& c, T4 const& d)
 {
-    return cc::hash_combine(std::hash<T1>{}(a), std::hash<T2>{}(b), std::hash<T3>{}(c), std::hash<T4>{}(d));
+    return cc::hash_combine(hash(std::hash<T1>{}(a), std::hash<T2>{}(b), std::hash<T3>{}(c)), std::hash<T4>{}(d));
 }
 }
 
