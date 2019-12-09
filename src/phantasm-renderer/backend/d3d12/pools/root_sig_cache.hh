@@ -30,7 +30,7 @@ public:
     void reset();
 
 private:
-    static size_t hashKey(key_t const& v) { return hash::compute(v.arg_shapes); }
+    static cc::hash_t hashKey(key_t const& v) { return hash::compute(v.arg_shapes); }
 
     backend::detail::cache_map<root_signature> mCache;
 };
