@@ -72,7 +72,7 @@ struct pipeline_layout
 
     /// The pipeline stages (shader domains only) which have access to
     /// the respective descriptor sets (parallel array)
-    cc::capped_vector<VkPipelineStageFlags, limits::max_shader_arguments> descriptor_set_visibilities;
+    cc::capped_vector<VkPipelineStageFlags, limits::max_shader_arguments * 2> descriptor_set_visibilities;
 
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
