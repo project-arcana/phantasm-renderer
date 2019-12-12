@@ -156,6 +156,7 @@ void pr::backend::vk::BackendVulkan::present()
 
 void pr::backend::vk::BackendVulkan::onResize(tg::isize2 size)
 {
+    flushGPU();
     onInternalResize();
     mSwapchain.onResize(size.width, size.height);
 }

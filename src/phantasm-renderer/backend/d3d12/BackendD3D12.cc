@@ -95,6 +95,7 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
 
 void pr::backend::d3d12::BackendD3D12::onResize(tg::isize2 size)
 {
+    flushGPU();
     onInternalResize();
     mSwapchain.onResize(size);
 }
