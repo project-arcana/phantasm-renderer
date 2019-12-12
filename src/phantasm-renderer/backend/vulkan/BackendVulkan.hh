@@ -64,10 +64,11 @@ public:
     {
         return mPoolResources.createMappedBuffer(size_bytes, stride_bytes);
     }
+    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) override { return mPoolResources.getMappedMemory(res); }
 
     void free(handle::resource res) override { mPoolResources.free(res); }
+    void free_range(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }
 
-    [[nodiscard]] std::byte* getMappedMemory(handle::resource res) override { return mPoolResources.getMappedMemory(res); }
 
     //
     // Shader view interface

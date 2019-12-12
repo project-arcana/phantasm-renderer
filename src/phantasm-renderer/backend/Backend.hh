@@ -83,6 +83,9 @@ public:
     /// destroy a resource
     virtual void free(handle::resource res) = 0;
 
+    /// destroy multiple resource
+    virtual void free_range(cc::span<handle::resource const> resources) = 0;
+
     //
     // Shader view interface
     //

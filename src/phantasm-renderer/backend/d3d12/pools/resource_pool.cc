@@ -144,6 +144,24 @@ void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
     }
 }
 
+void pr::backend::d3d12::ResourcePool::free(cc::span<const pr::backend::handle::resource> resources)
+{
+    auto lg = std::lock_guard(mMutex);
+
+    for (auto res : resources)
+    {
+        CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
+        if (res.is_valid())
+        {
+            resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
+            // This is a write access to mAllocatorDescriptors
+            freed_node.allocation->Release();
+            // This is a write access to the pool and must be synced
+            mPool.release(static_cast<unsigned>(res.index));
+        }
+    }
+}
+
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(
     D3D12MA::Allocation* alloc, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {

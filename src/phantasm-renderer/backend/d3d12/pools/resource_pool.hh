@@ -30,6 +30,7 @@ public:
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
 
     void free(handle::resource res);
+    void free(cc::span<handle::resource const> resources);
 
     /// only valid for resources created with createMappedBuffer
     [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer_map; }

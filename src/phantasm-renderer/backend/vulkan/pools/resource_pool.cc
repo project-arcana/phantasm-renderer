@@ -47,8 +47,10 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(forma
     image_info.flags = 0;
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 
-    // if (image_size.array_size == 6)
-    //    image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    if (dim == texture_dimension::t2d && depth_or_array_size == 6)
+    {
+        image_info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    }
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -155,6 +157,24 @@ void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
         internalFree(freed_node);
         // This is a write access to the pool and must be synced
         mPool.release(static_cast<unsigned>(res.index));
+    }
+}
+
+void pr::backend::vk::ResourcePool::free(cc::span<const pr::backend::handle::resource> resources)
+{
+    auto lg = std::lock_guard(mMutex);
+
+    for (auto res : resources)
+    {
+        CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
+        if (res.is_valid())
+        {
+            resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
+            // This is a write access to mAllocatorDescriptors
+            internalFree(freed_node);
+            // This is a write access to the pool and must be synced
+            mPool.release(static_cast<unsigned>(res.index));
+        }
     }
 }
 
