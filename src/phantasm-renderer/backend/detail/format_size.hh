@@ -73,6 +73,8 @@ namespace pr::backend::detail
     case format::depth24un_stencil8u:
         return 4;
     }
+
+    return 0;
 }
 
 }

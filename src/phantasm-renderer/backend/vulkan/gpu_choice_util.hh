@@ -15,6 +15,8 @@ namespace pr::backend::vk
 struct vulkan_gpu_info
 {
     VkPhysicalDevice physical_device;
+    VkPhysicalDeviceProperties physical_device_props;
+    VkPhysicalDeviceMemoryProperties mem_props;
     cc::array<VkSurfaceFormatKHR> backbuffer_formats;
     cc::array<VkPresentModeKHR> present_modes;
     VkSurfaceCapabilitiesKHR surface_capabilities;

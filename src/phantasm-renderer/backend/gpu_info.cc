@@ -19,12 +19,23 @@ constexpr char const* get_preference_literal(pr::backend::adapter_preference pre
     case pr::backend::adapter_preference::highest_feature_level:
         return "highest feature level";
     }
+    return "";
 }
 
 }
 
 size_t pr::backend::get_preferred_gpu(cc::span<const pr::backend::gpu_info> candidates, pr::backend::adapter_preference preference, bool verbose)
 {
+    auto const get_first_capable = [&]() -> size_t {
+        for (auto i = 0u; i < candidates.size(); ++i)
+        {
+            if (candidates[i].capabilities != gpu_capabilities::insufficient)
+                return i;
+        }
+
+        return candidates.size();
+    };
+
     auto const make_choice = [&]() -> size_t {
         if (candidates.empty())
             return candidates.size();
@@ -36,19 +47,21 @@ size_t pr::backend::get_preferred_gpu(cc::span<const pr::backend::gpu_info> cand
             for (auto i = 0u; i < candidates.size(); ++i)
             {
                 // Note that AMD also manufactures integrated GPUs, this is a heuristic
-                if (candidates[i].vendor == gpu_vendor::intel)
+                if (candidates[i].capabilities != gpu_capabilities::insufficient && candidates[i].vendor == gpu_vendor::intel)
                     return i;
             }
 
             // Fall back to the first adapter
-            return 0;
+            return get_first_capable();
         }
         case adapter_preference::highest_vram:
         {
-            auto highest_vram_index = 0u;
+            auto highest_vram_index = get_first_capable();
+
             for (auto i = 1u; i < candidates.size(); ++i)
             {
-                if (candidates[i].dedicated_video_memory_bytes > candidates[highest_vram_index].dedicated_video_memory_bytes)
+                if (candidates[i].capabilities != gpu_capabilities::insufficient
+                    && candidates[i].dedicated_video_memory_bytes > candidates[highest_vram_index].dedicated_video_memory_bytes)
                     highest_vram_index = i;
             }
 
@@ -66,12 +79,12 @@ size_t pr::backend::get_preferred_gpu(cc::span<const pr::backend::gpu_info> cand
             return highest_capability_index;
         }
         case adapter_preference::first:
-            return 0;
+            return get_first_capable();
         case adapter_preference::explicit_index:
             return candidates.size();
         }
 
-        return 0;
+        return get_first_capable();
     };
 
     auto const choice = make_choice();
@@ -88,7 +101,8 @@ size_t pr::backend::get_preferred_gpu(cc::span<const pr::backend::gpu_info> cand
         {
             std::cout << "failed to choose gpu";
         }
-        std::cout << " from " << candidates.size() << " candidate" << (candidates.size() == 1 ? "" : "s") << ", preference: " << get_preference_literal(preference) << std::endl;
+        std::cout << " from " << candidates.size() << " candidate" << (candidates.size() == 1 ? "" : "s")
+                  << ", preference: " << get_preference_literal(preference) << std::endl;
     }
 
     return choice;

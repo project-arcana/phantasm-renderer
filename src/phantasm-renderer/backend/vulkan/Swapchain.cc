@@ -171,7 +171,7 @@ bool pr::backend::vk::Swapchain::present()
 
     ++mActiveFenceIndex;
     if (mActiveFenceIndex >= mBackbuffers.size())
-        mActiveFenceIndex -= mBackbuffers.size();
+        mActiveFenceIndex -= static_cast<unsigned>(mBackbuffers.size());
 
     vkWaitForFences(mDevice, 1, &mBackbuffers[mActiveFenceIndex].fence_command_buf_executed, VK_TRUE, UINT64_MAX);
     return true;

@@ -3,10 +3,27 @@
 #include <cstdint>
 
 #include <clean-core/utility.hh>
+
 #include <phantasm-renderer/backend/device_tentative/window.hh>
+
+#include <phantasm-renderer/backend/limits.hh>
 
 #include "common/verify.hh"
 #include "queue_util.hh"
+
+namespace
+{
+[[nodiscard]] bool are_device_properties_sufficient(VkPhysicalDeviceProperties const& props)
+{
+    if (props.limits.maxBoundDescriptorSets < pr::backend::limits::max_shader_arguments * 2)
+        return false;
+
+    if (props.limits.maxColorAttachments < pr::backend::limits::max_render_targets)
+        return false;
+
+    return true;
+}
+}
 
 cc::array<VkPhysicalDevice> pr::backend::vk::get_physical_devices(VkInstance instance)
 {
@@ -34,6 +51,13 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
     if (!res.available_layers_extensions.extensions.contains(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
         return res;
 
+
+    // device properties
+    {
+        vkGetPhysicalDeviceProperties(device, &res.physical_device_props);
+        if (!are_device_properties_sufficient(res.physical_device_props))
+            return res;
+    }
 
     // required features
     {
@@ -63,9 +87,10 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &num_present_modes, res.present_modes.data());
     }
 
-    // surface capabilities
+    // other queries
     {
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &res.surface_capabilities);
+        vkGetPhysicalDeviceMemoryProperties(device, &res.mem_props);
     }
 
     res.is_suitable = true;
@@ -162,32 +187,24 @@ cc::vector<pr::backend::gpu_info> pr::backend::vk::get_available_gpus(cc::span<c
     for (auto i = 0u; i < vk_gpu_infos.size(); ++i)
     {
         auto const& ll_info = vk_gpu_infos[i];
-        if (!ll_info.is_suitable)
-            continue;
-
-        VkPhysicalDeviceProperties props;
-        vkGetPhysicalDeviceProperties(ll_info.physical_device, &props);
 
         auto& new_gpu = res.emplace_back();
         new_gpu.index = i;
-        new_gpu.vendor = get_gpu_vendor_from_id(props.vendorID);
-        new_gpu.description = cc::string(props.deviceName);
+        new_gpu.vendor = get_gpu_vendor_from_id(ll_info.physical_device_props.vendorID);
+        new_gpu.description = cc::string(ll_info.physical_device_props.deviceName);
 
         // TODO: differentiate this somehow
-        new_gpu.capabilities = gpu_capabilities::level_1;
+        new_gpu.capabilities = ll_info.is_suitable ? gpu_capabilities::level_1 : gpu_capabilities::insufficient;
         new_gpu.has_raytracing = ll_info.available_layers_extensions.extensions.contains(VK_NV_RAY_TRACING_EXTENSION_NAME);
         new_gpu.dedicated_video_memory_bytes = 0;
         new_gpu.dedicated_system_memory_bytes = 0;
         new_gpu.shared_system_memory_bytes = 0;
 
-        VkPhysicalDeviceMemoryProperties mem_props;
-        vkGetPhysicalDeviceMemoryProperties(ll_info.physical_device, &mem_props);
-
-        for (auto i = 0u; i < mem_props.memoryHeapCount; ++i)
+        for (auto i = 0u; i < ll_info.mem_props.memoryHeapCount; ++i)
         {
-            auto const& heap = mem_props.memoryHeaps[i];
+            auto const& heap = ll_info.mem_props.memoryHeaps[i];
 
-            if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && ll_info.physical_device_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
                 new_gpu.dedicated_video_memory_bytes += heap.size;
             else
                 new_gpu.shared_system_memory_bytes += heap.size;

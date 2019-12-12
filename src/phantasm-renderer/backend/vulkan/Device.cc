@@ -62,10 +62,10 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
             vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[2]), 0, &mQueueCopy);
     }
 
-    // Query info
+    // copy info
     {
-        vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mInformation.memory_properties);
-        vkGetPhysicalDeviceProperties(mPhysicalDevice, &mInformation.device_properties);
+        mInformation.memory_properties = device.mem_props;
+        mInformation.device_properties = device.physical_device_props;
     }
 }
 

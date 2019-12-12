@@ -5,11 +5,21 @@
 #include <clean-core/bit_cast.hh>
 #include <clean-core/utility.hh>
 
+#include <typed-geometry/tg.hh>
+
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/memory/VMA.hh>
+
+namespace
+{
+unsigned calculate_num_mip_levels(unsigned width, unsigned height)
+{
+    return static_cast<unsigned>(tg::floor(tg::log2(static_cast<float>(cc::max(width, height))))) + 1u;
+}
+}
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size)
 {
@@ -23,7 +33,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(forma
     image_info.extent.width = uint32_t(w);
     image_info.extent.height = uint32_t(h);
     image_info.extent.depth = dim == texture_dimension::t3d ? depth_or_array_size : 1;
-    image_info.mipLevels = uint32_t(mips);
+    image_info.mipLevels = mips < 1 ? calculate_num_mip_levels(w, h) : uint32_t(mips);
     image_info.arrayLayers = dim == texture_dimension::t3d ? 1 : depth_or_array_size;
 
     image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
