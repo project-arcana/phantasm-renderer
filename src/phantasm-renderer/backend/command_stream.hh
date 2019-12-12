@@ -81,6 +81,29 @@ PR_DEFINE_CMD(begin_render_pass)
     cmd_vector<render_target_info, limits::max_render_targets> render_targets;
     depth_stencil_info depth_target;
     tg::isize2 viewport;
+
+public:
+    // convenience
+
+    void add_backbuffer_rt(handle::resource res)
+    {
+        render_targets.push_back(render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, rt_clear_type::clear});
+        render_targets.back().sve.init_as_backbuffer(res);
+    }
+
+    void add_2d_rt(handle::resource res, format pixel_format, rt_clear_type clear_op = rt_clear_type::clear, bool multisampled = false)
+    {
+        render_targets.push_back(render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, clear_op});
+        render_targets.back().sve.init_as_tex2d(res, pixel_format, multisampled);
+    }
+
+    void set_2d_depth_stencil(handle::resource res, format pixel_format, rt_clear_type clear_op = rt_clear_type::clear, bool multisampled = false)
+    {
+        depth_target = depth_stencil_info{{}, 1.f, 0, clear_op};
+        depth_target.sve.init_as_tex2d(res, pixel_format, multisampled);
+    }
+
+    void set_null_depth_stencil() { depth_target.sve.init_as_null(); }
 };
 
 PR_DEFINE_CMD(end_render_pass){
@@ -96,6 +119,11 @@ PR_DEFINE_CMD(transition_resources)
     };
 
     cmd_vector<transition_info, limits::max_resource_transitions> transitions;
+
+public:
+    // convenience
+
+    void add(handle::resource res, resource_state target) { transitions.push_back(transition_info{res, target}); }
 };
 
 PR_DEFINE_CMD(draw)
@@ -105,6 +133,14 @@ PR_DEFINE_CMD(draw)
     handle::resource index_buffer;
     unsigned num_indices;
     cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+
+public:
+    // convenience
+
+    void add_shader_arg(handle::resource cbv, unsigned cbv_off = 0, handle::shader_view sv = handle::null_shader_view)
+    {
+        shader_arguments.push_back(shader_argument{cbv, cbv_off, sv});
+    }
 };
 
 PR_DEFINE_CMD(copy_buffer)
@@ -114,6 +150,9 @@ PR_DEFINE_CMD(copy_buffer)
     size_t dest_offset;
     size_t source_offset;
     size_t size;
+
+public:
+    // convenience
 
     copy_buffer() = default;
     copy_buffer(handle::resource dest, size_t dest_offset, handle::resource src, size_t src_offset, size_t size)
