@@ -77,6 +77,47 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     return {static_cast<handle::index_t>(pool_index)};
 }
 
+pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                              const pr::backend::arg::shader_stage& compute_shader)
+{
+    // Patch and reflect SPIR-V binary
+    arg::shader_stage patched_shader_stage;
+    cc::vector<util::spirv_desc_info> shader_descriptor_ranges;
+    CC_DEFER { util::free_patched_spirv(patched_shader_stage); };
+
+    {
+        cc::vector<util::spirv_desc_info> spirv_info;
+
+        patched_shader_stage = util::create_patched_spirv(compute_shader.binary_data, compute_shader.binary_size, spirv_info);
+        shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info);
+
+        // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
+        // amount declared in the shader arg shapes is the same
+        CC_ASSERT(util::is_consistent_with_reflection(shader_descriptor_ranges, shader_arg_shapes) && "Given shader argument shapes inconsistent with SPIR-V reflection");
+    }
+
+
+    pipeline_layout* layout;
+    unsigned pool_index;
+    // Do things requiring synchronization
+    {
+        auto lg = std::lock_guard(mMutex);
+        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges});
+        pool_index = mPool.acquire();
+    }
+
+    // Populate new node
+    pso_node& new_node = mPool.get(pool_index);
+    new_node.associated_pipeline_layout = layout;
+    new_node.rt_formats.clear();
+    new_node.num_msaa_samples = 0;
+
+
+    new_node.raw_pipeline = create_compute_pipeline(mDevice, new_node.associated_pipeline_layout->raw_layout, patched_shader_stage);
+
+    return {static_cast<handle::index_t>(pool_index)};
+}
+
 void pr::backend::vk::PipelinePool::free(pr::backend::handle::pipeline_state ps)
 {
     // TODO: dangle check

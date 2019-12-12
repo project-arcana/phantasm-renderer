@@ -15,4 +15,6 @@ namespace pr::backend::d3d12
                                                          arg::framebuffer_format framebuffer_format,
                                                          arg::shader_stages shader_stages,
                                                          pr::primitive_pipeline_config const& config);
+
+[[nodiscard]] ID3D12PipelineState* create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, arg::shader_stage const& compute_shader);
 }

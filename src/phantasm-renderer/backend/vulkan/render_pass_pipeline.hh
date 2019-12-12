@@ -23,6 +23,8 @@ namespace pr::backend::vk
                                          cc::span<VkVertexInputAttributeDescription const> vertex_attribs,
                                          uint32_t vertex_size);
 
+[[nodiscard]] VkPipeline create_compute_pipeline(VkDevice device, VkPipelineLayout pipeline_layout, arg::shader_stage const& compute_shader);
+
 [[nodiscard]] inline VkPipeline create_fullscreen_pipeline(VkDevice device, VkRenderPass render_pass, VkPipelineLayout layout, arg::shader_stages shaders)
 {
     return create_pipeline(device, render_pass, layout, shaders, pr::primitive_pipeline_config{}, {}, 0);

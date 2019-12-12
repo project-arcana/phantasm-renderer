@@ -37,6 +37,30 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     return {static_cast<handle::index_t>(pool_index)};
 }
 
+pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                                            const pr::backend::arg::shader_stage& compute_shader)
+{
+    root_signature* root_sig;
+    unsigned pool_index;
+    // Do things requiring synchronization first
+    {
+        auto lg = std::lock_guard(mMutex);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes});
+        pool_index = mPool.acquire();
+    }
+
+    // Populate new node
+    pso_node& new_node = mPool.get(pool_index);
+    new_node.associated_root_sig = root_sig;
+    new_node.primitive_topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+    // Create PSO
+    new_node.raw_pso = create_compute_pipeline_state(*mDevice, root_sig->raw_root_sig, compute_shader);
+    util::set_object_name(new_node.raw_pso, "pool compute pso #%d", int(pool_index));
+
+    return {static_cast<handle::index_t>(pool_index)};
+}
+
 void pr::backend::d3d12::PipelineStateObjectPool::free(pr::backend::handle::pipeline_state ps)
 {
     // TODO: dangle check

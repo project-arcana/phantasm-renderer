@@ -72,3 +72,14 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
     PR_D3D12_VERIFY(device.CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&pso)));
     return pso;
 }
+
+ID3D12PipelineState* pr::backend::d3d12::create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, const pr::backend::arg::shader_stage& compute_shader)
+{
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {};
+    pso_desc.pRootSignature = root_sig;
+    pso_desc.CS = D3D12_SHADER_BYTECODE{compute_shader.binary_data, compute_shader.binary_size};
+
+    ID3D12PipelineState* pso;
+    PR_D3D12_VERIFY(device.CreateComputePipelineState(&pso_desc, IID_PPV_ARGS(&pso)));
+    return pso;
+}

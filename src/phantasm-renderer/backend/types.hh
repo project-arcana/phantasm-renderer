@@ -377,7 +377,7 @@ struct sampler_config
         lod_bias = 0.f;
         max_anisotropy = anisotropy;
         compare_func = sampler_compare_func::disabled;
-        border_color = sampler_border_color::black_transparent_float;
+        border_color = sampler_border_color::white_float;
     }
 };
 

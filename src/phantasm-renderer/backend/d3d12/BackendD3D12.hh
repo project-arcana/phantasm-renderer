@@ -101,6 +101,11 @@ public:
         return mPoolPSOs.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_stages, primitive_config);
     }
 
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader) override
+    {
+        return mPoolPSOs.createComputePipelineState(shader_arg_shapes, compute_shader);
+    }
+
     void free(handle::pipeline_state ps) override { mPoolPSOs.free(ps); }
 
     //

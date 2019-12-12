@@ -320,3 +320,19 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     return res;
 }
+
+VkPipeline pr::backend::vk::create_compute_pipeline(VkDevice device, VkPipelineLayout pipeline_layout, const pr::backend::arg::shader_stage& compute_shader)
+{
+    shader shader_stage;
+    initialize_shader(shader_stage, device, compute_shader.binary_data, compute_shader.binary_size, shader_domain::compute);
+
+    VkComputePipelineCreateInfo pipeline_info = {};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipeline_info.layout = pipeline_layout;
+    pipeline_info.stage = get_shader_create_info(shader_stage);
+
+    VkPipeline res;
+    vkCreateComputePipelines(device, nullptr, 1, &pipeline_info, nullptr, &res);
+    shader_stage.free(device);
+    return res;
+}

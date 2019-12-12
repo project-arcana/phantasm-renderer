@@ -65,7 +65,8 @@ public:
     //
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
-    [[nodiscard]] virtual handle::resource createTexture(backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1)
+    [[nodiscard]] virtual handle::resource createTexture(
+        backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1)
         = 0;
 
     /// create a [multisampled] 2D render- or depth-stencil target
@@ -106,6 +107,9 @@ public:
                                                                      arg::shader_argument_shapes shader_arg_shapes,
                                                                      arg::shader_stages shader_stages,
                                                                      pr::primitive_pipeline_config const& primitive_config)
+        = 0;
+
+    [[nodiscard]] virtual handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader)
         = 0;
 
     virtual void free(handle::pipeline_state ps) = 0;
