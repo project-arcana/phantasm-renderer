@@ -45,12 +45,12 @@ public:
     // Resource interface
     //
 
-    [[nodiscard]] handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size) override
+    [[nodiscard]] handle::resource createTexture(backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size) override
     {
         return mPoolResources.createTexture(format, w, h, mips, dim, depth_or_array_size);
     }
 
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples) override
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples) override
     {
         return mPoolResources.createRenderTarget(format, w, h, samples);
     }

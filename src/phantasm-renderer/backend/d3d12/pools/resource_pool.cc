@@ -45,15 +45,15 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::injectBackbuffer
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(backend::format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size)
 {
     constexpr auto initial_state = resource_state::copy_dest;
 
     D3D12_RESOURCE_DESC desc = {};
     desc.Dimension = util::to_native(dim);
     desc.Format = util::to_dxgi_format(format);
-    desc.Width = UINT(w);
-    desc.Height = UINT(h);
+    desc.Width = w;
+    desc.Height = h;
     desc.DepthOrArraySize = UINT16(depth_or_array_size);
     desc.MipLevels = UINT16(mips);
     desc.SampleDesc.Count = 1;
@@ -67,7 +67,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(ba
     return acquireResource(alloc, initial_state);
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h, int samples)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples)
 {
     auto const format_dxgi = util::to_dxgi_format(format);
     if (is_depth_format(format))
@@ -80,8 +80,8 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
         clear_value.DepthStencil.Depth = 1;
         clear_value.DepthStencil.Stencil = 0;
 
-        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, UINT(w), UINT(h), 1, 1, UINT(samples),
-                                                       samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(format_dxgi, w, h, 1, 1, samples, samples != 1 ? DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN : 0,
+                                                       D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         util::set_object_name(alloc->GetResource(), "respool depth stencil target");

@@ -437,7 +437,7 @@ namespace pr::backend::vk::util
     }
 }
 
-[[nodiscard]] inline constexpr VkSampleCountFlagBits to_native_sample_flags(int num_samples)
+[[nodiscard]] inline constexpr VkSampleCountFlagBits to_native_sample_flags(unsigned num_samples)
 {
     switch (num_samples)
     {

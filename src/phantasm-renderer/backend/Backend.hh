@@ -65,11 +65,11 @@ public:
     //
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
-    [[nodiscard]] virtual handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim = texture_dimension::t2d, int depth_or_array_size = 1)
+    [[nodiscard]] virtual handle::resource createTexture(backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1)
         = 0;
 
     /// create a [multisampled] 2D render- or depth-stencil target
-    [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, int w, int h, int samples = 1) = 0;
+    [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples = 1) = 0;
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] virtual handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) = 0;

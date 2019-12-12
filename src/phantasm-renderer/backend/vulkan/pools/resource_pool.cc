@@ -21,7 +21,7 @@ unsigned calculate_num_mip_levels(unsigned width, unsigned height)
 }
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -62,7 +62,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(forma
     return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, int w, int h, int samples)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, unsigned w, unsigned h, unsigned samples)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
