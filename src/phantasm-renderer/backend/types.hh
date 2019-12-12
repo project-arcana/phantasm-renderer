@@ -224,6 +224,12 @@ struct vertex_attribute_info
     format format;
 };
 
+enum class texture_dimension : uint8_t
+{
+    t1d,
+    t2d,
+    t3d
+};
 
 enum class shader_view_dimension : uint8_t
 {
@@ -283,6 +289,17 @@ struct shader_view_element
         dimension = multisampled ? shader_view_dimension::texture2d_ms : shader_view_dimension::texture2d;
         texture_info.mip_start = mip_start;
         texture_info.mip_size = mip_size;
+        texture_info.array_start = 0;
+        texture_info.array_size = 1;
+    }
+
+    void init_as_texcube(handle::resource res, format pf)
+    {
+        resource = res;
+        pixel_format = pf;
+        dimension = shader_view_dimension::texturecube;
+        texture_info.mip_start = 0;
+        texture_info.mip_size = unsigned(-1);
         texture_info.array_start = 0;
         texture_info.array_size = 1;
     }

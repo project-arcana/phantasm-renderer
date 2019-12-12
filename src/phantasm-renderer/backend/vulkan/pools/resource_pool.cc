@@ -11,20 +11,20 @@
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/memory/VMA.hh>
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture2D(pr::backend::format format, int w, int h, int mips)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_info.pNext = nullptr;
 
-    image_info.imageType = VK_IMAGE_TYPE_2D;
+    image_info.imageType = util::to_native(dim);
     image_info.format = util::to_vk_format(format);
 
     image_info.extent.width = uint32_t(w);
     image_info.extent.height = uint32_t(h);
-    image_info.extent.depth = 1;
+    image_info.extent.depth = dim == texture_dimension::t3d ? depth_or_array_size : 1;
     image_info.mipLevels = uint32_t(mips);
-    image_info.arrayLayers = 1;
+    image_info.arrayLayers = dim == texture_dimension::t3d ? 1 : depth_or_array_size;
 
     image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

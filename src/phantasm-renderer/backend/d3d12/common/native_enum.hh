@@ -379,5 +379,17 @@ namespace pr::backend::d3d12::util
     }
 }
 
+[[nodiscard]] inline constexpr D3D12_RESOURCE_DIMENSION to_native(texture_dimension dim)
+{
+    switch (dim) {
+    case texture_dimension::t1d:
+        return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+    case texture_dimension::t2d:
+        return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    case texture_dimension::t3d:
+        return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+    }
+}
+
 
 }

@@ -473,4 +473,17 @@ namespace pr::backend::vk::util
     }
 }
 
+[[nodiscard]] inline constexpr VkImageType to_native(texture_dimension dim)
+{
+    switch (dim)
+    {
+    case texture_dimension::t1d:
+        return VK_IMAGE_TYPE_1D;
+    case texture_dimension::t2d:
+        return VK_IMAGE_TYPE_2D;
+    case texture_dimension::t3d:
+        return VK_IMAGE_TYPE_3D;
+    }
+}
+
 }

@@ -50,9 +50,9 @@ public:
     //
 
     /// create a 2D texture2
-    [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips) override
+    [[nodiscard]] handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size) override
     {
-        return mPoolResources.createTexture2D(format, w, h, mips);
+        return mPoolResources.createTexture(format, w, h, mips, dim, depth_or_array_size);
     }
 
     /// create a render- or depth-stencil target

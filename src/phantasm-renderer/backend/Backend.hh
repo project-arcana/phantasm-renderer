@@ -64,8 +64,8 @@ public:
     // Resource interface
     //
 
-    /// create a 2D texture2
-    [[nodiscard]] virtual handle::resource createTexture2D(backend::format format, int w, int h, int mips) = 0;
+    /// create a 1D, 2D or 3D texture, or a 1D/2D array
+    [[nodiscard]] virtual handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim = texture_dimension::t2d, int depth_or_array_size = 1) = 0;
 
     /// create a render- or depth-stencil target
     [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, int w, int h, int samples = 1) = 0;

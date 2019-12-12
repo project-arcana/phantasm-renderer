@@ -45,15 +45,25 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::injectBackbuffer
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture2D(backend::format format, int w, int h, int mips)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(backend::format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size)
 {
     constexpr auto initial_state = resource_state::copy_dest;
 
-    // NOTE: flags
-    auto const desc = CD3DX12_RESOURCE_DESC::Tex2D(util::to_dxgi_format(format), UINT(w), UINT(h), 1, UINT16(mips), 1, 0, D3D12_RESOURCE_FLAG_NONE);
+    D3D12_RESOURCE_DESC desc = {};
+    desc.Dimension = util::to_native(dim);
+    desc.Format = util::to_dxgi_format(format);
+    desc.Width = UINT(w);
+    desc.Height = UINT(h);
+    desc.DepthOrArraySize = UINT16(depth_or_array_size);
+    desc.MipLevels = UINT16(mips);
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Flags = D3D12_RESOURCE_FLAG_NONE; // NOTE: more?
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Alignment = 0;
 
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
-    util::set_object_name(alloc->GetResource(), "respool texture2D");
+    util::set_object_name(alloc->GetResource(), "respool texture");
     return acquireResource(alloc, initial_state);
 }
 

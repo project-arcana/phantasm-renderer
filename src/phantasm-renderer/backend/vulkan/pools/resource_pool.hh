@@ -18,8 +18,8 @@ class ResourcePool
 public:
     // frontend-facing API
 
-    /// create a 2D texture
-    [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
+    /// create a 1D, 2D or 3D texture, or a 1D/2D array
+    [[nodiscard]] handle::resource createTexture(format format, int w, int h, int mips, texture_dimension dim = texture_dimension::t2d, int depth_or_array_size = 1);
 
     /// create a render- or depth-stencil target
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples);
