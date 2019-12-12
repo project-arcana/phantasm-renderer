@@ -38,8 +38,8 @@ PR_DEFINE_HANDLE(command_list);
 struct shader_argument
 {
     handle::resource constant_buffer;
-    unsigned constant_buffer_offset;
     handle::shader_view shader_view;
+    unsigned constant_buffer_offset;
 };
 
 enum class shader_domain : uint8_t

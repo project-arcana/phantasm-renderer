@@ -233,6 +233,73 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch &dispatch)
+{
+    if (dispatch.pipeline_state != _bound.pipeline_state)
+    {
+        // a new handle::pipeline_state invalidates (!= always changes)
+        //      - The bound pipeline layout
+        //      - The bound render pass
+        //      - The bound pipeline
+
+        _bound.pipeline_state = dispatch.pipeline_state;
+        auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+
+        if (pso_node.associated_pipeline_layout->raw_layout != _bound.raw_pipeline_layout)
+        {
+            // a new layout is used when binding arguments,
+            // and invalidates previously bound arguments
+            _bound.set_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
+        }
+
+        vkCmdBindPipeline(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pso_node.raw_pipeline);
+    }
+
+    // Shader arguments
+    {
+        auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+        for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
+        {
+            auto const& arg = dispatch.shader_arguments[i];
+            auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
+
+            if (arg.constant_buffer != handle::null_resource)
+            {
+                // Unconditionally set the CBV
+
+                _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
+
+                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
+                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
+            }
+
+            // Set the shader view if it has changed
+            if (_bound.shader_views[i] != arg.shader_view)
+            {
+                _bound.shader_views[i] = arg.shader_view;
+                if (arg.shader_view != handle::null_shader_view)
+                {
+                    // touch all contained resources in the state cache
+                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
+                    {
+                        // NOTE: this is pretty inefficient
+                        _state_cache->touch_resource_in_shader(res, arg_vis);
+                    }
+
+                    auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
+                }
+            }
+        }
+    }
+
+    // Dispatch command
+    vkCmdDispatch(_cmd_list, dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::end_render_pass&)
 {
     if (_bound.raw_render_pass != nullptr)

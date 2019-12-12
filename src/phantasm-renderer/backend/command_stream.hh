@@ -19,6 +19,7 @@ namespace detail
 {
 #define PR_CMD_TYPE_VALUES       \
     PR_X(draw)                   \
+    PR_X(dispatch)               \
     PR_X(transition_resources)   \
     PR_X(copy_buffer)            \
     PR_X(copy_buffer_to_texture) \
@@ -128,18 +129,49 @@ public:
 
 PR_DEFINE_CMD(draw)
 {
+    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
     handle::pipeline_state pipeline_state;
     handle::resource vertex_buffer;
     handle::resource index_buffer;
     unsigned num_indices;
-    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
 
 public:
     // convenience
 
+    void init(unsigned num, handle::resource vb = handle::null_resource, handle::resource ib = handle::null_resource)
+    {
+        num_indices = num;
+        vertex_buffer = vb;
+        index_buffer = ib;
+    }
+
     void add_shader_arg(handle::resource cbv, unsigned cbv_off = 0, handle::shader_view sv = handle::null_shader_view)
     {
-        shader_arguments.push_back(shader_argument{cbv, cbv_off, sv});
+        shader_arguments.push_back(shader_argument{cbv, sv, cbv_off});
+    }
+};
+
+PR_DEFINE_CMD(dispatch)
+{
+    handle::pipeline_state pipeline_state;
+    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+    unsigned dispatch_x;
+    unsigned dispatch_y;
+    unsigned dispatch_z;
+
+public:
+    // convenience
+
+    void init(unsigned x, unsigned y, unsigned z)
+    {
+        dispatch_x = x;
+        dispatch_y = y;
+        dispatch_z = z;
+    }
+
+    void add_shader_arg(handle::resource cbv, unsigned cbv_off = 0, handle::shader_view sv = handle::null_shader_view)
+    {
+        shader_arguments.push_back(shader_argument{cbv, sv, cbv_off});
     }
 };
 

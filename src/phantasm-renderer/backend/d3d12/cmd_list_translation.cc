@@ -198,6 +198,64 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     }
 }
 
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
+{
+    auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+
+    // PSO
+    if (dispatch.pipeline_state != _bound.pipeline_state)
+    {
+        _bound.pipeline_state = dispatch.pipeline_state;
+        _cmd_list->SetPipelineState(pso_node.raw_pso);
+    }
+
+    // Root signature
+    if (pso_node.associated_root_sig->raw_root_sig != _bound.raw_root_sig)
+    {
+        // A new root signature invalidates bound shader arguments
+        _bound.set_root_sig(pso_node.associated_root_sig->raw_root_sig);
+        _cmd_list->SetComputeRootSignature(_bound.raw_root_sig);
+    }
+
+    // Shader arguments
+    {
+        auto const& root_sig = *pso_node.associated_root_sig;
+
+        for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
+        {
+            auto const& arg = dispatch.shader_arguments[i];
+            auto const& map = root_sig.argument_maps[i];
+
+            if (map.cbv_param != uint32_t(-1))
+            {
+                // Unconditionally set the CBV
+                auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
+                _cmd_list->SetComputeRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+            }
+
+            // Set the shader view if it has changed
+            if (_bound.shader_views[i] != arg.shader_view)
+                _bound.shader_views[i] = arg.shader_view;
+            {
+                if (map.srv_uav_table_param != uint32_t(-1))
+                {
+                    auto const sv_desc_table = _globals.pool_shader_views->getSRVUAVGPUHandle(arg.shader_view);
+                    _cmd_list->SetComputeRootDescriptorTable(map.srv_uav_table_param, sv_desc_table);
+                }
+
+                if (map.sampler_table_param != uint32_t(-1))
+                {
+                    auto const sampler_desc_table = _globals.pool_shader_views->getSamplerGPUHandle(arg.shader_view);
+                    _cmd_list->SetComputeRootDescriptorTable(map.sampler_table_param, sampler_desc_table);
+                }
+            }
+        }
+    }
+
+    // Dispatch command
+    _cmd_list->Dispatch(dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);
+}
+
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::end_render_pass&)
 {
     // do nothing
