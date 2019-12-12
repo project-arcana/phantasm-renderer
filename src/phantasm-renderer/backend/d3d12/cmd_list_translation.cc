@@ -273,10 +273,28 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         if (before_known && before != transition.target_state)
         {
             // The transition is neither the implicit initial one, nor redundant
-            auto& barrier = barriers.emplace_back();
-            util::populate_barrier_desc(barrier, _globals.pool_resources->getRawResource(transition.resource), util::to_native(before),
-                                        util::to_native(transition.target_state));
+            barriers.push_back(util::get_barrier_desc(_globals.pool_resources->getRawResource(transition.resource), before, transition.target_state));
         }
+    }
+
+    if (!barriers.empty())
+    {
+        _cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.data());
+    }
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::transition_image_slices& transition_images)
+{
+    // Image slice transitions are entirely explicit, and require the user to synchronize before/after resource states
+    // NOTE: we do not update the master state as it does not encompass subresource states
+
+    cc::capped_vector<D3D12_RESOURCE_BARRIER, limits::max_resource_transitions> barriers;
+    for (auto const& transition : transition_images.transitions)
+    {
+        CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
+        auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
+        barriers.push_back(util::get_barrier_desc(_globals.pool_resources->getRawResource(transition.resource), transition.source_state,
+                                                  transition.target_state, transition.mip_level, transition.array_slice, img_info.num_mips));
     }
 
     if (!barriers.empty())

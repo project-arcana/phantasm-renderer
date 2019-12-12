@@ -150,9 +150,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
             if (master_before != entry.required_initial)
             {
                 // transition to the state required as the initial one
-                auto& barrier = barriers.emplace_back();
-                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), util::to_native(master_before),
-                                            util::to_native(entry.required_initial));
+                barriers.push_back(util::get_barrier_desc(mPoolResources.getRawResource(entry.ptr), master_before, entry.required_initial));
             }
 
             // set the master state to the one in which this resource is left

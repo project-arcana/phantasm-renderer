@@ -233,7 +233,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 }
 
-void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch &dispatch)
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
 {
     if (dispatch.pipeline_state != _bound.pipeline_state)
     {
@@ -349,6 +349,33 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
                 barriers.add_buffer_barrier(buf_info.raw_buffer, change, buf_info.width);
             }
         }
+    }
+
+    barriers.record(_cmd_list);
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::transition_image_slices& transition_images)
+{
+    // Image slice transitions are entirely explicit, and require the user to synchronize before/after resource states
+    // NOTE: we do not update the master state as it does not encompass subresource states
+
+    barrier_bundle<limits::max_resource_transitions> barriers;
+
+    for (auto const& transition : transition_images.transitions)
+    {
+        // TODO: if the target state requires a pipeline stage in order to resolve
+        // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
+        // there are two ways to fix this:
+        // - defer all barriers requiring shader info until the draw call (where shader views are updated)
+        // - or require an explicit target shader domain in cmd::transition_resources
+
+        state_change const change
+            = state_change(transition.source_state, transition.target_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+
+        CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
+        auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
+        barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format),
+                                   static_cast<unsigned>(transition.mip_level), static_cast<unsigned>(transition.array_slice));
     }
 
     barriers.record(_cmd_list);

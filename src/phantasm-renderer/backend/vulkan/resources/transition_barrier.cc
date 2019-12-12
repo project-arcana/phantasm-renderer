@@ -1,6 +1,6 @@
 #include "transition_barrier.hh"
 
-VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, const state_change& state_change, VkImageAspectFlags aspect, unsigned num_mips, unsigned num_layers)
+VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, const state_change& state_change, VkImageAspectFlags aspect, unsigned mip_start, unsigned num_mips, unsigned array_start, unsigned num_layers)
 {
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -10,9 +10,9 @@ VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, co
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = image;
     barrier.subresourceRange.aspectMask = aspect;
-    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.baseMipLevel = mip_start;
     barrier.subresourceRange.levelCount = num_mips;
-    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.baseArrayLayer = array_start;
     barrier.subresourceRange.layerCount = num_layers;
     barrier.srcAccessMask = util::to_access_flags(state_change.before);
     barrier.dstAccessMask = util::to_access_flags(state_change.after);

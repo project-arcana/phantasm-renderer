@@ -40,6 +40,7 @@ void pr::backend::d3d12::ResourcePool::destroy()
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::injectBackbufferResource(ID3D12Resource* raw_resource, pr::backend::resource_state state)
 {
     resource_node& backbuffer_node = mPool.get(static_cast<unsigned>(mInjectedBackbufferResource.index));
+    backbuffer_node.type = resource_node::resource_type::image;
     backbuffer_node.resource = raw_resource;
     backbuffer_node.master_state = state;
     return mInjectedBackbufferResource;
@@ -64,7 +65,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(fo
 
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
     util::set_object_name(alloc->GetResource(), "respool texture");
-    return acquireResource(alloc, initial_state);
+    return acquireImage(alloc, format, initial_state, desc.MipLevels, desc.DepthOrArraySize);
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples)
@@ -85,7 +86,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         util::set_object_name(alloc->GetResource(), "respool depth stencil target");
-        return acquireResource(alloc, initial_state);
+        return acquireImage(alloc, format, initial_state, desc.MipLevels, desc.ArraySize());
     }
     else
     {
@@ -104,7 +105,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
 
         auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state), &clear_value);
         util::set_object_name(alloc->GetResource(), "respool render target");
-        return acquireResource(alloc, initial_state);
+        return acquireImage(alloc, format, initial_state, desc.MipLevels, desc.ArraySize());
     }
 }
 
@@ -113,7 +114,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
     util::set_object_name(alloc->GetResource(), "respool buffer");
-    return acquireResource(alloc, initial_state, size_bytes, stride_bytes);
+    return acquireBuffer(alloc, initial_state, size_bytes, stride_bytes);
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
@@ -124,7 +125,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuff
     void* data_start_void;
     alloc->GetResource()->Map(0, nullptr, &data_start_void);
     util::set_object_name(alloc->GetResource(), "respool mapped buffer");
-    return acquireResource(alloc, resource_state::unknown, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
+    return acquireBuffer(alloc, resource_state::unknown, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
 }
 
 void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
@@ -162,7 +163,7 @@ void pr::backend::d3d12::ResourcePool::free(cc::span<const pr::backend::handle::
     }
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireBuffer(
     D3D12MA::Allocation* alloc, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
@@ -174,12 +175,33 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireResource(
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
     new_node.resource = alloc->GetResource();
-
+    new_node.type = resource_node::resource_type::buffer;
     new_node.master_state = initial_state;
+    new_node.buffer.width = buffer_width;
+    new_node.buffer.stride = buffer_stride;
+    new_node.buffer.map = buffer_map;
 
-    new_node.buffer_width = buffer_width;
-    new_node.buffer_stride = buffer_stride;
-    new_node.buffer_map = buffer_map;
+    return {static_cast<handle::index_t>(res)};
+}
+
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireImage(
+    D3D12MA::Allocation* alloc, pr::backend::format pixel_format, pr::backend::resource_state initial_state, unsigned num_mips, unsigned num_array_layers)
+{
+    unsigned res;
+    {
+        // This is a write access to the pool and must be synced
+        auto lg = std::lock_guard(mMutex);
+        res = mPool.acquire();
+    }
+
+    resource_node& new_node = mPool.get(res);
+    new_node.allocation = alloc;
+    new_node.resource = alloc->GetResource();
+    new_node.type = resource_node::resource_type::image;
+    new_node.master_state = initial_state;
+    new_node.image.num_mips = num_mips;
+    new_node.image.num_array_layers = num_array_layers;
+    new_node.image.pixel_format = pixel_format;
 
     return {static_cast<handle::index_t>(res)};
 }

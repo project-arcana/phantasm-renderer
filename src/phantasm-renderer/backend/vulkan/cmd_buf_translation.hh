@@ -60,6 +60,8 @@ struct command_list_translator
 
     void execute(cmd::transition_resources const& transition_res);
 
+    void execute(cmd::transition_image_slices const& transition_images);
+
     void execute(cmd::copy_buffer const& copy_buf);
 
     void execute(cmd::copy_buffer_to_texture const& copy_text);

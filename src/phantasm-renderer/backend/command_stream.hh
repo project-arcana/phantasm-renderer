@@ -17,13 +17,14 @@ namespace cmd
 {
 namespace detail
 {
-#define PR_CMD_TYPE_VALUES       \
-    PR_X(draw)                   \
-    PR_X(dispatch)               \
-    PR_X(transition_resources)   \
-    PR_X(copy_buffer)            \
-    PR_X(copy_buffer_to_texture) \
-    PR_X(begin_render_pass)      \
+#define PR_CMD_TYPE_VALUES        \
+    PR_X(draw)                    \
+    PR_X(dispatch)                \
+    PR_X(transition_resources)    \
+    PR_X(transition_image_slices) \
+    PR_X(copy_buffer)             \
+    PR_X(copy_buffer_to_texture)  \
+    PR_X(begin_render_pass)       \
     PR_X(end_render_pass)
 
 enum class cmd_type : uint8_t
@@ -126,6 +127,31 @@ public:
 
     void add(handle::resource res, resource_state target) { transitions.push_back(transition_info{res, target}); }
 };
+
+PR_DEFINE_CMD(transition_image_slices)
+{
+    // Image slice transitions are entirely explicit, and require the user to synchronize before/after resource states
+
+    struct slice_transition_info
+    {
+        handle::resource resource;
+        resource_state source_state;
+        resource_state target_state;
+        int mip_level;
+        int array_slice;
+    };
+
+    cmd_vector<slice_transition_info, limits::max_resource_transitions> transitions;
+
+public:
+    // convenience
+
+    void add(handle::resource res, resource_state source, resource_state target, int level, int slice)
+    {
+        transitions.push_back(slice_transition_info{res, source, target, level, slice});
+    }
+};
+
 
 PR_DEFINE_CMD(draw)
 {

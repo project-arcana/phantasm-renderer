@@ -293,3 +293,27 @@ D3D12_SAMPLER_DESC pr::backend::d3d12::util::create_sampler_desc(const pr::backe
 
     return sampler_desc;
 }
+
+D3D12_RESOURCE_BARRIER pr::backend::d3d12::util::get_barrier_desc(
+    ID3D12Resource* res, pr::backend::resource_state before, pr::backend::resource_state after, int mip_level, int array_slice, unsigned mip_size)
+{
+    D3D12_RESOURCE_BARRIER out_barrier;
+    out_barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    out_barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    out_barrier.Transition.pResource = res;
+    out_barrier.Transition.StateBefore = util::to_native(before);
+    out_barrier.Transition.StateAfter = util::to_native(after);
+
+    if (mip_level == -1)
+    {
+        CC_ASSERT(array_slice == -1 && "When targetting all MIP levels, all array slices must be targetted");
+        out_barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    }
+    else
+    {
+        CC_ASSERT(array_slice != -1 && "When specifying target MIP level, array slice must also be specified");
+        out_barrier.Transition.Subresource = static_cast<unsigned>(mip_level) + static_cast<unsigned>(array_slice) * mip_size;
+    }
+
+    return out_barrier;
+}
