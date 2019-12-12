@@ -138,8 +138,9 @@ PR_DEFINE_CMD(draw)
 public:
     // convenience
 
-    void init(unsigned num, handle::resource vb = handle::null_resource, handle::resource ib = handle::null_resource)
+    void init(handle::pipeline_state pso, unsigned num, handle::resource vb = handle::null_resource, handle::resource ib = handle::null_resource)
     {
+        pipeline_state = pso;
         num_indices = num;
         vertex_buffer = vb;
         index_buffer = ib;
@@ -162,8 +163,9 @@ PR_DEFINE_CMD(dispatch)
 public:
     // convenience
 
-    void init(unsigned x, unsigned y, unsigned z)
+    void init(handle::pipeline_state pso, unsigned x, unsigned y, unsigned z)
     {
+        pipeline_state = pso;
         dispatch_x = x;
         dispatch_y = y;
         dispatch_z = z;
