@@ -1,6 +1,5 @@
 #include "util.hh"
 
-#include <varargs.h>
 #include <cstdarg>
 #include <cstdio>
 
