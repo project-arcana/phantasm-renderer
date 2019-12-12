@@ -63,7 +63,6 @@ VkCommandBuffer pr::backend::vk::cmd_allocator_node::acquire(VkDevice device)
 
 void pr::backend::vk::cmd_allocator_node::on_submit(unsigned num, unsigned fence_index)
 {
-
     // first, update the latest fence
     auto const previous_fence = _latest_fence.exchange(fence_index);
     if (previous_fence != unsigned(-1) && previous_fence != fence_index)
@@ -377,13 +376,17 @@ void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const cc::span<cons
     }
 }
 
-void pr::backend::vk::CommandListPool::freeOnDiscard(pr::backend::handle::command_list cl)
+void pr::backend::vk::CommandListPool::freeOnDiscard(cc::span<const handle::command_list> cls)
 {
-    cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
+    auto lg = std::lock_guard(mMutex);
+
+    for (auto cl : cls)
     {
-        auto lg = std::lock_guard(mMutex);
-        freed_node.responsible_allocator->on_discard();
-        mPool.release(static_cast<unsigned>(cl.index));
+        if (cl.is_valid())
+        {
+            mPool.get(static_cast<unsigned>(cl.index)).responsible_allocator->on_discard();
+            mPool.release(static_cast<unsigned>(cl.index));
+        }
     }
 }
 

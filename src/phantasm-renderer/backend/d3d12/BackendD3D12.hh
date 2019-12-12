@@ -31,7 +31,6 @@ public:
 public:
     // Virtual interface
 
-    /// flush all pending work on the GPU
     void flushGPU() override;
 
     //
@@ -39,11 +38,8 @@ public:
     //
 
     [[nodiscard]] handle::resource acquireBackbuffer() override;
-
     void present() override { mSwapchain.present(); }
-
     void onResize(tg::isize2 size) override;
-
     [[nodiscard]] tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
     [[nodiscard]] format getBackbufferFormat() const override;
 
@@ -52,25 +48,21 @@ public:
     // Resource interface
     //
 
-    /// create a 2D texture
     [[nodiscard]] handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim, int depth_or_array_size) override
     {
         return mPoolResources.createTexture(format, w, h, mips, dim, depth_or_array_size);
     }
 
-    /// create a render- or depth-stencil target
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples) override
     {
         return mPoolResources.createRenderTarget(format, w, h, samples);
     }
 
-    /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) override
     {
         return mPoolResources.createBuffer(size_bytes, initial_state, stride_bytes);
     }
 
-    /// create a mapped UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) override
     {
         return mPoolResources.createMappedBuffer(size_bytes, stride_bytes);
@@ -113,16 +105,14 @@ public:
     //
 
     [[nodiscard]] handle::command_list recordCommandList(std::byte* buffer, size_t size) override;
-
-    void discard(handle::command_list cl) override { mPoolCmdLists.freeOnDiscard(cl); }
-
+    void discard(cc::span<handle::command_list const> cls) override { mPoolCmdLists.freeOnDiscard(cls); }
     void submit(cc::span<handle::command_list const> cls) override;
 
     //
     // Debug interface
     //
 
-    void printInformation(handle::resource res) const override{};
+    void printInformation(handle::resource res) const override {}
 
 public:
     // backend-internal

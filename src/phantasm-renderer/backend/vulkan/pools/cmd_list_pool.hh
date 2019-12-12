@@ -198,7 +198,7 @@ public:
     /// the fence index is now consumed and must not be reused
     void freeOnSubmit(cc::span<cc::span<handle::command_list const> const> cls_nested, unsigned fence_index);
 
-    void freeOnDiscard(handle::command_list cl);
+    void freeOnDiscard(cc::span<handle::command_list const> cls);
 
 public:
     struct cmd_list_node

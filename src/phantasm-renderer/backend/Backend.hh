@@ -65,20 +65,23 @@ public:
     //
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
-    [[nodiscard]] virtual handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim = texture_dimension::t2d, int depth_or_array_size = 1) = 0;
+    [[nodiscard]] virtual handle::resource createTexture(backend::format format, int w, int h, int mips, texture_dimension dim = texture_dimension::t2d, int depth_or_array_size = 1)
+        = 0;
 
-    /// create a render- or depth-stencil target
+    /// create a [multisampled] 2D render- or depth-stencil target
     [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, int w, int h, int samples = 1) = 0;
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] virtual handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) = 0;
 
-    /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
+    /// create a mapped buffer for data uploads, with an element stride if its an index or vertex buffer
     [[nodiscard]] virtual handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) = 0;
 
-    virtual void free(handle::resource res) = 0;
-
+    /// returns the mapped memory pointer, only valid for handles obtained from createMappedBuffer
     [[nodiscard]] virtual std::byte* getMappedMemory(handle::resource res) = 0;
+
+    /// destroy a resource
+    virtual void free(handle::resource res) = 0;
 
     //
     // Shader view interface
@@ -108,10 +111,13 @@ public:
     // Command list interface
     //
 
+    /// create a command list handle from a software command buffer
     [[nodiscard]] virtual handle::command_list recordCommandList(std::byte* buffer, size_t size) = 0;
 
-    virtual void discard(handle::command_list cl) = 0;
+    /// destroy the given command list handles
+    virtual void discard(cc::span<handle::command_list const> cls) = 0;
 
+    /// submit and destroy the given command list handles
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
     //
