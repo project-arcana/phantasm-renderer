@@ -273,6 +273,9 @@ struct shader_view_element
         sve_buffer_info buffer_info;
     };
 
+public:
+    // convenience
+
     void init_as_null() { resource = handle::null_resource; }
 
     void init_as_backbuffer(handle::resource res)
