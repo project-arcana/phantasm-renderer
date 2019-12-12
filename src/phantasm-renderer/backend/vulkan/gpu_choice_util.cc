@@ -34,6 +34,16 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
     if (!res.available_layers_extensions.extensions.contains(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
         return res;
 
+
+    // required features
+    {
+        VkPhysicalDeviceFeatures supported_features;
+        vkGetPhysicalDeviceFeatures(device, &supported_features);
+
+        if (!supported_features.samplerAnisotropy || !supported_features.geometryShader)
+            return res;
+    }
+
     // present modes and swapchain formats
     {
         uint32_t num_formats;

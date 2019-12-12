@@ -42,7 +42,10 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
     device_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());
 
     // TODO
+    // NOTE: Also update suitability requirements in gpu_choice_util.cc
     VkPhysicalDeviceFeatures features = {};
+    features.samplerAnisotropy = VK_TRUE;
+    features.geometryShader = VK_TRUE;
     device_info.pEnabledFeatures = &features;
 
     PR_VK_VERIFY_SUCCESS(vkCreateDevice(mPhysicalDevice, &device_info, nullptr, &mDevice));
