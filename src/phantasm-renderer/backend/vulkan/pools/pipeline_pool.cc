@@ -16,7 +16,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 {
     // Patch and reflect SPIR-V binaries
     cc::capped_vector<arg::shader_stage, 6> patched_shader_stages;
-    cc::vector<util::spirv_desc_range_info> shader_descriptor_ranges;
+    cc::vector<util::spirv_desc_info> shader_descriptor_ranges;
     CC_DEFER
     {
         for (auto const& ps : patched_shader_stages)
@@ -32,15 +32,9 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 
         shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info);
 
-#ifdef CC_ENABLE_ASSERTIONS
         // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
         // amount declared in the shader arg shapes is the same
-        if (!util::check_consistency(shader_descriptor_ranges, shader_arg_shapes)) {
-            std::cerr << "[pr][backend][vk] inconsistency between nominal and reflected descriptors detected" << std::endl;
-            std::cerr << "                  likely false positive due to unfinished set merging, TODO" << std::endl;
-        }
-
-#endif
+        CC_ASSERT(util::is_consistent_with_reflection(shader_descriptor_ranges, shader_arg_shapes) && "Given shader argument shapes inconsistent with SPIR-V reflection");
     }
 
 

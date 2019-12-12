@@ -111,69 +111,21 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 
     detail::pipeline_layout_params::descriptor_set_params params;
 
+    for (auto i = 0u; i < srvs.size(); ++i)
     {
-        if (!srvs.empty())
-        {
-            VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-            auto current_range = 0u;
-            auto current_binding_base = spv::srv_binding_start;
+        auto const native_type = util::to_native_srv_desc_type(srvs[i].dimension);
+        params.add_descriptor(native_type, spv::srv_binding_start + i, 1, argument_visibility);
+    }
 
-            auto const flush_binding = [&]() {
-                if (current_range > 0u)
-                {
-                    params.add_range(last_type, current_binding_base, current_range, argument_visibility);
-                    current_binding_base += current_range;
-                }
+    for (auto i = 0u; i < uavs.size(); ++i)
+    {
+        auto const native_type = util::to_native_srv_desc_type(uavs[i].dimension);
+        params.add_descriptor(native_type, spv::uav_binding_start + i, 1, argument_visibility);
+    }
 
-                current_range = 0;
-            };
-
-            for (auto const& srv : srvs)
-            {
-                auto const native_type = util::to_native_srv_desc_type(srv.dimension);
-                if (native_type != last_type)
-                {
-                    flush_binding();
-                    last_type = native_type;
-                }
-                ++current_range;
-            }
-            flush_binding();
-        }
-
-        if (!uavs.empty())
-        {
-            VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-            auto current_range = 0u;
-            auto current_binding_base = spv::uav_binding_start;
-
-            auto const flush_binding = [&]() {
-                if (current_range > 0u)
-                {
-                    params.add_range(last_type, current_binding_base, current_range, argument_visibility);
-                    current_binding_base += current_range;
-                }
-
-                current_range = 0;
-            };
-
-            for (auto const& srv : srvs)
-            {
-                auto const native_type = util::to_native_uav_desc_type(srv.dimension);
-                if (native_type != last_type)
-                {
-                    flush_binding();
-                    last_type = native_type;
-                }
-                ++current_range;
-            }
-            flush_binding();
-        }
-
-        if (num_samplers > 0)
-        {
-            params.add_range(VK_DESCRIPTOR_TYPE_SAMPLER, spv::sampler_binding_start, 1, argument_visibility);
-        }
+    for (auto i = 0u; i < num_samplers; ++i)
+    {
+        params.add_descriptor(VK_DESCRIPTOR_TYPE_SAMPLER, spv::sampler_binding_start + i, 1, argument_visibility);
     }
 
     VkDescriptorSetLayoutCreateInfo layout_info = {};

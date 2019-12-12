@@ -42,9 +42,15 @@ struct spirv_desc_info
 {
     unsigned set;
     unsigned binding;
+    unsigned binding_array_size;
     VkDescriptorType type;
     VkShaderStageFlagBits visible_stage;
     VkPipelineStageFlags visible_pipeline_stage;
+
+    constexpr bool operator==(spirv_desc_info const& rhs) const noexcept
+    {
+        return set == rhs.set && binding == rhs.binding && binding_array_size == rhs.binding_array_size && type == rhs.type && visible_stage == rhs.visible_stage;
+    }
 };
 struct patched_spirv
 {
@@ -67,28 +73,11 @@ struct patched_spirv
 
 void free_patched_spirv(arg::shader_stage const& val);
 
-
-struct spirv_desc_range_info
-{
-    unsigned set;
-    unsigned binding_start;
-    unsigned binding_size;
-    VkDescriptorType type;
-    VkShaderStageFlagBits visible_stages;
-    // Semantically the same as visible_stages, just pre-converted (translating later would be more complicated)
-    VkPipelineStageFlags visible_pipeline_stages;
-
-    constexpr bool operator==(spirv_desc_range_info const& rhs) const noexcept
-    {
-        return set == rhs.set && binding_start == rhs.binding_start && binding_size == rhs.binding_size && type == rhs.type && visible_stages == rhs.visible_stages;
-    }
-};
-
 /// create a sorted, deduplicated vector of descriptor range infos from an unsorted raw output from previous patches
-[[nodiscard]] cc::vector<spirv_desc_range_info> merge_spirv_descriptors(cc::vector<spirv_desc_info>& desc_infos);
+cc::vector<spirv_desc_info> merge_spirv_descriptors(cc::span<spirv_desc_info> desc_infos);
 
 /// returns true if the reflected descriptors are consistent with the passed arguments
 /// currently only checks if the amounts are equal
-[[nodiscard]] bool check_consistency(cc::span<spirv_desc_range_info const> spirv_ranges, arg::shader_argument_shapes arg_shapes);
+[[nodiscard]] bool is_consistent_with_reflection(cc::span<spirv_desc_info const> spirv_ranges, arg::shader_argument_shapes arg_shapes);
 
 }

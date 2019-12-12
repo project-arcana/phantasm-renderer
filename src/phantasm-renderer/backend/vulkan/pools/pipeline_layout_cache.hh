@@ -18,7 +18,7 @@ class PipelineLayoutCache
 public:
     struct key_t
     {
-        cc::span<util::spirv_desc_range_info const> reflected_ranges;
+        cc::span<util::spirv_desc_info const> reflected_ranges;
     };
 
     void initialize(unsigned max_elements);
@@ -37,8 +37,7 @@ private:
         size_t res = 0;
         for (auto const& elem : v.reflected_ranges)
         {
-            auto const elem_hash = cc::hash_combine(cc::make_hash(elem.set, elem.type, elem.binding_size, elem.binding_start),
-                                                              cc::make_hash(elem.visible_stages));
+            auto const elem_hash = cc::make_hash(elem.set, elem.type, elem.binding, elem.binding_array_size, elem.visible_stage);
             res = cc::hash_combine(res, elem_hash);
         }
         return res;

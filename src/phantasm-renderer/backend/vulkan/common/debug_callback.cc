@@ -9,7 +9,7 @@ VkBool32 pr::backend::vk::detail::debug_callback(VkDebugUtilsMessageSeverityFlag
 {
     if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        std::cerr << "[pr][vk][validation] " << callback_data->pMessage << std::endl;
+        std::cerr << "[pr][backend][vk][validation] " << callback_data->pMessage << std::endl;
     }
     return VK_FALSE;
 }

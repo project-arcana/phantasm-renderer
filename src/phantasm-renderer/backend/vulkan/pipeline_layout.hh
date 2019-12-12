@@ -38,18 +38,10 @@ struct pipeline_layout_params
 
     struct descriptor_set_params
     {
-        // one descriptor set, up to three bindings
-        // 1. UAVs (STORAGE_TEXEL_BUFFER)
-        // 2. SRVs (SAMPLED_IMAGE)
-        // 3. Samplers
-        // OR, CBVs which are padded to the sets 4,5,6,7
-        // 1. CBV (UNIFORM_BUFFER_DYNAMIC)
         cc::capped_vector<VkDescriptorSetLayoutBinding, 64> bindings;
 
-        void initialize_from_cbv();
-
-        void add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility);
-
+        void add_single_cbv();
+        void add_descriptor(VkDescriptorType type, unsigned binding, unsigned array_size, VkShaderStageFlagBits visibility);
         void fill_in_samplers(cc::span<VkSampler const> samplers);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
@@ -57,7 +49,7 @@ struct pipeline_layout_params
 
     cc::capped_vector<descriptor_set_params, limits::max_shader_arguments * 2> descriptor_sets;
 
-    void initialize_from_reflection_info(cc::span<util::spirv_desc_range_info const> range_infos);
+    void initialize_from_reflection_info(cc::span<util::spirv_desc_info const> reflection_info);
 };
 
 }
@@ -77,17 +69,9 @@ struct pipeline_layout
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
 
-    void initialize(VkDevice device, cc::span<util::spirv_desc_range_info const> range_infos);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_info const> range_infos);
 
     void free(VkDevice device);
-
-    [[nodiscard]] VkPipelineStageFlags get_argument_visibility(unsigned arg_i) const
-    {
-        if (arg_i >= limits::max_shader_arguments)
-            arg_i -= limits::max_shader_arguments;
-
-        return descriptor_set_visibilities[arg_i];
-    }
 };
 
 }

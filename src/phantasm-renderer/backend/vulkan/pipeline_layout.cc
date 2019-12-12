@@ -7,7 +7,7 @@
 #include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 #include <phantasm-renderer/backend/vulkan/resources/transition_barrier.hh>
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::initialize_from_cbv()
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_single_cbv()
 {
     constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
 
@@ -20,24 +20,21 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::ini
     binding.pImmutableSamplers = nullptr; // Optional
 }
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range(VkDescriptorType type, unsigned range_start, unsigned range_size, VkShaderStageFlagBits visibility)
+void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_descriptor(VkDescriptorType type, unsigned binding, unsigned array_size, VkShaderStageFlagBits visibility)
 {
-    for (auto i = 0u; i < range_size; ++i)
-    {
-        VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-        binding = {};
-        binding.binding = range_start + i;
-        binding.descriptorType = type;
-        binding.descriptorCount = 1;
+    VkDescriptorSetLayoutBinding& new_binding = bindings.emplace_back();
+    new_binding = {};
+    new_binding.binding = binding;
+    new_binding.descriptorType = type;
+    new_binding.descriptorCount = array_size;
 
-        // TODO: We have access to precise visibility constraints _in this function_, in the `visibility` argument
-        // however, in shader_view_pool, DescriptorSets must be created without this knowledge, which is why
-        // the pool falls back to VK_SHADER_STAGE_ALL_GRAPHICS for its temporary layouts. And since the descriptors would
-        // be incompatible, we have to use the same thing here
-        (void)visibility;
-        binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-        binding.pImmutableSamplers = nullptr; // Optional
-    }
+    // TODO: We have access to precise visibility constraints _in this function_, in the `visibility` argument
+    // however, in shader_view_pool, DescriptorSets must be created without this knowledge, which is why
+    // the pool falls back to VK_SHADER_STAGE_ALL_GRAPHICS for its temporary layouts. And since the descriptors would
+    // be incompatible, we have to use the same thing here
+    (void)visibility;
+    new_binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+    new_binding.pImmutableSamplers = nullptr; // Optional
 }
 
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::fill_in_samplers(cc::span<VkSampler const> samplers)
@@ -68,7 +65,7 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const pr::backend::vk::util::spirv_desc_range_info> range_infos)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const util::spirv_desc_info> range_infos)
 {
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
@@ -76,7 +73,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     // copy pipeline stage visibilities
     for (auto const& range : range_infos)
     {
-        descriptor_set_visibilities.push_back(range.visible_pipeline_stages);
+        descriptor_set_visibilities.push_back(range.visible_pipeline_stage);
     }
 
     for (auto const& param_set : params.descriptor_sets)
@@ -102,12 +99,12 @@ void pr::backend::vk::pipeline_layout::free(VkDevice device)
     vkDestroyPipelineLayout(device, raw_layout, nullptr);
 }
 
-void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection_info(cc::span<const util::spirv_desc_range_info> range_infos)
+void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection_info(cc::span<const util::spirv_desc_info> reflection_info)
 {
     descriptor_sets.emplace_back();
-    for (auto const& range : range_infos)
+    for (auto const& desc : reflection_info)
     {
-        auto const set_delta = range.set - (descriptor_sets.size() - 1);
+        auto const set_delta = desc.set - (descriptor_sets.size() - 1);
         if (set_delta == 1)
         {
             // the next set has been reached
@@ -120,6 +117,6 @@ void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection
                 descriptor_sets.emplace_back();
         }
 
-        descriptor_sets.back().add_range(range.type, range.binding_start, range.binding_size, range.visible_stages);
+        descriptor_sets.back().add_descriptor(desc.type, desc.binding, desc.binding_array_size, desc.visible_stage);
     }
 }

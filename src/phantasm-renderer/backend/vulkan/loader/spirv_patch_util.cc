@@ -4,6 +4,7 @@
 
 #include <clean-core/array.hh>
 #include <clean-core/bit_cast.hh>
+#include <clean-core/utility.hh>
 
 #include <phantasm-renderer/backend/detail/unique_buffer.hh>
 #include <phantasm-renderer/backend/lib/spirv_reflect.hh>
@@ -98,6 +99,7 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
             auto& new_info = out_desc_infos.emplace_back();
             new_info.set = b->set;
             new_info.binding = b->binding;
+            new_info.binding_array_size = b->count;
             new_info.type = reflect_to_native(b->descriptor_type);
             new_info.visible_stage = util::to_shader_stage_flags(current_stage);
             new_info.visible_pipeline_stage = util::to_pipeline_stage_flags(current_stage);
@@ -144,10 +146,8 @@ pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv_from_
     return create_patched_spirv(binary_data.get(), binary_data.size(), out_desc_infos);
 }
 
-cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::merge_spirv_descriptors(cc::vector<spirv_desc_info>& desc_infos)
+cc::vector<pr::backend::vk::util::spirv_desc_info> pr::backend::vk::util::merge_spirv_descriptors(cc::span<spirv_desc_info> desc_infos)
 {
-    // NOTE: a span might suffice here
-
     // sort by set, then binding (both ascending)
     std::sort(desc_infos.begin(), desc_infos.end(), [](spirv_desc_info const& lhs, spirv_desc_info const& rhs) {
         if (lhs.set != rhs.set)
@@ -156,33 +156,28 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
             return lhs.binding < rhs.binding;
     });
 
-    cc::vector<spirv_desc_range_info> sorted_merged_res;
+    cc::vector<spirv_desc_info> sorted_merged_res;
     sorted_merged_res.reserve(desc_infos.size());
-    spirv_desc_range_info* curr_range = nullptr;
+    spirv_desc_info* curr_range = nullptr;
 
     for (auto& di : desc_infos)
     {
-        if (curr_range &&                                                        // not the first range
-            curr_range->set == di.set &&                                         // set same as current range
-            (curr_range->binding_start + curr_range->binding_size) == di.binding // binding the next one in line
+        if (curr_range &&                     // not the first range
+            curr_range->set == di.set &&      // set same as current range
+            curr_range->binding == di.binding // binding same as current range
         )
         {
+            CC_ASSERT(curr_range->type == di.type && "SPIR-V descriptor type overlap detected");
+            CC_ASSERT(curr_range->binding_array_size == di.binding_array_size && "SPIR-V descriptor array mismatch detected");
+
             // this element mirrors the precursor, bit-OR the shader stage bits
-            CC_ASSERT(curr_range->type == di.type && "SPIR-V descriptor overlap detected");
-            curr_range->visible_stages = static_cast<VkShaderStageFlagBits>(curr_range->visible_stages | di.visible_stage);
-            curr_range->visible_pipeline_stages = static_cast<VkPipelineStageFlags>(curr_range->visible_pipeline_stages | di.visible_pipeline_stage);
-            ++curr_range->binding_size;
+            curr_range->visible_stage = static_cast<VkShaderStageFlagBits>(curr_range->visible_stage | di.visible_stage);
+            curr_range->visible_pipeline_stage = static_cast<VkPipelineStageFlags>(curr_range->visible_pipeline_stage | di.visible_pipeline_stage);
         }
         else
         {
-            auto& new_range = sorted_merged_res.emplace_back();
+            sorted_merged_res.push_back(di);
             curr_range = &sorted_merged_res.back();
-            new_range.set = di.set;
-            new_range.type = di.type;
-            new_range.binding_start = di.binding;
-            new_range.binding_size = 1;
-            new_range.visible_stages = di.visible_stage;
-            new_range.visible_pipeline_stages = di.visible_pipeline_stage;
         }
     }
 
@@ -196,17 +191,54 @@ cc::vector<pr::backend::vk::util::spirv_desc_range_info> pr::backend::vk::util::
     return sorted_merged_res;
 }
 
-bool pr::backend::vk::util::check_consistency(cc::span<const pr::backend::vk::util::spirv_desc_range_info> spirv_ranges, pr::backend::arg::shader_argument_shapes arg_shapes)
+bool pr::backend::vk::util::is_consistent_with_reflection(cc::span<const pr::backend::vk::util::spirv_desc_info> spirv_ranges,
+                                                          pr::backend::arg::shader_argument_shapes arg_shapes)
 {
-    auto num_descriptors = 0u;
+    struct reflected_range_infos
+    {
+        unsigned num_cbvs = 0;
+        unsigned num_srvs = 0;
+        unsigned num_uavs = 0;
+        unsigned num_samplers = 0;
+    };
+
+    cc::array<reflected_range_infos, limits::max_shader_arguments> range_infos;
+
     for (auto const& range : spirv_ranges)
     {
-        num_descriptors += range.binding_size;
+        auto set_shape_index = range.set;
+        if (set_shape_index >= limits::max_shader_arguments)
+            set_shape_index -= limits::max_shader_arguments;
+
+        reflected_range_infos& info = range_infos[set_shape_index];
+
+        if (range.binding >= spv::sampler_binding_start)
+        {
+            info.num_samplers = cc::max(info.num_samplers, 1 + (range.binding - spv::sampler_binding_start));
+        }
+        else if (range.binding >= spv::uav_binding_start)
+        {
+            info.num_uavs = cc::max(info.num_uavs, 1 + (range.binding - spv::uav_binding_start));
+        }
+        else if (range.binding >= spv::srv_binding_start)
+        {
+            info.num_srvs = cc::max(info.num_srvs, 1 + (range.binding - spv::srv_binding_start));
+        }
+        else /*if (range.binding >= spv::cbv_binding_start)*/
+        {
+            info.num_cbvs = cc::max(info.num_cbvs, 1 + (range.binding - spv::cbv_binding_start));
+        }
     }
-    auto num_nominal_descriptors = 0u;
-    for (auto const& shape : arg_shapes)
+
+    auto const is_matching = [](reflected_range_infos const& ri, arg::shader_argument_shape const& shape) {
+        return (ri.num_cbvs == (shape.has_cb ? 1 : 0)) && (ri.num_srvs == shape.num_srvs) && (ri.num_uavs == shape.num_uavs)
+               && (ri.num_samplers == shape.num_samplers);
+    };
+
+    for (auto i = 0u; i < arg_shapes.size(); ++i)
     {
-        num_nominal_descriptors += shape.num_srvs + shape.num_uavs + shape.num_samplers + (shape.has_cb ? 1 : 0);
+        if (!is_matching(range_infos[i], arg_shapes[i]))
+            return false;
     }
-    return num_descriptors == num_nominal_descriptors;
+    return true;
 }
