@@ -10,6 +10,34 @@
 
 void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 {
+    if (config.validation != validation_level::off)
+    {
+        // Suppress GBV startup message
+        // shared_com_ptr<IDXGIInfoQueue> dxgi_info_queue;
+
+        bool const dxgi_queue_success = detail::hr_succeeded(::DXGIGetDebugInterface1(0, PR_COM_WRITE(mInfoQueue)));
+        if (dxgi_queue_success && mInfoQueue.is_valid())
+        {
+            DXGI_INFO_QUEUE_FILTER filter = {};
+
+            DXGI_INFO_QUEUE_MESSAGE_SEVERITY denied_severities[] = {DXGI_INFO_QUEUE_MESSAGE_SEVERITY_MESSAGE};
+            filter.DenyList.NumSeverities = 1;
+            filter.DenyList.pSeverityList = denied_severities;
+
+            DXGI_INFO_QUEUE_MESSAGE_ID denied_message_ids[] = {1016};
+            filter.DenyList.NumIDs = 1;
+            filter.DenyList.pIDList = denied_message_ids;
+
+            // TODO: This has no effect
+            PR_D3D12_VERIFY(mInfoQueue->PushStorageFilter(DXGI_DEBUG_ALL, &filter));
+
+            // (none of these have either)
+            //            PR_D3D12_VERIFY(mInfoQueue->PushDenyAllStorageFilter(DXGI_DEBUG_D3D12));
+            //            PR_D3D12_VERIFY(mInfoQueue->PushDenyAllRetrievalFilter(DXGI_DEBUG_D3D12));
+            //            mInfoQueue->SetMuteDebugOutput(DXGI_DEBUG_D3D12, TRUE);
+        }
+    }
+
     // Factory init
     {
         shared_com_ptr<IDXGIFactory> temp_factory;
@@ -49,6 +77,7 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
     {
         shared_com_ptr<ID3D12Debug> debug_controller;
         bool const debug_init_success = detail::hr_succeeded(::D3D12GetDebugInterface(PR_COM_WRITE(debug_controller)));
+
 
         if (debug_init_success && debug_controller.is_valid())
         {

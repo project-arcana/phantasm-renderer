@@ -30,8 +30,7 @@ public:
 private:
     shared_com_ptr<IDXGIAdapter> mAdapter;
     shared_com_ptr<IDXGIFactory4> mFactory;
-
-private:
+    shared_com_ptr<IDXGIInfoQueue> mInfoQueue;
 };
 
 }
