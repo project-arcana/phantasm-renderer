@@ -32,8 +32,7 @@ void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add
     // however, in shader_view_pool, DescriptorSets must be created without this knowledge, which is why
     // the pool falls back to VK_SHADER_STAGE_ALL_GRAPHICS for its temporary layouts. And since the descriptors would
     // be incompatible, we have to use the same thing here
-    (void)visibility;
-    new_binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+    new_binding.stageFlags = (visibility == VK_SHADER_STAGE_COMPUTE_BIT) ? visibility : VK_SHADER_STAGE_ALL_GRAPHICS;
     new_binding.pImmutableSamplers = nullptr; // Optional
 }
 

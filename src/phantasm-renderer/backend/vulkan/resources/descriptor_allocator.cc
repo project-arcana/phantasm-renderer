@@ -1,5 +1,7 @@
 #include "descriptor_allocator.hh"
 
+#include <iostream>
+
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 #include <clean-core/capped_vector.hh>
@@ -107,7 +109,8 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 {
     // NOTE: Eventually arguments could be constrained to stages
     // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
+    std::cerr << "HORRIBLE HACK" << std::endl;
+    auto const argument_visibility = uavs.empty() ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
 
     detail::pipeline_layout_params::descriptor_set_params params;
 
@@ -119,7 +122,7 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
 
     for (auto i = 0u; i < uavs.size(); ++i)
     {
-        auto const native_type = util::to_native_srv_desc_type(uavs[i].dimension);
+        auto const native_type = util::to_native_uav_desc_type(uavs[i].dimension);
         params.add_descriptor(native_type, spv::uav_binding_start + i, 1, argument_visibility);
     }
 
