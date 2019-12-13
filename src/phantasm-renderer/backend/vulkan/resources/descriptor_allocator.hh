@@ -26,7 +26,8 @@ public:
 
     [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<shader_view_element const> srvs,
                                                                        cc::span<shader_view_element const> uavs,
-                                                                       unsigned num_samplers) const;
+                                                                       unsigned num_samplers,
+                                                                       bool usage_compute) const;
 
 
     [[nodiscard]] VkDevice getDevice() const { return mDevice; }

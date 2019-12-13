@@ -76,9 +76,10 @@ public:
 
     [[nodiscard]] handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
                                                        cc::span<shader_view_element const> uavs,
-                                                       cc::span<sampler_config const> samplers) override
+                                                       cc::span<sampler_config const> samplers,
+                                                       bool usage_compute) override
     {
-        return mPoolShaderViews.create(srvs, uavs, samplers);
+        return mPoolShaderViews.create(srvs, uavs, samplers, usage_compute);
     }
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }

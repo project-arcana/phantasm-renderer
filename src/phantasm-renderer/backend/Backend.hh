@@ -93,7 +93,8 @@ public:
 
     [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
                                                                cc::span<shader_view_element const> uavs,
-                                                               cc::span<sampler_config const> samplers)
+                                                               cc::span<sampler_config const> samplers,
+                                                               bool usage_compute = false)
         = 0;
 
     virtual void free(handle::shader_view sv) = 0;

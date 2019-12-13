@@ -1,7 +1,5 @@
 #include "descriptor_allocator.hh"
 
-#include <iostream>
-
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 #include <clean-core/capped_vector.hh>
@@ -105,12 +103,12 @@ VkDescriptorSetLayout DescriptorAllocator::createSingleCBVLayout() const
 
 VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::span<const shader_view_element> srvs,
                                                                           cc::span<const shader_view_element> uavs,
-                                                                          unsigned num_samplers) const
+                                                                          unsigned num_samplers,
+                                                                          bool usage_compute) const
 {
-    // NOTE: Eventually arguments could be constrained to stages
+    // NOTE: Eventually arguments could be constrained to stages in a more fine-grained manner
     // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
-    std::cerr << "HORRIBLE HACK" << std::endl;
-    auto const argument_visibility = uavs.empty() ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
+    auto const argument_visibility = usage_compute ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS;
 
     detail::pipeline_layout_params::descriptor_set_params params;
 

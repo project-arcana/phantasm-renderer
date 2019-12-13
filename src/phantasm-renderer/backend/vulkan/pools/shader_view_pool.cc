@@ -13,7 +13,7 @@
 
 pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs,
                                                                          cc::span<shader_view_element const> uavs,
-                                                                         cc::span<const sampler_config> sampler_configs)
+                                                                         cc::span<const sampler_config> sampler_configs, bool usage_compute)
 {
     // Create the layout, maps as follows:
     // SRV:
@@ -23,7 +23,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // UAV:
     //      Texture* -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     //      Buffer   -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, static_cast<unsigned>(sampler_configs.size()));
+    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, static_cast<unsigned>(sampler_configs.size()), usage_compute);
 
     // Do acquires requiring synchronization
     VkDescriptorSet res_raw;
