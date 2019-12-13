@@ -193,6 +193,19 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
     }
 }
 
+void pr::backend::vk::ShaderViewPool::free(cc::span<const pr::backend::handle::shader_view> svs)
+{
+    // This is a write access to the pool and allocator, and must be synced
+    auto lg = std::lock_guard(mMutex);
+    for (auto sv : svs)
+    {
+        shader_view_node& freed_node = mPool.get(static_cast<unsigned>(sv.index));
+        internalFree(freed_node);
+        mAllocator.free(freed_node.raw_desc_set);
+        mPool.release(static_cast<unsigned>(sv.index));
+    }
+}
+
 void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* res_pool, unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, unsigned num_samplers)
 {
     mDevice = device;

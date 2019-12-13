@@ -112,6 +112,19 @@ void pr::backend::d3d12::ShaderViewPool::free(pr::backend::handle::shader_view s
     }
 }
 
+void pr::backend::d3d12::ShaderViewPool::free(cc::span<const pr::backend::handle::shader_view> svs)
+{
+    auto lg = std::lock_guard(mMutex);
+    for (auto sv : svs)
+    {
+        auto& data = mPool.get(static_cast<unsigned>(sv.index));
+        data.resources.clear();
+        mSRVUAVAllocator.free(data.srv_uav_alloc_handle);
+        mSamplerAllocator.free(data.sampler_alloc_handle);
+        mPool.release(static_cast<unsigned>(sv.index));
+    }
+}
+
 void pr::backend::d3d12::ShaderViewPool::initialize(ID3D12Device* device, pr::backend::d3d12::ResourcePool* res_pool, unsigned num_shader_views, unsigned num_srvs_uavs, unsigned num_samplers)
 {
     mDevice = device;

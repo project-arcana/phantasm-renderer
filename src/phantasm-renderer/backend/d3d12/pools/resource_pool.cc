@@ -46,7 +46,8 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::injectBackbuffer
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(
+    format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size, bool allow_uav)
 {
     constexpr auto initial_state = resource_state::copy_dest;
 
@@ -60,6 +61,9 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(fo
     desc.SampleDesc.Count = 1;
     desc.SampleDesc.Quality = 0;
     desc.Flags = D3D12_RESOURCE_FLAG_NONE; // NOTE: more?
+    if (allow_uav)
+        desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     desc.Alignment = 0;
 

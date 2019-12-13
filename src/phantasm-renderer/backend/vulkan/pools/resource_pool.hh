@@ -19,7 +19,7 @@ public:
     // frontend-facing API
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
-    [[nodiscard]] handle::resource createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1);
+    [[nodiscard]] handle::resource createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size, bool allow_uav);
 
     /// create a render- or depth-stencil target
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples);

@@ -48,9 +48,9 @@ public:
     // Resource interface
     //
 
-    [[nodiscard]] handle::resource createTexture(backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size) override
+    [[nodiscard]] handle::resource createTexture(backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size, bool allow_uav) override
     {
-        return mPoolResources.createTexture(format, w, h, mips, dim, depth_or_array_size);
+        return mPoolResources.createTexture(format, w, h, mips, dim, depth_or_array_size, allow_uav);
     }
 
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples) override
@@ -87,6 +87,8 @@ public:
     }
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }
+
+    void free_range(cc::span<handle::shader_view const> svs) override { mPoolShaderViews.free(svs); }
 
     //
     // Pipeline state interface

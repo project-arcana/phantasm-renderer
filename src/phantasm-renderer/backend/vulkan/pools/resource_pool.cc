@@ -21,7 +21,8 @@ unsigned calculate_num_mip_levels(unsigned width, unsigned height)
 }
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
+    format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size, bool allow_uav)
 {
     VkImageCreateInfo image_info = {};
     image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -44,6 +45,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(forma
     image_info.pQueueFamilyIndices = nullptr;
 
     image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+    if (allow_uav)
+    {
+        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    }
+
     image_info.flags = 0;
     image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 

@@ -66,7 +66,7 @@ public:
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
     [[nodiscard]] virtual handle::resource createTexture(
-        backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1)
+        backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1, bool allow_uav = false)
         = 0;
 
     /// create a [multisampled] 2D render- or depth-stencil target
@@ -97,6 +97,8 @@ public:
         = 0;
 
     virtual void free(handle::shader_view sv) = 0;
+
+    virtual void free_range(cc::span<handle::shader_view const> svs) = 0;
 
     //
     // Pipeline state interface
