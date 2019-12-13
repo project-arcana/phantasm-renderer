@@ -14,6 +14,11 @@
 #include "pools/shader_view_pool.hh"
 #include "resources/transition_barrier.hh"
 
+namespace
+{
+constexpr VkPipelineStageFlags sc_fallback_all_pipeline_stages = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+}
+
 void pr::backend::vk::command_list_translator::translateCommandList(
     VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)
 {
@@ -262,13 +267,12 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
         {
             auto const& arg = dispatch.shader_arguments[i];
-            auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
 
             if (arg.constant_buffer != handle::null_resource)
             {
                 // Unconditionally set the CBV
 
-                _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
+                _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
                 auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
                 vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
@@ -285,7 +289,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
                     {
                         // NOTE: this is pretty inefficient
-                        _state_cache->touch_resource_in_shader(res, arg_vis);
+                        _state_cache->touch_resource_in_shader(res, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
                     }
 
                     auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
@@ -333,7 +337,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
             // - defer all barriers requiring shader info until the draw call (where shader views are updated)
             // - or require an explicit target shader domain in cmd::transition_resources
 
-            state_change const change = state_change(before, transition.target_state, before_dep, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+            state_change const change
+                = state_change(before, transition.target_state, before_dep, sc_fallback_all_pipeline_stages);
 
             // NOTE: in both cases we transition the entire resource (all subresources in D3D12 terms),
             // using stored information from the resource pool (img_info / buf_info respectively)
@@ -369,7 +374,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
         // - or require an explicit target shader domain in cmd::transition_resources
 
         state_change const change
-            = state_change(transition.source_state, transition.target_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+            = state_change(transition.source_state, transition.target_state, sc_fallback_all_pipeline_stages, sc_fallback_all_pipeline_stages);
 
         CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
         auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);

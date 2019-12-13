@@ -15,6 +15,11 @@
 #include "loader/volk.hh"
 #include "resources/transition_barrier.hh"
 
+namespace
+{
+constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+}
+
 namespace pr::backend::vk
 {
 struct BackendVulkan::per_thread_component
@@ -182,9 +187,6 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
     unsigned last_cl_index = 0;
     unsigned num_cls_in_batch = 0;
 
-    // TODO
-    VkPipelineStageFlags const submitWaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
     auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
     auto const submit_flush = [&]() {
@@ -193,7 +195,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pWaitDstStageMask = &submitWaitStage;
+        submit_info.pWaitDstStageMask = &gc_submit_wait_stage;
         submit_info.commandBufferCount = unsigned(submit_batch.size());
         submit_info.pCommandBuffers = submit_batch.data();
 
