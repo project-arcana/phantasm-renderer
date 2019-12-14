@@ -38,7 +38,8 @@ private:
 /// creates a root signature from parameters and samplers
 [[nodiscard]] ID3D12RootSignature* create_root_signature(ID3D12Device& device,
                                                          cc::span<CD3DX12_ROOT_PARAMETER const> root_params,
-                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers);
+                                                         cc::span<CD3DX12_STATIC_SAMPLER_DESC const> samplers,
+                                                         bool is_compute);
 
 struct root_signature
 {
@@ -46,5 +47,5 @@ struct root_signature
     cc::capped_vector<shader_argument_map, 4> argument_maps;
 };
 
-void initialize_root_signature(root_signature& root_sig, ID3D12Device& device, arg::shader_argument_shapes payload_shape);
+void initialize_root_signature(root_signature& root_sig, ID3D12Device& device, arg::shader_argument_shapes payload_shape, bool add_fixed_root_constants, bool is_compute);
 }
