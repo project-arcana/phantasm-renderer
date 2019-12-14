@@ -65,6 +65,8 @@ public:
     //
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
+    /// if mips is 0, the maximum amount will be used
+    /// if the texture will be used as a UAV, allow_uav must be true
     [[nodiscard]] virtual handle::resource createTexture(
         backend::format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1, bool allow_uav = false)
         = 0;

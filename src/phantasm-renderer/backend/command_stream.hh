@@ -356,22 +356,44 @@ private:
 struct command_stream_writer
 {
 public:
+    command_stream_writer() = default;
     command_stream_writer(std::byte* buffer, size_t size) : _out_buffer(buffer), _max_size(size), _cursor(0) {}
+
+    void initialize(std::byte* buffer, size_t size)
+    {
+        _out_buffer = buffer;
+        _max_size = size;
+        _cursor = 0;
+    }
+
+    void reset() { _cursor = 0; }
 
     template <class CMDT>
     void add_command(CMDT const& command)
     {
         static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "not a command");
         static_assert(std::is_trivially_copyable_v<CMDT>, "command not trivially copyable");
-        CC_ASSERT(static_cast<int>(sizeof(CMDT)) <= remaining_bytes());
+        CC_ASSERT(can_accomodate_t<CMDT>() && "command_stream_writer full");
         new (cc::placement_new, _out_buffer + _cursor) CMDT(command);
         _cursor += sizeof(CMDT);
     }
 
+public:
     size_t size() const { return _cursor; }
     std::byte* buffer() const { return _out_buffer; }
 
+    bool empty() const { return _cursor == 0; }
+
     int remaining_bytes() const { return static_cast<int>(_max_size) - static_cast<int>(_cursor); }
+
+    template <class CMDT>
+    bool can_accomodate_t() const
+    {
+        static_assert(std::is_base_of_v<cmd::detail::cmd_base, CMDT>, "not a command");
+        return static_cast<int>(sizeof(CMDT)) <= remaining_bytes();
+    }
+
+    bool can_accomodate(size_t size) const { return static_cast<int>(size) <= remaining_bytes(); }
 
 private:
     std::byte* _out_buffer = nullptr;
