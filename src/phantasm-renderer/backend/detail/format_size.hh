@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/assert.hh>
+
 #include <phantasm-renderer/backend/types.hh>
 
 namespace pr::backend::detail
@@ -34,11 +36,6 @@ namespace pr::backend::detail
     case format::rgba16u:
         return 8;
 
-    case format::rgb16f:
-    case format::rgb16i:
-    case format::rgb16u:
-        return 6;
-
     case format::rg16f:
     case format::rg16i:
     case format::rg16u:
@@ -56,25 +53,25 @@ namespace pr::backend::detail
     case format::bgra8un:
         return 4;
 
-    case format::rgb8i:
-    case format::rgb8u:
-        return 3;
-
     case format::rg8i:
     case format::rg8u:
+    case format::rg8un:
         return 2;
 
     case format::r8i:
     case format::r8u:
+    case format::r8un:
         return 1;
 
     case format::depth32f_stencil8u:
         return 8;
     case format::depth24un_stencil8u:
         return 4;
-    }
 
-    return 0;
+    default:
+        CC_ASSERT(false && "unknown format");
+        return 0;
+    }
 }
 
 }

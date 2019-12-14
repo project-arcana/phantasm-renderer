@@ -1,6 +1,7 @@
 #include "cmd_list_translation.hh"
 
 #include <phantasm-renderer/backend/detail/byte_util.hh>
+#include <phantasm-renderer/backend/detail/format_size.hh>
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
@@ -311,6 +312,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
 {
+    auto const pixel_bytes = backend::detail::pr_format_size_bytes(copy_text.texture_format);
     auto const format_dxgi = util::to_dxgi_format(copy_text.texture_format);
 
     D3D12_SUBRESOURCE_FOOTPRINT footprint;
@@ -318,7 +320,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     footprint.Width = copy_text.dest_width;
     footprint.Height = copy_text.dest_height;
     footprint.Depth = 1;
-    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.dest_width, 256);
+    footprint.RowPitch = mem::align_up(pixel_bytes * copy_text.dest_width, 256);
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint;
     placed_footprint.Offset = copy_text.source_offset;
