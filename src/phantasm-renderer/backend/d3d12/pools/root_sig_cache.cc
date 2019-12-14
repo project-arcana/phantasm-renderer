@@ -16,7 +16,7 @@ pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getO
     else
     {
         auto* const insertion = mCache.insert(hash, root_signature{});
-        initialize_root_signature(*insertion, device, key.arg_shapes);
+        initialize_root_signature(*insertion, device, key.arg_shapes, key.has_root_constants, key.is_compute);
         util::set_object_name(insertion->raw_root_sig, "cached root sig %zx", hash);
         return insertion;
     }

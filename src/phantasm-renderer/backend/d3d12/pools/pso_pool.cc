@@ -17,7 +17,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes});
+        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes, false, false});
         pool_index = mPool.acquire();
     }
 
@@ -45,7 +45,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes});
+        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes, false, true});
         pool_index = mPool.acquire();
     }
 

@@ -17,6 +17,8 @@ public:
     struct key_t
     {
         arg::shader_argument_shapes arg_shapes;
+        bool has_root_constants;
+        bool is_compute;
     };
 
     void initialize(unsigned max_num_root_sigs);
@@ -30,7 +32,7 @@ public:
     void reset();
 
 private:
-    static cc::hash_t hashKey(key_t const& v) { return hash::compute(v.arg_shapes); }
+    static cc::hash_t hashKey(key_t const& v) { return cc::make_hash(hash::compute(v.arg_shapes), v.is_compute, v.has_root_constants); }
 
     backend::detail::cache_map<root_signature> mCache;
 };
