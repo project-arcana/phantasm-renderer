@@ -123,7 +123,7 @@ public:
     // Debug interface
     //
 
-    void printInformation(handle::resource res) const override {}
+    void printInformation(handle::resource res) const override;
 
 public:
     // backend-internal

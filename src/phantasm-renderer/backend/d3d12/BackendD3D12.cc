@@ -1,5 +1,7 @@
 #include "BackendD3D12.hh"
 
+#include <iostream>
+
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/device_tentative/window.hh>
@@ -175,4 +177,10 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
 
     if (num_cls_in_batch > 0)
         submit_flush();
+}
+
+void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::resource res) const
+{
+    (void)res;
+    std::cout << "[pr][backend][d3d12] printInformation unimplemented" << std::endl;
 }
