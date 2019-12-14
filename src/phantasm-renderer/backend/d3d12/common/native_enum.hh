@@ -170,16 +170,23 @@ namespace pr::backend::d3d12::util
     {
     case shader_view_dimension::buffer:
         return D3D12_UAV_DIMENSION_BUFFER;
+
     case shader_view_dimension::texture1d:
         return D3D12_UAV_DIMENSION_TEXTURE1D;
+
     case shader_view_dimension::texture1d_array:
         return D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+
     case shader_view_dimension::texture2d:
         return D3D12_UAV_DIMENSION_TEXTURE2D;
+
     case shader_view_dimension::texture2d_array:
+    case shader_view_dimension::texturecube:
         return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+
     case shader_view_dimension::texture3d:
         return D3D12_UAV_DIMENSION_TEXTURE3D;
+
     default:
         return D3D12_UAV_DIMENSION_UNKNOWN;
     }

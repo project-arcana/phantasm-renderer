@@ -162,6 +162,13 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC pr::backend::d3d12::util::create_uav_desc(const
         uav_desc.Texture2DArray.ArraySize = sve.texture_info.array_size;
         break;
 
+    case svd::texturecube:
+        uav_desc.Texture2DArray.MipSlice = sve.texture_info.mip_start;
+        uav_desc.Texture2DArray.PlaneSlice = 0u;
+        uav_desc.Texture2DArray.FirstArraySlice = 0u;
+        uav_desc.Texture2DArray.ArraySize = 6u;
+        break;
+
     case svd::texture3d:
         uav_desc.Texture3D.FirstWSlice = sve.texture_info.array_start;
         uav_desc.Texture3D.WSize = sve.texture_info.array_size;

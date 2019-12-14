@@ -10,6 +10,24 @@
 #include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/memory/D3D12MA.hh>
 
+namespace
+{
+constexpr char const* get_tex_dim_literal(pr::backend::texture_dimension tdim)
+{
+    using td = pr::backend::texture_dimension;
+    switch (tdim)
+    {
+    case td::t1d:
+        return "1d";
+    case td::t2d:
+        return "2d";
+    case td::t3d:
+        return "3d";
+    }
+    return "ud";
+}
+}
+
 void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned max_num_resources)
 {
     mAllocator.initialize(device);
@@ -68,8 +86,10 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createTexture(
     desc.Alignment = 0;
 
     auto* const alloc = mAllocator.allocate(desc, util::to_native(initial_state));
-    util::set_object_name(alloc->GetResource(), "respool texture");
-    return acquireImage(alloc, format, initial_state, desc.MipLevels, desc.DepthOrArraySize);
+    auto const real_mip_levels = alloc->GetResource()->GetDesc().MipLevels;
+    util::set_object_name(alloc->GetResource(), "respool texture%s[%u] m%u", get_tex_dim_literal(dim), depth_or_array_size, real_mip_levels);
+
+    return acquireImage(alloc, format, initial_state, real_mip_levels, desc.DepthOrArraySize);
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples)
