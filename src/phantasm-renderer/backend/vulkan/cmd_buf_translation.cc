@@ -337,8 +337,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
             // - defer all barriers requiring shader info until the draw call (where shader views are updated)
             // - or require an explicit target shader domain in cmd::transition_resources
 
-            state_change const change
-                = state_change(before, transition.target_state, before_dep, sc_fallback_all_pipeline_stages);
+            state_change const change = state_change(before, transition.target_state, before_dep, sc_fallback_all_pipeline_stages);
 
             // NOTE: in both cases we transition the entire resource (all subresources in D3D12 terms),
             // using stored information from the resource pool (img_info / buf_info respectively)
@@ -397,19 +396,42 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::c
     vkCmdCopyBuffer(_cmd_list, src_buffer, dest_buffer, 1, &region);
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_texture& copy_text)
+{
+    auto const& src_image_info = _globals.pool_resources->getImageInfo(copy_text.source);
+    auto const& dest_image_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+
+    VkImageCopy copy = {};
+    copy.srcSubresource.aspectMask = util::to_native_image_aspect(src_image_info.pixel_format);
+    copy.srcSubresource.baseArrayLayer = copy_text.src_array_index;
+    copy.srcSubresource.layerCount = copy_text.num_array_slices;
+    copy.srcSubresource.mipLevel = copy_text.src_mip_index;
+    copy.dstSubresource.aspectMask = util::to_native_image_aspect(dest_image_info.pixel_format);
+    copy.dstSubresource.baseArrayLayer = copy_text.dest_array_index;
+    copy.dstSubresource.layerCount = copy_text.num_array_slices;
+    copy.dstSubresource.mipLevel = copy_text.dest_mip_index;
+    copy.extent.width = copy_text.width;
+    copy.extent.height = copy_text.height;
+    copy.extent.depth = copy_text.num_array_slices;
+
+    vkCmdCopyImage(_cmd_list, src_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dest_image_info.raw_image,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
 {
     auto const src_buffer = _globals.pool_resources->getRawBuffer(copy_text.source);
-    auto const dest_image = _globals.pool_resources->getRawImage(copy_text.destination);
+    auto const& dest_image_info = _globals.pool_resources->getImageInfo(copy_text.destination);
 
     VkBufferImageCopy region = {};
     region.bufferOffset = uint32_t(copy_text.source_offset);
-    region.imageSubresource.aspectMask = util::to_native_image_aspect(copy_text.texture_format);
+    region.imageSubresource.aspectMask = util::to_native_image_aspect(dest_image_info.pixel_format);
     region.imageSubresource.baseArrayLayer = copy_text.dest_array_index;
     region.imageSubresource.layerCount = 1;
     region.imageSubresource.mipLevel = copy_text.dest_mip_index;
     region.imageExtent.width = copy_text.dest_width;
     region.imageExtent.height = copy_text.dest_height;
     region.imageExtent.depth = 1;
-    vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }

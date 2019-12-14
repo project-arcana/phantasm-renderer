@@ -23,6 +23,7 @@ namespace detail
     PR_X(transition_resources)    \
     PR_X(transition_image_slices) \
     PR_X(copy_buffer)             \
+    PR_X(copy_texture)            \
     PR_X(copy_buffer_to_texture)  \
     PR_X(begin_render_pass)       \
     PR_X(end_render_pass)
@@ -205,8 +206,8 @@ public:
 
 PR_DEFINE_CMD(copy_buffer)
 {
-    handle::resource destination;
     handle::resource source;
+    handle::resource destination;
     size_t dest_offset;
     size_t source_offset;
     size_t size;
@@ -216,22 +217,50 @@ public:
 
     copy_buffer() = default;
     copy_buffer(handle::resource dest, size_t dest_offset, handle::resource src, size_t src_offset, size_t size)
-      : destination(dest), source(src), dest_offset(dest_offset), source_offset(src_offset), size(size)
+      : source(src), destination(dest), dest_offset(dest_offset), source_offset(src_offset), size(size)
     {
+    }
+};
+
+PR_DEFINE_CMD(copy_texture)
+{
+    handle::resource source;
+    handle::resource destination;
+    unsigned src_mip_index;    ///< index of the MIP level to read from
+    unsigned src_array_index;  ///< index of the first array element to read from (usually: 0)
+    unsigned dest_mip_index;   ///< index of the MIP level to write to
+    unsigned dest_array_index; ///< index of the first array element to write to (usually: 0)
+    unsigned width;            ///< width of the destination texture (in the specified MIP map and array element(s))
+    unsigned height;           ///< height of the destination texture (in the specified MIP map and array element(s))
+    unsigned num_array_slices; ///< amount of array slices to copy, all other parameters staying equal (usually: 1)
+
+public:
+    // convenience
+
+    void init_symmetric(handle::resource src, handle::resource dest, unsigned width, unsigned height, unsigned mip_index,
+                        unsigned first_array_index = 0, unsigned num_array_slices = 1)
+    {
+        source = src;
+        destination = dest;
+        this->width = width;
+        this->height = height;
+        src_mip_index = mip_index;
+        dest_mip_index = mip_index;
+        src_array_index = first_array_index;
+        dest_array_index = first_array_index;
+        this->num_array_slices = num_array_slices;
     }
 };
 
 PR_DEFINE_CMD(copy_buffer_to_texture)
 {
-    handle::resource destination;
     handle::resource source;
+    handle::resource destination;
     size_t source_offset;
     unsigned dest_width;       ///< width of the destination texture (in the specified MIP map and array element)
     unsigned dest_height;      ///< height of the destination texture (in the specified MIP map and array element)
-    unsigned dest_mip_size;    ///< amount of MIP maps in the destination texture
-    unsigned dest_mip_index;   ///< index of the MIP map to copy
+    unsigned dest_mip_index;   ///< index of the MIP level to copy
     unsigned dest_array_index; ///< index of the array element to copy (usually: 0)
-    format texture_format;
 };
 
 #undef PR_DEFINE_CMD

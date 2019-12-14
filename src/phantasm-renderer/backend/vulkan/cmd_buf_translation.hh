@@ -64,6 +64,8 @@ struct command_list_translator
 
     void execute(cmd::copy_buffer const& copy_buf);
 
+    void execute(cmd::copy_texture const& copy_tex);
+
     void execute(cmd::copy_buffer_to_texture const& copy_text);
 
 private:

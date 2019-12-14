@@ -310,10 +310,27 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
                                 _globals.pool_resources->getRawResource(copy_buf.source), copy_buf.source_offset, copy_buf.size);
 }
 
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::copy_texture& copy_text)
+{
+    auto const& src_info = _globals.pool_resources->getImageInfo(copy_text.source);
+    auto const& dest_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+
+    for (auto array_offset = 0u; array_offset < copy_text.num_array_slices; ++array_offset)
+    {
+        auto const src_subres_index = copy_text.src_mip_index + (copy_text.src_array_index + array_offset) * src_info.num_mips;
+        auto const dest_subres_index = copy_text.dest_mip_index + (copy_text.dest_array_index + array_offset) * dest_info.num_mips;
+
+        CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), src_subres_index);
+        CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), dest_subres_index);
+        _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
+    }
+}
+
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
 {
-    auto const pixel_bytes = backend::detail::pr_format_size_bytes(copy_text.texture_format);
-    auto const format_dxgi = util::to_dxgi_format(copy_text.texture_format);
+    auto const& dest_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+    auto const pixel_bytes = backend::detail::pr_format_size_bytes(dest_info.pixel_format);
+    auto const format_dxgi = util::to_dxgi_format(dest_info.pixel_format);
 
     D3D12_SUBRESOURCE_FOOTPRINT footprint;
     footprint.Format = format_dxgi;
@@ -326,7 +343,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     placed_footprint.Offset = copy_text.source_offset;
     placed_footprint.Footprint = footprint;
 
-    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * copy_text.dest_mip_size;
+    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * dest_info.num_mips;
 
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
     CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), subres_index);
