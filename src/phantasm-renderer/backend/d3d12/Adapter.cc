@@ -28,7 +28,12 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
             filter.DenyList.NumIDs = 1;
             filter.DenyList.pIDList = denied_message_ids;
 
-            // TODO: This has no effect
+            // TODO: This has no effect due to a bug
+            // Jesse Natalie:
+            // "[...] Apparently, the "most up-to-date" filter among all the ones that could possibly match are chosen.
+            // The D3D12 device produces a filter during creation, which makes it more up-to-date than any that'd be
+            // created before device creation is begun. [...]"
+            // will revisit once that is fixed
             PR_D3D12_VERIFY(mInfoQueue->PushStorageFilter(DXGI_DEBUG_ALL, &filter));
 
             // (none of these have either)
