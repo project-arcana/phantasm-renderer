@@ -181,11 +181,14 @@ public:
 
 PR_DEFINE_CMD(dispatch)
 {
-    handle::pipeline_state pipeline_state;
-    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+    static_assert(limits::max_root_constant_bytes > 0, "root constant size must be nonzero");
+
+    std::byte root_constants[limits::max_root_constant_bytes];
     unsigned dispatch_x;
     unsigned dispatch_y;
     unsigned dispatch_z;
+    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+    handle::pipeline_state pipeline_state;
 
 public:
     // convenience
@@ -201,6 +204,15 @@ public:
     void add_shader_arg(handle::resource cbv, unsigned cbv_off = 0, handle::shader_view sv = handle::null_shader_view)
     {
         shader_arguments.push_back(shader_argument{cbv, sv, cbv_off});
+    }
+
+    template <class T>
+    void write_root_constants(T const& data)
+    {
+        static_assert(sizeof(T) <= sizeof(root_constants), "data too large");
+        static_assert(std::is_trivially_copyable_v<T>, "data not memcpyable");
+        static_assert(!std::is_pointer_v<T>, "provide direct reference to data");
+        std::memcpy(root_constants, &data, sizeof(T));
     }
 };
 

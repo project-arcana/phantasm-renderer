@@ -99,9 +99,11 @@ public:
         return mPoolPipelines.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_stages, primitive_config);
     }
 
-    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader) override
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
+                                                                    arg::shader_stage const& compute_shader,
+                                                                    bool has_root_constants) override
     {
-        return mPoolPipelines.createComputePipelineState(shader_arg_shapes, compute_shader);
+        return mPoolPipelines.createComputePipelineState(shader_arg_shapes, compute_shader, has_root_constants);
     }
 
     void free(handle::pipeline_state ps) override { mPoolPipelines.free(ps); }

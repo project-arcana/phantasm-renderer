@@ -17,20 +17,22 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Patch and reflect SPIR-V binaries
     cc::capped_vector<arg::shader_stage, 6> patched_shader_stages;
     cc::vector<util::spirv_desc_info> shader_descriptor_ranges;
+    bool has_push_constants = false;
     CC_DEFER
     {
         for (auto const& ps : patched_shader_stages)
             util::free_patched_spirv(ps);
     };
     {
-        cc::vector<util::spirv_desc_info> spirv_info;
+        util::spirv_refl_info spirv_info;
 
         for (auto const& shader : shader_stages)
         {
             patched_shader_stages.push_back(util::create_patched_spirv(shader.binary_data, shader.binary_size, spirv_info));
         }
 
-        shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info);
+        shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info.descriptor_infos);
+        has_push_constants = spirv_info.has_push_constants;
 
         // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
         // amount declared in the shader arg shapes is the same
@@ -43,7 +45,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges});
+        layout = mLayoutCache.getOrCreate(mDevice, shader_descriptor_ranges, false);
         pool_index = mPool.acquire();
     }
 
@@ -78,22 +80,25 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 }
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
-                                                                                              const pr::backend::arg::shader_stage& compute_shader)
+                                                                                              const pr::backend::arg::shader_stage& compute_shader,
+                                                                                              bool should_have_push_constants)
 {
     // Patch and reflect SPIR-V binary
     arg::shader_stage patched_shader_stage;
     cc::vector<util::spirv_desc_info> shader_descriptor_ranges;
+    bool has_push_constants = false;
     CC_DEFER { util::free_patched_spirv(patched_shader_stage); };
 
     {
-        cc::vector<util::spirv_desc_info> spirv_info;
-
+        util::spirv_refl_info spirv_info;
         patched_shader_stage = util::create_patched_spirv(compute_shader.binary_data, compute_shader.binary_size, spirv_info);
-        shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info);
+        shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info.descriptor_infos);
+        has_push_constants = spirv_info.has_push_constants;
 
         // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
         // amount declared in the shader arg shapes is the same
         CC_ASSERT(util::is_consistent_with_reflection(shader_descriptor_ranges, shader_arg_shapes) && "Given shader argument shapes inconsistent with SPIR-V reflection");
+        CC_ASSERT(has_push_constants == should_have_push_constants && "Shader push constant reflection inconsistent with creation argument");
     }
 
 
@@ -102,7 +107,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createCompute
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, {shader_descriptor_ranges});
+        layout = mLayoutCache.getOrCreate(mDevice, shader_descriptor_ranges, has_push_constants);
         pool_index = mPool.acquire();
     }
 

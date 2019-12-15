@@ -64,7 +64,7 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const util::spirv_desc_info> range_infos)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const util::spirv_desc_info> range_infos, bool has_push_constants)
 {
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
@@ -80,12 +80,36 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
         descriptor_set_layouts.push_back(param_set.create_layout(device));
     }
 
+    // always create a push constant range (which is conditionally set in the layout info)
+    VkPushConstantRange pushconst_range = {};
+
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_info.setLayoutCount = uint32_t(descriptor_set_layouts.size());
     layout_info.pSetLayouts = descriptor_set_layouts.data();
-    layout_info.pushConstantRangeCount = 0;
-    layout_info.pPushConstantRanges = nullptr;
+
+    if (has_push_constants)
+    {
+        // detect if this is a compute shader
+        bool is_compute = true;
+        for (auto const vis : descriptor_set_visibilities)
+        {
+            if (vis != VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
+            {
+                is_compute = false;
+                break;
+            }
+        }
+
+        // populate the push constant range accordingly
+        pushconst_range.size = limits::max_root_constant_bytes;
+        pushconst_range.offset = 0;
+        pushconst_range.stageFlags = is_compute ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS;
+
+        // refer to it in the layout info
+        layout_info.pushConstantRangeCount = 1u;
+        layout_info.pPushConstantRanges = &pushconst_range;
+    }
 
     PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));
 }

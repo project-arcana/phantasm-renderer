@@ -114,7 +114,9 @@ public:
                                                                      pr::primitive_pipeline_config const& primitive_config)
         = 0;
 
-    [[nodiscard]] virtual handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader)
+    [[nodiscard]] virtual handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
+                                                                            arg::shader_stage const& compute_shader,
+                                                                            bool has_root_constants = false)
         = 0;
 
     virtual void free(handle::pipeline_state ps) = 0;

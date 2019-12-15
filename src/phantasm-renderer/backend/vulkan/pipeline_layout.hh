@@ -42,6 +42,7 @@ struct pipeline_layout_params
 
         void add_single_cbv();
         void add_descriptor(VkDescriptorType type, unsigned binding, unsigned array_size, VkShaderStageFlagBits visibility);
+
         void fill_in_samplers(cc::span<VkSampler const> samplers);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
@@ -69,7 +70,7 @@ struct pipeline_layout
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
 
-    void initialize(VkDevice device, cc::span<util::spirv_desc_info const> range_infos);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_info const> range_infos, bool has_push_constants);
 
     void free(VkDevice device);
 };

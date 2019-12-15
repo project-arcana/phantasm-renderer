@@ -16,6 +16,7 @@ struct shader_argument_map
     unsigned cbv_param;
     unsigned srv_uav_table_param;
     unsigned sampler_table_param;
+    unsigned root_const_param;
 };
 
 namespace detail
@@ -26,7 +27,9 @@ struct root_signature_params
     cc::capped_vector<CD3DX12_ROOT_PARAMETER, 16> root_params;
     cc::capped_vector<CD3DX12_STATIC_SAMPLER_DESC, 16> samplers;
 
-    [[nodiscard]] shader_argument_map add_shader_argument_shape(arg::shader_argument_shape const& shape);
+    /// add_fixed_root_constants: additionally create a fixed root constant field in b1, current space
+    /// size: limits::max_root_constant_bytes
+    [[nodiscard]] shader_argument_map add_shader_argument_shape(arg::shader_argument_shape const& shape, bool add_fixed_root_constants);
     void add_static_sampler(sampler_config const& config);
 
 private:
@@ -47,5 +50,7 @@ struct root_signature
     cc::capped_vector<shader_argument_map, 4> argument_maps;
 };
 
+/// add_fixed_root_constants: create a fixed root constant field in register(b1, space0)
+/// size: limits::max_root_constant_bytes
 void initialize_root_signature(root_signature& root_sig, ID3D12Device& device, arg::shader_argument_shapes payload_shape, bool add_fixed_root_constants, bool is_compute);
 }

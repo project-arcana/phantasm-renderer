@@ -26,16 +26,16 @@ public:
 
     /// receive an existing root signature matching the shape, or create a new one
     /// returns a pointer (which remains stable, §23.2.5/13 C++11)
-    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, key_t key);
+    [[nodiscard]] pipeline_layout* getOrCreate(VkDevice device, cc::span<util::spirv_desc_info const> reflected_ranges, bool has_push_constants);
 
     /// destroys all elements inside, and clears the map
     void reset(VkDevice device);
 
 private:
-    static size_t hashKey(key_t const& v)
+    static size_t hashKey(cc::span<util::spirv_desc_info const> reflected_ranges, bool has_push_constants)
     {
-        size_t res = 0;
-        for (auto const& elem : v.reflected_ranges)
+        size_t res = cc::make_hash(has_push_constants);
+        for (auto const& elem : reflected_ranges)
         {
             auto const elem_hash = cc::make_hash(elem.set, elem.type, elem.binding, elem.binding_array_size, elem.visible_stage);
             res = cc::hash_combine(res, elem_hash);

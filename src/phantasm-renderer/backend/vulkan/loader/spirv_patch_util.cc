@@ -1,6 +1,7 @@
 #include "spirv_patch_util.hh"
 
 #include <algorithm>
+#include <iostream>
 
 #include <clean-core/array.hh>
 #include <clean-core/bit_cast.hh>
@@ -111,7 +112,7 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
 
 }
 
-pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, cc::vector<spirv_desc_info>& out_desc_infos)
+pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, spirv_refl_info& out_info)
 {
     arg::shader_stage res;
 
@@ -119,15 +120,26 @@ pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::
     spvReflectCreateShaderModule(bytecode_size, bytecode, &module);
 
     res.domain = reflect_to_pr(module.shader_stage);
-    patchSpvReflectShader(module, res.domain, out_desc_infos);
+    patchSpvReflectShader(module, res.domain, out_info.descriptor_infos);
 
     res.binary_size = spvReflectGetCodeSize(&module);
     res.binary_data = cc::bit_cast<std::byte*>(module._internal->spirv_code);
 
+    // check for push constants
+    {
+        uint32_t num_blocks;
+        spvReflectEnumeratePushConstantBlocks(&module, &num_blocks, nullptr);
+        CC_ASSERT(num_blocks <= 1 && "more than one push constant block in reflection");
+
+        if (num_blocks == 1)
+        {
+            out_info.has_push_constants = true;
+        }
+    }
+
     // spirv-reflect internally checks if this field is a nullptr before calling ::free,
     // so we can keep it alive by setting this
     module._internal->spirv_code = nullptr;
-
     spvReflectDestroyShaderModule(&module);
     return res;
 }
@@ -137,13 +149,6 @@ void pr::backend::vk::util::free_patched_spirv(const arg::shader_stage& val)
 {
     // do the same thing spirv-reflect would have done in spvReflectDestroyShaderModule
     ::free(val.binary_data);
-}
-
-pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv_from_binary_file(const char* filename, cc::vector<spirv_desc_info>& out_desc_infos)
-{
-    auto const binary_data = detail::unique_buffer::create_from_binary_file(filename);
-    CC_RUNTIME_ASSERT(binary_data.is_valid() && "Could not open SPIR-V binary");
-    return create_patched_spirv(binary_data.get(), binary_data.size(), out_desc_infos);
 }
 
 cc::vector<pr::backend::vk::util::spirv_desc_info> pr::backend::vk::util::merge_spirv_descriptors(cc::span<spirv_desc_info> desc_infos)
@@ -185,7 +190,11 @@ cc::vector<pr::backend::vk::util::spirv_desc_info> pr::backend::vk::util::merge_
     for (auto& range : sorted_merged_res)
     {
         if (range.set >= limits::max_shader_arguments && range.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        {
+            // The CBV is always in b0
+            CC_ASSERT(range.binding == spv::cbv_binding_start && "invalid uniform buffer descriptor outside b0 in reflection");
             range.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
     }
 
     return sorted_merged_res;

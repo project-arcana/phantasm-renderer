@@ -38,14 +38,15 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 }
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
-                                                                                                            const pr::backend::arg::shader_stage& compute_shader)
+                                                                                                            const pr::backend::arg::shader_stage& compute_shader,
+                                                                                                            bool has_root_constants)
 {
     root_signature* root_sig;
     unsigned pool_index;
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, false, true);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, true);
         pool_index = mPool.acquire();
     }
 

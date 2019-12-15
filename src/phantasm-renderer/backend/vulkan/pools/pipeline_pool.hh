@@ -30,7 +30,7 @@ public:
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config);
 
-    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader);
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_stage const& compute_shader, bool should_have_push_constants);
 
     void free(handle::pipeline_state ps);
 

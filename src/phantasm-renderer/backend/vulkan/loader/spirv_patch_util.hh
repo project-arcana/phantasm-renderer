@@ -52,24 +52,17 @@ struct spirv_desc_info
         return set == rhs.set && binding == rhs.binding && binding_array_size == rhs.binding_array_size && type == rhs.type && visible_stage == rhs.visible_stage;
     }
 };
-struct patched_spirv
+
+struct spirv_refl_info
 {
-    std::byte* bytecode;
-    size_t bytecode_size;
+    cc::vector<spirv_desc_info> descriptor_infos;
+    bool has_push_constants = false;
 };
 
 /// we have to shift all CBVs up by [max num shader args] sets to make our API work in vulkan
 /// unlike the register-to-binding shift with -fvk-[x]-shift, this cannot be done with DXC flags
-/// instead we provide these helpers which use the spriv-reflect library to do the same
-[[nodiscard]] arg::shader_stage create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, cc::vector<spirv_desc_info>& out_desc_infos);
-
-[[nodiscard]] inline arg::shader_stage create_patched_spirv(arg::shader_stage const& val, cc::vector<spirv_desc_info>& out_desc_infos)
-{
-    return create_patched_spirv(val.binary_data, val.binary_size, out_desc_infos);
-}
-
-/// purely convenience, not to be used in final backend
-[[nodiscard]] arg::shader_stage create_patched_spirv_from_binary_file(char const* filename, cc::vector<spirv_desc_info>& out_desc_infos);
+/// instead we provide these helpers which use the spirv-reflect library to do the same
+[[nodiscard]] arg::shader_stage create_patched_spirv(std::byte const* bytecode, size_t bytecode_size, spirv_refl_info& out_info);
 
 void free_patched_spirv(arg::shader_stage const& val);
 
