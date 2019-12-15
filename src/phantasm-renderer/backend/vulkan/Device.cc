@@ -10,9 +10,19 @@
 void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config)
 {
     mPhysicalDevice = device.physical_device;
-    CC_ASSERT(mDevice == nullptr);
+    CC_ASSERT(mDevice == nullptr && "vk::Device initialized twice");
 
     auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mPhysicalDevice);
+
+    // chose family queue indices
+    {
+        auto const chosen_queues = get_chosen_queues(device.queues);
+        mQueueFamilies.direct = chosen_queues.direct;
+        mQueueFamilies.compute = chosen_queues.separate_compute;
+        mQueueFamilies.copy = chosen_queues.separate_copy;
+
+        CC_RUNTIME_ASSERT(mQueueFamilies.direct != -1 && "vk::Device failed to find direct queue");
+    }
 
     VkDeviceCreateInfo device_info = {};
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -22,19 +32,17 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
     device_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
     auto const global_queue_priority = 1.f;
-    mQueueFamilies = get_chosen_queues(device.queues);
     cc::capped_vector<VkDeviceQueueCreateInfo, 3> queue_create_infos;
-    for (auto i = 0u; i < 3u; ++i)
+    for (auto const q_i : {mQueueFamilies.direct, mQueueFamilies.copy, mQueueFamilies.compute})
     {
-        auto const queue_family_index = mQueueFamilies[i];
-        if (queue_family_index == -1)
+        if (q_i == -1)
             continue;
 
         auto& queue_info = queue_create_infos.emplace_back();
         queue_info = {};
         queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_info.queueCount = 1;
-        queue_info.queueFamilyIndex = uint32_t(queue_family_index);
+        queue_info.queueFamilyIndex = static_cast<uint32_t>(q_i);
         queue_info.pQueuePriorities = &global_queue_priority;
     }
 
@@ -54,12 +62,12 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
 
     // Query queues
     {
-        if (mQueueFamilies[0] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[0]), 0, &mQueueGraphics);
-        if (mQueueFamilies[1] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[1]), 0, &mQueueCompute);
-        if (mQueueFamilies[2] != -1)
-            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies[2]), 0, &mQueueCopy);
+        if (mQueueFamilies.direct != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies.direct), 0, &mQueueDirect);
+        if (mQueueFamilies.compute != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies.compute), 0, &mQueueCompute);
+        if (mQueueFamilies.copy != -1)
+            vkGetDeviceQueue(mDevice, uint32_t(mQueueFamilies.copy), 0, &mQueueCopy);
     }
 
     // copy info

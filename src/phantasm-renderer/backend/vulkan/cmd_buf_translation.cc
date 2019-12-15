@@ -292,7 +292,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                         _state_cache->touch_resource_in_shader(res, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
                     }
 
-                    auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                    VkDescriptorSet const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
                 }
             }

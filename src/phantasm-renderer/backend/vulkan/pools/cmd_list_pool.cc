@@ -405,10 +405,10 @@ void pr::backend::vk::CommandListPool::initialize(pr::backend::vk::BackendVulkan
     mFenceRing.initialize(mDevice, num_allocators_total + 5); // arbitrary safety buffer, should never be required
 
 
-    auto const graphics_queue_family = static_cast<unsigned>(backend.mDevice.getQueueFamilyGraphics());
+    auto const direct_queue_family = static_cast<unsigned>(backend.mDevice.getQueueFamilyDirect());
     for (auto i = 0u; i < thread_allocators.size(); ++i)
     {
-        thread_allocators[i]->initialize(mDevice, num_allocators_per_thread, num_cmdlists_per_allocator, graphics_queue_family, &mFenceRing);
+        thread_allocators[i]->initialize(mDevice, num_allocators_per_thread, num_cmdlists_per_allocator, direct_queue_family, &mFenceRing);
     }
 
     // Flush the backend

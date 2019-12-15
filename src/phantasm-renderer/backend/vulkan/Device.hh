@@ -23,13 +23,13 @@ public:
     void initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config);
     void destroy();
 
-    VkQueue getQueueGraphics() const { return mQueueGraphics; }
+    VkQueue getQueueDirect() const { return mQueueDirect; }
     VkQueue getQueueCompute() const { return mQueueCompute; }
     VkQueue getQueueCopy() const { return mQueueCopy; }
 
-    int getQueueFamilyGraphics() const { return mQueueFamilies[0]; }
-    int getQueueFamilyCompute() const { return mQueueFamilies[1]; }
-    int getQueueFamilyCopy() const { return mQueueFamilies[2]; }
+    int getQueueFamilyDirect() const { return mQueueFamilies.direct; }
+    int getQueueFamilyCompute() const { return mQueueFamilies.compute; }
+    int getQueueFamilyCopy() const { return mQueueFamilies.copy; }
 
 public:
     VkPhysicalDeviceMemoryProperties const& getMemoryProperties() const { return mInformation.memory_properties; }
@@ -43,13 +43,20 @@ private:
     VkPhysicalDevice mPhysicalDevice;
     VkDevice mDevice = nullptr;
 
-    VkQueue mQueueGraphics = nullptr;
+    VkQueue mQueueDirect = nullptr;
     VkQueue mQueueCompute = nullptr;
     VkQueue mQueueCopy = nullptr;
-    cc::array<int, 3> mQueueFamilies;
+
+    struct
+    {
+        int direct = -1;
+        int compute = -1;
+        int copy = -1;
+    } mQueueFamilies;
 
     // Miscellaneous info
-    struct {
+    struct
+    {
         VkPhysicalDeviceMemoryProperties memory_properties;
         VkPhysicalDeviceProperties device_properties;
     } mInformation;
