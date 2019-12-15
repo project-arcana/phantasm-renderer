@@ -138,7 +138,16 @@ public:
     // Debug interface
     //
 
+    /// prints diagnostic information about the given resource
     virtual void printInformation(handle::resource res) const = 0;
+
+    /// attempts to detect graphics diagnostic tools (PIX, NSight, Renderdoc)
+    /// and forces a capture start, returns true on success
+    virtual bool startForcedDiagnosticCapture() = 0;
+
+    /// ends a previously started forced diagnostic capture, returns
+    /// true on success
+    virtual bool endForcedDiagnosticCapture() = 0;
 
 protected:
     Backend() = default;

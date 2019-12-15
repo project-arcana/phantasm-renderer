@@ -15,6 +15,8 @@
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
 
+struct IDXGraphicsAnalysis;
+
 namespace pr::backend::device
 {
 class Window;
@@ -126,6 +128,8 @@ public:
     //
 
     void printInformation(handle::resource res) const override;
+    bool startForcedDiagnosticCapture() override;
+    bool endForcedDiagnosticCapture() override;
 
 public:
     // backend-internal
@@ -152,6 +156,7 @@ private:
     cc::array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
 
-private:
+    // Misc
+    IDXGraphicsAnalysis* mPixAnalysisHandle = nullptr;
 };
 }

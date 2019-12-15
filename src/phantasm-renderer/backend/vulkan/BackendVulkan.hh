@@ -121,6 +121,8 @@ public:
     //
 
     void printInformation(handle::resource res) const override;
+    bool startForcedDiagnosticCapture() override;
+    bool endForcedDiagnosticCapture() override;
 
 public:
     // backend-internal

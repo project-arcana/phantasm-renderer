@@ -267,7 +267,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
 void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resource res) const
 {
-    std::cout << "[pr][vk] Inspecting resource " << res.index << std::endl;
+    std::cout << "[pr][backend][vk] Inspecting resource " << res.index << std::endl;
     if (!res.is_valid())
         std::cout << "  invalid (== handle::null_resource)" << std::endl;
     else
@@ -275,18 +275,30 @@ void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resou
         if (mPoolResources.isImage(res))
         {
             auto const& info = mPoolResources.getImageInfo(res);
-            std::cout << "[pr][vk]  image, raw pointer: " << info.raw_image << std::endl;
-            std::cout << "[pr][vk]  " << info.num_mips << " mips, " << info.num_array_layers
+            std::cout << "[pr][backend][vk]  image, raw pointer: " << info.raw_image << std::endl;
+            std::cout << "[pr][backend][vk]  " << info.num_mips << " mips, " << info.num_array_layers
                       << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
         }
         else
         {
             auto const& info = mPoolResources.getBufferInfo(res);
-            std::cout << "[pr][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
-            std::cout << "[pr][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
-            std::cout << "[pr][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
+            std::cout << "[pr][backend][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
+            std::cout << "[pr][backend][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
+            std::cout << "[pr][backend][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
         }
     }
+}
+
+bool pr::backend::vk::BackendVulkan::startForcedDiagnosticCapture()
+{
+    std::cerr << "[pr][backend][vk] diagnostic capture unimplemented " << std::endl;
+    return false;
+}
+
+bool pr::backend::vk::BackendVulkan::endForcedDiagnosticCapture()
+{
+    std::cerr << "[pr][backend][vk] diagnostic capture unimplemented " << std::endl;
+    return false;
 }
 
 void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDevice()); }
