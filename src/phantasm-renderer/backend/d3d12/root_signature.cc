@@ -37,11 +37,11 @@ ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& dev
     {
         std::cerr << "[pr][backend][d3d12] Root signature serialization failed: \n  " << static_cast<char*>(error_blob->GetBufferPointer()) << std::endl;
     }
-    PR_D3D12_ASSERT(serialize_hr);
+    PR_D3D12_ASSERT_FULL(serialize_hr, &device);
 
 
     ID3D12RootSignature* res;
-    PR_D3D12_VERIFY(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), IID_PPV_ARGS(&res)));
+    PR_D3D12_VERIFY_FULL(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), IID_PPV_ARGS(&res)), &device);
     return res;
 }
 

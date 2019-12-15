@@ -73,12 +73,26 @@ void print_dred_information(ID3D12Device* device)
             auto num_breadcrumbs = 0u;
             while (breadcrumb != nullptr && num_breadcrumbs < 10)
             {
-                std::wcerr << "[pr][backend][d3d12][DRED] bc #" << breadcrumb->BreadcrumbCount;
+                std::wcerr << "[pr][backend][d3d12][DRED] bc #" << num_breadcrumbs << " size " << breadcrumb->BreadcrumbCount<< std::endl;
 
                 if (breadcrumb->pCommandListDebugNameA != nullptr)
-                    std::wcerr << " on list \"" << breadcrumb->pCommandListDebugNameA << "\"";
+                    std::wcerr << "[pr][backend][d3d12][DRED]   on list \"" << breadcrumb->pCommandListDebugNameA << "\"" << std::endl;
                 if (breadcrumb->pCommandQueueDebugNameA != nullptr)
-                    std::wcerr << " on queue \"" << breadcrumb->pCommandQueueDebugNameA << "\"";
+                    std::wcerr << "[pr][backend][d3d12][DRED]   on queue \"" << breadcrumb->pCommandQueueDebugNameA << "\"" << std::endl;
+
+                std::wcerr << "[pr][backend][d3d12][DRED]     ";
+                unsigned const last_executed_i = *breadcrumb->pLastBreadcrumbValue;
+                for (auto i = 0u; i < breadcrumb->BreadcrumbCount; ++i)
+                {
+                    if (i == last_executed_i)
+                        std::wcerr << "[[-  " << breadcrumb->pCommandHistory[i] << " -]]";
+                    else
+                        std::wcerr << "[" << breadcrumb->pCommandHistory[i] << "]";
+                }
+                if (last_executed_i == breadcrumb->BreadcrumbCount)
+                    std::wcerr << "  (fully executed)";
+                else
+                    std::wcerr << "  (last executed: " << last_executed_i << ")";
 
                 std::wcerr << std::endl;
 
