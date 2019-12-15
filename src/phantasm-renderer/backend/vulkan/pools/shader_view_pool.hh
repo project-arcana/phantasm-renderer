@@ -43,7 +43,7 @@ public:
         return mPool.get(static_cast<unsigned>(sv.index)).resources;
     }
 
-    [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve) const;
+    [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve, bool is_uav = false) const;
 
 
 private:

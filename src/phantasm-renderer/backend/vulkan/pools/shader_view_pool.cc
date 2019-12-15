@@ -13,7 +13,8 @@
 
 pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs,
                                                                          cc::span<shader_view_element const> uavs,
-                                                                         cc::span<const sampler_config> sampler_configs, bool usage_compute)
+                                                                         cc::span<const sampler_config> sampler_configs,
+                                                                         bool usage_compute)
 {
     // Create the layout, maps as follows:
     // SRV:
@@ -85,7 +86,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 CC_ASSERT(uav.dimension != shader_view_dimension::raytracing_accel_struct && "Raytracing acceleration structures not allowed as UAVs");
 
                 auto& img_info = image_infos.emplace_back();
-                img_info.imageView = makeImageView(uav);
+                img_info.imageView = makeImageView(uav, true);
                 img_info.imageLayout = util::to_image_layout(resource_state::unordered_access);
                 img_info.sampler = nullptr;
 
@@ -234,12 +235,17 @@ void pr::backend::vk::ShaderViewPool::destroy()
     mAllocator.destroy();
 }
 
-VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_element& sve) const
+VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_element& sve, bool is_uav) const
 {
     VkImageViewCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     info.image = mResourcePool->getRawImage(sve.resource);
     info.viewType = util::to_native_image_view_type(sve.dimension);
+
+    // for UAVs, cubemaps are represented as 2D arrays instead
+    if (is_uav && info.viewType == VK_IMAGE_VIEW_TYPE_CUBE)
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
     info.format = util::to_vk_format(sve.pixel_format);
     info.subresourceRange.aspectMask = util::to_native_image_aspect(sve.pixel_format);
     info.subresourceRange.baseMipLevel = sve.texture_info.mip_start;

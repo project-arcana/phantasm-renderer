@@ -40,15 +40,14 @@ struct pipeline_layout_params
     {
         cc::capped_vector<VkDescriptorSetLayoutBinding, 64> bindings;
 
-        void add_single_cbv();
         void add_descriptor(VkDescriptorType type, unsigned binding, unsigned array_size, VkShaderStageFlagBits visibility);
-
         void fill_in_samplers(cc::span<VkSampler const> samplers);
 
         [[nodiscard]] VkDescriptorSetLayout create_layout(VkDevice device) const;
     };
 
     cc::capped_vector<descriptor_set_params, limits::max_shader_arguments * 2> descriptor_sets;
+    cc::capped_vector<VkPipelineStageFlags, limits::max_shader_arguments * 2> merged_pipeline_visibilities;
 
     void initialize_from_reflection_info(cc::span<util::spirv_desc_info const> reflection_info);
 };

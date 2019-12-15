@@ -48,7 +48,9 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
 
     if (allow_uav)
     {
-        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        // TODO: Image usage transfer src might deserve its own option, this is coarse
+        // in fact we might want to create a pr::texture_usage enum
+        image_info.usage |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     }
 
     image_info.flags = 0;

@@ -7,19 +7,6 @@
 #include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
 #include <phantasm-renderer/backend/vulkan/resources/transition_barrier.hh>
 
-void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_single_cbv()
-{
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS; // NOTE: Eventually arguments could be constrained to stages
-
-    VkDescriptorSetLayoutBinding& binding = bindings.emplace_back();
-    binding = {};
-    binding.binding = spv::cbv_binding_start; // CBV always in (0)
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    binding.descriptorCount = 1;
-    binding.stageFlags = argument_visibility;
-    binding.pImmutableSamplers = nullptr; // Optional
-}
-
 void pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_descriptor(VkDescriptorType type, unsigned binding, unsigned array_size, VkShaderStageFlagBits visibility)
 {
     VkDescriptorSetLayoutBinding& new_binding = bindings.emplace_back();
@@ -70,10 +57,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     params.initialize_from_reflection_info(range_infos);
 
     // copy pipeline stage visibilities
-    for (auto const& range : range_infos)
-    {
-        descriptor_set_visibilities.push_back(range.visible_pipeline_stage);
-    }
+    descriptor_set_visibilities = params.merged_pipeline_visibilities;
 
     for (auto const& param_set : params.descriptor_sets)
     {
@@ -94,7 +78,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
         bool is_compute = true;
         for (auto const vis : descriptor_set_visibilities)
         {
-            if (vis != VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
+            if (!(vis & VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT) && vis != 0)
             {
                 is_compute = false;
                 break;
@@ -124,22 +108,28 @@ void pr::backend::vk::pipeline_layout::free(VkDevice device)
 
 void pr::backend::vk::detail::pipeline_layout_params::initialize_from_reflection_info(cc::span<const util::spirv_desc_info> reflection_info)
 {
-    descriptor_sets.emplace_back();
+    auto const add_set = [this]() {
+        descriptor_sets.emplace_back();
+        merged_pipeline_visibilities.push_back(0);
+    };
+
+    add_set();
     for (auto const& desc : reflection_info)
     {
         auto const set_delta = desc.set - (descriptor_sets.size() - 1);
         if (set_delta == 1)
         {
             // the next set has been reached
-            descriptor_sets.emplace_back();
+            add_set();
         }
         else if (set_delta > 1)
         {
             // some sets have been skipped
             for (auto i = 0u; i < set_delta; ++i)
-                descriptor_sets.emplace_back();
+                add_set();
         }
 
         descriptor_sets.back().add_descriptor(desc.type, desc.binding, desc.binding_array_size, desc.visible_stage);
+        merged_pipeline_visibilities.back() |= desc.visible_pipeline_stage;
     }
 }
