@@ -259,7 +259,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
         if (pipeline_layout.has_push_constants())
         {
-            vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0, sizeof(dispatch.root_constants), dispatch.root_constants);
+            vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0, sizeof(dispatch.root_constants),
+                               dispatch.root_constants);
         }
 
         for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
@@ -443,5 +444,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
     label.pLabelName = marker.string_literal;
 
-    vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
+    // this function pointer is not available in all configurations
+    if (vkCmdInsertDebugUtilsLabelEXT)
+        vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
 }
