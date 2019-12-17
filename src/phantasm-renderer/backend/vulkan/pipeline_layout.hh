@@ -68,8 +68,11 @@ struct pipeline_layout
 
     /// The pipeline layout itself
     VkPipelineLayout raw_layout;
+    VkPipelineStageFlags push_constant_stages;
 
-    void initialize(VkDevice device, cc::span<util::spirv_desc_info const> range_infos, bool has_push_constants);
+    void initialize(VkDevice device, cc::span<util::spirv_desc_info const> range_infos, bool add_push_constants);
+
+    [[nodiscard]] bool has_push_constants() const { return push_constant_stages != VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM; }
 
     void free(VkDevice device);
 };

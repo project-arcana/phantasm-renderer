@@ -51,7 +51,7 @@ VkDescriptorSetLayout pr::backend::vk::detail::pipeline_layout_params::descripto
     return res;
 }
 
-void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const util::spirv_desc_info> range_infos, bool has_push_constants)
+void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<const util::spirv_desc_info> range_infos, bool add_push_constants)
 {
     detail::pipeline_layout_params params;
     params.initialize_from_reflection_info(range_infos);
@@ -72,7 +72,7 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     layout_info.setLayoutCount = uint32_t(descriptor_set_layouts.size());
     layout_info.pSetLayouts = descriptor_set_layouts.data();
 
-    if (has_push_constants)
+    if (add_push_constants)
     {
         // detect if this is a compute shader
         bool is_compute = true;
@@ -90,9 +90,15 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
         pushconst_range.offset = 0;
         pushconst_range.stageFlags = is_compute ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS;
 
+        this->push_constant_stages = pushconst_range.stageFlags;
+
         // refer to it in the layout info
         layout_info.pushConstantRangeCount = 1u;
         layout_info.pPushConstantRanges = &pushconst_range;
+    }
+    else
+    {
+        this->push_constant_stages = VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM;
     }
 
     PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));

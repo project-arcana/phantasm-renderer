@@ -157,6 +157,9 @@ public:
 
 PR_DEFINE_CMD(draw)
 {
+    static_assert(limits::max_root_constant_bytes > 0, "root constant size must be nonzero");
+
+    std::byte root_constants[limits::max_root_constant_bytes];
     cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
     handle::pipeline_state pipeline_state;
     handle::resource vertex_buffer;
@@ -178,6 +181,15 @@ public:
     {
         shader_arguments.push_back(shader_argument{cbv, sv, cbv_off});
     }
+
+    template <class T>
+    void write_root_constants(T const& data)
+    {
+        static_assert(sizeof(T) <= sizeof(root_constants), "data too large");
+        static_assert(std::is_trivially_copyable_v<T>, "data not memcpyable");
+        static_assert(!std::is_pointer_v<T>, "provide direct reference to data");
+        std::memcpy(root_constants, &data, sizeof(T));
+    }
 };
 
 PR_DEFINE_CMD(dispatch)
@@ -185,10 +197,10 @@ PR_DEFINE_CMD(dispatch)
     static_assert(limits::max_root_constant_bytes > 0, "root constant size must be nonzero");
 
     std::byte root_constants[limits::max_root_constant_bytes];
+    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
     unsigned dispatch_x;
     unsigned dispatch_y;
     unsigned dispatch_z;
-    cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
     handle::pipeline_state pipeline_state;
 
 public:

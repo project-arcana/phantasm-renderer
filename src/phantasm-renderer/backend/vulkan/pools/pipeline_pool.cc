@@ -11,6 +11,7 @@
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
                                                                                        pr::backend::arg::framebuffer_format framebuffer_format,
                                                                                        pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                       bool should_have_push_constants,
                                                                                        pr::backend::arg::shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
 {
@@ -37,6 +38,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
         // In debug, calculate the amount of descriptors in the SPIR-V reflection and assert that the
         // amount declared in the shader arg shapes is the same
         CC_ASSERT(util::is_consistent_with_reflection(shader_descriptor_ranges, shader_arg_shapes) && "Given shader argument shapes inconsistent with SPIR-V reflection");
+        CC_ASSERT(has_push_constants == should_have_push_constants && "Shader push constant reflection inconsistent with creation argument");
     }
 
 
@@ -45,7 +47,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // Do things requiring synchronization
     {
         auto lg = std::lock_guard(mMutex);
-        layout = mLayoutCache.getOrCreate(mDevice, shader_descriptor_ranges, false);
+        layout = mLayoutCache.getOrCreate(mDevice, shader_descriptor_ranges, has_push_constants);
         pool_index = mPool.acquire();
     }
 

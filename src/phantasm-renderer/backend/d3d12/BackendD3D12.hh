@@ -99,10 +99,11 @@ public:
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
                                                              arg::framebuffer_format framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
+                                                             bool has_root_constants,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
-        return mPoolPSOs.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, shader_stages, primitive_config);
+        return mPoolPSOs.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, has_root_constants, shader_stages, primitive_config);
     }
 
     [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
