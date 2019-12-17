@@ -5,6 +5,7 @@
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
+#include "common/diagnostic_util.hh"
 #include "common/dxgi_format.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
@@ -357,6 +358,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
     CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), subres_index);
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
+{
+    util::set_pix_marker(_cmd_list, 0, marker.string_literal);
 }
 
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)

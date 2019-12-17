@@ -6,7 +6,7 @@
 namespace
 {
 // NOTE: The _SRGB variant crashes at factory.CreateSwapChainForHwnd
-constexpr auto s_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
+constexpr auto gc_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 DXGI_SWAP_CHAIN_FLAG get_swapchain_flags(pr::backend::present_mode mode)
 {
@@ -39,7 +39,7 @@ void pr::backend::d3d12::Swapchain::initialize(
         swapchain_desc.BufferCount = num_backbuffers;
         swapchain_desc.Width = 0;
         swapchain_desc.Height = 0;
-        swapchain_desc.Format = s_backbuffer_format;
+        swapchain_desc.Format = gc_backbuffer_format;
         swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapchain_desc.SampleDesc.Count = 1;
@@ -75,7 +75,7 @@ void pr::backend::d3d12::Swapchain::onResize(tg::isize2 size)
     mBackbufferSize = size;
     releaseBackbuffers();
     PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(mBackbufferSize.width), UINT(mBackbufferSize.height),
-                                              s_backbuffer_format, get_swapchain_flags(mPresentMode)));
+                                              gc_backbuffer_format, get_swapchain_flags(mPresentMode)));
     updateBackbuffers();
 }
 
@@ -96,7 +96,7 @@ unsigned pr::backend::d3d12::Swapchain::waitForBackbuffer()
     return backbuffer_i;
 }
 
-DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return s_backbuffer_format; }
+DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return gc_backbuffer_format; }
 
 void pr::backend::d3d12::Swapchain::updateBackbuffers()
 {

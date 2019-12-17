@@ -435,3 +435,12 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::c
 
     vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
+{
+    VkDebugUtilsLabelEXT label = {};
+    label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    label.pLabelName = marker.string_literal;
+
+    vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
+}

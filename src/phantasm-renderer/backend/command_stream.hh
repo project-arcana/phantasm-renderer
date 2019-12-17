@@ -26,7 +26,8 @@ namespace detail
     PR_X(copy_texture)            \
     PR_X(copy_buffer_to_texture)  \
     PR_X(begin_render_pass)       \
-    PR_X(end_render_pass)
+    PR_X(end_render_pass)         \
+    PR_X(debug_marker)
 
 enum class cmd_type : uint8_t
 {
@@ -273,6 +274,14 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
     unsigned dest_height;      ///< height of the destination texture (in the specified MIP map and array element)
     unsigned dest_mip_index;   ///< index of the MIP level to copy
     unsigned dest_array_index; ///< index of the array element to copy (usually: 0)
+};
+
+PR_DEFINE_CMD(debug_marker)
+{
+    char const* string_literal;
+
+    debug_marker() = default;
+    debug_marker(char const* s) : string_literal(s) {}
 };
 
 #undef PR_DEFINE_CMD

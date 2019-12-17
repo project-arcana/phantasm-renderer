@@ -70,6 +70,8 @@ struct command_list_translator
 
     void execute(cmd::copy_buffer_to_texture const& copy_text);
 
+    void execute(cmd::debug_marker const& marker);
+
 private:
     // non-owning constant (global)
     translator_global_memory _globals;

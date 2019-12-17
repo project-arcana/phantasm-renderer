@@ -10,12 +10,11 @@
 #include "Queue.hh"
 #include "Swapchain.hh"
 
+#include "common/diagnostic_util.hh"
 #include "pools/cmd_list_pool.hh"
 #include "pools/pso_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
-
-struct IDXGraphicsAnalysis;
 
 namespace pr::backend::device
 {
@@ -157,6 +156,6 @@ private:
     backend::detail::thread_association mThreadAssociation;
 
     // Misc
-    IDXGraphicsAnalysis* mPixAnalysisHandle = nullptr;
+    util::diagnostic_state mDiagnostics;
 };
 }

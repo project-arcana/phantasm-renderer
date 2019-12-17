@@ -25,5 +25,7 @@ struct IDXGIFactory4;
 struct IDXGISwapChain3;
 struct IDXGIInfoQueue;
 
+struct IDXGraphicsAnalysis;
+
 struct D3D12_SHADER_BYTECODE;
 struct D3D12_INPUT_ELEMENT_DESC;

@@ -12,8 +12,6 @@
 #include "common/util.hh"
 #include "common/verify.hh"
 
-#include <DXProgrammableCapture.h>
-
 namespace pr::backend::d3d12
 {
 struct BackendD3D12::per_thread_component
@@ -60,11 +58,16 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 
         mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
     }
+
+    mDiagnostics.init();
 }
 
 pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 {
     flushGPU();
+
+    mDiagnostics.free();
+
     mSwapchain.setFullscreen(false);
 
     mPoolPSOs.destroy();
@@ -187,29 +190,6 @@ void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::res
     std::cout << "[pr][backend][d3d12] printInformation unimplemented" << std::endl;
 }
 
-bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture()
-{
-    CC_RUNTIME_ASSERT(mPixAnalysisHandle == nullptr && "diagnostic capture still in flight");
+bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }
 
-    if (detail::hr_succeeded(::DXGIGetDebugInterface1(0, IID_PPV_ARGS(&mPixAnalysisHandle))))
-    {
-        std::cout << "[pr][backend][d3d12] PIX detected, starting capture" << std::endl;
-        mPixAnalysisHandle->BeginCapture();
-        return true;
-    }
-
-    return false;
-}
-
-bool pr::backend::d3d12::BackendD3D12::endForcedDiagnosticCapture()
-{
-    if (mPixAnalysisHandle)
-    {
-        std::cout << "[pr][backend][d3d12] ending PIX capture " << std::endl;
-        mPixAnalysisHandle->EndCapture();
-        mPixAnalysisHandle->Release();
-        mPixAnalysisHandle = nullptr;
-        return true;
-    }
-    return false;
-}
+bool pr::backend::d3d12::BackendD3D12::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
