@@ -63,7 +63,6 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    alloc_info.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
 
     VmaAllocation res_alloc;
     VkImage res_image;
@@ -103,7 +102,6 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    alloc_info.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
 
     VmaAllocation res_alloc;
     VkImage res_image;
@@ -111,9 +109,10 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state, unsigned stride_bytes)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state initial_state, unsigned stride_bytes)
 {
     // TODO: we ignore the initial state here entirely
+    (void)initial_state;
 
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -144,14 +143,14 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-    alloc_info.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+    alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
     VmaAllocation res_alloc;
+    VmaAllocationInfo res_alloc_info;
     VkBuffer res_buffer;
-    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
-    void* data_start_void;
-    PR_VK_VERIFY_SUCCESS(vmaMapMemory(mAllocator.getAllocator(), res_alloc, &data_start_void));
-    return acquireBuffer(res_alloc, res_buffer, resource_state::undefined, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
+    CC_ASSERT(res_alloc_info.pMappedData != nullptr);
+    return acquireBuffer(res_alloc, res_buffer, resource_state::undefined, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
 
 void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
@@ -315,9 +314,6 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
     }
     else
     {
-        if (node.buffer.map != nullptr)
-            vmaUnmapMemory(mAllocator.getAllocator(), node.allocation);
-
         vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer.raw_buffer, node.allocation);
         // This does require synchronization
         mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);
