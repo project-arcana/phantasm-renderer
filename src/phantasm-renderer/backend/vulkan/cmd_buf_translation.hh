@@ -89,7 +89,44 @@ private:
         handle::resource index_buffer;
         handle::resource vertex_buffer;
 
-        cc::array<handle::shader_view, limits::max_shader_arguments> shader_views;
+        struct shader_arg_info
+        {
+            handle::shader_view sv;
+            handle::resource cbv;
+            unsigned cbv_offset;
+
+            void reset()
+            {
+                sv = handle::null_shader_view;
+                cbv = handle::null_resource;
+                cbv_offset = 0;
+            }
+
+            /// returns true if the argument is different from the currently bound one
+            [[nodiscard]] bool update_shader_view(handle::shader_view new_sv)
+            {
+                if (sv != new_sv)
+                {
+                    sv = new_sv;
+                    return true;
+                }
+                return false;
+            }
+
+            /// returns true if the argument is different from the currently bound one
+            [[nodiscard]] bool update_cbv(handle::resource new_cbv, unsigned new_offset)
+            {
+                if (cbv_offset != new_offset || cbv != new_cbv)
+                {
+                    cbv_offset = new_offset;
+                    cbv = new_cbv;
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        cc::array<shader_arg_info, limits::max_shader_arguments> shader_args;
 
         VkRenderPass raw_render_pass;
         VkFramebuffer raw_framebuffer;
@@ -112,11 +149,34 @@ private:
 
         void set_pipeline_layout(VkPipelineLayout raw)
         {
-            for (auto& sv : shader_views)
-                sv = handle::null_shader_view;
+            // A new pipeline layout invalidates bound shader arguments
+            for (auto& sa : shader_args)
+                sa.reset();
 
-            raw_pipeline_layout = raw;
             raw_sampler_descriptor_set = nullptr;
+            raw_pipeline_layout = raw;
+        }
+
+        /// returns true if the argument is different from the currently bound one
+        bool update_pipeline_layout(VkPipelineLayout raw)
+        {
+            if (raw_pipeline_layout != raw)
+            {
+                set_pipeline_layout(raw);
+                return true;
+            }
+            return false;
+        }
+
+        /// returns true if the argument is different from the currently bound one
+        [[nodiscard]] bool update_pso(handle::pipeline_state new_pso)
+        {
+            if (pipeline_state != new_pso)
+            {
+                pipeline_state = new_pso;
+                return true;
+            }
+            return false;
         }
 
     } _bound;

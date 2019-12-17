@@ -112,17 +112,14 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
 
     // PSO
-    if (draw.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(draw.pipeline_state))
     {
-        _bound.pipeline_state = draw.pipeline_state;
         _cmd_list->SetPipelineState(pso_node.raw_pso);
     }
 
     // Root signature
-    if (pso_node.associated_root_sig->raw_root_sig != _bound.raw_root_sig)
+    if (_bound.update_root_sig(pso_node.associated_root_sig->raw_root_sig))
     {
-        // A new root signature invalidates bound shader arguments
-        _bound.set_root_sig(pso_node.associated_root_sig->raw_root_sig);
         _cmd_list->SetGraphicsRootSignature(_bound.raw_root_sig);
         _cmd_list->IASetPrimitiveTopology(pso_node.primitive_topology);
     }
@@ -135,11 +132,6 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         {
             auto const ibv = _globals.pool_resources->getIndexBufferView(draw.index_buffer);
             _cmd_list->IASetIndexBuffer(&ibv);
-        }
-        else
-        {
-            // TODO: does this even make sense?
-            //  _cmd_list->IASetIndexBuffer(nullptr);
         }
     }
 
@@ -160,19 +152,22 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
+            auto& bound_arg = _bound.shader_args[i];
             auto const& arg = draw.shader_arguments[i];
             auto const& map = root_sig.argument_maps[i];
 
             if (map.cbv_param != uint32_t(-1))
             {
-                // Unconditionally set the CBV
-                auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
-                _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                // Set the CBV / offset if it has changed
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
+                    _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                }
             }
 
             // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
-                _bound.shader_views[i] = arg.shader_view;
+            if (bound_arg.update_shader_view(arg.shader_view))
             {
                 if (map.srv_uav_table_param != uint32_t(-1))
                 {
@@ -205,17 +200,14 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
 
     // PSO
-    if (dispatch.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(dispatch.pipeline_state))
     {
-        _bound.pipeline_state = dispatch.pipeline_state;
         _cmd_list->SetPipelineState(pso_node.raw_pso);
     }
 
     // Root signature
-    if (pso_node.associated_root_sig->raw_root_sig != _bound.raw_root_sig)
+    if (_bound.update_root_sig(pso_node.associated_root_sig->raw_root_sig))
     {
-        // A new root signature invalidates bound shader arguments
-        _bound.set_root_sig(pso_node.associated_root_sig->raw_root_sig);
         _cmd_list->SetComputeRootSignature(_bound.raw_root_sig);
     }
 
@@ -234,19 +226,23 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         // regular shader arguments
         for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
         {
+            auto& bound_arg = _bound.shader_args[i];
             auto const& arg = dispatch.shader_arguments[i];
             auto const& map = root_sig.argument_maps[i];
 
+
             if (map.cbv_param != uint32_t(-1))
             {
-                // Unconditionally set the CBV
-                auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
-                _cmd_list->SetComputeRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                // Set the CBV / offset if it has changed
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
+                    _cmd_list->SetComputeRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                }
             }
 
             // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
-                _bound.shader_views[i] = arg.shader_view;
+            if (bound_arg.update_shader_view(arg.shader_view))
             {
                 if (map.srv_uav_table_param != uint32_t(-1))
                 {

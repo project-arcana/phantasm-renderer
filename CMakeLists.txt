@@ -6,7 +6,7 @@ project(PhantasmRenderer)
 
 option(PR_BACKEND_VULKAN "enable Vulkan backend" ON)
 option(PR_BACKEND_D3D12 "enable DirectX 12 backend" ON)
-
+option(PR_ENABLE_DEBUG_MARKERS "enable API debug markers" ON)
 
 # =========================================
 # post-process options
@@ -54,6 +54,10 @@ target_link_libraries(phantasm-renderer PUBLIC
     typed-geometry
     reflector
 )
+
+if (PR_ENABLE_DEBUG_MARKERS)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_ENABLE_DEBUG_MARKERS)
+endif()
 
 
 # =========================================

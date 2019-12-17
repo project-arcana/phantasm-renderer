@@ -428,6 +428,13 @@ public:
         _cursor += sizeof(CMDT);
     }
 
+#ifndef PR_ENABLE_DEBUG_MARKERS
+    void add_command(cmd::debug_marker const&)
+    {
+        // no-op
+    }
+#endif
+
 public:
     size_t size() const { return _cursor; }
     std::byte* buffer() const { return _out_buffer; }

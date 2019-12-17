@@ -54,22 +54,16 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::b
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::draw& draw)
 {
-    if (draw.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(draw.pipeline_state))
     {
         // a new handle::pipeline_state invalidates (!= always changes)
         //      - The bound pipeline layout
         //      - The bound render pass
         //      - The bound pipeline
 
-        _bound.pipeline_state = draw.pipeline_state;
         auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
 
-        if (pso_node.associated_pipeline_layout->raw_layout != _bound.raw_pipeline_layout)
-        {
-            // a new layout is used when binding arguments,
-            // and invalidates previously bound arguments
-            _bound.set_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
-        }
+        _bound.update_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
 
         auto const render_pass = _globals.pool_pipeline_states->getOrCreateRenderPass(pso_node, _bound.current_render_pass);
         if (render_pass != _bound.raw_render_pass)
@@ -193,24 +187,25 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
+            auto& bound_arg = _bound.shader_args[i];
             auto const& arg = draw.shader_arguments[i];
             auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
 
             if (arg.constant_buffer != handle::null_resource)
             {
-                // Unconditionally set the CBV
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
 
-                _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
-
-                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
-                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
-                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
+                    auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
+                                            1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
+                }
             }
 
             // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
+            if (bound_arg.update_shader_view(arg.shader_view))
             {
-                _bound.shader_views[i] = arg.shader_view;
                 if (arg.shader_view != handle::null_shader_view)
                 {
                     // touch all contained resources in the state cache
@@ -240,21 +235,14 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
 {
-    if (dispatch.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(dispatch.pipeline_state))
     {
         // a new handle::pipeline_state invalidates (!= always changes)
         //      - The bound pipeline layout
         //      - The bound pipeline
-
-        _bound.pipeline_state = dispatch.pipeline_state;
         auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
 
-        if (pso_node.associated_pipeline_layout->raw_layout != _bound.raw_pipeline_layout)
-        {
-            // a new layout is used when binding arguments,
-            // and invalidates previously bound arguments
-            _bound.set_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
-        }
+        _bound.update_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
 
         vkCmdBindPipeline(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pso_node.raw_pipeline);
     }
@@ -266,23 +254,25 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
         for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
         {
+            auto& bound_arg = _bound.shader_args[i];
             auto const& arg = dispatch.shader_arguments[i];
 
             if (arg.constant_buffer != handle::null_resource)
             {
-                // Unconditionally set the CBV
+                // Set the CBV / offset if it has changed
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-                _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
-                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
-                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
-                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
+                    auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
+                                            1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
+                }
             }
 
-            // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
+            if (bound_arg.update_shader_view(arg.shader_view))
             {
-                _bound.shader_views[i] = arg.shader_view;
+                // Set the shader view if it has changed
                 if (arg.shader_view != handle::null_shader_view)
                 {
                     // touch all contained resources in the state cache

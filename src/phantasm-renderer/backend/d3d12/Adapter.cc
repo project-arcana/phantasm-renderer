@@ -101,10 +101,11 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
 
                     if (gbv_init_success && debug_controller_v3.is_valid())
                     {
+                        debug_controller_v3->SetEnableGPUBasedValidation(true);
+
                         // TODO: even if this succeeded, we could have still
                         // launched from inside NSight, where SetEnableSynchronizedCommandQueueValidation
                         // will crash
-                        debug_controller_v3->SetEnableGPUBasedValidation(true);
                         debug_controller_v3->SetEnableSynchronizedCommandQueueValidation(true);
                     }
                     else
