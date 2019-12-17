@@ -51,6 +51,22 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     instance_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
     instance_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
+    VkValidationFeatureEnableEXT extended_validation_enables[] = {
+        VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+        //           VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
+    };
+    VkValidationFeaturesEXT extended_validation_features = {};
+
+    if (config.validation >= validation_level::on_extended)
+    {
+        // enable GPU-assisted validation
+        extended_validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+        extended_validation_features.enabledValidationFeatureCount = 3;
+        extended_validation_features.pEnabledValidationFeatures = extended_validation_enables;
+
+        instance_info.pNext = &extended_validation_features;
+    }
+
     // Create the instance
     VkResult create_res = vkCreateInstance(&instance_info, nullptr, &mInstance);
 

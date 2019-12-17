@@ -157,24 +157,29 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
     };
 
     // Decide upon active instance layers and extensions based on configuration and availability
-    if (config.validation != validation_level::off)
+    if (config.validation >= validation_level::on)
     {
-        if (!add_required_layer("VK_LAYER_LUNARG_standard_validation"))
+        if (!add_required_layer("VK_LAYER_KHRONOS_validation"))
         {
-            if (!add_required_layer("VK_LAYER_KHRONOS_validation"))
-            {
-                std::cerr << "[pr][backend][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
-                std::cerr << "[pr][backend][vk] Download the LunarG SDK for your operating system," << std::endl;
-                std::cerr << "[pr][backend][vk] then set these environment variables: (all paths absolute)" << std::endl;
-                std::cerr << "[pr][backend][vk] VK_LAYER_PATH - <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
-                std::cerr << "[pr][backend][vk] VULKAN_SDK - <sdk>/x86_64/bin" << std::endl;
-                std::cerr << "[pr][backend][vk] LD_LIBRARY_PATH - <VALUE>:<sdk>/x86_64/lib (append)" << std::endl;
-            }
+            std::cerr << "[pr][backend][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
+            std::cerr << "[pr][backend][vk] Download the LunarG SDK for your operating system," << std::endl;
+            std::cerr << "[pr][backend][vk] then set these environment variables: (all paths absolute)" << std::endl;
+            std::cerr << "[pr][backend][vk] VK_LAYER_PATH - <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
+            std::cerr << "[pr][backend][vk] VULKAN_SDK - <sdk>/x86_64/bin" << std::endl;
+            std::cerr << "[pr][backend][vk] LD_LIBRARY_PATH - <VALUE>:<sdk>/x86_64/lib (append)" << std::endl;
         }
 
-        if (!add_required_ext("VK_EXT_debug_utils"))
+        if (!add_required_ext(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
         {
             std::cerr << "[pr][backend][vk] Missing debug utils extension" << std::endl;
+        }
+    }
+
+    if (config.validation >= validation_level::on_extended)
+    {
+        if (!add_required_ext("VK_EXT_validation_features"))
+        {
+            std::cerr << "[pr][backend][vk] Missing GPU-assisted validation extension" << std::endl;
         }
     }
 
