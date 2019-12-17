@@ -51,9 +51,9 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     instance_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
     instance_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
-    VkValidationFeatureEnableEXT extended_validation_enables[] = {
+    cc::array<VkValidationFeatureEnableEXT, 2> extended_validation_enables = {
         VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
-        //           VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
+        //                   VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
     };
     VkValidationFeaturesEXT extended_validation_features = {};
 
@@ -61,8 +61,8 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     {
         // enable GPU-assisted validation
         extended_validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-        extended_validation_features.enabledValidationFeatureCount = 3;
-        extended_validation_features.pEnabledValidationFeatures = extended_validation_enables;
+        extended_validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(extended_validation_enables.size());
+        extended_validation_features.pEnabledValidationFeatures = extended_validation_enables.data();
 
         instance_info.pNext = &extended_validation_features;
     }
