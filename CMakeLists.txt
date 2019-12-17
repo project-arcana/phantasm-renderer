@@ -86,8 +86,15 @@ endif()
 
 if (PR_BACKEND_D3D12)
     message(STATUS "[phantasm renderer] D3D12 backend enabled")
-    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
-    target_link_libraries(phantasm-renderer PRIVATE "d3d12.lib" "dxgi.lib" "dxguid.lib")
+    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12 USE_PIX)
+    target_link_libraries(phantasm-renderer PRIVATE
+        "d3d12.lib" "dxgi.lib" "dxguid.lib"
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/bin/WinPixEventRuntime.lib" # PIX Runtime
+        )
+
+    # PIX Runtime
+    target_include_directories(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/include/")
+
 else()
     message(STATUS "[phantasm renderer] D3D12 backend disabled")
 endif()
