@@ -261,7 +261,7 @@ struct shader_view_element
     struct sve_buffer_info
     {
         unsigned element_start;        ///< index of the first element in the buffer
-        unsigned element_size;         ///< amount of elements in the buffer
+        unsigned num_elements;         ///< amount of elements in the buffer
         unsigned element_stride_bytes; ///< the stride of elements in bytes
     };
 

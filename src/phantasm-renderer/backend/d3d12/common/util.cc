@@ -46,14 +46,24 @@ D3D12_SHADER_RESOURCE_VIEW_DESC pr::backend::d3d12::util::create_srv_desc(const 
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srv_desc.Format = util::to_dxgi_format(sve.pixel_format);
     srv_desc.ViewDimension = util::to_native_srv_dim(sve.dimension);
 
     using svd = shader_view_dimension;
     switch (sve.dimension)
     {
     case svd::buffer:
-        srv_desc.Buffer.NumElements = sve.buffer_info.element_size;
+    case svd::raytracing_accel_struct:
+        srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+        break;
+    default:
+        srv_desc.Format = util::to_dxgi_format(sve.pixel_format);
+        break;
+    }
+
+    switch (sve.dimension)
+    {
+    case svd::buffer:
+        srv_desc.Buffer.NumElements = sve.buffer_info.num_elements;
         srv_desc.Buffer.FirstElement = sve.buffer_info.element_start;
         srv_desc.Buffer.StructureByteStride = sve.buffer_info.element_stride_bytes;
         break;
@@ -135,7 +145,7 @@ D3D12_UNORDERED_ACCESS_VIEW_DESC pr::backend::d3d12::util::create_uav_desc(const
     switch (sve.dimension)
     {
     case svd::buffer:
-        uav_desc.Buffer.NumElements = sve.buffer_info.element_size;
+        uav_desc.Buffer.NumElements = sve.buffer_info.num_elements;
         uav_desc.Buffer.FirstElement = sve.buffer_info.element_start;
         uav_desc.Buffer.StructureByteStride = sve.buffer_info.element_stride_bytes;
         break;
@@ -192,7 +202,7 @@ D3D12_RENDER_TARGET_VIEW_DESC pr::backend::d3d12::util::create_rtv_desc(const pr
     switch (sve.dimension)
     {
     case svd::buffer:
-        rtv_desc.Buffer.NumElements = sve.buffer_info.element_size;
+        rtv_desc.Buffer.NumElements = sve.buffer_info.num_elements;
         rtv_desc.Buffer.FirstElement = sve.buffer_info.element_start;
         break;
 

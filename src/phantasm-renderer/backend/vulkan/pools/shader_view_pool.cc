@@ -76,7 +76,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 auto& uav_info = buffer_infos.emplace_back();
                 uav_info.buffer = mResourcePool->getRawBuffer(uav.resource);
                 uav_info.offset = uav.buffer_info.element_start;
-                uav_info.range = uav.buffer_info.element_size;
+                uav_info.range = uav.buffer_info.num_elements * uav.buffer_info.element_stride_bytes;
 
                 perform_write(uav_native_type, binding, false);
             }
@@ -108,7 +108,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 auto& uav_info = buffer_infos.emplace_back();
                 uav_info.buffer = mResourcePool->getRawBuffer(srv.resource);
                 uav_info.offset = srv.buffer_info.element_start;
-                uav_info.range = srv.buffer_info.element_size;
+                uav_info.range = srv.buffer_info.num_elements * srv.buffer_info.element_stride_bytes;
 
                 perform_write(srv_native_type, binding, false);
             }
