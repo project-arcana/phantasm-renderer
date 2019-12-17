@@ -248,46 +248,46 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 
     // Shader arguments
+
+    auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+    pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+    for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
     {
-        auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
-        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+        auto& bound_arg = _bound.shader_args[i];
+        auto const& arg = dispatch.shader_arguments[i];
 
-        for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
+        if (arg.constant_buffer != handle::null_resource)
         {
-            auto& bound_arg = _bound.shader_args[i];
-            auto const& arg = dispatch.shader_arguments[i];
-
-            if (arg.constant_buffer != handle::null_resource)
+            // Set the CBV / offset if it has changed
+            if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
             {
-                // Set the CBV / offset if it has changed
-                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
-                {
-                    _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+                _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-                    auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
-                                            1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
-                }
+                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
+                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
             }
+        }
 
-            if (bound_arg.update_shader_view(arg.shader_view))
+        if (bound_arg.update_shader_view(arg.shader_view))
+        {
+            // Set the shader view if it has changed
+            if (arg.shader_view != handle::null_shader_view)
             {
-                // Set the shader view if it has changed
-                if (arg.shader_view != handle::null_shader_view)
+                // touch all contained resources in the state cache
+                for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
                 {
-                    // touch all contained resources in the state cache
-                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
-                    {
-                        // NOTE: this is pretty inefficient
-                        _state_cache->touch_resource_in_shader(res, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-                    }
-
-                    VkDescriptorSet const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
+                    // NOTE: this is pretty inefficient
+                    _state_cache->touch_resource_in_shader(res, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
                 }
+
+                VkDescriptorSet sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
             }
         }
     }
+
 
     // Dispatch command
     vkCmdDispatch(_cmd_list, dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);

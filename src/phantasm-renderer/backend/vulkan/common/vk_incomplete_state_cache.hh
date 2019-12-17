@@ -15,7 +15,7 @@ public:
     /// returns true if the before state is known, or false otherwise
     bool transition_resource(handle::resource res, resource_state after, resource_state& out_before, VkPipelineStageFlags& out_before_dependency)
     {
-        auto const after_dependencies = util::to_pipeline_stage_dependency(after, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+        auto const after_dependencies = util::to_pipeline_stage_dependency(after, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
         for (auto& entry : cache)
         {
