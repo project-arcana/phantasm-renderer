@@ -14,11 +14,6 @@
 #include "pools/shader_view_pool.hh"
 #include "resources/transition_barrier.hh"
 
-namespace
-{
-constexpr VkPipelineStageFlags sc_fallback_all_pipeline_stages = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-}
-
 void pr::backend::vk::command_list_translator::translateCommandList(
     VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)
 {
@@ -194,14 +189,11 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         {
             auto& bound_arg = _bound.shader_args[i];
             auto const& arg = draw.shader_arguments[i];
-            auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
 
             if (arg.constant_buffer != handle::null_resource)
             {
                 if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
                 {
-                    _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
-
                     auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
                                             1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
@@ -213,13 +205,6 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
             {
                 if (arg.shader_view != handle::null_shader_view)
                 {
-                    // touch all contained resources in the state cache
-                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
-                    {
-                        // NOTE: this is pretty inefficient
-                        _state_cache->touch_resource_in_shader(res, arg_vis);
-                    }
-
                     auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
                 }
@@ -273,8 +258,6 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 // Set the CBV / offset if it has changed
                 if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
                 {
-                    _state_cache->touch_resource_in_shader(arg.constant_buffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
                     auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
                                             1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
@@ -286,13 +269,6 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                 // Set the shader view if it has changed
                 if (arg.shader_view != handle::null_shader_view)
                 {
-                    // touch all contained resources in the state cache
-                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
-                    {
-                        // NOTE: this is pretty inefficient
-                        _state_cache->touch_resource_in_shader(res, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-                    }
-
                     VkDescriptorSet sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
                     vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
                 }
@@ -320,26 +296,23 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
     // 1. They must not occur within an active render pass
     // 2. Render passes always expect all render targets to be transitioned to resource_state::render_target
     //    and depth targets to be transitioned to resource_state::depth_write
+    CC_ASSERT(_bound.raw_render_pass == nullptr && "Vulkan resource transitions must not occur during render passes");
 
     barrier_bundle<limits::max_resource_transitions, limits::max_resource_transitions, limits::max_resource_transitions> barriers;
 
     for (auto const& transition : transition_res.transitions)
     {
+        auto const after_dep = util::to_pipeline_stage_dependency(transition.target_state, util::to_pipeline_stage_flags_bitwise(transition.dependant_shaders));
+        CC_ASSERT(after_dep != 0 && "Transition shader dependencies must be specified if transitioning to a CBV/SRV/UAV");
+
         resource_state before;
         VkPipelineStageFlags before_dep;
-        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before, before_dep);
+        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, after_dep, before, before_dep);
 
         if (before_known && before != transition.target_state)
         {
             // The transition is neither the implicit initial one, nor redundant
-
-            // TODO: if the target state requires a pipeline stage in order to resolve
-            // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
-            // there are two ways to fix this:
-            // - defer all barriers requiring shader info until the draw call (where shader views are updated)
-            // - or require an explicit target shader domain in cmd::transition_resources
-
-            state_change const change = state_change(before, transition.target_state, before_dep, sc_fallback_all_pipeline_stages);
+            state_change const change = state_change(before, transition.target_state, before_dep, after_dep);
 
             // NOTE: in both cases we transition the entire resource (all subresources in D3D12 terms),
             // using stored information from the resource pool (img_info / buf_info respectively)
@@ -368,14 +341,12 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
 
     for (auto const& transition : transition_images.transitions)
     {
-        // TODO: if the target state requires a pipeline stage in order to resolve
-        // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
-        // there are two ways to fix this:
-        // - defer all barriers requiring shader info until the draw call (where shader views are updated)
-        // - or require an explicit target shader domain in cmd::transition_resources
+        auto const before_dep
+            = util::to_pipeline_stage_dependency(transition.source_state, util::to_pipeline_stage_flags_bitwise(transition.source_dependencies));
+        auto const after_dep
+            = util::to_pipeline_stage_dependency(transition.target_state, util::to_pipeline_stage_flags_bitwise(transition.target_dependencies));
 
-        state_change const change
-            = state_change(transition.source_state, transition.target_state, sc_fallback_all_pipeline_stages, sc_fallback_all_pipeline_stages);
+        state_change const change = state_change(transition.source_state, transition.target_state, before_dep, after_dep);
 
         CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
         auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);

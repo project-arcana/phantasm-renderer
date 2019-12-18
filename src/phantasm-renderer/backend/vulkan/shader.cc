@@ -25,10 +25,13 @@ namespace
         return "main_hs";
     case pr::backend::shader_domain::geometry:
         return "main_gs";
+
     case pr::backend::shader_domain::compute:
         return "main_cs";
+
+    default:
+        return "main";
     }
-    return "main_ps";
 }
 }
 

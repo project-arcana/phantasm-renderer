@@ -7,7 +7,7 @@ void pr::backend::vk::RenderPassCache::initialize(unsigned max_elements) { mCach
 
 void pr::backend::vk::RenderPassCache::destroy(VkDevice device) { reset(device); }
 
-VkRenderPass pr::backend::vk::RenderPassCache::getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats)
+VkRenderPass pr::backend::vk::RenderPassCache::getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, unsigned num_samples, cc::span<const format> override_rt_formats)
 {
     auto const hash = hashKey(brp, num_samples, override_rt_formats);
 
@@ -29,7 +29,7 @@ void pr::backend::vk::RenderPassCache::reset(VkDevice device)
     mCache.clear();
 }
 
-cc::hash_t pr::backend::vk::RenderPassCache::hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats)
+cc::hash_t pr::backend::vk::RenderPassCache::hashKey(cmd::begin_render_pass const& brp, unsigned num_samples, cc::span<const format> override_rt_formats)
 {
     cc::hash_t res = 0;
     for (uint8_t i = 0u; i < brp.render_targets.size(); ++i)

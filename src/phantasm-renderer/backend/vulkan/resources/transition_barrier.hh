@@ -19,11 +19,8 @@ struct state_change
     VkPipelineStageFlags stages_before;
     VkPipelineStageFlags stages_after;
 
-    explicit state_change(resource_state before, resource_state after, VkPipelineStageFlags shader_stages_before, VkPipelineStageFlags shader_stages_after)
-      : before(before),
-        after(after),
-        stages_before(util::to_pipeline_stage_dependency(before, shader_stages_before)),
-        stages_after(util::to_pipeline_stage_dependency(after, shader_stages_after))
+    explicit state_change(resource_state before, resource_state after, VkPipelineStageFlags before_dep, VkPipelineStageFlags after_dep)
+      : before(before), after(after), stages_before(before_dep), stages_after(after_dep)
     {
     }
 };
@@ -46,6 +43,12 @@ struct stage_dependencies
     {
         stages_before |= util::to_pipeline_stage_dependency(state_before, shader_dep_before);
         stages_after |= util::to_pipeline_stage_dependency(state_after, shader_dep_after);
+    }
+
+    void reset()
+    {
+        stages_before = 0;
+        stages_after = 0;
     }
 };
 
@@ -107,6 +110,14 @@ struct barrier_bundle
     {
         if (!empty())
             submit_barriers(cmd_buf, dependencies, barriers_img, barriers_buf, barriers_mem);
+    }
+
+    void reset()
+    {
+        dependencies.reset();
+        barriers_img.clear();
+        barriers_buf.clear();
+        barriers_mem.clear();
     }
 
     /// Record contained barriers to the given cmd buffer, close it, and submit it on the given queue

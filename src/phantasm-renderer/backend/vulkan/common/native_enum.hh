@@ -49,8 +49,8 @@ namespace pr::backend::vk::util
     case rs::raytrace_accel_struct:
         return VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
 
-    // This does not apply to access flags
     case rs::unknown:
+        CC_ASSERT(false && "unknown state access masks queried");
         return 0;
     }
 }
@@ -90,6 +90,7 @@ namespace pr::backend::vk::util
     case rs::constant_buffer:
     case rs::indirect_argument:
     case rs::raytrace_accel_struct:
+        CC_ASSERT(false && "invalid image layout queried");
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 }
@@ -121,11 +122,44 @@ namespace pr::backend::vk::util
     }
 }
 
+[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_bits::shader_domain_bits_e domain)
+{
+    VkPipelineStageFlags res = 0;
+
+    if (domain & shader_domain_bits::vertex)
+        res |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+
+    if (domain & shader_domain_bits::hull)
+        res |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
+
+    if (domain & shader_domain_bits::domain)
+        res |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+
+    if (domain & shader_domain_bits::geometry)
+        res |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+
+    if (domain & shader_domain_bits::pixel)
+        res |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+
+    if (domain & shader_domain_bits::compute)
+        res |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+
+    if (domain & shader_domain_bits::mask_all_raytrace_stages)
+        res |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
+
+    return res;
+}
+
 [[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, VkPipelineStageFlags shader_flags)
 {
     using rs = resource_state;
     switch (state)
     {
+    case rs::undefined:
+        return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
     case rs::vertex_buffer:
     case rs::index_buffer:
         return VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
@@ -155,9 +189,8 @@ namespace pr::backend::vk::util
     case rs::raytrace_accel_struct:
         return VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV;
 
-    // This does not apply to dependencies, conservatively use ALL_GRAPHICS
-    case rs::undefined:
     case rs::unknown:
+        CC_ASSERT(false && "unknown state queried");
         return VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
     }
 }

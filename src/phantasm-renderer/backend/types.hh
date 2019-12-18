@@ -81,6 +81,9 @@ enum shader_domain_bits_e : uint16_t
     ray_miss = 0x0100,
     ray_closest_hit = 0x0200,
     ray_any_hit = 0x0400,
+
+    mask_all_raytrace_stages = ray_gen | ray_intersect | ray_miss | ray_closest_hit | ray_any_hit,
+    mask_all_graphics_stages = vertex | hull | domain | geometry | pixel,
 };
 }
 

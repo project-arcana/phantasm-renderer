@@ -45,7 +45,7 @@ public:
 
         // info stored which is required for creating render passes
         cc::capped_vector<format, limits::max_render_targets> rt_formats;
-        int num_msaa_samples;
+        unsigned num_msaa_samples;
     };
 
 public:

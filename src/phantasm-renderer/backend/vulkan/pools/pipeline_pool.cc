@@ -61,7 +61,8 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
         for (auto const rtf : framebuffer_format.render_targets)
             new_node.rt_formats.push_back(rtf);
 
-        new_node.num_msaa_samples = primitive_config.samples;
+        CC_ASSERT(primitive_config.samples > 0 && "invalid amount of MSAA samples");
+        new_node.num_msaa_samples = static_cast<unsigned>(primitive_config.samples);
     }
 
     {

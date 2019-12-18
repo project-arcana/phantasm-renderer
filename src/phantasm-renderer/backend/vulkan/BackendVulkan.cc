@@ -17,7 +17,7 @@
 
 namespace
 {
-constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 }
 
 namespace pr::backend::vk
@@ -51,9 +51,9 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     instance_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
     instance_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
-    cc::array<VkValidationFeatureEnableEXT, 2> extended_validation_enables = {
+    cc::array<VkValidationFeatureEnableEXT, 3> extended_validation_enables = {
         VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
-        //                   VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
+        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
     };
     VkValidationFeaturesEXT extended_validation_features = {};
 
@@ -248,7 +248,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
                 auto const master_dep_before = mPoolResources.getResourceStageDependency(entry.ptr);
 
                 // transition to the state required as the initial one
-                state_change const change = state_change(master_before, entry.required_initial, master_dep_before, entry.initial_shader_dependency);
+                state_change const change = state_change(master_before, entry.required_initial, master_dep_before, entry.initial_dependency);
 
                 if (mPoolResources.isImage(entry.ptr))
                 {
@@ -263,7 +263,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
             }
 
             // set the master state to the one in which this resource is left
-            mPoolResources.setResourceState(entry.ptr, entry.current, entry.current_shader_dependency);
+            mPoolResources.setResourceState(entry.ptr, entry.current, entry.current_dependency);
         }
 
         if (!barriers.empty())

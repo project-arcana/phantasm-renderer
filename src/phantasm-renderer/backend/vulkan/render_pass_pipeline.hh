@@ -13,7 +13,7 @@ namespace pr::backend::vk
 {
 [[nodiscard]] VkRenderPass create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, pr::primitive_pipeline_config const& config);
 
-[[nodiscard]] VkRenderPass create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, int num_samples, cc::span<const format> override_rt_formats);
+[[nodiscard]] VkRenderPass create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, unsigned num_samples, cc::span<const format> override_rt_formats);
 
 [[nodiscard]] VkPipeline create_pipeline(VkDevice device,
                                          VkRenderPass render_pass,

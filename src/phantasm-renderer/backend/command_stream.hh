@@ -120,6 +120,7 @@ PR_DEFINE_CMD(transition_resources)
     {
         handle::resource resource;
         resource_state target_state;
+        shader_domain_bits::shader_domain_bits_e dependant_shaders;
     };
 
     cmd_vector<transition_info, limits::max_resource_transitions> transitions;
@@ -127,7 +128,13 @@ PR_DEFINE_CMD(transition_resources)
 public:
     // convenience
 
-    void add(handle::resource res, resource_state target) { transitions.push_back(transition_info{res, target}); }
+    /// add a barrier for resource [res] into new state [target]
+    /// if the target state is a CBV/SRV/UAV, depending_shader
+    /// must be the union of shaders depending upon this resource next (can be omitted on d3d12)
+    void add(handle::resource res, resource_state target, shader_domain_bits::shader_domain_bits_e depending_shader = shader_domain_bits::unspecified)
+    {
+        transitions.push_back(transition_info{res, target, depending_shader});
+    }
 };
 
 PR_DEFINE_CMD(transition_image_slices)
@@ -139,6 +146,8 @@ PR_DEFINE_CMD(transition_image_slices)
         handle::resource resource;
         resource_state source_state;
         resource_state target_state;
+        shader_domain_bits::shader_domain_bits_e source_dependencies;
+        shader_domain_bits::shader_domain_bits_e target_dependencies;
         int mip_level;
         int array_slice;
     };
@@ -148,9 +157,19 @@ PR_DEFINE_CMD(transition_image_slices)
 public:
     // convenience
 
+    /// add a barrier for image [res] subresource at [mip_level] and [array_slice] from state [source] into new state [target]
+    /// if the source/target state is a CBV/SRV/UAV, source/target_dep
+    /// must be the union of shaders {previously accessing the resource (source) / depending upon this resource next (target)}
+    /// (both can be omitted on d3d12)
+    void add(handle::resource res, resource_state source, resource_state target, shader_domain_bits::shader_domain_bits_e source_dep,
+             shader_domain_bits::shader_domain_bits_e target_dep, int level, int slice)
+    {
+        transitions.push_back(slice_transition_info{res, source, target, source_dep, target_dep, level, slice});
+    }
+
     void add(handle::resource res, resource_state source, resource_state target, int level, int slice)
     {
-        transitions.push_back(slice_transition_info{res, source, target, level, slice});
+        add(res, source, target, shader_domain_bits::unspecified, shader_domain_bits::unspecified, level, slice);
     }
 };
 

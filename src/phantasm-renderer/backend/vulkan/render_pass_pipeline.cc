@@ -12,7 +12,7 @@
 
 VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)
 {
-    auto const sample_bits = util::to_native_sample_flags(config.samples);
+    auto const sample_bits = util::to_native_sample_flags(static_cast<unsigned>(config.samples));
 
     VkRenderPass render_pass;
     {
@@ -88,7 +88,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
     return render_pass;
 }
 
-VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, int num_samples, cc::span<const format> override_rt_formats)
+VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, unsigned num_samples, cc::span<const format> override_rt_formats)
 {
     auto const sample_bits = util::to_native_sample_flags(num_samples);
 
@@ -246,7 +246,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     VkPipelineMultisampleStateCreateInfo multisampling = {};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = util::to_native_sample_flags(config.samples);
+    multisampling.rasterizationSamples = util::to_native_sample_flags(static_cast<unsigned>(config.samples));
     multisampling.minSampleShading = 1.0f;          // Optional
     multisampling.pSampleMask = nullptr;            // Optional
     multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
@@ -277,7 +277,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     VkPipelineDynamicStateCreateInfo dynamicState = {};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = dynamicStates.size();
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
