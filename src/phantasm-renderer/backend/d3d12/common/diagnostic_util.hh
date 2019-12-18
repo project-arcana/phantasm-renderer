@@ -2,6 +2,8 @@
 
 #include "d3d12_fwd.hh"
 
+typedef struct RENDERDOC_API_1_4_0 RENDERDOC_API_1_4_0;
+
 namespace pr::backend::d3d12::util
 {
 struct diagnostic_state
@@ -14,7 +16,10 @@ struct diagnostic_state
 
 private:
     IDXGraphicsAnalysis* _pix_handle = nullptr;
-    bool _capture_running = false;
+    RENDERDOC_API_1_4_0* _renderdoc_handle = nullptr;
+
+    bool _pix_capture_running = false;
+    bool _renderdoc_capture_running = false;
 };
 
 void set_pix_marker(ID3D12GraphicsCommandList* cmdlist, UINT64 color, char const* string);

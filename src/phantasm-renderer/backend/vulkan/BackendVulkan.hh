@@ -9,6 +9,7 @@
 #include "loader/volk.hh"
 #include "memory/ResourceAllocator.hh"
 
+#include "common/diagnostic_util.hh"
 #include "pools/cmd_list_pool.hh"
 #include "pools/pipeline_pool.hh"
 #include "pools/resource_pool.hh"
@@ -24,7 +25,7 @@ namespace pr::backend::vk
 class BackendVulkan final : public Backend
 {
 public:
-    void initialize(backend_config const& config, device::Window& window) override;
+    void initialize(backend_config const& config_arg, device::Window& window) override;
     ~BackendVulkan() override;
 
 public:
@@ -155,5 +156,8 @@ public:
     struct per_thread_component;
     cc::array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
+
+    // Misc
+    util::diagnostic_state mDiagnostics;
 };
 }

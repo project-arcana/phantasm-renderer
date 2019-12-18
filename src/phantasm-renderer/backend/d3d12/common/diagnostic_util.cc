@@ -1,6 +1,5 @@
 #include "diagnostic_util.hh"
 
-#include <cstdarg>
 #include <iostream>
 
 // clang-format off
@@ -9,18 +8,30 @@
 #include <WinPixEventRuntime/pix3.h>
 // clang-format on
 
+#include <renderdoc_app/renderdoc_app.h>
+
+#include <phantasm-renderer/backend/detail/renderdoc_loader.hh>
+
 #include "verify.hh"
 
 void pr::backend::d3d12::util::diagnostic_state::init()
 {
+    // PIX
     if (detail::hr_succeeded(::DXGIGetDebugInterface1(0, IID_PPV_ARGS(&_pix_handle))))
     {
-        _capture_running = false;
+        _pix_capture_running = false;
         std::cout << "[pr][backend][d3d12] PIX detected" << std::endl;
     }
     else
     {
         _pix_handle = nullptr;
+    }
+
+    // RenderDoc
+    _renderdoc_handle = backend::detail::load_renderdoc();
+    if (_renderdoc_handle)
+    {
+        std::cout << "[pr][backend][d3d12] RenderDoc detected" << std::endl;
     }
 }
 
@@ -33,6 +44,12 @@ void pr::backend::d3d12::util::diagnostic_state::free()
         _pix_handle->Release();
         _pix_handle = nullptr;
     }
+
+    if (_renderdoc_handle)
+    {
+        // anything to do here?
+        _renderdoc_handle = nullptr;
+    }
 }
 
 bool pr::backend::d3d12::util::diagnostic_state::start_capture()
@@ -41,7 +58,14 @@ bool pr::backend::d3d12::util::diagnostic_state::start_capture()
     {
         std::cout << "[pr][backend][d3d12] starting PIX capture" << std::endl;
         _pix_handle->BeginCapture();
-        _capture_running = true;
+        _pix_capture_running = true;
+        return true;
+    }
+    else if (_renderdoc_handle)
+    {
+        std::cout << "[pr][backend][d3d12] starting RenderDoc capture" << std::endl;
+        _renderdoc_handle->StartFrameCapture(nullptr, nullptr);
+        _renderdoc_capture_running = true;
         return true;
     }
 
@@ -50,11 +74,18 @@ bool pr::backend::d3d12::util::diagnostic_state::start_capture()
 
 bool pr::backend::d3d12::util::diagnostic_state::end_capture()
 {
-    if (_pix_handle && _capture_running)
+    if (_pix_handle && _pix_capture_running)
     {
         std::cout << "[pr][backend][d3d12] ending PIX capture" << std::endl;
         _pix_handle->EndCapture();
-        _capture_running = false;
+        _pix_capture_running = false;
+        return true;
+    }
+    else if (_renderdoc_handle && _renderdoc_capture_running)
+    {
+        std::cout << "[pr][backend][d3d12] ending RenderDoc capture" << std::endl;
+        _renderdoc_handle->EndFrameCapture(nullptr, nullptr);
+        _renderdoc_capture_running = false;
         return true;
     }
 

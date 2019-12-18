@@ -29,9 +29,21 @@ struct BackendVulkan::per_thread_component
 };
 }
 
-void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, device::Window& window)
+void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, device::Window& window)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
+
+    // copy explicitly for modifications
+    backend_config config = config_arg;
+
+    mDiagnostics.init();
+    if (mDiagnostics.is_renderdoc_present() && config.validation >= validation_level::on)
+    {
+        std::cout << "[pr][backend][vk] info: Validation layers requested while running RenderDoc, disabling due to known crashes" << std::endl;
+        config.validation = validation_level::off;
+    }
+
+    auto const active_lay_ext = get_used_instance_lay_ext(get_available_instance_lay_ext(), config);
 
     VkApplicationInfo app_info = {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -41,7 +53,6 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_1;
 
-    auto const active_lay_ext = get_used_instance_lay_ext(get_available_instance_lay_ext(), config);
 
     VkInstanceCreateInfo instance_info = {};
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -128,6 +139,9 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 pr::backend::vk::BackendVulkan::~BackendVulkan()
 {
     flushGPU();
+
+    mDiagnostics.free();
+
     mSwapchain.destroy();
 
     mPoolShaderViews.destroy();
@@ -310,17 +324,9 @@ void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resou
     }
 }
 
-bool pr::backend::vk::BackendVulkan::startForcedDiagnosticCapture()
-{
-    std::cerr << "[pr][backend][vk] diagnostic capture unimplemented " << std::endl;
-    return false;
-}
+bool pr::backend::vk::BackendVulkan::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }
 
-bool pr::backend::vk::BackendVulkan::endForcedDiagnosticCapture()
-{
-    std::cerr << "[pr][backend][vk] diagnostic capture unimplemented " << std::endl;
-    return false;
-}
+bool pr::backend::vk::BackendVulkan::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
 
 void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDevice()); }
 

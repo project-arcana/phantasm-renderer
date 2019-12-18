@@ -47,7 +47,12 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
 
 add_library(phantasm-renderer STATIC ${SOURCES})
 
-target_include_directories(phantasm-renderer PUBLIC src/)
+target_include_directories(phantasm-renderer
+    PUBLIC
+        src/
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/renderdoc_app/include/"
+)
 
 target_link_libraries(phantasm-renderer PUBLIC
     clean-core
