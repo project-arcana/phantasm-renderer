@@ -36,6 +36,8 @@ public:
     /// only valid for resources created with createMappedBuffer
     [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer.map; }
 
+    void flushMappedMemory(handle::resource res);
+
 public:
     struct resource_node
     {

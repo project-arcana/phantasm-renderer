@@ -83,6 +83,10 @@ public:
     /// returns the mapped memory pointer, only valid for handles obtained from createMappedBuffer
     [[nodiscard]] virtual std::byte* getMappedMemory(handle::resource res) = 0;
 
+    /// flushes writes to memory pointers received from getMappedMemory(res),
+    /// making them GPU-visible in any successively submitted command lists
+    virtual void flushMappedMemory(handle::resource res) = 0;
+
     /// destroy a resource
     virtual void free(handle::resource res) = 0;
 

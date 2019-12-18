@@ -179,6 +179,13 @@ void pr::backend::vk::ResourcePool::free(cc::span<const pr::backend::handle::res
     }
 }
 
+void pr::backend::vk::ResourcePool::flushMappedMemory(pr::backend::handle::resource res)
+{
+    auto const& node = internalGet(res);
+    CC_ASSERT(node.type == resource_node::resource_type::buffer && node.buffer.map != nullptr && "given resource is not a mapped buffer");
+    vmaFlushAllocation(mAllocator.getAllocator(), node.allocation, 0, node.buffer.width);
+}
+
 void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources)
 {
     mAllocator.initialize(physical, device);

@@ -71,6 +71,11 @@ public:
 
     [[nodiscard]] std::byte* getMappedMemory(handle::resource res) override { return mPoolResources.getMappedMemory(res); }
 
+    void flushMappedMemory(handle::resource /*res*/) override
+    {
+        // all d3d12 mapped buffers are host coherent, we don't have to do anything here
+    }
+
     void free(handle::resource res) override { mPoolResources.free(res); }
 
     void free_range(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }

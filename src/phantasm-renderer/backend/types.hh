@@ -109,12 +109,19 @@ enum class validation_level : uint8_t
     on,
 
     // D3D12: Whether to additionally enable GPU based validation (slow)
-    // Vulkan: No additional effect
+    //
+    // Vulkan: Whether to additionally enable LunarG GPU-assisted validation
+    //          Slow, and requires a reserved descriptor set. If your device
+    //          only has 8 (max shader args * 2), like an IGP, this could fail
+    //
+    // Extended validation for both APIs can prevent diagnostic tools like
+    // Renderdoc and NSight from working properly (PIX will work though)
     on_extended,
 
     // D3D12: Whether to additionally enable DRED (Device Removed Extended Data)
-    // with automatic breadcrumbs and pagefault recovery (very slow)
-    // see: https://docs.microsoft.com/en-us/windows/win32/direct3d12/use-dred
+    //          with automatic breadcrumbs and pagefault recovery (very slow)
+    //          see: https://docs.microsoft.com/en-us/windows/win32/direct3d12/use-dred
+    //
     // Vulkan: No additional effect
     on_extended_dred
 };
