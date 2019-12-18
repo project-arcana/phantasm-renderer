@@ -108,8 +108,16 @@ namespace pr::backend::vk::util
         return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
     case pr::backend::shader_domain::geometry:
         return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+
     case pr::backend::shader_domain::compute:
         return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+    case pr::backend::shader_domain::ray_gen:
+    case pr::backend::shader_domain::ray_intersect:
+    case pr::backend::shader_domain::ray_miss:
+    case pr::backend::shader_domain::ray_closest_hit:
+    case pr::backend::shader_domain::ray_any_hit:
+        return VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
     }
 }
 
@@ -221,14 +229,26 @@ namespace pr::backend::vk::util
         return VK_SHADER_STAGE_FRAGMENT_BIT;
     case pr::backend::shader_domain::vertex:
         return VK_SHADER_STAGE_VERTEX_BIT;
-    case pr::backend::shader_domain::hull:
-        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
     case pr::backend::shader_domain::domain:
         return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    case pr::backend::shader_domain::hull:
+        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
     case pr::backend::shader_domain::geometry:
         return VK_SHADER_STAGE_GEOMETRY_BIT;
+
     case pr::backend::shader_domain::compute:
         return VK_SHADER_STAGE_COMPUTE_BIT;
+
+    case pr::backend::shader_domain::ray_gen:
+        return VK_SHADER_STAGE_RAYGEN_BIT_NV;
+    case pr::backend::shader_domain::ray_intersect:
+        return VK_SHADER_STAGE_INTERSECTION_BIT_NV;
+    case pr::backend::shader_domain::ray_miss:
+        return VK_SHADER_STAGE_MISS_BIT_NV;
+    case pr::backend::shader_domain::ray_closest_hit:
+        return VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV;
+    case pr::backend::shader_domain::ray_any_hit:
+        return VK_SHADER_STAGE_ANY_HIT_BIT_NV;
     }
 }
 

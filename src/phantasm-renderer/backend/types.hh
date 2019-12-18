@@ -44,13 +44,45 @@ struct shader_argument
 
 enum class shader_domain : uint8_t
 {
-    pixel,
+    // graphics
     vertex,
-    domain,
     hull,
+    domain,
     geometry,
-    compute
+    pixel,
+
+    // compute
+    compute,
+
+    // raytracing
+    ray_gen,
+    ray_intersect,
+    ray_miss,
+    ray_closest_hit,
+    ray_any_hit,
 };
+
+namespace shader_domain_bits
+{
+enum shader_domain_bits_e : uint16_t
+{
+    unspecified = 0x0000,
+
+    vertex = 0x0001,
+    hull = 0x0002,
+    domain = 0x0004,
+    geometry = 0x0008,
+    pixel = 0x0010,
+
+    compute = 0x0020,
+
+    ray_gen = 0x0040,
+    ray_intersect = 0x0080,
+    ray_miss = 0x0100,
+    ray_closest_hit = 0x0200,
+    ray_any_hit = 0x0400,
+};
+}
 
 enum class queue_type : uint8_t
 {
