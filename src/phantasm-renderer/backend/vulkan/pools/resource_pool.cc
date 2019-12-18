@@ -253,7 +253,8 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
         if (buffer_width < 65536)
         {
             // This is a write access to mAllocator descriptors
-            cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout();
+            // TODO: We always use non-compute here
+            cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout(false);
             cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
         }
     }

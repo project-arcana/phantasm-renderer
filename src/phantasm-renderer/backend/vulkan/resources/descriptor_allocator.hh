@@ -22,7 +22,7 @@ public:
     void free(VkDescriptorSet descriptor_set);
 
     // free-threaded
-    [[nodiscard]] VkDescriptorSetLayout createSingleCBVLayout() const;
+    [[nodiscard]] VkDescriptorSetLayout createSingleCBVLayout(bool usage_compute) const;
 
     [[nodiscard]] VkDescriptorSetLayout createLayoutFromShaderViewArgs(cc::span<shader_view_element const> srvs,
                                                                        cc::span<shader_view_element const> uavs,

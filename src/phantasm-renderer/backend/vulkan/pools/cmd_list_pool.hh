@@ -70,7 +70,7 @@ private:
 struct cmd_allocator_node
 {
 public:
-    void initialize(VkDevice device, int num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring);
+    void initialize(VkDevice device, unsigned num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring);
     void destroy(VkDevice device);
 
 public:
@@ -156,7 +156,7 @@ private:
 class CommandAllocatorBundle
 {
 public:
-    void initialize(VkDevice device, int num_allocators, int num_cmdlists_per_allocator, unsigned queue_family_index, FenceRingbuffer* fence_ring);
+    void initialize(VkDevice device, unsigned num_allocators, unsigned num_cmdlists_per_allocator, unsigned queue_family_index, FenceRingbuffer* fence_ring);
     void destroy(VkDevice device);
 
     /// Resets the given command list to use memory by an appropriate allocator
@@ -229,7 +229,7 @@ public:
     }
 
 public:
-    void initialize(BackendVulkan& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
+    void initialize(BackendVulkan& backend, unsigned num_allocators_per_thread, unsigned num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
     void destroy();
 
 private:

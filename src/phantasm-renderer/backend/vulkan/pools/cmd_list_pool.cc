@@ -3,7 +3,7 @@
 #include <phantasm-renderer/backend/detail/flat_map.hh>
 #include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
 
-void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring)
+void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, unsigned num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring)
 {
     _fence_ring = fence_ring;
 
@@ -17,18 +17,18 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
     }
     // allocate buffers
     {
-        _cmd_buffers = _cmd_buffers.uninitialized(unsigned(num_cmd_lists));
+        _cmd_buffers = _cmd_buffers.uninitialized(num_cmd_lists);
 
         VkCommandBufferAllocateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         info.commandPool = _cmd_pool;
         info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        info.commandBufferCount = unsigned(num_cmd_lists);
+        info.commandBufferCount = num_cmd_lists;
 
         PR_VK_VERIFY_SUCCESS(vkAllocateCommandBuffers(device, &info, _cmd_buffers.data()));
     }
 
-    _associated_framebuffers.reserve(static_cast<size_t>(num_cmd_lists * 3));                                       // arbitrary
+    _associated_framebuffers.reserve(num_cmd_lists * 3);                                                            // arbitrary
     _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1)); // num render targets + depthstencil
 
     _latest_fence.store(unsigned(-1));
@@ -226,9 +226,9 @@ void pr::backend::vk::FenceRingbuffer::waitForFence(VkDevice device, unsigned in
 }
 
 void pr::backend::vk::CommandAllocatorBundle::initialize(
-    VkDevice device, int num_allocators, int num_cmdlists_per_allocator, unsigned queue_family_index, pr::backend::vk::FenceRingbuffer* fence_ring)
+    VkDevice device, unsigned num_allocators, unsigned num_cmdlists_per_allocator, unsigned queue_family_index, pr::backend::vk::FenceRingbuffer* fence_ring)
 {
-    mAllocators = mAllocators.defaulted(static_cast<size_t>(num_allocators));
+    mAllocators = mAllocators.defaulted(num_allocators);
     mActiveAllocator = 0u;
 
     for (cmd_allocator_node& alloc_node : mAllocators)
@@ -391,15 +391,15 @@ void pr::backend::vk::CommandListPool::freeOnDiscard(cc::span<const handle::comm
 }
 
 void pr::backend::vk::CommandListPool::initialize(pr::backend::vk::BackendVulkan& backend,
-                                                  int num_allocators_per_thread,
-                                                  int num_cmdlists_per_allocator,
+                                                  unsigned num_allocators_per_thread,
+                                                  unsigned num_cmdlists_per_allocator,
                                                   cc::span<pr::backend::vk::CommandAllocatorBundle*> thread_allocators)
 {
     mDevice = backend.mDevice.getDevice();
 
-    auto const num_cmdlists_per_thread = static_cast<unsigned>(num_allocators_per_thread * num_cmdlists_per_allocator);
+    auto const num_cmdlists_per_thread = num_allocators_per_thread * num_cmdlists_per_allocator;
     auto const num_cmdlists_total = num_cmdlists_per_thread * thread_allocators.size();
-    auto const num_allocators_total = static_cast<unsigned>(num_allocators_per_thread) * static_cast<unsigned>(thread_allocators.size());
+    auto const num_allocators_total = num_allocators_per_thread * static_cast<unsigned>(thread_allocators.size());
 
     mPool.initialize(num_cmdlists_total);
     mFenceRing.initialize(mDevice, num_allocators_total + 5); // arbitrary safety buffer, should never be required

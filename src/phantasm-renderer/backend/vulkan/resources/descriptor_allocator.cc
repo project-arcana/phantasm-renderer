@@ -73,11 +73,11 @@ VkDescriptorSet DescriptorAllocator::allocDescriptor(VkDescriptorSetLayout layou
 
 void DescriptorAllocator::free(VkDescriptorSet descriptor_set) { vkFreeDescriptorSets(mDevice, mPool, 1, &descriptor_set); }
 
-VkDescriptorSetLayout DescriptorAllocator::createSingleCBVLayout() const
+VkDescriptorSetLayout DescriptorAllocator::createSingleCBVLayout(bool usage_compute) const
 {
     // NOTE: Eventually arguments could be constrained to stages
-    // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
-    constexpr auto argument_visibility = VK_SHADER_STAGE_ALL_GRAPHICS;
+    auto const argument_visibility = usage_compute ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS;
+
     cc::capped_vector<VkDescriptorSetLayoutBinding, 1> bindings;
 
     {
@@ -107,7 +107,6 @@ VkDescriptorSetLayout DescriptorAllocator::createLayoutFromShaderViewArgs(cc::sp
                                                                           bool usage_compute) const
 {
     // NOTE: Eventually arguments could be constrained to stages in a more fine-grained manner
-    // See pr::backend::vk::detail::pipeline_layout_params::descriptor_set_params::add_range
     auto const argument_visibility = usage_compute ? VK_SHADER_STAGE_COMPUTE_BIT : VK_SHADER_STAGE_ALL_GRAPHICS;
 
     detail::pipeline_layout_params::descriptor_set_params params;
