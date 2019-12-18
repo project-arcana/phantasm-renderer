@@ -19,10 +19,7 @@ struct state_change
     VkPipelineStageFlags stages_before;
     VkPipelineStageFlags stages_after;
 
-    explicit state_change(resource_state before,
-                          resource_state after,
-                          VkPipelineStageFlags shader_stages_before = VK_PIPELINE_STAGE_HOST_BIT,
-                          VkPipelineStageFlags shader_stages_after = VK_PIPELINE_STAGE_HOST_BIT)
+    explicit state_change(resource_state before, resource_state after, VkPipelineStageFlags shader_stages_before, VkPipelineStageFlags shader_stages_after)
       : before(before),
         after(after),
         stages_before(util::to_pipeline_stage_dependency(before, shader_stages_before)),

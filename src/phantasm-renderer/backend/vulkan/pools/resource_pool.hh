@@ -103,11 +103,8 @@ public:
     // Master state access
     //
 
-    [[nodiscard]] resource_state getResourceState(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).master_state; }
-    [[nodiscard]] VkPipelineStageFlags getResourceStageDependency(handle::resource res) const
-    {
-        return mPool.get(static_cast<unsigned>(res.index)).master_state_dependency;
-    }
+    [[nodiscard]] resource_state getResourceState(handle::resource res) const { return internalGet(res).master_state; }
+    [[nodiscard]] VkPipelineStageFlags getResourceStageDependency(handle::resource res) const { return internalGet(res).master_state_dependency; }
 
     void setResourceState(handle::resource res, resource_state new_state, VkPipelineStageFlags new_state_dep)
     {
@@ -127,17 +124,16 @@ public:
     // the first of either Backend::present or Backend::resize
     //
 
-    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state, VkImageView backbuffer_view);
+    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state, VkImageView backbuffer_view, resource_state& out_prev_state);
 
     [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
 
     [[nodiscard]] VkImageView getBackbufferView() const { return mInjectedBackbufferView; }
 
 private:
-    [[nodiscard]] handle::resource acquireBuffer(
-        VmaAllocation alloc, VkBuffer buffer, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
+    [[nodiscard]] handle::resource acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
-    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, resource_state initial_state, unsigned num_mips, unsigned num_array_layers);
+    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, unsigned num_mips, unsigned num_array_layers);
 
     [[nodiscard]] resource_node const& internalGet(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)); }
     [[nodiscard]] resource_node& internalGet(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)); }

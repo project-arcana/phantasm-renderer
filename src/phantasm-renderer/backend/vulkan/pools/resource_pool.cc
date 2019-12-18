@@ -37,12 +37,9 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
     image_info.mipLevels = mips < 1 ? calculate_num_mip_levels(w, h) : uint32_t(mips);
     image_info.arrayLayers = dim == texture_dimension::t3d ? 1 : depth_or_array_size;
 
-    image_info.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Configurable
+    image_info.samples = VK_SAMPLE_COUNT_1_BIT;
     image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    image_info.queueFamilyIndexCount = 0;
-    image_info.pQueueFamilyIndices = nullptr;
 
     image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
@@ -67,7 +64,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
-    return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
+    return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(pr::backend::format format, unsigned w, unsigned h, unsigned samples)
@@ -82,13 +79,9 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     image_info.extent.depth = 1;
     image_info.mipLevels = 1;
     image_info.arrayLayers = 1;
+
     image_info.samples = util::to_native_sample_flags(samples);
-
-    // only undefined or preinitialized are legal options
-    image_info.initialLayout = util::to_image_layout(resource_state::undefined);
-
-    image_info.queueFamilyIndexCount = 0;
-    image_info.pQueueFamilyIndices = nullptr;
+    image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -106,7 +99,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
-    return acquireImage(res_alloc, res_image, format, resource_state::undefined, image_info.mipLevels, image_info.arrayLayers);
+    return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, pr::backend::resource_state initial_state, unsigned stride_bytes)
@@ -128,7 +121,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsign
     VmaAllocation res_alloc;
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
-    return acquireBuffer(res_alloc, res_buffer, resource_state::undefined, size_bytes, stride_bytes);
+    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
@@ -150,7 +143,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
     CC_ASSERT(res_alloc_info.pMappedData != nullptr);
-    return acquireBuffer(res_alloc, res_buffer, resource_state::undefined, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
+    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
 
 void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
@@ -191,7 +184,13 @@ void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevi
     mAllocator.initialize(physical, device);
     mAllocatorDescriptors.initialize(device, max_num_resources, 0, 0, 0);
     mPool.initialize(max_num_resources + 1); // 1 additional resource for the backbuffer
-    mInjectedBackbufferResource = {static_cast<handle::index_t>(mPool.acquire())};
+
+    {
+        mInjectedBackbufferResource = {static_cast<handle::index_t>(mPool.acquire())};
+        resource_node& backbuffer_node = mPool.get(static_cast<unsigned>(mInjectedBackbufferResource.index));
+        backbuffer_node.type = resource_node::resource_type::image;
+        backbuffer_node.master_state = resource_state::undefined;
+    }
 }
 
 void pr::backend::vk::ResourcePool::destroy()
@@ -214,30 +213,42 @@ void pr::backend::vk::ResourcePool::destroy()
     mAllocatorDescriptors.destroy();
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image, pr::backend::resource_state state, VkImageView backbuffer_view)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image,
+                                                                                      pr::backend::resource_state state,
+                                                                                      VkImageView backbuffer_view,
+                                                                                      pr::backend::resource_state& out_prev_state)
 {
     resource_node& backbuffer_node = mPool.get(static_cast<unsigned>(mInjectedBackbufferResource.index));
-    backbuffer_node.type = resource_node::resource_type::image;
     backbuffer_node.image.raw_image = raw_image;
-    backbuffer_node.master_state = state;
-    backbuffer_node.master_state_dependency = util::to_pipeline_stage_dependency(state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
     mInjectedBackbufferView = backbuffer_view;
+
+    out_prev_state = backbuffer_node.master_state;
+    backbuffer_node.master_state = state;
+    backbuffer_node.master_state_dependency = util::to_pipeline_stage_dependency(state, VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM);
+
+    // This enum value would only be returned if the state is a SRV/UAV/CBV, which is not allowed for backbuffers (in our API, not Vulkan)
+    CC_ASSERT(backbuffer_node.master_state_dependency != VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM && "backbuffer in invalid resource state");
+
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
-    VmaAllocation alloc, VkBuffer buffer, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
-    VkDescriptorSetLayout cbv_desc_set_layout;
-    VkDescriptorSet cbv_desc_set;
+    VkDescriptorSetLayout cbv_desc_set_layout = nullptr;
+    VkDescriptorSet cbv_desc_set = nullptr;
     {
         auto lg = std::lock_guard(mMutex);
+
         // This is a write access to the pool and must be synced
         res = mPool.acquire();
-        // This is a write access to mAllocator descriptors
-        cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout();
-        cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
+
+        if (buffer_width < 65536)
+        {
+            // This is a write access to mAllocator descriptors
+            cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout();
+            cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
+        }
     }
 
     // Perform the initial update to the CBV descriptor set
@@ -264,9 +275,8 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
         write.dstBinding = spv::cbv_binding_start;
 
         vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), 1, &write, 0, nullptr);
+        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
     }
-
-    vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
 
     resource_node& new_node = mPool.get(res);
     new_node.allocation = alloc;
@@ -277,13 +287,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
     new_node.buffer.stride = buffer_stride;
     new_node.buffer.map = buffer_map;
 
-    new_node.master_state = initial_state;
-    new_node.master_state_dependency = util::to_pipeline_stage_dependency(initial_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+    new_node.master_state = resource_state::undefined;
+    new_node.master_state_dependency = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
     return {static_cast<handle::index_t>(res)};
 }
-pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(
-    VmaAllocation alloc, VkImage image, format pixel_format, pr::backend::resource_state initial_state, unsigned num_mips, unsigned num_array_layers)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(VmaAllocation alloc, VkImage image, format pixel_format, unsigned num_mips, unsigned num_array_layers)
 {
     unsigned res;
     {
@@ -299,8 +308,8 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireImage(
     new_node.image.num_mips = num_mips;
     new_node.image.num_array_layers = num_array_layers;
 
-    new_node.master_state = initial_state;
-    new_node.master_state_dependency = util::to_pipeline_stage_dependency(initial_state, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+    new_node.master_state = resource_state::undefined;
+    new_node.master_state_dependency = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
     return {static_cast<handle::index_t>(res)};
 }
@@ -315,7 +324,9 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
     else
     {
         vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer.raw_buffer, node.allocation);
+
         // This does require synchronization
-        mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);
+        if (node.buffer.raw_uniform_dynamic_ds != nullptr)
+            mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);
     }
 }

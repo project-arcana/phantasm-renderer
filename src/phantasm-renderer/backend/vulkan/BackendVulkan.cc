@@ -152,7 +152,8 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
 
 pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer()
 {
-    auto const acquire_success = mSwapchain.waitForBackbuffer();
+    auto const prev_backbuffer_index = mSwapchain.getCurrentBackbufferIndex();
+    bool const acquire_success = mSwapchain.waitForBackbuffer();
 
     if (!acquire_success)
     {
@@ -161,8 +162,12 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
     }
     else
     {
-        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
-                                                       mSwapchain.getCurrentBackbufferView());
+        resource_state prev_state;
+        auto const res = mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
+                                                                 mSwapchain.getCurrentBackbufferView(), prev_state);
+
+        mSwapchain.setBackbufferState(prev_backbuffer_index, prev_state);
+        return res;
     }
 }
 

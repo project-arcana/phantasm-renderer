@@ -28,8 +28,8 @@ void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, int num_cm
         PR_VK_VERIFY_SUCCESS(vkAllocateCommandBuffers(device, &info, _cmd_buffers.data()));
     }
 
-    _associated_framebuffers.reserve(num_cmd_lists * 3); // arbitrary
-    _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1));
+    _associated_framebuffers.reserve(static_cast<size_t>(num_cmd_lists * 3));                                       // arbitrary
+    _associated_framebuffer_image_views.resize(_associated_framebuffers.size() * (limits::max_render_targets + 1)); // num render targets + depthstencil
 
     _latest_fence.store(unsigned(-1));
 }
