@@ -38,25 +38,25 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
 {
     vulkan_gpu_info res;
     res.physical_device = device;
-    res.is_suitable = false;
+    res.is_suitable = true;
 
     // queue capability
     res.queues = get_suitable_queues(device, surface);
     if (res.queues.indices_graphics.empty())
-        return res;
+        res.is_suitable = false;
 
     res.available_layers_extensions = get_available_device_lay_ext(device);
 
     // swapchain extensions
     if (!res.available_layers_extensions.extensions.contains(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
-        return res;
+        res.is_suitable = false;
 
 
     // device properties
     {
         vkGetPhysicalDeviceProperties(device, &res.physical_device_props);
         if (!are_device_properties_sufficient(res.physical_device_props))
-            return res;
+            res.is_suitable = false;
     }
 
     // required features
@@ -65,7 +65,7 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
         vkGetPhysicalDeviceFeatures(device, &supported_features);
 
         if (!supported_features.samplerAnisotropy || !supported_features.geometryShader)
-            return res;
+            res.is_suitable = false;
     }
 
     // present modes and swapchain formats
@@ -73,7 +73,7 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
         uint32_t num_formats;
         vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &num_formats, nullptr);
         if (num_formats == 0)
-            return res;
+            res.is_suitable = false;
 
         res.backbuffer_formats = cc::array<VkSurfaceFormatKHR>::uninitialized(num_formats);
         vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &num_formats, res.backbuffer_formats.data());
@@ -81,7 +81,7 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
         uint32_t num_present_modes;
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &num_present_modes, nullptr);
         if (num_present_modes == 0)
-            return res;
+            res.is_suitable = false;
 
         res.present_modes = cc::array<VkPresentModeKHR>::uninitialized(num_present_modes);
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &num_present_modes, res.present_modes.data());
@@ -93,7 +93,6 @@ pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysical
         vkGetPhysicalDeviceMemoryProperties(device, &res.mem_props);
     }
 
-    res.is_suitable = true;
     return res;
 }
 
