@@ -264,6 +264,15 @@ public:
       : source(src), destination(dest), dest_offset(dest_offset), source_offset(src_offset), size(size)
     {
     }
+
+    void init(handle::resource src, handle::resource dest, size_t size, size_t src_offset = 0, size_t dst_offset = 0)
+    {
+        source = src;
+        destination = dest;
+        this->size = size;
+        source_offset = src_offset;
+        dest_offset = dst_offset;
+    }
 };
 
 PR_DEFINE_CMD(copy_texture)
