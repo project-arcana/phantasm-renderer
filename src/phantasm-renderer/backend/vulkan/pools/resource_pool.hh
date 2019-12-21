@@ -52,8 +52,10 @@ public:
         {
             VkBuffer raw_buffer;
             /// a descriptor set containing a single UNIFORM_BUFFER_DYNAMIC descriptor,
-            /// unconditionally created for all buffers
+            /// unconditionally created for all qualified buffers
             VkDescriptorSet raw_uniform_dynamic_ds;
+            VkDescriptorSet raw_uniform_dynamic_ds_compute;
+
             uint32_t width;
             uint32_t stride; ///< vertex size or index size
             std::byte* map;
@@ -95,6 +97,10 @@ public:
 
     // Raw CBV uniform buffer dynamic descriptor set access
     [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const { return internalGet(res).buffer.raw_uniform_dynamic_ds; }
+    [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSetCompute(handle::resource res) const
+    {
+        return internalGet(res).buffer.raw_uniform_dynamic_ds_compute;
+    }
 
     // Additional information
     [[nodiscard]] bool isImage(handle::resource res) const { return internalGet(res).type == resource_node::resource_type::image; }

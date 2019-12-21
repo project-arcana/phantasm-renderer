@@ -243,7 +243,9 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
 {
     unsigned res;
     VkDescriptorSetLayout cbv_desc_set_layout = nullptr;
+    VkDescriptorSetLayout cbv_desc_set_layout_compute = nullptr;
     VkDescriptorSet cbv_desc_set = nullptr;
+    VkDescriptorSet cbv_desc_set_compute = nullptr;
     {
         auto lg = std::lock_guard(mMutex);
 
@@ -253,9 +255,10 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
         if (buffer_width < 65536)
         {
             // This is a write access to mAllocator descriptors
-            // TODO: We always use non-compute here
             cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout(false);
+            cbv_desc_set_layout_compute = mAllocatorDescriptors.createSingleCBVLayout(true);
             cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
+            cbv_desc_set_compute = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout_compute);
         }
     }
 
@@ -272,18 +275,26 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
         cbv_info.offset = 0;
         cbv_info.range = cc::min(256u, buffer_width);
 
-        VkWriteDescriptorSet write = {};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.pNext = nullptr;
-        write.dstSet = cbv_desc_set;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        write.descriptorCount = 1; // Just one CBV
-        write.pBufferInfo = &cbv_info;
-        write.dstArrayElement = 0;
-        write.dstBinding = spv::cbv_binding_start;
+        cc::capped_vector<VkWriteDescriptorSet, 2> writes;
+        {
+            auto& write = writes.emplace_back();
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.pNext = nullptr;
+            write.dstSet = cbv_desc_set;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+            write.descriptorCount = 1; // Just one CBV
+            write.pBufferInfo = &cbv_info;
+            write.dstArrayElement = 0;
+            write.dstBinding = spv::cbv_binding_start;
 
-        vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), 1, &write, 0, nullptr);
+            // same thinga again, for the compute desc set
+            writes.push_back(write);
+            writes.back().dstSet = cbv_desc_set_compute;
+        }
+
+        vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
         vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
+        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout_compute, nullptr);
     }
 
     resource_node& new_node = mPool.get(res);
@@ -291,6 +302,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
     new_node.type = resource_node::resource_type::buffer;
     new_node.buffer.raw_buffer = buffer;
     new_node.buffer.raw_uniform_dynamic_ds = cbv_desc_set;
+    new_node.buffer.raw_uniform_dynamic_ds_compute = cbv_desc_set_compute;
     new_node.buffer.width = buffer_width;
     new_node.buffer.stride = buffer_stride;
     new_node.buffer.map = buffer_map;
@@ -335,6 +347,9 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
 
         // This does require synchronization
         if (node.buffer.raw_uniform_dynamic_ds != nullptr)
+        {
             mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds);
+            mAllocatorDescriptors.free(node.buffer.raw_uniform_dynamic_ds_compute);
+        }
     }
 }
