@@ -137,11 +137,21 @@ D3D12_SHADER_RESOURCE_VIEW_DESC pr::backend::d3d12::util::create_srv_desc(const 
 D3D12_UNORDERED_ACCESS_VIEW_DESC pr::backend::d3d12::util::create_uav_desc(const pr::backend::shader_view_element& sve)
 {
     D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
-    uav_desc.Format = util::to_dxgi_format(sve.pixel_format);
     uav_desc.ViewDimension = util::to_native_uav_dim(sve.dimension);
     CC_ASSERT(uav_desc.ViewDimension != D3D12_UAV_DIMENSION_UNKNOWN && "Invalid UAV dimension");
 
     using svd = shader_view_dimension;
+    switch (sve.dimension)
+    {
+    case svd::buffer:
+    case svd::raytracing_accel_struct:
+        uav_desc.Format = DXGI_FORMAT_UNKNOWN;
+        break;
+    default:
+        uav_desc.Format = util::to_dxgi_format(sve.pixel_format);
+        break;
+    }
+
     switch (sve.dimension)
     {
     case svd::buffer:
