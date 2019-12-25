@@ -75,7 +75,7 @@ public:
     [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples = 1) = 0;
 
     /// create a buffer, with an element stride if its an index or vertex buffer
-    [[nodiscard]] virtual handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) = 0;
+    [[nodiscard]] virtual handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes = 0, bool allow_uav = false) = 0;
 
     /// create a mapped buffer for data uploads, with an element stride if its an index or vertex buffer
     [[nodiscard]] virtual handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) = 0;

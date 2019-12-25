@@ -59,9 +59,9 @@ public:
         return mPoolResources.createRenderTarget(format, w, h, samples);
     }
 
-    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) override
+    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav) override
     {
-        return mPoolResources.createBuffer(size_bytes, initial_state, stride_bytes);
+        return mPoolResources.createBuffer(size_bytes, stride_bytes, allow_uav);
     }
 
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) override

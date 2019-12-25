@@ -25,7 +25,7 @@ public:
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
-    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);
+    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav);
 
     /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
