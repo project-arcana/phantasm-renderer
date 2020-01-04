@@ -117,7 +117,7 @@ public:
     //
 
     [[nodiscard]] handle::command_list recordCommandList(std::byte* buffer, size_t size) override;
-    void discard(cc::span<handle::command_list const> cls) override { mPoolCmdLists.freeOnDiscard(cls); }
+    void discard(cc::span<handle::command_list const> cls) override { mPoolCmdLists.freeAndDiscard(cls); }
     void submit(cc::span<handle::command_list const> cls) override;
 
     //

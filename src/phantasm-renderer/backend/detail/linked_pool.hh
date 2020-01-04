@@ -4,6 +4,7 @@
 
 #include <clean-core/array.hh>
 #include <clean-core/new.hh>
+#include <clean-core/vector.hh>
 
 namespace pr::backend::detail
 {
@@ -84,28 +85,22 @@ struct linked_pool
     [[nodiscard]] bool is_full() const { return _first_free_node == nullptr; }
 
     /// pass a lambda that is called with a T& of each allocated node
-    /// This operation is extremely slow and should not occur in normal operation
+    /// acquire and release CAN be called from within the lambda
+    /// This operation is slow (n squared) and should not occur in normal operation
     template <class F>
     void iterate_allocated_nodes(F&& func)
     {
-        cc::array<size_t> free_indices(_pool_size);
-        size_t num_free_indices = 0;
+        auto const free_indices = get_free_node_indices();
 
-        T* cursor = _first_free_node;
-        while (cursor != nullptr)
-        {
-            free_indices[num_free_indices++] = (cursor - _pool);
-            cursor = *reinterpret_cast<T**>(cursor);
-        }
+        // NOTE: this could be sped up with a sort
 
-        // NOTE: this could be sped up significantly with a sort
-
-        for (auto i = 0u; i < _pool_size; ++i)
+        for (index_t i = 0u; i < _pool_size; ++i)
         {
             bool is_index_free = false;
-            for (auto j = 0u; j < num_free_indices; ++j)
+
+            for (auto const free_i : free_indices)
             {
-                if (i == free_indices[j])
+                if (free_i == i)
                 {
                     is_index_free = true;
                     break;
@@ -114,12 +109,27 @@ struct linked_pool
 
             if (!is_index_free)
             {
-                func(_pool[i]);
+                func(_pool[i], i);
             }
         }
     }
 
 private:
+    [[nodiscard]] cc::vector<index_t> get_free_node_indices() const
+    {
+        cc::vector<index_t> free_indices;
+        free_indices.reserve(_pool_size);
+
+        T* cursor = _first_free_node;
+        while (cursor != nullptr)
+        {
+            free_indices.push_back(static_cast<index_t>(cursor - _pool));
+            cursor = *reinterpret_cast<T**>(cursor);
+        }
+
+        return free_indices;
+    }
+
     T* _first_free_node = nullptr;
     T* _pool = nullptr;
     size_t _pool_size = 0;

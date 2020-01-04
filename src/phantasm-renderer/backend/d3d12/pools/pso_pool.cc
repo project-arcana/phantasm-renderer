@@ -88,7 +88,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 void pr::backend::d3d12::PipelineStateObjectPool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](pso_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](pso_node& leaked_node, unsigned) {
         ++num_leaks;
         leaked_node.raw_pso->Release();
     });

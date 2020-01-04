@@ -204,7 +204,7 @@ void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevi
 void pr::backend::vk::ResourcePool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](resource_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](resource_node& leaked_node, unsigned) {
         if (leaked_node.allocation != nullptr)
         {
             ++num_leaks;

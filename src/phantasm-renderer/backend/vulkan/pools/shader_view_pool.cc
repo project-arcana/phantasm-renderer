@@ -220,7 +220,7 @@ void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* 
 void pr::backend::vk::ShaderViewPool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node, unsigned) {
         ++num_leaks;
 
         internalFree(leaked_node);

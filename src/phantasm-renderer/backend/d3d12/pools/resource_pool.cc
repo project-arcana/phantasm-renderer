@@ -39,7 +39,7 @@ void pr::backend::d3d12::ResourcePool::initialize(ID3D12Device& device, unsigned
 void pr::backend::d3d12::ResourcePool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](resource_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](resource_node& leaked_node, unsigned) {
         if (leaked_node.allocation != nullptr)
         {
             ++num_leaks;

@@ -157,7 +157,7 @@ void pr::backend::vk::PipelinePool::initialize(VkDevice device, unsigned max_num
 void pr::backend::vk::PipelinePool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](pso_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](pso_node& leaked_node, unsigned) {
         ++num_leaks;
         vkDestroyPipeline(mDevice, leaked_node.raw_pipeline, nullptr);
     });

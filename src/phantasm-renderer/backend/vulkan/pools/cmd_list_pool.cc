@@ -1,5 +1,7 @@
 #include "cmd_list_pool.hh"
 
+#include <iostream>
+
 #include <phantasm-renderer/backend/detail/flat_map.hh>
 #include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
 
@@ -376,7 +378,7 @@ void pr::backend::vk::CommandListPool::freeOnSubmit(cc::span<const cc::span<cons
     }
 }
 
-void pr::backend::vk::CommandListPool::freeOnDiscard(cc::span<const handle::command_list> cls)
+void pr::backend::vk::CommandListPool::freeAndDiscard(cc::span<const handle::command_list> cls)
 {
     auto lg = std::lock_guard(mMutex);
 
@@ -388,6 +390,20 @@ void pr::backend::vk::CommandListPool::freeOnDiscard(cc::span<const handle::comm
             mPool.release(static_cast<unsigned>(cl.index));
         }
     }
+}
+
+unsigned pr::backend::vk::CommandListPool::discardAndFreeAll()
+{
+    auto lg = std::lock_guard(mMutex);
+
+    auto num_freed = 0u;
+    mPool.iterate_allocated_nodes([&](cmd_list_node& leaked_node, unsigned index) {
+        ++num_freed;
+        leaked_node.responsible_allocator->on_discard();
+        mPool.release(index);
+    });
+
+    return num_freed;
 }
 
 void pr::backend::vk::CommandListPool::initialize(pr::backend::vk::BackendVulkan& backend,
@@ -415,4 +431,13 @@ void pr::backend::vk::CommandListPool::initialize(pr::backend::vk::BackendVulkan
     backend.flushGPU();
 }
 
-void pr::backend::vk::CommandListPool::destroy() { mFenceRing.destroy(mDevice); }
+void pr::backend::vk::CommandListPool::destroy()
+{
+    auto const num_leaks = discardAndFreeAll();
+    if (num_leaks > 0)
+    {
+        std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::command_list object" << (num_leaks == 1 ? "" : "s") << std::endl;
+    }
+
+    mFenceRing.destroy(mDevice);
+}
