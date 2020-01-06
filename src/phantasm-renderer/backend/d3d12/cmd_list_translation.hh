@@ -9,7 +9,9 @@
 
 namespace pr::backend::detail
 {
-struct incomplete_state_cache;
+template <class StateT>
+struct generic_incomplete_state_cache;
+using incomplete_state_cache = generic_incomplete_state_cache<resource_state>;
 }
 
 namespace pr::backend::d3d12

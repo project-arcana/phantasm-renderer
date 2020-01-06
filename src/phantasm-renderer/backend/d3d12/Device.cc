@@ -1,10 +1,28 @@
 #include "Device.hh"
 
+#include <iostream>
+
 #include "common/d3d12_sanitized.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend_config& config)
 {
+    if (config.validation >= validation_level::on_extended_dred)
+    {
+        auto const hr = D3D12GetDebugInterface(PR_COM_WRITE(mDREDSettings));
+
+        if (detail::hr_succeeded(hr))
+        {
+            mDREDSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            mDREDSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+            // mDREDSettings->SetWatsonDumpEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+        }
+        else
+        {
+            std::cout << "[pr][backend[d3d12] warning: failed to enable DRED" << std::endl;
+        }
+    }
+
     PR_D3D12_VERIFY(::D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, PR_COM_WRITE(mDevice)));
 
     // Capability checks

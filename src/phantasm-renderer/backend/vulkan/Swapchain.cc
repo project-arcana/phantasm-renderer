@@ -2,16 +2,16 @@
 
 #include "Device.hh"
 #include "common/verify.hh"
-#include "common/zero_struct.hh"
 #include "gpu_choice_util.hh"
 
-void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h)
+void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, present_mode sync)
 {
     mSurface = surface;
     mDevice = device.getDevice();
     mPhysicalDevice = device.getPhysicalDevice();
     mPresentQueue = device.getQueueGraphics();
-    mBackbufferSize = tg::ivec2(-1, -1);
+    mBackbufferSize = tg::isize2(-1, -1);
+    mSyncMode = sync;
 
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
 
@@ -59,8 +59,8 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
         }
         // create fence
         {
-            VkFenceCreateInfo fence_info;
-            zero_info_struct(fence_info, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO);
+            VkFenceCreateInfo fence_info = {};
+            fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
             fence_info.pNext = nullptr;
             fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
@@ -68,8 +68,8 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
         }
         // create semaphores
         {
-            VkSemaphoreCreateInfo sem_info;
-            zero_info_struct(sem_info, VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO);
+            VkSemaphoreCreateInfo sem_info = {};
+            sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
             sem_info.pNext = nullptr;
             sem_info.flags = 0;
 
@@ -145,7 +145,7 @@ void pr::backend::vk::Swapchain::onResize(int width_hint, int height_hint)
     createSwapchain(width_hint, height_hint);
 }
 
-void pr::backend::vk::Swapchain::present()
+bool pr::backend::vk::Swapchain::present()
 {
     VkPresentInfoKHR present = {};
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -162,7 +162,7 @@ void pr::backend::vk::Swapchain::present()
     if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR)
     {
         onResize(0, 0);
-        return;
+        return false;
     }
     else
     {
@@ -174,11 +174,12 @@ void pr::backend::vk::Swapchain::present()
         mActiveFenceIndex -= mBackbuffers.size();
 
     vkWaitForFences(mDevice, 1, &mBackbuffers[mActiveFenceIndex].fence_command_buf_executed, VK_TRUE, UINT64_MAX);
+    return true;
 }
 
 bool pr::backend::vk::Swapchain::waitForBackbuffer()
 {
-    auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, VK_NULL_HANDLE, &mActiveImageIndex);
+    auto const res = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mBackbuffers[mActiveFenceIndex].sem_image_available, nullptr, &mActiveImageIndex);
 
     if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
     {
@@ -201,8 +202,8 @@ void pr::backend::vk::Swapchain::performPresentSubmit()
 
     VkPipelineStageFlags submitWaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkSubmitInfo submit_info;
-    zero_info_struct(submit_info, VK_STRUCTURE_TYPE_SUBMIT_INFO);
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext = nullptr;
     submit_info.pWaitDstStageMask = &submitWaitStage;
 
@@ -222,13 +223,13 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
     auto const surface_capabilities = get_surface_capabilities(mPhysicalDevice, mSurface);
     auto const present_format_info = get_backbuffer_information(mPhysicalDevice, mSurface);
     auto const new_extent = get_swap_extent(surface_capabilities, VkExtent2D{unsigned(width_hint), unsigned(height_hint)});
-    mBackbufferSize = tg::ivec2{int(new_extent.width), int(new_extent.height)};
+    mBackbufferSize = tg::isize2{int(new_extent.width), int(new_extent.height)};
     mBackbufferHasResized = true;
 
     // Create swapchain
     {
-        VkSwapchainCreateInfoKHR swapchain_info;
-        zero_info_struct(swapchain_info, VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
+        VkSwapchainCreateInfoKHR swapchain_info = {};
+        swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchain_info.surface = mSurface;
         swapchain_info.imageFormat = mBackbufferFormat.format;
         swapchain_info.imageColorSpace = mBackbufferFormat.colorSpace;
@@ -244,10 +245,10 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
 
         swapchain_info.preTransform = choose_identity_transform(surface_capabilities);
         swapchain_info.compositeAlpha = choose_alpha_mode(surface_capabilities);
-        swapchain_info.presentMode = choose_present_mode(present_format_info.present_modes, true);
+        swapchain_info.presentMode = choose_present_mode(present_format_info.present_modes, mSyncMode);
 
         swapchain_info.clipped = true;
-        swapchain_info.oldSwapchain = VK_NULL_HANDLE;
+        swapchain_info.oldSwapchain = nullptr;
 
         PR_VK_VERIFY_SUCCESS(vkCreateSwapchainKHR(mDevice, &swapchain_info, nullptr, &mSwapchain));
     }
@@ -270,10 +271,12 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
         // Image
         backbuffer.image = backbuffer_images[i];
 
+        backbuffer.state = resource_state::undefined;
+
         // RTV
         {
-            VkImageViewCreateInfo info;
-            zero_info_struct(info, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO);
+            VkImageViewCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             info.image = backbuffer.image;
             info.viewType = VK_IMAGE_VIEW_TYPE_2D;
             info.format = mBackbufferFormat.format;
@@ -294,8 +297,8 @@ void pr::backend::vk::Swapchain::createSwapchain(int width_hint, int height_hint
             VkImageView attachments[] = {backbuffer.view};
 
 
-            VkFramebufferCreateInfo fb_info;
-            zero_info_struct(fb_info, VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
+            VkFramebufferCreateInfo fb_info = {};
+            fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             fb_info.pNext = nullptr;
             fb_info.renderPass = mRenderPass;
             fb_info.attachmentCount = 1;

@@ -1,10 +1,11 @@
 #pragma once
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
+
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
-#include <phantasm-renderer/backend/types.hh>
-#include <phantasm-renderer/primitive_pipeline_config.hh>
+#include <phantasm-renderer/backend/fwd.hh>
 
 namespace pr::backend
 {
@@ -18,14 +19,46 @@ public:
     Backend& operator=(Backend&&) = delete;
     virtual ~Backend() = default;
 
+    virtual void initialize(backend_config const& config, device::Window& window) = 0;
+
+    virtual void flushGPU() = 0;
+
     //
     // Swapchain interface
     //
 
+    /// acquires a resource handle for use as a render target
+    /// if the returned handle is handle::null_resource, the current frame must be discarded
+    /// can cause an internal resize
     [[nodiscard]] virtual handle::resource acquireBackbuffer() = 0;
-    [[nodiscard]] virtual tg::ivec2 getBackbufferSize() = 0;
-    virtual void resize(int w, int h) = 0;
+
+    /// attempts to present,
+    /// can fail and cause an internal resize
     virtual void present() = 0;
+
+    /// causes an internal resize
+    virtual void onResize(tg::isize2 size) = 0;
+
+    /// gets the current backbuffer size
+    [[nodiscard]] virtual tg::isize2 getBackbufferSize() const = 0;
+
+    /// gets the backbuffer pixel format
+    [[nodiscard]] virtual format getBackbufferFormat() const = 0;
+
+    /// Clears pending internal resize events, returns true if the
+    /// backbuffer has resized since the last call
+    [[nodiscard]] bool clearPendingResize()
+    {
+        if (mHasResized)
+        {
+            mHasResized = false;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     //
     // Resource interface
@@ -35,7 +68,7 @@ public:
     [[nodiscard]] virtual handle::resource createTexture2D(backend::format format, int w, int h, int mips) = 0;
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, int w, int h) = 0;
+    [[nodiscard]] virtual handle::resource createRenderTarget(backend::format format, int w, int h, int samples = 1) = 0;
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] virtual handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0) = 0;
@@ -51,7 +84,10 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs = {}) = 0;
+    [[nodiscard]] virtual handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
+                                                               cc::span<shader_view_element const> uavs,
+                                                               cc::span<sampler_config const> samplers)
+        = 0;
 
     virtual void free(handle::shader_view sv) = 0;
 
@@ -78,9 +114,18 @@ public:
 
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
+    //
+    // Debug interface
+    //
+
+    virtual void printInformation(handle::resource res) const = 0;
+
 protected:
     Backend() = default;
 
+    void onInternalResize() { mHasResized = true; }
+
 private:
+    bool mHasResized = true;
 };
 }

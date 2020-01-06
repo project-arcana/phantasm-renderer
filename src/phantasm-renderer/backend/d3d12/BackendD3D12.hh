@@ -25,20 +25,28 @@ namespace pr::backend::d3d12
 class BackendD3D12 final : public Backend
 {
 public:
-    void initialize(backend_config const& config, device::Window& window);
+    void initialize(backend_config const& config, device::Window& window) override;
     ~BackendD3D12() override;
 
 public:
     // Virtual interface
+
+    /// flush all pending work on the GPU
+    void flushGPU() override;
 
     //
     // Swapchain interface
     //
 
     [[nodiscard]] handle::resource acquireBackbuffer() override;
-    [[nodiscard]] tg::ivec2 getBackbufferSize() override { return mSwapchain.getBackbufferSize(); }
-    void resize(int w, int h) override { mSwapchain.onResize(w, h); }
+
     void present() override { mSwapchain.present(); }
+
+    void onResize(tg::isize2 size) override;
+
+    [[nodiscard]] tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
+    [[nodiscard]] format getBackbufferFormat() const override;
+
 
     //
     // Resource interface
@@ -51,9 +59,9 @@ public:
     }
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h) override
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples) override
     {
-        return mPoolResources.createRenderTarget(format, w, h);
+        return mPoolResources.createRenderTarget(format, w, h, samples);
     }
 
     /// create a buffer, with an element stride if its an index or vertex buffer
@@ -76,9 +84,11 @@ public:
     // Shader view interface
     //
 
-    [[nodiscard]] handle::shader_view createShaderView(cc::span<handle::resource> srvs, cc::span<handle::resource> uavs = {}) override
+    [[nodiscard]] handle::shader_view createShaderView(cc::span<shader_view_element const> srvs,
+                                                       cc::span<shader_view_element const> uavs,
+                                                       cc::span<sampler_config const> samplers) override
     {
-        return mPoolShaderViews.create(srvs, uavs);
+        return mPoolShaderViews.create(srvs, uavs, samplers);
     }
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }
@@ -108,14 +118,18 @@ public:
 
     void submit(cc::span<handle::command_list const> cls) override;
 
+    //
+    // Debug interface
+    //
+
+    void printInformation(handle::resource res) const override{};
+
 public:
     // backend-internal
 
     [[nodiscard]] ID3D12Device& getDevice() { return mDevice.getDevice(); }
     [[nodiscard]] ID3D12CommandQueue& getDirectQueue() { return mGraphicsQueue.getQueue(); }
 
-    /// flush all pending work on the GPU
-    void flushGPU();
 
 private:
     // Core components
@@ -134,6 +148,7 @@ private:
     struct per_thread_component;
     cc::array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
+
 private:
 };
 }

@@ -135,4 +135,249 @@ namespace pr::backend::d3d12::util
     }
 }
 
+[[nodiscard]] inline constexpr D3D12_SRV_DIMENSION to_native_srv_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::buffer:
+        return D3D12_SRV_DIMENSION_BUFFER;
+    case shader_view_dimension::texture1d:
+        return D3D12_SRV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_SRV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_ms:
+        return D3D12_SRV_DIMENSION_TEXTURE2DMS;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture2d_ms_array:
+        return D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+    case shader_view_dimension::texture3d:
+        return D3D12_SRV_DIMENSION_TEXTURE3D;
+    case shader_view_dimension::texturecube:
+        return D3D12_SRV_DIMENSION_TEXTURECUBE;
+    case shader_view_dimension::texturecube_array:
+        return D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+    case shader_view_dimension::raytracing_accel_struct:
+        return D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_UAV_DIMENSION to_native_uav_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::buffer:
+        return D3D12_UAV_DIMENSION_BUFFER;
+    case shader_view_dimension::texture1d:
+        return D3D12_UAV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_UAV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture3d:
+        return D3D12_UAV_DIMENSION_TEXTURE3D;
+    default:
+        return D3D12_UAV_DIMENSION_UNKNOWN;
+    }
+}
+
+[[nodiscard]] inline constexpr bool is_valid_as_uav_dim(shader_view_dimension sv_dim)
+{
+    return to_native_uav_dim(sv_dim) != D3D12_UAV_DIMENSION_UNKNOWN;
+}
+
+[[nodiscard]] inline constexpr D3D12_RTV_DIMENSION to_native_rtv_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::buffer:
+        return D3D12_RTV_DIMENSION_BUFFER;
+    case shader_view_dimension::texture1d:
+        return D3D12_RTV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_RTV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_ms:
+        return D3D12_RTV_DIMENSION_TEXTURE2DMS;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture2d_ms_array:
+        return D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+    case shader_view_dimension::texture3d:
+        return D3D12_RTV_DIMENSION_TEXTURE3D;
+    default:
+        return D3D12_RTV_DIMENSION_UNKNOWN;
+    }
+}
+
+[[nodiscard]] inline constexpr bool is_valid_as_rtv_dim(shader_view_dimension sv_dim)
+{
+    return to_native_rtv_dim(sv_dim) != D3D12_RTV_DIMENSION_UNKNOWN;
+}
+
+[[nodiscard]] inline constexpr D3D12_DSV_DIMENSION to_native_dsv_dim(shader_view_dimension sv_dim)
+{
+    switch (sv_dim)
+    {
+    case shader_view_dimension::texture1d:
+        return D3D12_DSV_DIMENSION_TEXTURE1D;
+    case shader_view_dimension::texture1d_array:
+        return D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+    case shader_view_dimension::texture2d:
+        return D3D12_DSV_DIMENSION_TEXTURE2D;
+    case shader_view_dimension::texture2d_ms:
+        return D3D12_DSV_DIMENSION_TEXTURE2DMS;
+    case shader_view_dimension::texture2d_array:
+        return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+    case shader_view_dimension::texture2d_ms_array:
+        return D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+    default:
+        return D3D12_DSV_DIMENSION_UNKNOWN;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_FILTER to_native(sampler_filter filter, bool with_compare)
+{
+    if (with_compare)
+    {
+        switch (filter)
+        {
+        case sampler_filter::min_mag_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+        case sampler_filter::min_point_mag_linear_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_linear_mag_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+        case sampler_filter::min_mag_linear_mip_point:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_point_mag_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+        case sampler_filter::min_linear_mag_point_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_point_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_mip_linear:
+            return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+        case sampler_filter::anisotropic:
+            return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+        }
+    }
+    else
+    {
+        switch (filter)
+        {
+        case sampler_filter::min_mag_mip_point:
+            return D3D12_FILTER_MIN_MAG_MIP_POINT;
+        case sampler_filter::min_point_mag_linear_mip_point:
+            return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_linear_mag_mip_point:
+            return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+        case sampler_filter::min_mag_linear_mip_point:
+            return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        case sampler_filter::min_point_mag_mip_linear:
+            return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+        case sampler_filter::min_linear_mag_point_mip_linear:
+            return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_point_mip_linear:
+            return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+        case sampler_filter::min_mag_mip_linear:
+            return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        case sampler_filter::anisotropic:
+            return D3D12_FILTER_ANISOTROPIC;
+        }
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_TEXTURE_ADDRESS_MODE to_native(sampler_address_mode mode)
+{
+    switch (mode)
+    {
+    case sampler_address_mode::wrap:
+        return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    case sampler_address_mode::clamp:
+        return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    case sampler_address_mode::clamp_border:
+        return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+    case sampler_address_mode::mirror:
+        return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(sampler_compare_func mode)
+{
+    switch (mode)
+    {
+    case sampler_compare_func::never:
+    case sampler_compare_func::disabled:
+        return D3D12_COMPARISON_FUNC_NEVER;
+    case sampler_compare_func::less:
+        return D3D12_COMPARISON_FUNC_LESS;
+    case sampler_compare_func::equal:
+        return D3D12_COMPARISON_FUNC_EQUAL;
+    case sampler_compare_func::less_equal:
+        return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    case sampler_compare_func::greater:
+        return D3D12_COMPARISON_FUNC_GREATER;
+    case sampler_compare_func::not_equal:
+        return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+    case sampler_compare_func::greater_equal:
+        return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+    case sampler_compare_func::always:
+        return D3D12_COMPARISON_FUNC_ALWAYS;
+    }
+}
+
+[[nodiscard]] inline constexpr D3D12_STATIC_BORDER_COLOR to_native(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+        return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+    }
+}
+
+
+[[nodiscard]] inline constexpr float to_opaque_border_color(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+        return 0.f;
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return 1.f;
+    }
+}
+
+[[nodiscard]] inline constexpr float to_border_color_alpha(sampler_border_color color)
+{
+    switch (color)
+    {
+    case sampler_border_color::black_transparent_float:
+    case sampler_border_color::black_transparent_int:
+        return 0.f;
+    case sampler_border_color::black_float:
+    case sampler_border_color::black_int:
+    case sampler_border_color::white_float:
+    case sampler_border_color::white_int:
+        return 1.f;
+    }
+}
+
+
 }

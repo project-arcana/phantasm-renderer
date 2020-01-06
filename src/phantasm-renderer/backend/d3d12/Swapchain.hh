@@ -2,7 +2,9 @@
 
 #include <clean-core/capped_array.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
+
+#include <phantasm-renderer/backend/types.hh>
 
 #include "common/d3d12_sanitized.hh"
 #include "common/shared_com_ptr.hh"
@@ -21,9 +23,10 @@ public:
     Swapchain& operator=(Swapchain const&) = delete;
     Swapchain& operator=(Swapchain&&) noexcept = delete;
 
-    void initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers);
+    void initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers, present_mode present_mode);
+    ~Swapchain();
 
-    void onResize(int width, int height);
+    void onResize(tg::isize2 size);
     void setFullscreen(bool fullscreen);
 
     /// call swapchain->Present(0, 0) and issue the fence
@@ -42,7 +45,7 @@ public:
     };
 
     [[nodiscard]] DXGI_FORMAT getBackbufferFormat() const;
-    [[nodiscard]] tg::ivec2 const& getBackbufferSize() const { return mBackbufferSize; }
+    [[nodiscard]] tg::isize2 const& getBackbufferSize() const { return mBackbufferSize; }
 
     [[nodiscard]] backbuffer const& getBackbuffer(unsigned i) const { return mBackbuffers[i]; }
 
@@ -58,6 +61,9 @@ private:
     /// recreate RTVs, re-query resource pointers, reset state to present
     void updateBackbuffers();
 
+    void releaseBackbuffers();
+
+private:
     static auto constexpr max_num_backbuffers = 6u;
 
     shared_com_ptr<ID3D12Device> mParentDevice;            ///< The parent device
@@ -68,7 +74,8 @@ private:
 
     cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers; ///< All backbuffers
 
-    tg::ivec2 mBackbufferSize;
+    tg::isize2 mBackbufferSize;
+    present_mode mPresentMode;
 };
 
 }

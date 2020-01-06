@@ -69,4 +69,6 @@ template <class FragmentT, class BoundResourceList = empty_resource_list>
 class Pass;
 template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
 class PrimitivePipeline;
+
+struct primitive_pipeline_config;
 }

@@ -2,19 +2,21 @@
 
 #include <clean-core/capped_array.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
+
+#include <phantasm-renderer/backend/types.hh>
 
 #include "loader/volk.hh"
 
 namespace pr::backend::vk
 {
 class Device;
-struct gpu_information;
+struct vulkan_gpu_info;
 
 class Swapchain
 {
 public:
-    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h);
+    void initialize(Device const& device, VkSurfaceKHR surface, unsigned num_backbuffers, int w, int h, present_mode sync);
 
     void destroy();
 
@@ -28,7 +30,8 @@ public:
 
     /// present the active backbuffer to the screen
     /// can trigger a resize instead of presenting if the swapchain is stale
-    void present();
+    /// returns true on a successful present, false if a resize occured instead
+    bool present();
 
     /// wait for the next backbuffer
     /// this has to be called before calls to getCurrent<X>
@@ -40,13 +43,14 @@ public:
 
 public:
     [[nodiscard]] VkFormat getBackbufferFormat() const { return mBackbufferFormat.format; }
-    [[nodiscard]] tg::ivec2 getBackbufferSize() const { return mBackbufferSize; }
+    [[nodiscard]] tg::isize2 getBackbufferSize() const { return mBackbufferSize; }
     [[nodiscard]] unsigned getNumBackbuffers() const { return unsigned(mBackbuffers.size()); }
 
     [[nodiscard]] VkRenderPass getRenderPass() const { return mRenderPass; }
 
     [[nodiscard]] unsigned getCurrentBackbufferIndex() const { return mActiveImageIndex; }
     [[nodiscard]] VkImage getCurrentBackbuffer() const { return mBackbuffers[mActiveImageIndex].image; }
+    [[nodiscard]] resource_state getCurrentBackbufferState() const { return mBackbuffers[mActiveImageIndex].state; }
     [[nodiscard]] VkImageView getCurrentBackbufferView() const { return mBackbuffers[mActiveImageIndex].view; }
     [[nodiscard]] VkFramebuffer getCurrentFramebuffer() const { return mBackbuffers[mActiveImageIndex].framebuffer; }
 
@@ -89,6 +93,8 @@ private:
         VkImage image;
         VkImageView view;
         VkFramebuffer framebuffer;
+
+        resource_state state;
     };
 
     cc::capped_array<backbuffer, max_num_backbuffers> mBackbuffers;
@@ -97,8 +103,11 @@ private:
     unsigned mActiveImageIndex = 0;
 
     VkSurfaceFormatKHR mBackbufferFormat;
-    tg::ivec2 mBackbufferSize;
+
+    tg::isize2 mBackbufferSize;
     bool mBackbufferHasResized = true;
+
+    present_mode mSyncMode;
 };
 
 }

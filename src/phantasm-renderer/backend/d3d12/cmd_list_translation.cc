@@ -22,7 +22,7 @@ void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* devic
 }
 
 void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12GraphicsCommandList* list,
-                                                                       ::pr::backend::detail::incomplete_state_cache* state_cache,
+                                                                       backend::detail::incomplete_state_cache* state_cache,
                                                                        std::byte* buffer,
                                                                        size_t buffer_size)
 {
@@ -55,31 +55,41 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     for (uint8_t i = 0; i < begin_rp.render_targets.size(); ++i)
     {
         auto const& rt = begin_rp.render_targets[i];
+        auto const& sve = rt.sve;
 
-        auto* const resource = _globals.pool_resources->getRawResource(rt.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(sve.resource);
         auto const rtv = dynamic_rtvs.get_index(i);
 
         // create the default RTV on the fly
-        // TODO not a default RTV
-        _globals.device->CreateRenderTargetView(resource, nullptr, rtv);
+        if (_globals.pool_resources->isBackbuffer(sve.resource))
+        {
+            // Create a default RTV for the backbuffer
+            _globals.device->CreateRenderTargetView(resource, nullptr, rtv);
+        }
+        else
+        {
+            // Create an RTV based on the supplied info
+            auto const rtv_desc = util::create_rtv_desc(sve);
+            _globals.device->CreateRenderTargetView(resource, &rtv_desc, rtv);
+        }
 
-        if (rt.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
+        if (rt.clear_type == rt_clear_type::clear)
         {
             _cmd_list->ClearRenderTargetView(rtv, rt.clear_value, 0, nullptr);
         }
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (begin_rp.depth_target.resource != handle::null_resource)
+    if (begin_rp.depth_target.sve.resource != handle::null_resource)
     {
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
-        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.resource);
+        auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.sve.resource);
 
-        // create the default DSV on the fly
-        // TODO not a default DSV
-        _globals.device->CreateDepthStencilView(resource, nullptr, dynamic_dsv.get_start());
+        // Create an DSV based on the supplied info
+        auto const dsv_desc = util::create_dsv_desc(begin_rp.depth_target.sve);
+        _globals.device->CreateDepthStencilView(resource, &dsv_desc, dynamic_dsv.get_start());
 
-        if (begin_rp.depth_target.clear_type == cmd::begin_render_pass::rt_clear_type::clear)
+        if (begin_rp.depth_target.clear_type == rt_clear_type::clear)
         {
             _cmd_list->ClearDepthStencilView(dynamic_dsv.get_start(), D3D12_CLEAR_FLAG_DEPTH, begin_rp.depth_target.clear_value_depth,
                                              begin_rp.depth_target.clear_value_stencil, 0, nullptr);
@@ -126,7 +136,8 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         }
         else
         {
-            _cmd_list->IASetIndexBuffer(nullptr);
+            // TODO: does this even make sense?
+            //  _cmd_list->IASetIndexBuffer(nullptr);
         }
     }
 
@@ -134,8 +145,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     if (draw.vertex_buffer != _bound.vertex_buffer)
     {
         _bound.vertex_buffer = draw.vertex_buffer;
-        auto const vbv = _globals.pool_resources->getVertexBufferView(draw.vertex_buffer);
-        _cmd_list->IASetVertexBuffers(0, 1, &vbv);
+        if (draw.vertex_buffer.is_valid())
+        {
+            auto const vbv = _globals.pool_resources->getVertexBufferView(draw.vertex_buffer);
+            _cmd_list->IASetVertexBuffers(0, 1, &vbv);
+        }
     }
 
     // Shader arguments
@@ -154,14 +168,20 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
                 _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
             }
 
-            if (map.descriptor_table_param != uint32_t(-1))
+            // Set the shader view if it has changed
+            if (_bound.shader_views[i] != arg.shader_view)
+                _bound.shader_views[i] = arg.shader_view;
             {
-                // Set the shader view if it has changed
-                if (_bound.shader_views[i] != arg.shader_view)
+                if (map.srv_uav_table_param != uint32_t(-1))
                 {
-                    _bound.shader_views[i] = arg.shader_view;
-                    auto const sv_desc_table = _globals.pool_shader_views->getGPUStart(arg.shader_view);
-                    _cmd_list->SetGraphicsRootDescriptorTable(map.descriptor_table_param, sv_desc_table);
+                    auto const sv_desc_table = _globals.pool_shader_views->getSRVUAVGPUHandle(arg.shader_view);
+                    _cmd_list->SetGraphicsRootDescriptorTable(map.srv_uav_table_param, sv_desc_table);
+                }
+
+                if (map.sampler_table_param != uint32_t(-1))
+                {
+                    auto const sampler_desc_table = _globals.pool_shader_views->getSamplerGPUHandle(arg.shader_view);
+                    _cmd_list->SetGraphicsRootDescriptorTable(map.sampler_table_param, sampler_desc_table);
                 }
             }
         }
@@ -219,18 +239,19 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
     D3D12_SUBRESOURCE_FOOTPRINT footprint;
     footprint.Format = format_dxgi;
-    footprint.Width = copy_text.mip_width;
-    footprint.Height = copy_text.mip_height;
+    footprint.Width = copy_text.dest_width;
+    footprint.Height = copy_text.dest_height;
     footprint.Depth = 1;
-    footprint.RowPitch = copy_text.row_pitch;
-    //    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.mip_width, 256);
+    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.dest_width, 256);
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint;
     placed_footprint.Offset = copy_text.source_offset;
     placed_footprint.Footprint = footprint;
 
+    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * copy_text.dest_mip_size;
+
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
-    CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), copy_text.subresource_index);
+    CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), subres_index);
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
 }
 

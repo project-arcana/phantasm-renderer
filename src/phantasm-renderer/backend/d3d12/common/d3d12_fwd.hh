@@ -18,6 +18,7 @@ struct ID3D12DescriptorHeap;
 struct ID3D12RootSignature;
 struct ID3D12PipelineState;
 struct ID3D12GraphicsCommandList;
+struct ID3D12DeviceRemovedExtendedDataSettings;
 
 struct IDXGIAdapter;
 struct IDXGIFactory4;

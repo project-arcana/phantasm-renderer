@@ -10,16 +10,22 @@
 namespace
 {
 // NOTE: The _SRGB variant crashes at factory.CreateSwapChainForHwnd
-static constexpr auto s_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
-static constexpr auto s_swapchain_flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+constexpr auto s_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+DXGI_SWAP_CHAIN_FLAG get_swapchain_flags(pr::backend::present_mode mode)
+{
+    return mode == pr::backend::present_mode::allow_tearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : DXGI_SWAP_CHAIN_FLAG(0);
+}
 }
 
-void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers)
+void pr::backend::d3d12::Swapchain::initialize(
+    IDXGIFactory4& factory, shared_com_ptr<ID3D12Device> device, shared_com_ptr<ID3D12CommandQueue> queue, HWND handle, unsigned num_backbuffers, present_mode present_mode)
 {
     CC_RUNTIME_ASSERT(num_backbuffers <= max_num_backbuffers);
     mBackbuffers.emplace(num_backbuffers);
     mParentDevice = cc::move(device);
     mParentDirectQueue = cc::move(queue);
+    mPresentMode = present_mode;
 
     // Create fences
     {
@@ -31,15 +37,16 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
 
     // Create swapchain
     {
+        // Swapchains are always using FLIP_DISCARD and allow tearing depending on the settings
         DXGI_SWAP_CHAIN_DESC1 swapchain_desc = {};
         swapchain_desc.BufferCount = num_backbuffers;
         swapchain_desc.Width = 0;
         swapchain_desc.Height = 0;
         swapchain_desc.Format = s_backbuffer_format;
         swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapchain_desc.SampleDesc.Count = 1;
-        swapchain_desc.Flags = s_swapchain_flags;
+        swapchain_desc.Flags = get_swapchain_flags(mPresentMode);
 
         shared_com_ptr<IDXGISwapChain1> temp_swapchain;
         PR_D3D12_VERIFY(factory.CreateSwapChainForHwnd(mParentDirectQueue, handle, &swapchain_desc, nullptr, nullptr, temp_swapchain.override()));
@@ -47,7 +54,7 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
     }
 
     // Disable Alt + Enter behavior
-    PR_D3D12_VERIFY(factory.MakeWindowAssociation(handle, DXGI_MWA_NO_ALT_ENTER));
+    PR_D3D12_VERIFY(factory.MakeWindowAssociation(handle, DXGI_MWA_NO_WINDOW_CHANGES));
 
     // Create backbuffer RTV heap, then create RTVs
     {
@@ -58,15 +65,20 @@ void pr::backend::d3d12::Swapchain::initialize(IDXGIFactory4& factory, shared_co
         rtv_heap_desc.NodeMask = 0;
 
         PR_D3D12_VERIFY(mParentDevice->CreateDescriptorHeap(&rtv_heap_desc, PR_COM_WRITE(mRTVHeap)));
+        util::set_object_name(mRTVHeap, "Swapchain RTV Heap");
 
         updateBackbuffers();
     }
 }
 
-void pr::backend::d3d12::Swapchain::onResize(int width, int height)
+pr::backend::d3d12::Swapchain::~Swapchain() { releaseBackbuffers(); }
+
+void pr::backend::d3d12::Swapchain::onResize(tg::isize2 size)
 {
-    mBackbufferSize = tg::ivec2(width, height);
-    PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(width), UINT(height), s_backbuffer_format, s_swapchain_flags));
+    mBackbufferSize = size;
+    releaseBackbuffers();
+    PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(mBackbufferSize.width), UINT(mBackbufferSize.height),
+                                              s_backbuffer_format, get_swapchain_flags(mPresentMode)));
     updateBackbuffers();
 }
 
@@ -74,7 +86,7 @@ void pr::backend::d3d12::Swapchain::setFullscreen(bool fullscreen) { PR_D3D12_VE
 
 void pr::backend::d3d12::Swapchain::present()
 {
-    PR_D3D12_VERIFY(mSwapchain->Present(0, 0));
+    PR_D3D12_VERIFY_FULL(mSwapchain->Present(0, mPresentMode == present_mode::allow_tearing ? DXGI_PRESENT_ALLOW_TEARING : 0), mParentDevice);
 
     auto const backbuffer_i = mSwapchain->GetCurrentBackBufferIndex();
     mBackbuffers[backbuffer_i].fence.issueFence(*mParentDirectQueue);
@@ -103,7 +115,22 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
         backbuffer.rtv.ptr += rtv_size * i;
 
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
+        util::set_object_name(backbuffer.resource, "Swapchain backbuffer %u", i);
+
         mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
+
+        // backbuffer.resource->Release();
+        // Usually, this call would be reasonable, removing the need for manual management down the line
+        // But there is a known deadlock in the D3D12 validation layer which occurs if the backbuffers are unreferenced
+        // Instead we must release backbuffers before resizes and at destruction (see ::releaseBackbuffers)
+    }
+}
+
+void pr::backend::d3d12::Swapchain::releaseBackbuffers()
+{
+    // This method is a workaround for a known deadlock in the D3D12 validation layer
+    for (auto& backbuffer : mBackbuffers)
+    {
         backbuffer.resource->Release();
     }
 }

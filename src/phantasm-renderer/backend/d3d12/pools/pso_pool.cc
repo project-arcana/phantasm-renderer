@@ -17,7 +17,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes});
         pool_index = mPool.acquire();
     }
 
@@ -26,9 +26,10 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     new_node.associated_root_sig = root_sig;
 
     {
-        // Create root signature
+        // Create PSO
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
+        util::set_object_name(new_node.raw_pso, "PipelineStateObjectPool pso #%d", int(pool_index));
     }
 
     new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
@@ -39,8 +40,6 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 void pr::backend::d3d12::PipelineStateObjectPool::free(pr::backend::handle::pipeline_state ps)
 {
     // TODO: dangle check
-    // TODO: Do we internally keep the PSO alive until it is no longer used, or
-    // do we require this to only happen after that point?
 
     // This requires no synchronization, as D3D12MA internally syncs
     pso_node& freed_node = mPool.get(static_cast<unsigned>(ps.index));
@@ -57,7 +56,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 {
     mDevice = device;
     mPool.initialize(max_num_psos);
-    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, but this is not a hard max, just reserving
+    mRootSigCache.initialize(max_num_psos / 2); // almost arbitrary, revisit if this blows up
 }
 
 void pr::backend::d3d12::PipelineStateObjectPool::destroy()

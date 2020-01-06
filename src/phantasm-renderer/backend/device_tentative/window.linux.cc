@@ -11,7 +11,6 @@
 
 #ifdef PR_BACKEND_VULKAN
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
-#include <phantasm-renderer/backend/vulkan/common/zero_struct.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 #endif
 
@@ -170,15 +169,15 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
 #ifdef PR_BACKEND_VULKAN
 namespace
 {
-cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
+constexpr cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
 }
 
-cc::span<char const*> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
+cc::span<char const* const> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
 
 void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
 {
-    VkXlibSurfaceCreateInfoKHR surface_info;
-    vk::zero_info_struct(surface_info, VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR);
+    VkXlibSurfaceCreateInfoKHR surface_info = {};
+    surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
     surface_info.dpy = s_display;
     surface_info.window = s_window;
     surface_info.pNext = nullptr;

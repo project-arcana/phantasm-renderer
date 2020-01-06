@@ -1,26 +1,13 @@
 #include "adapter_choice_util.hh"
 
+#include <string>
+
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
 
 #include "common/safe_seh_call.hh"
 #include "common/shared_com_ptr.hh"
 #include "common/verify.hh"
-
-pr::backend::adapter_vendor pr::backend::d3d12::get_vendor_from_id(unsigned id)
-{
-    switch (id)
-    {
-    case 0x1002:
-        return adapter_vendor::amd;
-    case 0x8086:
-        return adapter_vendor::intel;
-    case 0x10DE:
-        return adapter_vendor::nvidia;
-    default:
-        return adapter_vendor::unknown;
-    }
-}
 
 int pr::backend::d3d12::test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL min_features, D3D_FEATURE_LEVEL& out_max_features)
 {
@@ -55,7 +42,7 @@ int pr::backend::d3d12::test_adapter(IDXGIAdapter* adapter, D3D_FEATURE_LEVEL mi
     return res_nodes;
 }
 
-cc::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapter_candidates()
+cc::vector<pr::backend::gpu_info> pr::backend::d3d12::get_adapter_candidates()
 {
     auto constexpr min_candidate_feature_level = D3D_FEATURE_LEVEL_12_0;
 
@@ -67,7 +54,7 @@ cc::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapte
     if (!temp_factory.is_valid())
         return {};
 
-    cc::vector<adapter_candidate> res;
+    cc::vector<gpu_info> res;
 
     shared_com_ptr<IDXGIAdapter> temp_adapter;
     for (uint32_t i = 0u; temp_factory->EnumAdapters(i, temp_adapter.override()) != DXGI_ERROR_NOT_FOUND; ++i)
@@ -86,68 +73,26 @@ cc::vector<pr::backend::d3d12::adapter_candidate> pr::backend::d3d12::get_adapte
                 std::wstring description_wide = adapter_desc.Description;
 
                 auto& new_candidate = res.emplace_back();
-                new_candidate.vendor = get_vendor_from_id(adapter_desc.VendorId);
+                new_candidate.vendor = get_gpu_vendor_from_id(adapter_desc.VendorId);
                 new_candidate.index = i;
 
                 new_candidate.dedicated_video_memory_bytes = adapter_desc.DedicatedVideoMemory;
                 new_candidate.dedicated_system_memory_bytes = adapter_desc.DedicatedSystemMemory;
                 new_candidate.shared_system_memory_bytes = adapter_desc.SharedSystemMemory;
 
-                new_candidate.description = std::string(description_wide.begin(), description_wide.end());
-                new_candidate.max_feature_level = max_feature_level;
+                new_candidate.description = cc::string(std::string(description_wide.begin(), description_wide.end()));
+
+                if (max_feature_level < D3D_FEATURE_LEVEL_12_0)
+                    new_candidate.capabilities = gpu_capabilities::insufficient;
+                else if (max_feature_level == D3D_FEATURE_LEVEL_12_0)
+                    new_candidate.capabilities = gpu_capabilities::level_1;
+                else if (max_feature_level == D3D_FEATURE_LEVEL_12_1)
+                    new_candidate.capabilities = gpu_capabilities::level_2;
+                else
+                    new_candidate.capabilities = gpu_capabilities::level_3;
             }
         }
     }
 
     return res;
-}
-
-unsigned pr::backend::d3d12::get_preferred_adapter_index(cc::span<adapter_candidate const> candidates, pr::backend::adapter_preference preference)
-{
-    if (candidates.empty())
-        return unsigned(-1);
-
-    switch (preference)
-    {
-    case adapter_preference::integrated:
-    {
-        for (auto const& cand : candidates)
-        {
-            // Note that AMD also manufactures integrated GPUs, this is a heuristic
-            if (cand.vendor == adapter_vendor::intel)
-                return cand.index;
-        }
-
-        // Fall back to the first adapter
-        return candidates[0].index;
-    }
-    case adapter_preference::highest_vram:
-    {
-        auto highest_vram_index = 0u;
-        for (auto i = 1u; i < candidates.size(); ++i)
-        {
-            if (candidates[i].dedicated_video_memory_bytes > candidates[highest_vram_index].dedicated_video_memory_bytes)
-                highest_vram_index = i;
-        }
-
-        return candidates[highest_vram_index].index;
-    }
-    case adapter_preference::highest_feature_level:
-    {
-        auto highest_feature_index = 0u;
-        for (auto i = 1u; i < candidates.size(); ++i)
-        {
-            if (candidates[i].max_feature_level > candidates[highest_feature_index].max_feature_level)
-                highest_feature_index = i;
-        }
-
-        return candidates[highest_feature_index].index;
-    }
-    case adapter_preference::first:
-        return candidates[0].index;
-    case adapter_preference::explicit_index:
-        return unsigned(-1);
-    }
-
-    return candidates[0].index;
 }

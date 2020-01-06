@@ -17,9 +17,9 @@ cc::array<VkPhysicalDevice> pr::backend::vk::get_physical_devices(VkInstance ins
     return res;
 }
 
-pr::backend::vk::gpu_information pr::backend::vk::get_gpu_information(VkPhysicalDevice device, VkSurfaceKHR surface)
+pr::backend::vk::vulkan_gpu_info pr::backend::vk::get_vulkan_gpu_info(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
-    gpu_information res;
+    vulkan_gpu_info res;
     res.physical_device = device;
     res.is_suitable = false;
 
@@ -62,6 +62,17 @@ pr::backend::vk::gpu_information pr::backend::vk::get_gpu_information(VkPhysical
     return res;
 }
 
+cc::array<pr::backend::vk::vulkan_gpu_info> pr::backend::vk::get_all_vulkan_gpu_infos(VkInstance instance, VkSurfaceKHR surface)
+{
+    auto const physical_devices = get_physical_devices(instance);
+    cc::array<vulkan_gpu_info> res(physical_devices.size());
+    for (auto i = 0u; i < physical_devices.size(); ++i)
+    {
+        res[i] = get_vulkan_gpu_info(physical_devices[i], surface);
+    }
+    return res;
+}
+
 pr::backend::vk::backbuffer_information pr::backend::vk::get_backbuffer_information(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     backbuffer_information res;
@@ -97,12 +108,22 @@ VkSurfaceFormatKHR pr::backend::vk::choose_backbuffer_format(cc::span<const VkSu
     return available_formats[0];
 }
 
-VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentModeKHR> available_modes, bool prefer_synced)
+VkPresentModeKHR pr::backend::vk::choose_present_mode(cc::span<const VkPresentModeKHR> available_modes, present_mode mode)
 {
-    if (prefer_synced)
-        for (auto const& m : available_modes)
-            if (m == VK_PRESENT_MODE_MAILBOX_KHR)
-                return m;
+    VkPresentModeKHR preferred;
+    switch (mode)
+    {
+    case present_mode::allow_tearing:
+        preferred = VK_PRESENT_MODE_IMMEDIATE_KHR;
+        break;
+    case present_mode::synced:
+        preferred = VK_PRESENT_MODE_MAILBOX_KHR;
+        break;
+    }
+
+    for (auto const& m : available_modes)
+        if (m == preferred)
+            return m;
 
     // This mode is always available
     return VK_PRESENT_MODE_FIFO_KHR;
@@ -121,4 +142,47 @@ VkExtent2D pr::backend::vk::get_swap_extent(const VkSurfaceCapabilitiesKHR& caps
         extent_hint.height = cc::clamp(extent_hint.height, caps.minImageExtent.height, caps.maxImageExtent.height);
         return extent_hint;
     }
+}
+
+cc::vector<pr::backend::gpu_info> pr::backend::vk::get_available_gpus(cc::span<const vulkan_gpu_info> vk_gpu_infos)
+{
+    cc::vector<gpu_info> res;
+    res.reserve(vk_gpu_infos.size());
+
+    for (auto i = 0u; i < vk_gpu_infos.size(); ++i)
+    {
+        auto const& ll_info = vk_gpu_infos[i];
+        if (!ll_info.is_suitable)
+            continue;
+
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(ll_info.physical_device, &props);
+
+        auto& new_gpu = res.emplace_back();
+        new_gpu.index = i;
+        new_gpu.vendor = get_gpu_vendor_from_id(props.vendorID);
+        new_gpu.description = cc::string(props.deviceName);
+
+        // TODO: differentiate this somehow
+        new_gpu.capabilities = gpu_capabilities::level_1;
+        new_gpu.has_raytracing = ll_info.available_layers_extensions.extensions.contains(VK_NV_RAY_TRACING_EXTENSION_NAME);
+        new_gpu.dedicated_video_memory_bytes = 0;
+        new_gpu.dedicated_system_memory_bytes = 0;
+        new_gpu.shared_system_memory_bytes = 0;
+
+        VkPhysicalDeviceMemoryProperties mem_props;
+        vkGetPhysicalDeviceMemoryProperties(ll_info.physical_device, &mem_props);
+
+        for (auto i = 0u; i < mem_props.memoryHeapCount; ++i)
+        {
+            auto const& heap = mem_props.memoryHeaps[i];
+
+            if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                new_gpu.dedicated_video_memory_bytes += heap.size;
+            else
+                new_gpu.shared_system_memory_bytes += heap.size;
+        }
+    }
+
+    return res;
 }
