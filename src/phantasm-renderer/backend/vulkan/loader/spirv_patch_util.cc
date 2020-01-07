@@ -239,15 +239,33 @@ bool pr::backend::vk::util::is_consistent_with_reflection(cc::span<const pr::bac
         }
     }
 
-    auto const is_matching = [](reflected_range_infos const& ri, arg::shader_argument_shape const& shape) {
-        return (ri.num_cbvs == (shape.has_cb ? 1 : 0)) && (ri.num_srvs == shape.num_srvs) && (ri.num_uavs == shape.num_uavs)
-               && (ri.num_samplers == shape.num_samplers);
-    };
-
     for (auto i = 0u; i < arg_shapes.size(); ++i)
     {
-        if (!is_matching(range_infos[i], arg_shapes[i]))
+        auto const& ri = range_infos[i];
+        auto const& shape = arg_shapes[i];
+
+        if (ri.num_cbvs != (shape.has_cb ? 1 : 0))
+        {
+            std::cerr << "[pr][backend][vk] SPIR-V reflection inconsistent - CBVs: " << ri.num_cbvs << " reflected, vs " << (shape.has_cb ? 1 : 0)
+                      << " in shape #" << i << std::endl;
             return false;
+        }
+
+        if (ri.num_srvs != shape.num_srvs)
+        {
+            std::cerr << "[pr][backend][vk] SPIR-V reflection inconsistent - SRVs: " << ri.num_srvs << " reflected, vs " << shape.num_srvs
+                      << " in shape #" << i << std::endl;
+        }
+        if (ri.num_uavs != shape.num_uavs)
+        {
+            std::cerr << "[pr][backend][vk] SPIR-V reflection inconsistent - UAVs: " << ri.num_uavs << " reflected, vs " << shape.num_uavs
+                      << " in shape #" << i << std::endl;
+        }
+        if (ri.num_samplers != shape.num_samplers)
+        {
+            std::cerr << "[pr][backend][vk] SPIR-V reflection inconsistent - Samplers: " << ri.num_samplers << " reflected, vs " << shape.num_samplers
+                      << " in shape #" << i << std::endl;
+        }
     }
     return true;
 }

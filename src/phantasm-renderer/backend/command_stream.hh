@@ -245,6 +245,11 @@ public:
         static_assert(std::is_trivially_copyable_v<T>, "data not memcpyable");
         static_assert(!std::is_pointer_v<T>, "provide direct reference to data");
         std::memcpy(root_constants, &data, sizeof(T));
+
+        //        if constexpr (sizeof(T) < sizeof(root_constants))
+        //        {
+        //            std::memset(root_constants + sizeof(T), 0, sizeof(root_constants) - sizeof(T));
+        //        }
     }
 };
 

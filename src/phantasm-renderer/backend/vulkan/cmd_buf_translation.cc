@@ -225,21 +225,20 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
 {
+    auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+
     if (_bound.update_pso(dispatch.pipeline_state))
     {
         // a new handle::pipeline_state invalidates (!= always changes)
         //      - The bound pipeline layout
         //      - The bound pipeline
-        auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
 
         _bound.update_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
-
         vkCmdBindPipeline(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pso_node.raw_pipeline);
     }
 
     // Shader arguments
     {
-        auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
         pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
 
         if (pipeline_layout.has_push_constants())
