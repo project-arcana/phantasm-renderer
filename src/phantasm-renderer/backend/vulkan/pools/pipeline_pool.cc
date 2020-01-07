@@ -77,8 +77,6 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
         vkDestroyRenderPass(mDevice, dummy_render_pass, nullptr);
     }
 
-    //    new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
-
     return {static_cast<handle::index_t>(pool_index)};
 }
 

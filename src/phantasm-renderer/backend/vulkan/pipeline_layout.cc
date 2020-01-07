@@ -104,6 +104,13 @@ void pr::backend::vk::pipeline_layout::initialize(VkDevice device, cc::span<cons
     PR_VK_VERIFY_SUCCESS(vkCreatePipelineLayout(device, &layout_info, nullptr, &raw_layout));
 }
 
+void pr::backend::vk::pipeline_layout::print() const
+{
+    std::cout << "[pr][backend][vk] pipeline_layout:" << std::endl;
+    std::cout << "  " << descriptor_set_layouts.size() << " descriptor set layouts, " << descriptor_set_visibilities.size() << " visibilities" << std::endl;
+    std::cout << "  raw layout: " << raw_layout << ", has push consts: " << (has_push_constants() ? "yes" : "no") << std::endl;
+}
+
 void pr::backend::vk::pipeline_layout::free(VkDevice device)
 {
     for (auto const layout : descriptor_set_layouts)

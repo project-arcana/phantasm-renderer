@@ -269,3 +269,12 @@ bool pr::backend::vk::util::is_consistent_with_reflection(cc::span<const pr::bac
     }
     return true;
 }
+
+void pr::backend::vk::util::print_spirv_info(cc::span<const pr::backend::vk::util::spirv_desc_info> info)
+{
+    std::cout << "[pr][backend][vk] SPIR-V descriptor info: " << std::endl;
+    for (auto const& i : info)
+    {
+        std::cout << "  set " << i.set << ", binding " << i.binding << ", array size " << i.binding_array_size << ", VkDescriptorType " << i.type << std::endl;
+    }
+}

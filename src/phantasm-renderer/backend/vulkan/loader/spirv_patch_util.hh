@@ -69,6 +69,8 @@ void free_patched_spirv(arg::shader_stage const& val);
 /// create a sorted, deduplicated vector of descriptor range infos from an unsorted raw output from previous patches
 cc::vector<spirv_desc_info> merge_spirv_descriptors(cc::span<spirv_desc_info> desc_infos);
 
+void print_spirv_info(cc::span<spirv_desc_info const> info);
+
 /// returns true if the reflected descriptors are consistent with the passed arguments
 /// currently only checks if the amounts are equal
 [[nodiscard]] bool is_consistent_with_reflection(cc::span<spirv_desc_info const> spirv_ranges, arg::shader_argument_shapes arg_shapes);

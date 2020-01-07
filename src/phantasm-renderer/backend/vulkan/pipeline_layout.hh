@@ -74,6 +74,8 @@ struct pipeline_layout
 
     [[nodiscard]] bool has_push_constants() const { return push_constant_stages != VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM; }
 
+    void print() const;
+
     void free(VkDevice device);
 };
 
