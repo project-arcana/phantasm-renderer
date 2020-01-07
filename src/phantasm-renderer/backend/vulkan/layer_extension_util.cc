@@ -183,6 +183,14 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         }
     }
 
+    if (config.native_features & native_feature_flag_bits::vk_api_dump)
+    {
+        if (!add_required_layer("VK_LAYER_LUNARG_api_dump"))
+        {
+            std::cerr << "[pr][backend][vk] Missing API dump layer" << std::endl;
+        }
+    }
+
     // platform extensions
     for (char const* const required_device_ext : device::Window::getRequiredInstanceExtensions())
     {

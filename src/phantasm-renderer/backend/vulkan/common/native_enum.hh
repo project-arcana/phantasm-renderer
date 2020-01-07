@@ -122,31 +122,31 @@ namespace pr::backend::vk::util
     }
 }
 
-[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_bits::shader_domain_bits_e domain)
+[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_flags domain)
 {
     VkPipelineStageFlags res = 0;
 
-    if (domain & shader_domain_bits::vertex)
+    if (domain & shader_domain_flag_bits::vertex)
         res |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 
-    if (domain & shader_domain_bits::hull)
+    if (domain & shader_domain_flag_bits::hull)
         res |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
 
-    if (domain & shader_domain_bits::domain)
+    if (domain & shader_domain_flag_bits::domain)
         res |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
 
-    if (domain & shader_domain_bits::geometry)
+    if (domain & shader_domain_flag_bits::geometry)
         res |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
 
-    if (domain & shader_domain_bits::pixel)
+    if (domain & shader_domain_flag_bits::pixel)
         res |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 
-    if (domain & shader_domain_bits::compute)
+    if (domain & shader_domain_flag_bits::compute)
         res |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
 
-    if (domain & shader_domain_bits::mask_all_raytrace_stages)
+    if (domain & shader_domain_flag_bits::mask_all_raytrace_stages)
         res |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
 
     return res;

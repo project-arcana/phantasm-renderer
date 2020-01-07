@@ -62,9 +62,10 @@ enum class shader_domain : uint8_t
     ray_any_hit,
 };
 
-namespace shader_domain_bits
+using shader_domain_flags = uint16_t;
+namespace shader_domain_flag_bits
 {
-enum shader_domain_bits_e : uint16_t
+enum shader_domain_flag_bits_e : shader_domain_flags
 {
     unspecified = 0x0000,
 
@@ -135,6 +136,19 @@ enum class present_mode : uint8_t
     synced
 };
 
+using native_feature_flags = uint32_t;
+namespace native_feature_flag_bits
+{
+/// Special features that are backend-specific, ignored if not applicable
+enum native_feature_flag_bits_e : native_feature_flags
+{
+    none = 0,
+
+    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
+    vk_api_dump = 0x0001
+};
+}
+
 struct backend_config
 {
     /// whether to enable API-level validations
@@ -147,6 +161,9 @@ struct backend_config
     /// the strategy for choosing a physical GPU
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);
+
+    /// native features to enable
+    native_feature_flags native_features = native_feature_flag_bits::none;
 
     /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;
