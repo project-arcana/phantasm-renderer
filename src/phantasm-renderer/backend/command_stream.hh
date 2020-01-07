@@ -129,9 +129,9 @@ public:
     // convenience
 
     /// add a barrier for resource [res] into new state [target]
-    /// if the target state is a CBV/SRV/UAV, depending_shader
-    /// must be the union of shaders depending upon this resource next (can be omitted on d3d12)
-    void add(handle::resource res, resource_state target, shader_domain_flags depending_shader = shader_domain_flag_bits::unspecified)
+    /// if the target state is a CBV/SRV/UAV, depending_shader must be
+    /// the union of shaders depending upon this resource next (can be omitted on d3d12)
+    void add(handle::resource res, resource_state target, shader_domain_flags depending_shader = shader_domain_bits::unspecified)
     {
         transitions.push_back(transition_info{res, target, depending_shader});
     }
@@ -168,7 +168,7 @@ public:
 
     void add(handle::resource res, resource_state source, resource_state target, int level, int slice)
     {
-        add(res, source, target, shader_domain_flag_bits::unspecified, shader_domain_flag_bits::unspecified, level, slice);
+        add(res, source, target, shader_domain_bits::unspecified, shader_domain_bits::unspecified, level, slice);
     }
 };
 

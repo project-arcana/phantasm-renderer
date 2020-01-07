@@ -63,9 +63,9 @@ enum class shader_domain : uint8_t
 };
 
 using shader_domain_flags = uint16_t;
-namespace shader_domain_flag_bits
+namespace shader_domain_bits
 {
-enum shader_domain_flag_bits_e : shader_domain_flags
+enum shader_domain_bits_e : shader_domain_flags
 {
     unspecified = 0x0000,
 
@@ -137,10 +137,10 @@ enum class present_mode : uint8_t
 };
 
 using native_feature_flags = uint32_t;
-namespace native_feature_flag_bits
+namespace native_feature_bits
 {
 /// Special features that are backend-specific, ignored if not applicable
-enum native_feature_flag_bits_e : native_feature_flags
+enum native_feature_bits_e : native_feature_flags
 {
     none = 0,
 
@@ -163,7 +163,7 @@ struct backend_config
     unsigned explicit_adapter_index = unsigned(-1);
 
     /// native features to enable
-    native_feature_flags native_features = native_feature_flag_bits::none;
+    native_feature_flags native_features = native_feature_bits::none;
 
     /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;

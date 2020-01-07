@@ -183,7 +183,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         }
     }
 
-    if (config.native_features & native_feature_flag_bits::vk_api_dump)
+    if (config.native_features & native_feature_bits::vk_api_dump)
     {
         if (!add_required_layer("VK_LAYER_LUNARG_api_dump"))
         {
