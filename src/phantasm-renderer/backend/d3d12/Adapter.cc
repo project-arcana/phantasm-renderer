@@ -1,11 +1,10 @@
 #include "Adapter.hh"
 
-#include <iostream>
-
 #include <clean-core/assert.hh>
 
 #include "adapter_choice_util.hh"
 #include "common/d3d12_sanitized.hh"
+#include "common/log.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
@@ -92,7 +91,7 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
             {
                 if (is_intel_gpu)
                 {
-                    std::cout << "[pr][backend][d3d12] info: GPU-based validation requested on an Intel GPU, disabling due to known crashes" << std::endl;
+                    log::info() << "GPU-based validation requested on an Intel GPU, disabling due to known crashes";
                 }
                 else
                 {
@@ -110,18 +109,18 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
                     }
                     else
                     {
-                        std::cerr << "[pr][backend[d3d12] warning: failed to enable GPU-based validation" << std::endl;
+                        log::err() << "warning: failed to enable GPU-based validation";
                     }
                 }
             }
         }
         else
         {
-            std::cerr << "[pr][backend[d3d12] warning: failed to enable validation" << std::endl;
-            std::cerr << "  verify that the D3D12 SDK is installed on this machine" << std::endl;
-            std::cerr << "  refer to "
-                         "https://docs.microsoft.com/en-us/windows/uwp/gaming/use-the-directx-runtime-and-visual-studio-graphics-diagnostic-features"
-                      << std::endl;
+            log::err() << "warning: failed to enable validation\n"
+                          "  verify that the D3D12 SDK is installed on this machine\n"
+                          "  refer to "
+                          "https://docs.microsoft.com/en-us/windows/uwp/gaming/"
+                          "use-the-directx-runtime-and-visual-studio-graphics-diagnostic-features";
         }
     }
 }

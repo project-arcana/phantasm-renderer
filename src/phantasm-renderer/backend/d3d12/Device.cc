@@ -1,8 +1,7 @@
 #include "Device.hh"
 
-#include <iostream>
-
 #include "common/d3d12_sanitized.hh"
+#include "common/log.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend_config& config)
@@ -19,7 +18,7 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend
         }
         else
         {
-            std::cerr << "[pr][backend[d3d12] warning: failed to enable DRED" << std::endl;
+            log::err() << "warning: failed to enable DRED";
         }
     }
 

@@ -3,11 +3,10 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include <iostream>
-
 #include <clean-core/assert.hh>
 
 #include "d3d12_sanitized.hh"
+#include "log.hh"
 #include "shared_com_ptr.hh"
 
 namespace
@@ -52,13 +51,15 @@ char const* get_general_error_literal(HRESULT hr)
 
 void print_dred_information(ID3D12Device* device)
 {
+    using namespace pr::backend::d3d12;
+
     HRESULT removal_reason = device->GetDeviceRemovedReason();
-    std::cerr << "[pr][backend][d3d12][DRED] device removal reason: " << get_device_error_literal(removal_reason) << std::endl;
+    log::dred() << "device removal reason: " << get_device_error_literal(removal_reason);
 
     pr::backend::d3d12::shared_com_ptr<ID3D12DeviceRemovedExtendedData> dred;
     if (SUCCEEDED(device->QueryInterface(PR_COM_WRITE(dred))))
     {
-        std::cerr << "[pr][backend][d3d12][DRED] DRED detected, querying outputs" << std::endl;
+        log::dred() << "DRED detected, querying outputs";
         D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT DredAutoBreadcrumbsOutput;
         D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
         auto hr1 = dred->GetAutoBreadcrumbsOutput(&DredAutoBreadcrumbsOutput);
@@ -73,48 +74,53 @@ void print_dred_information(ID3D12Device* device)
             auto num_breadcrumbs = 0u;
             while (breadcrumb != nullptr && num_breadcrumbs < 10)
             {
-                std::wcerr << "[pr][backend][d3d12][DRED] bc #" << num_breadcrumbs << " size " << breadcrumb->BreadcrumbCount<< std::endl;
+                log::dred()("bc #%d size %d", num_breadcrumbs, breadcrumb->BreadcrumbCount);
 
                 if (breadcrumb->pCommandListDebugNameA != nullptr)
-                    std::wcerr << "[pr][backend][d3d12][DRED]   on list \"" << breadcrumb->pCommandListDebugNameA << "\"" << std::endl;
-                if (breadcrumb->pCommandQueueDebugNameA != nullptr)
-                    std::wcerr << "[pr][backend][d3d12][DRED]   on queue \"" << breadcrumb->pCommandQueueDebugNameA << "\"" << std::endl;
+                    log::dred()("  on list\"%s\"", breadcrumb->pCommandListDebugNameA);
 
-                std::wcerr << "[pr][backend][d3d12][DRED]     ";
+                if (breadcrumb->pCommandQueueDebugNameA != nullptr)
+                    log::dred()("  on queue\"%s\"", breadcrumb->pCommandQueueDebugNameA);
+
+
+                auto logger = log::dred();
+                logger.configure(rlog::no_sep);
+                logger << "    ";
+
                 unsigned const last_executed_i = *breadcrumb->pLastBreadcrumbValue;
                 for (auto i = 0u; i < breadcrumb->BreadcrumbCount; ++i)
                 {
                     if (i == last_executed_i)
-                        std::wcerr << "[[-  " << breadcrumb->pCommandHistory[i] << " -]]";
+                        logger << "[[-  " << breadcrumb->pCommandHistory[i] << " -]]";
                     else
-                        std::wcerr << "[" << breadcrumb->pCommandHistory[i] << "]";
+                        logger << "[" << breadcrumb->pCommandHistory[i] << "]";
                 }
                 if (last_executed_i == breadcrumb->BreadcrumbCount)
-                    std::wcerr << "  (fully executed)";
+                    logger << "  (fully executed)";
                 else
-                    std::wcerr << "  (last executed: " << last_executed_i << ")";
-
-                std::wcerr << std::endl;
+                    logger << "  (last executed: " << last_executed_i << ")";
 
                 breadcrumb = breadcrumb->pNext;
                 ++num_breadcrumbs;
             }
-            std::cerr << "[pr][backend][d3d12][DRED] end of breadcrumb data" << std::endl;
+            log::dred() << "end of breadcrumb data";
         }
         else
         {
-            std::cerr << "[pr][backend][d3d12][DRED] DRED breadcrumb output query failed" << std::endl;
-            std::cerr << "[pr][backend][d3d12][DRED] use validation_level::on_extended_dred" << std::endl;
+            log::dred() << "DRED breadcrumb output query failed";
+            log::dred() << "use validation_level::on_extended_dred";
         }
 
         if (SUCCEEDED(hr2))
         {
-            std::cerr << "[pr][backend][d3d12][DRED] page fault VA: " << DredPageFaultOutput.PageFaultVA << std::endl;
+            log::dred()("pagefault VA: %u", DredPageFaultOutput.PageFaultVA);
+
             D3D12_DRED_ALLOCATION_NODE const* freed_node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
             while (freed_node != nullptr)
             {
                 if (freed_node->ObjectNameA)
-                    std::wcerr << "[pr][backend][d3d12][DRED] recently freed: " << freed_node->ObjectNameA << std::endl;
+                    log::dred()("recently freed: %s", freed_node->ObjectNameA);
+
                 freed_node = freed_node->pNext;
             }
 
@@ -122,21 +128,22 @@ void print_dred_information(ID3D12Device* device)
             while (allocated_node != nullptr)
             {
                 if (allocated_node->ObjectNameA)
-                    std::wcerr << "[pr][backend][d3d12][DRED] allocated: " << allocated_node->ObjectNameA << std::endl;
+                    log::dred()("allocated: %s", allocated_node->ObjectNameA);
+
                 allocated_node = allocated_node->pNext;
             }
 
-            std::cerr << "[pr][backend][d3d12][DRED] end of page fault data" << std::endl;
+            log::dred() << "end of pagefault data";
         }
         else
         {
-            std::cerr << "[pr][backend][d3d12][DRED] DRED pagefault output query failed" << std::endl;
-            std::cerr << "[pr][backend][d3d12][DRED] use validation_level::on_extended_dred" << std::endl;
+            log::dred() << "DRED pagefault output query failed";
+            log::dred() << "use validation_level::on_extended_dred";
         }
     }
     else
     {
-        std::cerr << "[pr][backend][d3d12][DRED] no DRED active, use validation_level::on_extended_dred" << std::endl;
+        log::dred() << "no DRED active, use validation_level::on_extended_dred";
     }
 }
 }
@@ -178,7 +185,7 @@ void pr::backend::d3d12::detail::dred_assert_handler(void* device_child, const c
     }
     else
     {
-        std::cerr << "[pr][backend][d3d12] Failed to recover device from ID3D12DeviceChild " << device_child << std::endl;
+        log::err()("Failed to recover device from ID3D12DeviceChild %p", device_child);
     }
 
     // TODO: Graceful shutdown

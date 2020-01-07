@@ -1,13 +1,12 @@
 #include "BackendD3D12.hh"
 
-#include <iostream>
-
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "cmd_list_translation.hh"
 #include "common/dxgi_format.hh"
+#include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -187,7 +186,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
 void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::resource res) const
 {
     (void)res;
-    std::cout << "[pr][backend][d3d12] printInformation unimplemented" << std::endl;
+    log::info() << "printInformation unimplemented";
 }
 
 bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }

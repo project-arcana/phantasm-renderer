@@ -58,6 +58,7 @@ target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
     reflector
+    rich-log
 )
 
 if (PR_ENABLE_DEBUG_MARKERS)
