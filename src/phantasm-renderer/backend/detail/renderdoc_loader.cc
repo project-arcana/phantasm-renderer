@@ -6,7 +6,7 @@
 
 #ifdef CC_OS_WINDOWS
 #include <Windows.h>
-#elif CC_OS_LINUX
+#elif defined(CC_OS_LINUX)
 #include <dlfcn.h>
 #endif
 
@@ -23,7 +23,7 @@ RENDERDOC_API_1_4_0* pr::backend::detail::load_renderdoc()
         if (ret != 1)
             res = nullptr;
     }
-#elif CC_OS_LINUX
+#elif defined(CC_OS_LINUX)
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
