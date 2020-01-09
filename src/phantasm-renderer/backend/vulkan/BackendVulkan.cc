@@ -62,10 +62,15 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
     instance_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
     instance_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
 
-    cc::array<VkValidationFeatureEnableEXT, 3> extended_validation_enables = {
-        VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
-        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, // This is a little verbose
-    };
+#ifdef VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
+    cc::array<VkValidationFeatureEnableEXT, 3> extended_validation_enables
+        = {VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+           VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT};
+#else
+    cc::array<VkValidationFeatureEnableEXT, 2> extended_validation_enables
+        = {VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT};
+#endif
+
     VkValidationFeaturesEXT extended_validation_features = {};
 
     if (config.validation >= validation_level::on_extended)
