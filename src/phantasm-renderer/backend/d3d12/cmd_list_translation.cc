@@ -151,11 +151,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         auto const& root_sig = *pso_node.associated_root_sig;
 
         // root constants
-        auto const root_constant_param = root_sig.argument_maps[0].root_const_param;
-        if (root_constant_param != unsigned(-1))
+        if (!root_sig.argument_maps.empty() && root_sig.argument_maps[0].root_const_param != unsigned(-1))
         {
             static_assert(sizeof(draw.root_constants) % sizeof(DWORD32) == 0, "root constant size not divisible by dword32 size");
-            _cmd_list->SetGraphicsRoot32BitConstants(root_constant_param, sizeof(draw.root_constants) / sizeof(DWORD32), draw.root_constants, 0);
+            _cmd_list->SetGraphicsRoot32BitConstants(root_sig.argument_maps[0].root_const_param, sizeof(draw.root_constants) / sizeof(DWORD32),
+                                                     draw.root_constants, 0);
         }
 
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
