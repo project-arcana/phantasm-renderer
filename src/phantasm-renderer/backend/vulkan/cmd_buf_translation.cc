@@ -370,6 +370,9 @@ void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend
 
     if (pipeline_layout.has_push_constants())
     {
+        static_assert(sizeof(cmd::draw::root_constants) == sizeof(std::byte[limits::max_root_constant_bytes]), "root constants have wrong size");
+        static_assert(sizeof(cmd::draw::root_constants) == sizeof(cmd::dispatch::root_constants), "root constants have wrong size");
+
         vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0,
                            sizeof(std::byte[limits::max_root_constant_bytes]), root_consts);
     }
