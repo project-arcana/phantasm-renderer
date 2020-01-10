@@ -53,6 +53,7 @@ namespace pr::backend::vk::util
         CC_ASSERT(false && "unknown state access masks queried");
         return 0;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkImageLayout to_image_layout(resource_state state)
@@ -93,6 +94,7 @@ namespace pr::backend::vk::util
         CC_ASSERT(false && "invalid image layout queried");
         return VK_IMAGE_LAYOUT_UNDEFINED;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags(pr::backend::shader_domain domain)
@@ -120,6 +122,7 @@ namespace pr::backend::vk::util
     case pr::backend::shader_domain::ray_any_hit:
         return VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_flags domain)
@@ -193,6 +196,7 @@ namespace pr::backend::vk::util
         CC_ASSERT(false && "unknown state queried");
         return VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_dependency(resource_state state, shader_domain domain = shader_domain::pixel)
@@ -213,6 +217,7 @@ namespace pr::backend::vk::util
     case pr::primitive_topology::patches:
         return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkCompareOp to_native(pr::depth_function depth_func)
@@ -238,6 +243,7 @@ namespace pr::backend::vk::util
     case pr::depth_function::never:
         return VK_COMPARE_OP_NEVER;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkCullModeFlags to_native(pr::cull_mode cull_mode)
@@ -251,6 +257,7 @@ namespace pr::backend::vk::util
     case pr::cull_mode::front:
         return VK_CULL_MODE_FRONT_BIT;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 
@@ -283,6 +290,7 @@ namespace pr::backend::vk::util
     case pr::backend::shader_domain::ray_any_hit:
         return VK_SHADER_STAGE_ANY_HIT_BIT_NV;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 
@@ -305,6 +313,7 @@ namespace pr::backend::vk::util
     case pr::backend::shader_view_dimension::texturecube_array:
         return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 [[nodiscard]] inline constexpr VkDescriptorType to_native_uav_desc_type(shader_view_dimension sv_dim)
 {
@@ -326,6 +335,7 @@ namespace pr::backend::vk::util
     case pr::backend::shader_view_dimension::raytracing_accel_struct:
         return VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr bool is_valid_as_uav_desc_type(shader_view_dimension sv_dim)
@@ -359,6 +369,7 @@ namespace pr::backend::vk::util
         CC_ASSERT(false);
         return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkImageAspectFlags to_native_image_aspect(format format)
@@ -394,6 +405,7 @@ namespace pr::backend::vk::util
     case sampler_filter::anisotropic:
         return VK_FILTER_LINEAR;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkFilter to_mag_filter(sampler_filter filter)
@@ -412,6 +424,7 @@ namespace pr::backend::vk::util
     case sampler_filter::anisotropic:
         return VK_FILTER_LINEAR;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkSamplerMipmapMode to_mipmap_filter(sampler_filter filter)
@@ -430,6 +443,7 @@ namespace pr::backend::vk::util
     case sampler_filter::anisotropic:
         return VK_SAMPLER_MIPMAP_MODE_LINEAR;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkSamplerAddressMode to_native(sampler_address_mode mode)
@@ -445,6 +459,7 @@ namespace pr::backend::vk::util
     case sampler_address_mode::mirror:
         return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkCompareOp to_native(sampler_compare_func mode)
@@ -469,6 +484,7 @@ namespace pr::backend::vk::util
     case sampler_compare_func::always:
         return VK_COMPARE_OP_ALWAYS;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkBorderColor to_native(sampler_border_color color)
@@ -488,6 +504,7 @@ namespace pr::backend::vk::util
     case sampler_border_color::white_int:
         return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkSampleCountFlagBits to_native_sample_flags(unsigned num_samples)
@@ -511,6 +528,7 @@ namespace pr::backend::vk::util
     default:
         return VK_SAMPLE_COUNT_1_BIT;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkAttachmentLoadOp to_native(rt_clear_type clear_type)
@@ -524,6 +542,7 @@ namespace pr::backend::vk::util
     case rt_clear_type::dont_care:
         return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr VkImageType to_native(texture_dimension dim)
@@ -537,6 +556,93 @@ namespace pr::backend::vk::util
     case texture_dimension::t3d:
         return VK_IMAGE_TYPE_3D;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
+[[nodiscard]] inline constexpr VkLogicOp to_native(blend_logic_op op)
+{
+    switch (op)
+    {
+    case blend_logic_op::no_op:
+        return VK_LOGIC_OP_NO_OP;
+    case blend_logic_op::op_clear:
+        return VK_LOGIC_OP_CLEAR;
+    case blend_logic_op::op_set:
+        return VK_LOGIC_OP_SET;
+    case blend_logic_op::op_copy:
+        return VK_LOGIC_OP_COPY;
+    case blend_logic_op::op_copy_inverted:
+        return VK_LOGIC_OP_COPY_INVERTED;
+    case blend_logic_op::op_invert:
+        return VK_LOGIC_OP_INVERT;
+    case blend_logic_op::op_and:
+        return VK_LOGIC_OP_AND;
+    case blend_logic_op::op_nand:
+        return VK_LOGIC_OP_NAND;
+    case blend_logic_op::op_and_inverted:
+        return VK_LOGIC_OP_AND_INVERTED;
+    case blend_logic_op::op_and_reverse:
+        return VK_LOGIC_OP_AND_REVERSE;
+    case blend_logic_op::op_or:
+        return VK_LOGIC_OP_OR;
+    case blend_logic_op::op_nor:
+        return VK_LOGIC_OP_NOR;
+    case blend_logic_op::op_xor:
+        return VK_LOGIC_OP_XOR;
+    case blend_logic_op::op_or_reverse:
+        return VK_LOGIC_OP_OR_REVERSE;
+    case blend_logic_op::op_or_inverted:
+        return VK_LOGIC_OP_OR_INVERTED;
+    case blend_logic_op::op_equiv:
+        return VK_LOGIC_OP_EQUIVALENT;
+    }
+    CC_ASSERT(false && "to_native uncaught argument");
+}
+
+[[nodiscard]] inline constexpr VkBlendOp to_native(blend_op op)
+{
+    switch (op)
+    {
+    case blend_op::op_add:
+        return VK_BLEND_OP_ADD;
+    case blend_op::op_subtract:
+        return VK_BLEND_OP_SUBTRACT;
+    case blend_op::op_reverse_subtract:
+        return VK_BLEND_OP_REVERSE_SUBTRACT;
+    case blend_op::op_min:
+        return VK_BLEND_OP_MIN;
+    case blend_op::op_max:
+        return VK_BLEND_OP_MAX;
+    }
+    CC_ASSERT(false && "to_native uncaught argument");
+}
+
+[[nodiscard]] inline constexpr VkBlendFactor to_native(blend_factor bf)
+{
+    switch (bf)
+    {
+    case blend_factor::zero:
+        return VK_BLEND_FACTOR_ZERO;
+    case blend_factor::one:
+        return VK_BLEND_FACTOR_ONE;
+    case blend_factor::src_color:
+        return VK_BLEND_FACTOR_SRC_COLOR;
+    case blend_factor::inv_src_color:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+    case blend_factor::src_alpha:
+        return VK_BLEND_FACTOR_SRC_ALPHA;
+    case blend_factor::inv_src_alpha:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    case blend_factor::dest_color:
+        return VK_BLEND_FACTOR_DST_COLOR;
+    case blend_factor::inv_dest_color:
+        return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+    case blend_factor::dest_alpha:
+        return VK_BLEND_FACTOR_DST_ALPHA;
+    case blend_factor::inv_dest_alpha:
+        return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+    }
+
+    CC_ASSERT(false && "to_native uncaught argument");
+}
 }

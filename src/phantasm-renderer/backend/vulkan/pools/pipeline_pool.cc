@@ -9,7 +9,7 @@
 #include <phantasm-renderer/backend/vulkan/render_pass_pipeline.hh>
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
-                                                                                       pr::backend::arg::framebuffer_format framebuffer_format,
+                                                                                       pr::backend::arg::framebuffer_config const& framebuffer_config,
                                                                                        pr::backend::arg::shader_argument_shapes shader_arg_shapes,
                                                                                        bool should_have_push_constants,
                                                                                        pr::backend::arg::shader_stages shader_stages,
@@ -58,8 +58,8 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
     // write meta info
     {
         new_node.rt_formats.clear();
-        for (auto const rtf : framebuffer_format.render_targets)
-            new_node.rt_formats.push_back(rtf);
+        for (auto const& rt : framebuffer_config.render_targets)
+            new_node.rt_formats.push_back(rt.format);
 
         CC_ASSERT(primitive_config.samples > 0 && "invalid amount of MSAA samples");
         new_node.num_msaa_samples = static_cast<unsigned>(primitive_config.samples);
@@ -69,10 +69,10 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
         // Create VkPipeline
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
 
-        VkRenderPass dummy_render_pass = create_render_pass(mDevice, framebuffer_format, primitive_config);
+        VkRenderPass dummy_render_pass = create_render_pass(mDevice, framebuffer_config, primitive_config);
 
         new_node.raw_pipeline = create_pipeline(mDevice, dummy_render_pass, new_node.associated_pipeline_layout->raw_layout, patched_shader_stages,
-                                                primitive_config, vert_format_native, vertex_format.vertex_size_bytes);
+                                                primitive_config, vert_format_native, vertex_format.vertex_size_bytes, framebuffer_config);
 
         vkDestroyRenderPass(mDevice, dummy_render_pass, nullptr);
     }

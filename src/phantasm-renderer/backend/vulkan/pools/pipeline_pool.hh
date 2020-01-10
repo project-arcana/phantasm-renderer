@@ -25,7 +25,7 @@ public:
     // frontend-facing API
 
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
-                                                             arg::framebuffer_format framebuffer_format,
+                                                             const arg::framebuffer_config& framebuffer_config,
                                                              arg::shader_argument_shapes shader_arg_shapes,
                                                              bool should_have_push_constants,
                                                              arg::shader_stages shader_stages,
@@ -43,7 +43,7 @@ public:
         VkPipeline raw_pipeline;
         pipeline_layout* associated_pipeline_layout;
 
-        // info stored which is required for creating render passes
+        // info stored which is required for creating render passes on the fly / cached
         cc::capped_vector<format, limits::max_render_targets> rt_formats;
         unsigned num_msaa_samples;
     };

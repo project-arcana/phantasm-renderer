@@ -115,7 +115,7 @@ public:
     //
 
     [[nodiscard]] virtual handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
-                                                                     arg::framebuffer_format framebuffer_format,
+                                                                     arg::framebuffer_config const& framebuffer_conf,
                                                                      arg::shader_argument_shapes shader_arg_shapes,
                                                                      bool has_root_constants,
                                                                      arg::shader_stages shader_stages,

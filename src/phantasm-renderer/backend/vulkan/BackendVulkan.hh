@@ -95,13 +95,13 @@ public:
     //
 
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
-                                                             arg::framebuffer_format framebuffer_format,
+                                                             arg::framebuffer_config const& framebuffer_conf,
                                                              arg::shader_argument_shapes shader_arg_shapes,
                                                              bool has_root_constants,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
-        return mPoolPipelines.createPipelineState(vertex_format, framebuffer_format, shader_arg_shapes, has_root_constants, shader_stages, primitive_config);
+        return mPoolPipelines.createPipelineState(vertex_format, framebuffer_conf, shader_arg_shapes, has_root_constants, shader_stages, primitive_config);
     }
 
     [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,

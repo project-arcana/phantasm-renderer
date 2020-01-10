@@ -7,7 +7,7 @@
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
-                                                                                                     pr::backend::arg::framebuffer_format framebuffer_format,
+                                                                                                     pr::backend::arg::framebuffer_config const& framebuffer_format,
                                                                                                      pr::backend::arg::shader_argument_shapes shader_arg_shapes,
                                                                                                      bool has_root_constants,
                                                                                                      pr::backend::arg::shader_stages shader_stages,

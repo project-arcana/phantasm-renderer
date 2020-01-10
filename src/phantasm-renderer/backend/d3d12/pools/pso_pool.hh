@@ -21,7 +21,7 @@ public:
     // frontend-facing API
 
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
-                                                             arg::framebuffer_format framebuffer_format,
+                                                             const arg::framebuffer_config& framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
                                                              bool has_root_constants,
                                                              arg::shader_stages shader_stages,

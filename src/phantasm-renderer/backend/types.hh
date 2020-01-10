@@ -446,7 +446,7 @@ struct sampler_config
     }
 };
 
-inline bool operator==(sampler_config const& lhs, sampler_config const& rhs) noexcept
+inline constexpr bool operator==(sampler_config const& lhs, sampler_config const& rhs) noexcept
 {
     return lhs.filter == rhs.filter &&                 //
            lhs.address_u == rhs.address_u &&           //
@@ -466,6 +466,61 @@ enum class rt_clear_type : uint8_t
     clear,
     dont_care,
     load
+};
+
+enum class blend_logic_op : uint8_t
+{
+    no_op,
+    op_clear,
+    op_set,
+    op_copy,
+    op_copy_inverted,
+    op_invert,
+    op_and,
+    op_nand,
+    op_and_inverted,
+    op_and_reverse,
+    op_or,
+    op_nor,
+    op_xor,
+    op_or_reverse,
+    op_or_inverted,
+    op_equiv
+};
+
+enum class blend_op : uint8_t
+{
+    op_add,
+    op_subtract,
+    op_reverse_subtract,
+    op_min,
+    op_max
+};
+
+enum class blend_factor : uint8_t
+{
+    zero,
+    one,
+    src_color,
+    inv_src_color,
+    src_alpha,
+    inv_src_alpha,
+    dest_color,
+    inv_dest_color,
+    dest_alpha,
+    inv_dest_alpha
+};
+
+struct render_target_config
+{
+    format format = format::rgba8un;
+    bool blend_enable = false;
+    blend_factor blend_color_src = blend_factor::one;
+    blend_factor blend_color_dest = blend_factor::zero;
+    blend_op blend_op_color = blend_op::op_add;
+    blend_factor blend_alpha_src = blend_factor::one;
+    blend_factor blend_alpha_dest = blend_factor::zero;
+    blend_op blend_op_alpha = blend_op::op_add;
 };
 
 }

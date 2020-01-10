@@ -3,6 +3,8 @@
 #include <phantasm-renderer/backend/types.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
+#include <clean-core/assert.hh>
+
 #include "d3d12_sanitized.hh"
 
 namespace pr::backend::d3d12::util
@@ -67,6 +69,7 @@ namespace pr::backend::d3d12::util
     case pr::primitive_topology::patches:
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_PRIMITIVE_TOPOLOGY to_native_topology(pr::primitive_topology topology)
@@ -82,6 +85,7 @@ namespace pr::backend::d3d12::util
     case pr::primitive_topology::patches:
         return D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST; // TODO
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(pr::depth_function depth_func)
@@ -107,6 +111,7 @@ namespace pr::backend::d3d12::util
     case pr::depth_function::never:
         return D3D12_COMPARISON_FUNC_NEVER;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_CULL_MODE to_native(pr::cull_mode cull_mode)
@@ -120,6 +125,7 @@ namespace pr::backend::d3d12::util
     case pr::cull_mode::front:
         return D3D12_CULL_MODE_FRONT;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_COMMAND_LIST_TYPE to_native(queue_type type)
@@ -133,6 +139,7 @@ namespace pr::backend::d3d12::util
     case queue_type::compute:
         return D3D12_COMMAND_LIST_TYPE_COMPUTE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_SRV_DIMENSION to_native_srv_dim(shader_view_dimension sv_dim)
@@ -162,6 +169,7 @@ namespace pr::backend::d3d12::util
     case shader_view_dimension::raytracing_accel_struct:
         return D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_UAV_DIMENSION to_native_uav_dim(shader_view_dimension sv_dim)
@@ -246,6 +254,7 @@ namespace pr::backend::d3d12::util
     default:
         return D3D12_DSV_DIMENSION_UNKNOWN;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_FILTER to_native(sampler_filter filter, bool with_compare)
@@ -298,6 +307,7 @@ namespace pr::backend::d3d12::util
             return D3D12_FILTER_ANISOTROPIC;
         }
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_TEXTURE_ADDRESS_MODE to_native(sampler_address_mode mode)
@@ -313,6 +323,7 @@ namespace pr::backend::d3d12::util
     case sampler_address_mode::mirror:
         return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(sampler_compare_func mode)
@@ -337,6 +348,7 @@ namespace pr::backend::d3d12::util
     case sampler_compare_func::always:
         return D3D12_COMPARISON_FUNC_ALWAYS;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_STATIC_BORDER_COLOR to_native(sampler_border_color color)
@@ -353,6 +365,7 @@ namespace pr::backend::d3d12::util
     case sampler_border_color::white_int:
         return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 
@@ -369,6 +382,7 @@ namespace pr::backend::d3d12::util
     case sampler_border_color::white_int:
         return 1.f;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr float to_border_color_alpha(sampler_border_color color)
@@ -384,11 +398,13 @@ namespace pr::backend::d3d12::util
     case sampler_border_color::white_int:
         return 1.f;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_RESOURCE_DIMENSION to_native(texture_dimension dim)
 {
-    switch (dim) {
+    switch (dim)
+    {
     case texture_dimension::t1d:
         return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
     case texture_dimension::t2d:
@@ -396,7 +412,93 @@ namespace pr::backend::d3d12::util
     case texture_dimension::t3d:
         return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
     }
+    CC_ASSERT(false && "to_native uncaught argument");
 }
 
+[[nodiscard]] inline constexpr D3D12_LOGIC_OP to_native(blend_logic_op op)
+{
+    switch (op)
+    {
+    case blend_logic_op::no_op:
+        return D3D12_LOGIC_OP_NOOP;
+    case blend_logic_op::op_clear:
+        return D3D12_LOGIC_OP_CLEAR;
+    case blend_logic_op::op_set:
+        return D3D12_LOGIC_OP_SET;
+    case blend_logic_op::op_copy:
+        return D3D12_LOGIC_OP_COPY;
+    case blend_logic_op::op_copy_inverted:
+        return D3D12_LOGIC_OP_COPY_INVERTED;
+    case blend_logic_op::op_invert:
+        return D3D12_LOGIC_OP_INVERT;
+    case blend_logic_op::op_and:
+        return D3D12_LOGIC_OP_AND;
+    case blend_logic_op::op_nand:
+        return D3D12_LOGIC_OP_NAND;
+    case blend_logic_op::op_and_inverted:
+        return D3D12_LOGIC_OP_AND_INVERTED;
+    case blend_logic_op::op_and_reverse:
+        return D3D12_LOGIC_OP_AND_REVERSE;
+    case blend_logic_op::op_or:
+        return D3D12_LOGIC_OP_OR;
+    case blend_logic_op::op_nor:
+        return D3D12_LOGIC_OP_NOR;
+    case blend_logic_op::op_xor:
+        return D3D12_LOGIC_OP_XOR;
+    case blend_logic_op::op_or_reverse:
+        return D3D12_LOGIC_OP_OR_REVERSE;
+    case blend_logic_op::op_or_inverted:
+        return D3D12_LOGIC_OP_OR_INVERTED;
+    case blend_logic_op::op_equiv:
+        return D3D12_LOGIC_OP_EQUIV;
+    }
+    CC_ASSERT(false && "to_native uncaught argument");
+}
 
+[[nodiscard]] inline constexpr D3D12_BLEND_OP to_native(blend_op op)
+{
+    switch (op)
+    {
+    case blend_op::op_add:
+        return D3D12_BLEND_OP_ADD;
+    case blend_op::op_subtract:
+        return D3D12_BLEND_OP_SUBTRACT;
+    case blend_op::op_reverse_subtract:
+        return D3D12_BLEND_OP_REV_SUBTRACT;
+    case blend_op::op_min:
+        return D3D12_BLEND_OP_MIN;
+    case blend_op::op_max:
+        return D3D12_BLEND_OP_MAX;
+    }
+    CC_ASSERT(false && "to_native uncaught argument");
+}
+
+[[nodiscard]] inline constexpr D3D12_BLEND to_native(blend_factor bf)
+{
+    switch (bf)
+    {
+    case blend_factor::zero:
+        return D3D12_BLEND_ZERO;
+    case blend_factor::one:
+        return D3D12_BLEND_ONE;
+    case blend_factor::src_color:
+        return D3D12_BLEND_SRC_COLOR;
+    case blend_factor::inv_src_color:
+        return D3D12_BLEND_INV_SRC_COLOR;
+    case blend_factor::src_alpha:
+        return D3D12_BLEND_SRC_ALPHA;
+    case blend_factor::inv_src_alpha:
+        return D3D12_BLEND_INV_SRC_ALPHA;
+    case blend_factor::dest_color:
+        return D3D12_BLEND_DEST_COLOR;
+    case blend_factor::inv_dest_color:
+        return D3D12_BLEND_INV_DEST_COLOR;
+    case blend_factor::dest_alpha:
+        return D3D12_BLEND_DEST_ALPHA;
+    case blend_factor::inv_dest_alpha:
+        return D3D12_BLEND_INV_DEST_ALPHA;
+    }
+
+    CC_ASSERT(false && "to_native uncaught argument");
+}
 }
