@@ -4,6 +4,7 @@
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
+#include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -177,42 +178,9 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 
     // Shader arguments
-    {
-        auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
-        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+    bind_shader_arguments(draw.pipeline_state, draw.root_constants, draw.shader_arguments, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-        if (pipeline_layout.has_push_constants())
-        {
-            vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0, sizeof(draw.root_constants), draw.root_constants);
-        }
-
-        for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
-        {
-            auto& bound_arg = _bound.shader_args[i];
-            auto const& arg = draw.shader_arguments[i];
-
-            if (arg.constant_buffer != handle::null_resource)
-            {
-                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
-                {
-                    auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
-                                            1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
-                }
-            }
-
-            // Set the shader view if it has changed
-            if (bound_arg.update_shader_view(arg.shader_view))
-            {
-                if (arg.shader_view != handle::null_shader_view)
-                {
-                    auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
-                }
-            }
-        }
-    }
-
+    // Scissor
     if (draw.scissor.x != -1)
     {
         VkRect2D scissor_rect;
@@ -224,7 +192,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, draw.index_offset, draw.vertex_offset, 0);
+        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, draw.index_offset, static_cast<int32_t>(draw.vertex_offset), 0);
     }
     else
     {
@@ -247,44 +215,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 
     // Shader arguments
-    {
-        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
-
-        if (pipeline_layout.has_push_constants())
-        {
-            vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0, sizeof(dispatch.root_constants),
-                               dispatch.root_constants);
-        }
-
-        for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
-        {
-            auto& bound_arg = _bound.shader_args[i];
-            auto const& arg = dispatch.shader_arguments[i];
-
-            if (arg.constant_buffer != handle::null_resource)
-            {
-                // Set the CBV / offset if it has changed
-                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
-                {
-                    auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSetCompute(arg.constant_buffer);
-                    CC_ASSERT(cbv_desc_set != nullptr);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i + limits::max_shader_arguments,
-                                            1, &cbv_desc_set, 1, &arg.constant_buffer_offset);
-                }
-            }
-
-            if (bound_arg.update_shader_view(arg.shader_view))
-            {
-                // Set the shader view if it has changed
-                if (arg.shader_view != handle::null_shader_view)
-                {
-                    VkDescriptorSet sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
-                }
-            }
-        }
-    }
-
+    bind_shader_arguments(dispatch.pipeline_state, dispatch.root_constants, dispatch.shader_arguments, VK_PIPELINE_BIND_POINT_COMPUTE);
 
     // Dispatch command
     vkCmdDispatch(_cmd_list, dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);
@@ -427,4 +358,45 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     // this function pointer is not available in all configurations
     if (vkCmdInsertDebugUtilsLabelEXT)
         vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
+}
+
+void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend::handle::pipeline_state pso,
+                                                                     const std::byte* root_consts,
+                                                                     cc::span<const pr::backend::shader_argument> shader_args,
+                                                                     VkPipelineBindPoint bind_point)
+{
+    auto const& pso_node = _globals.pool_pipeline_states->get(pso);
+    pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+    if (pipeline_layout.has_push_constants())
+    {
+        vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0,
+                           sizeof(std::byte[limits::max_root_constant_bytes]), root_consts);
+    }
+
+    for (uint8_t i = 0; i < shader_args.size(); ++i)
+    {
+        auto& bound_arg = _bound.shader_args[i];
+        auto const& arg = shader_args[i];
+
+        if (arg.constant_buffer != handle::null_resource)
+        {
+            if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+            {
+                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1, &cbv_desc_set, 1,
+                                        &arg.constant_buffer_offset);
+            }
+        }
+
+        // Set the shader view if it has changed
+        if (bound_arg.update_shader_view(arg.shader_view))
+        {
+            if (arg.shader_view != handle::null_shader_view)
+            {
+                auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
+            }
+        }
+    }
 }

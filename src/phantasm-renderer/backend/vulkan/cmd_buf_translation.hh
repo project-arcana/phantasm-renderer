@@ -71,6 +71,9 @@ struct command_list_translator
     void execute(cmd::debug_marker const& marker);
 
 private:
+    void bind_shader_arguments(handle::pipeline_state pso, std::byte const* root_consts, cc::span<shader_argument const> shader_args, VkPipelineBindPoint bind_point);
+
+private:
     // non-owning constant (global)
     translator_global_memory _globals;
 
