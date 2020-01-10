@@ -159,6 +159,8 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuff
 void pr::backend::d3d12::ResourcePool::free(pr::backend::handle::resource res)
 {
     CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
+    if (!res.is_valid())
+        return;
 
     // TODO: dangle check
 
