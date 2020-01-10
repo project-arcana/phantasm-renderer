@@ -159,7 +159,10 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         _bound.index_buffer = draw.index_buffer;
         if (draw.index_buffer.is_valid())
         {
-            vkCmdBindIndexBuffer(_cmd_list, _globals.pool_resources->getRawBuffer(draw.index_buffer), 0, VK_INDEX_TYPE_UINT32);
+            auto const& ind_buf_info = _globals.pool_resources->getBufferInfo(draw.index_buffer);
+
+            auto const ind_type = ind_buf_info.stride == sizeof(uint16_t) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+            vkCmdBindIndexBuffer(_cmd_list, ind_buf_info.raw_buffer, 0, ind_type);
         }
     }
 

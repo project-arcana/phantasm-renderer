@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstdint>
+
 namespace pr
 {
 // see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkPrimitiveTopology.html
-enum class primitive_topology
+enum class primitive_topology : uint8_t
 {
     triangles,
     lines,
@@ -11,7 +13,7 @@ enum class primitive_topology
     patches
 };
 
-enum class depth_function
+enum class depth_function : uint8_t
 {
     none,
     less,
@@ -24,7 +26,7 @@ enum class depth_function
     never
 };
 
-enum class cull_mode
+enum class cull_mode : uint8_t
 {
     none,
     back,

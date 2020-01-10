@@ -22,7 +22,7 @@ inline cc::hash_t compute(shader_argument const& v) { return cc::make_hash(v.con
 
 inline cc::hash_t compute(pr::primitive_pipeline_config const& v)
 {
-    static_assert(sizeof(pr::primitive_pipeline_config) == 20, "hash function out of date");
+    static_assert(sizeof(pr::primitive_pipeline_config) == 8, "hash function out of date");
     return cc::hash_combine(cc::make_hash(v.topology, v.depth, v.depth_readonly, v.cull), cc::make_hash(v.samples));
 }
 
