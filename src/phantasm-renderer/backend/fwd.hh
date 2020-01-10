@@ -16,4 +16,6 @@ struct shader_argument;
 
 struct command_stream_parser;
 struct command_stream_writer;
+
+class Backend;
 }

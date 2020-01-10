@@ -1,5 +1,6 @@
 #pragma once
 
+#include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
 #include "types.hh"

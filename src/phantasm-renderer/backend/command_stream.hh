@@ -84,14 +84,14 @@ PR_DEFINE_CMD(begin_render_pass)
 
     cmd_vector<render_target_info, limits::max_render_targets> render_targets;
     depth_stencil_info depth_target;
-    tg::isize2 viewport;
+    tg::isize2 viewport = tg::isize2(0, 0);
 
 public:
     // convenience
 
-    void add_backbuffer_rt(handle::resource res)
+    void add_backbuffer_rt(handle::resource res, bool clear = true)
     {
-        render_targets.push_back(render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, rt_clear_type::clear});
+        render_targets.push_back(render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, clear ? rt_clear_type::clear : rt_clear_type::load});
         render_targets.back().sve.init_as_backbuffer(res);
     }
 
@@ -179,20 +179,29 @@ PR_DEFINE_CMD(draw)
 
     std::byte root_constants[limits::max_root_constant_bytes];
     cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
-    handle::pipeline_state pipeline_state;
-    handle::resource vertex_buffer;
-    handle::resource index_buffer;
-    unsigned num_indices;
+    handle::pipeline_state pipeline_state = handle::null_pipeline_state;
+    handle::resource vertex_buffer = handle::null_resource;
+    handle::resource index_buffer = handle::null_resource;
+    unsigned num_indices = 0;
+    unsigned index_offset = 0;
+    unsigned vertex_offset = 0;
+
+    /// the scissor rectangle to set, none if -1
+    /// left, top, right, bottom of the rectangle in absolute pixel values
+    tg::ivec4 scissor = tg::ivec4(-1, -1, -1, -1);
 
 public:
     // convenience
 
-    void init(handle::pipeline_state pso, unsigned num, handle::resource vb = handle::null_resource, handle::resource ib = handle::null_resource)
+    void init(handle::pipeline_state pso, unsigned num_ind, handle::resource vb = handle::null_resource, handle::resource ib = handle::null_resource,
+              unsigned ind_offset = 0, unsigned vert_offset = 0)
     {
         pipeline_state = pso;
-        num_indices = num;
+        num_indices = num_ind;
         vertex_buffer = vb;
         index_buffer = ib;
+        index_offset = ind_offset;
+        vertex_offset = vert_offset;
     }
 
     void add_shader_arg(handle::resource cbv, unsigned cbv_off = 0, handle::shader_view sv = handle::null_shader_view)
@@ -208,6 +217,8 @@ public:
         static_assert(!std::is_pointer_v<T>, "provide direct reference to data");
         std::memcpy(root_constants, &data, sizeof(T));
     }
+
+    void set_scissor(int left, int top, int right, int bot) { scissor = tg::ivec4(left, top, right, bot); }
 };
 
 PR_DEFINE_CMD(dispatch)
@@ -216,10 +227,10 @@ PR_DEFINE_CMD(dispatch)
 
     std::byte root_constants[limits::max_root_constant_bytes];
     cmd_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
-    unsigned dispatch_x;
-    unsigned dispatch_y;
-    unsigned dispatch_z;
-    handle::pipeline_state pipeline_state;
+    unsigned dispatch_x = 0;
+    unsigned dispatch_y = 0;
+    unsigned dispatch_z = 0;
+    handle::pipeline_state pipeline_state = handle::null_pipeline_state;
 
 public:
     // convenience
@@ -318,6 +329,18 @@ PR_DEFINE_CMD(copy_buffer_to_texture)
     unsigned dest_height;      ///< height of the destination texture (in the specified MIP map and array element)
     unsigned dest_mip_index;   ///< index of the MIP level to copy
     unsigned dest_array_index; ///< index of the array element to copy (usually: 0)
+
+public:
+    void init(handle::resource src, handle::resource dest, unsigned dest_w, unsigned dest_h, size_t src_offset = 0, unsigned dest_mip_i = 0, unsigned dest_arr_i = 0)
+    {
+        source = src;
+        destination = dest;
+        source_offset = src_offset;
+        dest_width = dest_w;
+        dest_height = dest_h;
+        dest_mip_index = dest_mip_i;
+        dest_array_index = dest_arr_i;
+    }
 };
 
 PR_DEFINE_CMD(debug_marker)
@@ -460,6 +483,13 @@ public:
         _cursor = 0;
     }
 
+    /// exchange the underlying buffer without resetting the cursor
+    void exchange_buffer(std::byte* new_buffer, size_t new_size)
+    {
+        _out_buffer = new_buffer;
+        _max_size = new_size;
+    }
+
     void reset() { _cursor = 0; }
 
     template <class CMDT>
@@ -482,6 +512,8 @@ public:
 public:
     size_t size() const { return _cursor; }
     std::byte* buffer() const { return _out_buffer; }
+
+    size_t max_size() const { return _max_size; }
 
     bool empty() const { return _cursor == 0; }
 

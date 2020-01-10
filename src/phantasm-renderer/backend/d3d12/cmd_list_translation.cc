@@ -192,14 +192,20 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         }
     }
 
+    if (draw.scissor.x != -1)
+    {
+        D3D12_RECT scissor_rect = {draw.scissor.x, draw.scissor.y, draw.scissor.z, draw.scissor.w};
+        _cmd_list->RSSetScissorRects(1, &scissor_rect);
+    }
+
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, 0, 0, 0);
+        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, draw.index_offset, draw.vertex_offset, 0);
     }
     else
     {
-        _cmd_list->DrawInstanced(draw.num_indices, 1, 0, 0);
+        _cmd_list->DrawInstanced(draw.num_indices, 1, draw.vertex_offset, 0);
     }
 }
 

@@ -39,11 +39,14 @@ public:
     /// causes an internal resize
     virtual void onResize(tg::isize2 size) = 0;
 
-    /// gets the current backbuffer size
+    /// returns the current backbuffer size
     [[nodiscard]] virtual tg::isize2 getBackbufferSize() const = 0;
 
-    /// gets the backbuffer pixel format
+    /// returns the backbuffer pixel format
     [[nodiscard]] virtual format getBackbufferFormat() const = 0;
+
+    /// returns the amount of backbuffers
+    [[nodiscard]] virtual unsigned getNumBackbuffers() const = 0;
 
     /// Clears pending internal resize events, returns true if the
     /// backbuffer has resized since the last call

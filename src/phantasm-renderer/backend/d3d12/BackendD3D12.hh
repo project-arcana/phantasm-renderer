@@ -43,7 +43,7 @@ public:
     void onResize(tg::isize2 size) override;
     [[nodiscard]] tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
     [[nodiscard]] format getBackbufferFormat() const override;
-
+    [[nodiscard]] unsigned getNumBackbuffers() const override { return mSwapchain.getNumBackbuffers(); }
 
     //
     // Resource interface

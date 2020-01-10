@@ -212,14 +212,22 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         }
     }
 
+    if (draw.scissor.x != -1)
+    {
+        VkRect2D scissor_rect;
+        scissor_rect.offset = VkOffset2D{draw.scissor.x, draw.scissor.y};
+        scissor_rect.extent = VkExtent2D{static_cast<uint32_t>(draw.scissor.z - draw.scissor.x), static_cast<uint32_t>(draw.scissor.w - draw.scissor.y)};
+        vkCmdSetScissor(_cmd_list, 0, 1, &scissor_rect);
+    }
+
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, 0, 0, 0);
+        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, draw.index_offset, draw.vertex_offset, 0);
     }
     else
     {
-        vkCmdDraw(_cmd_list, draw.num_indices, 1, 0, 0);
+        vkCmdDraw(_cmd_list, draw.num_indices, 1, draw.vertex_offset, 0);
     }
 }
 
