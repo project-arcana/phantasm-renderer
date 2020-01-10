@@ -366,7 +366,7 @@ namespace pr::backend::vk::util
 
     case pr::backend::shader_view_dimension::buffer:
     case pr::backend::shader_view_dimension::raytracing_accel_struct:
-        CC_ASSERT(false);
+        CC_ASSERT(false && "requested image view for buffer or raytracing structure");
         return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     }
     CC_ASSERT(false && "to_native uncaught argument");
