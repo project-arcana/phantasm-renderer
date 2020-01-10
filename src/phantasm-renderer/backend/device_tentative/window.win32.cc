@@ -24,6 +24,8 @@
 struct pr::backend::device::Window::event_proxy
 {
     pr::backend::device::Window* window = nullptr;
+    pr::backend::device::Window::win32_event_callback callback = nullptr;
+
     void delegateEventOnClose() const { window->onCloseEvent(); }
     void delegateEventResize(int w, int h, bool minimized) const { window->onResizeEvent(w, h, minimized); }
 };
@@ -35,6 +37,12 @@ pr::backend::device::Window::event_proxy s_event_proxy;
 
 ::LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    if (s_event_proxy.callback && s_event_proxy.callback(hWnd, msg, wParam, lParam))
+    {
+        return true;
+    }
+
+
     switch (msg)
     {
     case WM_QUIT:
@@ -51,9 +59,13 @@ pr::backend::device::Window::event_proxy s_event_proxy;
         s_event_proxy.delegateEventResize(client_rect.right - client_rect.left, client_rect.bottom - client_rect.top, (::IsIconic(hWnd) == TRUE));
         return 0;
     }
-    default:
-        return DefWindowProc(hWnd, msg, wParam, lParam);
+    case WM_SYSCOMMAND:
+        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
+            return 0;
+        break;
     }
+
+    return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 }
 
@@ -99,18 +111,16 @@ void pr::backend::device::Window::initialize(const char* title, int width, int h
     mWidth = width;
     mHeight = height;
 
-    auto const hInstance = GetModuleHandle(nullptr);
-
     // Window Setup
     WNDCLASS windowClass = {};
     windowClass.lpfnWndProc = WndProc;
-    windowClass.hInstance = hInstance;
+    windowClass.hInstance = GetModuleHandle(nullptr);
     windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
     windowClass.lpszClassName = "MiniWindow";
     RegisterClass(&windowClass);
 
     s_window_handle = CreateWindowEx(0, windowClass.lpszClassName, title, WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, mWidth,
-                                     mHeight, nullptr, nullptr, hInstance, nullptr);
+                                     mHeight, nullptr, nullptr, windowClass.hInstance, nullptr);
 }
 
 void pr::backend::device::Window::pollEvents()
@@ -153,6 +163,8 @@ void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSur
 
 #ifdef PR_BACKEND_D3D12
 HWND pr::backend::device::Window::getHandle() const { return s_window_handle; }
+
+void pr::backend::device::Window::setEventCallback(pr::backend::device::Window::win32_event_callback callback) { s_event_proxy.callback = callback; }
 #endif // PR_BACKEND_D3D12
 
 #endif // CC_OS_WINDOWS

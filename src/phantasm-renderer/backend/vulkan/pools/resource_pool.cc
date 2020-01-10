@@ -150,6 +150,8 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
 void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
 {
     CC_ASSERT(res != mInjectedBackbufferResource && "the backbuffer resource must not be freed");
+    if (!res.is_valid())
+        return;
 
     resource_node& freed_node = mPool.get(static_cast<unsigned>(res.index));
 

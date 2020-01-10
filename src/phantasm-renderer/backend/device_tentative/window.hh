@@ -8,7 +8,7 @@ typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 #endif
 
 #ifdef PR_BACKEND_D3D12
-typedef struct HWND__* HWND;
+#include <clean-core/native/win32_fwd.hh>
 #endif
 
 namespace pr::backend::device
@@ -51,12 +51,15 @@ public:
 
 public:
 #ifdef PR_BACKEND_VULKAN
-    static cc::span<const char * const> getRequiredInstanceExtensions();
+    static cc::span<const char* const> getRequiredInstanceExtensions();
     void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
 #endif
 
 #ifdef PR_BACKEND_D3D12
     [[nodiscard]] ::HWND getHandle() const;
+
+    using win32_event_callback = LRESULT (*)(HWND, UINT, WPARAM, LPARAM);
+    void setEventCallback(win32_event_callback callback);
 #endif
 
 private:
