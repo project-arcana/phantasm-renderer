@@ -72,8 +72,12 @@ endif()
 if (MSVC)
     target_compile_options(phantasm-renderer PUBLIC /MP)
 else()
+    # Pthread
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+
     target_compile_options(phantasm-renderer PRIVATE -Wall -fPIC)
-    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold -lX11)
+    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold -lX11 PRIVATE Threads::Threads)
 endif()
 
 
