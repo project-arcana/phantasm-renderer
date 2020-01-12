@@ -382,7 +382,7 @@ void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend
         auto& bound_arg = _bound.shader_args[i];
         auto const& arg = shader_args[i];
 
-        if (arg.constant_buffer != handle::null_resource)
+        if (arg.constant_buffer.is_valid())
         {
             if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
             {
@@ -395,9 +395,11 @@ void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend
         // Set the shader view if it has changed
         if (bound_arg.update_shader_view(arg.shader_view))
         {
-            if (arg.shader_view != handle::null_shader_view)
+            if (arg.shader_view.is_valid())
             {
                 auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                // log::info() << "bind desc set" << _cmd_list << bind_point << pipeline_layout.raw_layout << i << sv_desc_set;
+                // std::fflush(stdout);
                 vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
             }
         }

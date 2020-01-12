@@ -14,13 +14,6 @@ class ResourcePool;
 class PipelinePool;
 class CommandListPool;
 
-struct translator_thread_local_memory
-{
-    void initialize(VkDevice)
-    { /* TODO */
-    }
-};
-
 struct translator_global_memory
 {
     void initialize(VkDevice device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelinePool* pso_pool, CommandListPool* cmd_pool)
@@ -32,11 +25,13 @@ struct translator_global_memory
         this->pool_cmd_lists = cmd_pool;
     }
 
-    VkDevice device;
-    ShaderViewPool* pool_shader_views;
-    ResourcePool* pool_resources;
-    PipelinePool* pool_pipeline_states;
-    CommandListPool* pool_cmd_lists;
+    VkDevice device = nullptr;
+    ShaderViewPool* pool_shader_views = nullptr;
+    ResourcePool* pool_resources = nullptr;
+    PipelinePool* pool_pipeline_states = nullptr;
+    CommandListPool* pool_cmd_lists = nullptr;
+
+    translator_global_memory() = default;
 };
 
 /// responsible for filling command lists, 1 per thread
@@ -45,7 +40,6 @@ struct command_list_translator
     void initialize(VkDevice device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelinePool* pso_pool, CommandListPool* cmd_pool)
     {
         _globals.initialize(device, sv_pool, resource_pool, pso_pool, cmd_pool);
-        _thread_local.initialize(_globals.device);
     }
 
     void translateCommandList(VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
@@ -77,9 +71,6 @@ private:
     // non-owning constant (global)
     translator_global_memory _globals;
 
-    // owning constant (thread local)
-    translator_thread_local_memory _thread_local;
-
     // non-owning dynamic
     vk_incomplete_state_cache* _state_cache = nullptr;
     VkCommandBuffer _cmd_list = nullptr;
@@ -88,15 +79,15 @@ private:
     // dynamic state
     struct
     {
-        handle::pipeline_state pipeline_state;
-        handle::resource index_buffer;
-        handle::resource vertex_buffer;
+        handle::pipeline_state pipeline_state = handle::null_pipeline_state;
+        handle::resource index_buffer = handle::null_resource;
+        handle::resource vertex_buffer = handle::null_resource;
 
         struct shader_arg_info
         {
-            handle::shader_view sv;
-            handle::resource cbv;
-            unsigned cbv_offset;
+            handle::shader_view sv = handle::null_shader_view;
+            handle::resource cbv = handle::null_resource;
+            unsigned cbv_offset = 0;
 
             void reset()
             {
@@ -131,13 +122,12 @@ private:
 
         cc::array<shader_arg_info, limits::max_shader_arguments> shader_args;
 
-        VkRenderPass raw_render_pass;
-        VkFramebuffer raw_framebuffer;
-        VkDescriptorSet raw_sampler_descriptor_set;
-        VkPipelineLayout raw_pipeline_layout;
+        VkRenderPass raw_render_pass = nullptr;
+        VkFramebuffer raw_framebuffer = nullptr;
+        VkDescriptorSet raw_sampler_descriptor_set = nullptr;
+        VkPipelineLayout raw_pipeline_layout = nullptr;
 
         cmd::begin_render_pass current_render_pass;
-
 
         void reset()
         {
