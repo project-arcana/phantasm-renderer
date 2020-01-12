@@ -1,11 +1,10 @@
 #include "shader_view_pool.hh"
 
-#include <iostream>
-
 #include <clean-core/capped_vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
+#include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
 #include <phantasm-renderer/backend/vulkan/resources/transition_barrier.hh>
 
@@ -227,7 +226,7 @@ void pr::backend::vk::ShaderViewPool::destroy()
 
     if (num_leaks > 0)
     {
-        std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::shader_view object" << (num_leaks == 1 ? "" : "s") << std::endl;
+        log::info()("warning: leaked %d handle::shader_view object%s", num_leaks, num_leaks == 1 ? "" : "s");
     }
 
     mAllocator.destroy();

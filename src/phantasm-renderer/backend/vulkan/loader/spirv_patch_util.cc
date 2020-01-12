@@ -76,7 +76,7 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
         cc::array<SpvReflectDescriptorBinding*> bindings(num_bindings);
         spvReflectEnumerateDescriptorBindings(&module, &num_bindings, bindings.data());
 
-        for (auto b : bindings)
+        for (auto const* const b : bindings)
         {
             if (b->resource_type == SPV_REFLECT_RESOURCE_FLAG_CBV)
             {
@@ -95,7 +95,7 @@ void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_d
 
         out_desc_infos.reserve(out_desc_infos.size() + num_bindings);
 
-        for (auto b : bindings)
+        for (auto const* const b : bindings)
         {
             auto& new_info = out_desc_infos.emplace_back();
             new_info.set = b->set;
@@ -165,7 +165,7 @@ cc::vector<pr::backend::vk::util::spirv_desc_info> pr::backend::vk::util::merge_
     sorted_merged_res.reserve(desc_infos.size());
     spirv_desc_info* curr_range = nullptr;
 
-    for (auto& di : desc_infos)
+    for (auto const& di : desc_infos)
     {
         if (curr_range &&                     // not the first range
             curr_range->set == di.set &&      // set same as current range
