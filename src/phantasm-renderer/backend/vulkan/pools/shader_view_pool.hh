@@ -50,6 +50,12 @@ private:
     struct shader_view_node
     {
         VkDescriptorSet raw_desc_set;
+
+        // the descriptor set layout used to create the descriptor set proper
+        // This MUST stay alive, if it isn't alive, no warnings are emitted but
+        // vkCmdBindDescriptorSets spuriously crashes the driver with compute binding points
+        VkDescriptorSetLayout raw_desc_set_layout;
+
         // handles contained in this shader view, for state tracking
         cc::capped_vector<handle::resource, 16> resources;
 

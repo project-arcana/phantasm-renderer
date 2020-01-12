@@ -38,6 +38,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // Populate new node
     shader_view_node& new_node = mPool.get(pool_index);
     new_node.raw_desc_set = res_raw;
+    new_node.raw_desc_set_layout = layout;
 
     // Perform the writes
     {
@@ -173,9 +174,6 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         }
     }
 
-    // Clean up the layout
-    vkDestroyDescriptorSetLayout(mAllocator.getDevice(), layout, nullptr);
-
     return {static_cast<handle::index_t>(pool_index)};
 }
 
@@ -300,4 +298,7 @@ void pr::backend::vk::ShaderViewPool::internalFree(pr::backend::vk::ShaderViewPo
     node.samplers.clear();
 
     node.resources.clear();
+
+    // destroy the descriptor set layout used for creation
+    vkDestroyDescriptorSetLayout(mDevice, node.raw_desc_set_layout, nullptr);
 }
