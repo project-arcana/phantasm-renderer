@@ -82,7 +82,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (begin_rp.depth_target.sve.resource != handle::null_resource)
+    if (begin_rp.depth_target.sve.resource.is_valid())
     {
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
         auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.sve.resource);
@@ -289,7 +289,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     for (auto const& transition : transition_res.transitions)
     {
         resource_state before;
-        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before);
+        bool const before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before);
 
         if (before_known && before != transition.target_state)
         {
@@ -377,6 +377,6 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)
 {
-    lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 8);
+    lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, limits::max_render_targets);
     lin_alloc_dsvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
 }

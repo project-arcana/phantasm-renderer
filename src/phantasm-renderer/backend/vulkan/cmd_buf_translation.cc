@@ -95,7 +95,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     }
                 }
 
-                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.sve.resource.is_valid())
                 {
                     fb_image_views.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
                     fb_image_views_to_clean_up.push_back(fb_image_views.back());
@@ -136,7 +136,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     std::memcpy(&cv.color.float32, &rt.clear_value, sizeof(rt.clear_value));
                 }
 
-                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.sve.resource.is_valid())
                 {
                     auto& cv = clear_values.emplace_back();
                     cv.depthStencil = {_bound.current_render_pass.depth_target.clear_value_depth,
@@ -398,8 +398,6 @@ void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend
             if (arg.shader_view.is_valid())
             {
                 auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
-                // log::info() << "bind desc set" << _cmd_list << bind_point << pipeline_layout.raw_layout << i << sv_desc_set;
-                // std::fflush(stdout);
                 vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
             }
         }

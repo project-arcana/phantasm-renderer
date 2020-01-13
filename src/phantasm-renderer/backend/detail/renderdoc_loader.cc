@@ -5,7 +5,7 @@
 #include <renderdoc_app/renderdoc_app.h>
 
 #ifdef CC_OS_WINDOWS
-#include <Windows.h>
+#include <clean-core/native/win32_sanitized.hh>
 #elif defined(CC_OS_LINUX)
 #include <dlfcn.h>
 #endif

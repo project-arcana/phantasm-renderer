@@ -57,16 +57,3 @@ void pr::backend::log::dump_hex(const char* description, const void* data, int l
 
     std::printf("  %s\n", buff);
 }
-
-void pr::backend::log::print_cmd(const char* prefix, const pr::backend::cmd::dispatch& dispatch)
-{
-    std::cout << prefix << "cmd::dispatch (" << dispatch.dispatch_x << ", " << dispatch.dispatch_y << ", " << dispatch.dispatch_z << ")" << std::endl;
-    log::dump_hex("    root constant data", &dispatch.root_constants[0], sizeof(dispatch.root_constants));
-    std::cout << "    pipeline_state: " << dispatch.pipeline_state.index << std::endl;
-    for (uint8_t i = 0u; i < dispatch.shader_arguments.size(); ++i)
-    {
-        auto const& sa = dispatch.shader_arguments[i];
-        std::cout << "    arg #" << static_cast<int>(i) << ": shader_view: " << sa.shader_view.index << ", constant_buffer: " << sa.constant_buffer.index
-                  << ", constant_buffer_offset: " << sa.constant_buffer_offset << std::endl;
-    }
-}
