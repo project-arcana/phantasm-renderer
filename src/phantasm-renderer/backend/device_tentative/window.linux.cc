@@ -7,12 +7,8 @@
 #include <X11/Xlib.h>
 
 #include <clean-core/array.hh>
+#include <clean-core/bit_cast.hh>
 #include <clean-core/capped_vector.hh>
-
-#ifdef PR_BACKEND_VULKAN
-#include <phantasm-renderer/backend/vulkan/common/verify.hh>
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
-#endif
 
 namespace
 {
@@ -152,6 +148,11 @@ void pr::backend::device::Window::pollEvents()
 
     ::XFlush(s_display);
 }
+
+void* pr::backend::device::Window::getNativeHandleA() const { return cc::bit_cast<void*>(s_window); }
+
+void* pr::backend::device::Window::getNativeHandleB() const { return static_cast<void*>(s_display); }
+
 void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
 
 void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)

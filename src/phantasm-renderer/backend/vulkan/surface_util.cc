@@ -2,6 +2,7 @@
 
 #include <clean-core/array.hh>
 #include <clean-core/macros.hh>
+#include <clean-core/bit_cast.hh>
 
 #include "common/verify.hh"
 #include "loader/volk.hh"
@@ -38,7 +39,7 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
     VkXlibSurfaceCreateInfoKHR surface_info = {};
     surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
     surface_info.dpy = static_cast<::Display*>(window_handle.native_b);
-    surface_info.window = static_cast<::Window>(window_handle.native_a);
+    surface_info.window = cc::bit_cast<::Window>(window_handle.native_a);
     surface_info.pNext = nullptr;
     surface_info.flags = 0;
     PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
