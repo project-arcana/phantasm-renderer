@@ -6,8 +6,6 @@
 
 #include "Device.hh"
 #include "Swapchain.hh"
-#include "loader/volk.hh"
-#include "memory/ResourceAllocator.hh"
 
 #include "common/diagnostic_util.hh"
 #include "pools/cmd_list_pool.hh"
@@ -144,7 +142,6 @@ public:
     VkSurfaceKHR mSurface = nullptr;
     Device mDevice;
     Swapchain mSwapchain;
-    ResourceAllocator mAllocator;
 
 public:
     // Pools

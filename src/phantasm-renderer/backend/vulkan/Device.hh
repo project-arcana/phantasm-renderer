@@ -17,7 +17,6 @@ public:
     Device(Device&&) noexcept = delete;
     Device& operator=(Device const&) = delete;
     Device& operator=(Device&&) noexcept = delete;
-
     Device() = default;
 
     void initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config);

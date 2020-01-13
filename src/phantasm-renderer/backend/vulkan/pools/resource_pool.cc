@@ -1,12 +1,11 @@
 #include "resource_pool.hh"
 
-#include <iostream>
-
 #include <clean-core/bit_cast.hh>
 #include <clean-core/utility.hh>
 
 #include <typed-geometry/tg.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
@@ -63,7 +62,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
 
     VmaAllocation res_alloc;
     VkImage res_image;
-    PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+    PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
@@ -98,7 +97,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
 
     VmaAllocation res_alloc;
     VkImage res_image;
-    PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator.getAllocator(), &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+    PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
@@ -121,7 +120,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsign
 
     VmaAllocation res_alloc;
     VkBuffer res_buffer;
-    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
     return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes);
 }
 
@@ -142,7 +141,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
     VmaAllocation res_alloc;
     VmaAllocationInfo res_alloc_info;
     VkBuffer res_buffer;
-    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator.getAllocator(), &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
     CC_ASSERT(res_alloc_info.pMappedData != nullptr);
     return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
@@ -186,12 +185,18 @@ void pr::backend::vk::ResourcePool::flushMappedMemory(pr::backend::handle::resou
 {
     auto const& node = internalGet(res);
     CC_ASSERT(node.type == resource_node::resource_type::buffer && node.buffer.map != nullptr && "given resource is not a mapped buffer");
-    vmaFlushAllocation(mAllocator.getAllocator(), node.allocation, 0, node.buffer.width);
+    vmaFlushAllocation(mAllocator, node.allocation, 0, node.buffer.width);
 }
 
 void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources)
 {
-    mAllocator.initialize(physical, device);
+    {
+        VmaAllocatorCreateInfo create_info = {};
+        create_info.physicalDevice = physical;
+        create_info.device = device;
+        PR_VK_VERIFY_SUCCESS(vmaCreateAllocator(&create_info, &mAllocator));
+    }
+
     mAllocatorDescriptors.initialize(device, max_num_resources, 0, 0, 0);
     mPool.initialize(max_num_resources + 1); // 1 additional resource for the backbuffer
 
@@ -216,10 +221,12 @@ void pr::backend::vk::ResourcePool::destroy()
 
     if (num_leaks > 0)
     {
-        std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::resource object" << (num_leaks == 1 ? "" : "s") << std::endl;
+        log::info()("warning: leaked %d handle::resource object%s", num_leaks, num_leaks == 1 ? "" : "s");
     }
 
-    mAllocator.destroy();
+    vmaDestroyAllocator(mAllocator);
+    mAllocator = nullptr;
+
     mAllocatorDescriptors.destroy();
 }
 
@@ -342,11 +349,11 @@ void pr::backend::vk::ResourcePool::internalFree(resource_node& node)
     // This requires no synchronization, as VMA internally syncs
     if (node.type == resource_node::resource_type::image)
     {
-        vmaDestroyImage(mAllocator.getAllocator(), node.image.raw_image, node.allocation);
+        vmaDestroyImage(mAllocator, node.image.raw_image, node.allocation);
     }
     else
     {
-        vmaDestroyBuffer(mAllocator.getAllocator(), node.buffer.raw_buffer, node.allocation);
+        vmaDestroyBuffer(mAllocator, node.buffer.raw_buffer, node.allocation);
 
         // This does require synchronization
         if (node.buffer.raw_uniform_dynamic_ds != nullptr)

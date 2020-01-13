@@ -5,8 +5,10 @@
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/vulkan/memory/ResourceAllocator.hh>
 #include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
+
+typedef struct VmaAllocator_T* VmaAllocator;
+typedef struct VmaAllocation_T* VmaAllocation;
 
 namespace pr::backend::vk
 {
@@ -160,7 +162,7 @@ private:
     VkImageView mInjectedBackbufferView = nullptr;
 
     /// "Backing" allocators
-    ResourceAllocator mAllocator;
+    VmaAllocator mAllocator = nullptr;
     DescriptorAllocator mAllocatorDescriptors;
     std::mutex mMutex;
 };

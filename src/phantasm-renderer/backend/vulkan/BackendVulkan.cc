@@ -114,7 +114,6 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
         auto const& chosen_vk_gpu = vk_gpu_infos[chosen_gpu.index];
 
         mDevice.initialize(chosen_vk_gpu, mSurface, config);
-        mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
         mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
     }
 
@@ -162,7 +161,6 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
         }
 
         vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
-        mAllocator.destroy();
         mDevice.destroy();
 
         if (mDebugMessenger != nullptr)
