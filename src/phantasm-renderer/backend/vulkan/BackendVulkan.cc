@@ -143,30 +143,33 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
 
 pr::backend::vk::BackendVulkan::~BackendVulkan()
 {
-    flushGPU();
-
-    mDiagnostics.free();
-
-    mSwapchain.destroy();
-
-    mPoolShaderViews.destroy();
-    mPoolCmdLists.destroy();
-    mPoolPipelines.destroy();
-    mPoolResources.destroy();
-
-    for (auto& thread_cmp : mThreadComponents)
+    if (mInstance != nullptr)
     {
-        thread_cmp.cmd_list_allocator.destroy(mDevice.getDevice());
+        flushGPU();
+
+        mDiagnostics.free();
+
+        mSwapchain.destroy();
+
+        mPoolShaderViews.destroy();
+        mPoolCmdLists.destroy();
+        mPoolPipelines.destroy();
+        mPoolResources.destroy();
+
+        for (auto& thread_cmp : mThreadComponents)
+        {
+            thread_cmp.cmd_list_allocator.destroy(mDevice.getDevice());
+        }
+
+        vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
+        mAllocator.destroy();
+        mDevice.destroy();
+
+        if (mDebugMessenger != nullptr)
+            vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
+
+        vkDestroyInstance(mInstance, nullptr);
     }
-
-    vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
-    mAllocator.destroy();
-    mDevice.destroy();
-
-    if (mDebugMessenger != nullptr)
-        vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
-
-    vkDestroyInstance(mInstance, nullptr);
 }
 
 pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer()

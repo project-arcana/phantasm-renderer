@@ -139,7 +139,7 @@ private:
     void createDebugMessenger();
 
 public:
-    VkInstance mInstance;
+    VkInstance mInstance = nullptr;
     VkDebugUtilsMessengerEXT mDebugMessenger = nullptr;
     VkSurfaceKHR mSurface = nullptr;
     Device mDevice;

@@ -1,6 +1,6 @@
 #include "debug_callback.hh"
 
-#include <cstdio>
+#include <phantasm-renderer/backend/vulkan/common/log.hh>
 
 namespace
 {
@@ -43,7 +43,7 @@ VkBool32 pr::backend::vk::detail::debug_callback(VkDebugUtilsMessageSeverityFlag
 {
     // if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        fprintf(stderr, "[pr][backend][vk] [API][%s][%s] %s\n", to_literal(type), to_literal(severity), callback_data->pMessage);
+        log::err()("[API][%s][%s] %s", to_literal(type), to_literal(severity), callback_data->pMessage);
     }
     return VK_FALSE;
 }

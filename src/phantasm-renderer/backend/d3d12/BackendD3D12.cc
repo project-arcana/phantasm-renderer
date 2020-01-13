@@ -63,19 +63,22 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 
 pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 {
-    flushGPU();
-
-    mDiagnostics.free();
-
-    mSwapchain.setFullscreen(false);
-
-    mPoolPSOs.destroy();
-    mPoolCmdLists.destroy();
-    mPoolResources.destroy();
-
-    for (auto& thread_comp : mThreadComponents)
+    if (mAdapter.isValid())
     {
-        thread_comp.cmd_list_allocator.destroy();
+        flushGPU();
+
+        mDiagnostics.free();
+
+        mSwapchain.setFullscreen(false);
+
+        mPoolPSOs.destroy();
+        mPoolCmdLists.destroy();
+        mPoolResources.destroy();
+
+        for (auto& thread_comp : mThreadComponents)
+        {
+            thread_comp.cmd_list_allocator.destroy();
+        }
     }
 }
 
