@@ -26,7 +26,7 @@ namespace pr::backend::d3d12
 class BackendD3D12 final : public Backend
 {
 public:
-    void initialize(backend_config const& config, device::Window& window) override;
+    void initialize(backend_config const& config, native_window_handle const& window_handle) override;
     ~BackendD3D12() override;
 
 public:

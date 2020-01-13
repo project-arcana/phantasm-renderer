@@ -4,8 +4,6 @@
 
 #include <clean-core/utility.hh>
 
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
 #include <phantasm-renderer/backend/limits.hh>
 
 #include "common/verify.hh"

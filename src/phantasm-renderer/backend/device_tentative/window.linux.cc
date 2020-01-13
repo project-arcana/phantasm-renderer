@@ -165,27 +165,6 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
     mPendingResize = true;
 }
 
-
-#ifdef PR_BACKEND_VULKAN
-namespace
-{
-constexpr cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME};
-}
-
-cc::span<char const* const> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
-
-void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
-{
-    VkXlibSurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    surface_info.dpy = s_display;
-    surface_info.window = s_window;
-    surface_info.pNext = nullptr;
-    surface_info.flags = 0;
-    PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &out_surface));
-}
-#endif // PR_BACKEND_VULKAN
-
 #ifdef PR_BACKEND_D3D12
 #error "D3D12 not supported on Linux"
 #endif // PR_BACKEND_D3D12

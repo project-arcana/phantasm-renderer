@@ -1,12 +1,5 @@
 #pragma once
 
-#ifdef PR_BACKEND_VULKAN
-#include <clean-core/span.hh>
-
-typedef struct VkInstance_T* VkInstance;
-typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
-#endif
-
 #ifdef PR_BACKEND_D3D12
 #include <clean-core/native/win32_fwd.hh>
 #endif
@@ -49,15 +42,11 @@ public:
     [[nodiscard]] bool isMinimized() const { return mIsMinimized; }
     [[nodiscard]] float getScaleFactor() const { return mScaleFactor; }
 
+    [[nodiscard]] void* getNativeHandleA() const;
+    [[nodiscard]] void* getNativeHandleB() const;
+
 public:
-#ifdef PR_BACKEND_VULKAN
-    static cc::span<const char* const> getRequiredInstanceExtensions();
-    void createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface);
-#endif
-
 #ifdef PR_BACKEND_D3D12
-    [[nodiscard]] ::HWND getHandle() const;
-
     using win32_event_callback = LRESULT (*)(HWND, UINT, WPARAM, LPARAM);
     void setEventCallback(win32_event_callback callback);
 #endif

@@ -2,8 +2,6 @@
 
 #include <clean-core/vector.hh>
 
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
 #include "cmd_list_translation.hh"
 #include "common/dxgi_format.hh"
 #include "common/log.hh"
@@ -21,15 +19,15 @@ struct BackendD3D12::per_thread_component
 
 }
 
-void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, device::Window& window)
+void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, const native_window_handle& window_handle)
 {
     // Core components
     {
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
         mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(),
-                              config.num_backbuffers, config.present_mode);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(),
+                              cc::bit_cast<::HWND>(window_handle.native_a), config.num_backbuffers, config.present_mode);
     }
 
     auto& device = mDevice.getDevice();

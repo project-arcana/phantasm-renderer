@@ -4,8 +4,6 @@
 
 #include <clean-core/array.hh>
 
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
 #include "cmd_buf_translation.hh"
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
@@ -14,6 +12,7 @@
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
 #include "resources/transition_barrier.hh"
+#include "surface_util.hh"
 
 namespace
 {
@@ -29,7 +28,7 @@ struct BackendVulkan::per_thread_component
 };
 }
 
-void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, device::Window& window)
+void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, const native_window_handle& window_handle)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
 
@@ -101,7 +100,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
         createDebugMessenger();
     }
 
-    window.createVulkanSurface(mInstance, mSurface);
+    mSurface = create_platform_surface(mInstance, window_handle);
 
     // GPU choice and device init
     {
@@ -114,7 +113,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
         auto const& chosen_vk_gpu = vk_gpu_infos[chosen_gpu.index];
 
         mDevice.initialize(chosen_vk_gpu, mSurface, config);
-        mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
+        mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, 250, 250, config.present_mode);
     }
 
     // Pool init

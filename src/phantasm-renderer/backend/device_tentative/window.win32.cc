@@ -133,6 +133,10 @@ void pr::backend::device::Window::pollEvents()
     }
 }
 
+void* pr::backend::device::Window::getNativeHandleA() const { return static_cast<void*>(s_window_handle); }
+
+void* pr::backend::device::Window::getNativeHandleB() const { return nullptr; }
+
 void pr::backend::device::Window::onCloseEvent() { mIsRequestingClose = true; }
 
 void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
@@ -143,27 +147,7 @@ void pr::backend::device::Window::onResizeEvent(int w, int h, bool minimized)
     mPendingResize = true;
 }
 
-#ifdef PR_BACKEND_VULKAN
-namespace
-{
-constexpr cc::array<char const*, 2> s_required_vulkan_extensions = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME};
-}
-
-cc::span<char const* const> pr::backend::device::Window::getRequiredInstanceExtensions() { return s_required_vulkan_extensions; }
-
-void pr::backend::device::Window::createVulkanSurface(VkInstance instance, VkSurfaceKHR& out_surface)
-{
-    VkWin32SurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surface_info.hwnd = s_window_handle;
-    surface_info.hinstance = GetModuleHandle(nullptr);
-    PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &out_surface));
-}
-#endif // PR_BACKEND_VULKAN
-
 #ifdef PR_BACKEND_D3D12
-HWND pr::backend::device::Window::getHandle() const { return s_window_handle; }
-
 void pr::backend::device::Window::setEventCallback(pr::backend::device::Window::win32_event_callback callback) { s_event_proxy.callback = callback; }
 #endif // PR_BACKEND_D3D12
 

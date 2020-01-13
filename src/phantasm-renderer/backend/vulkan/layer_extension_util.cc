@@ -1,10 +1,10 @@
 #include "layer_extension_util.hh"
 
 #include <iostream>
-#include <phantasm-renderer/backend/device_tentative/window.hh>
 
 #include "common/unique_name_set.hh"
 #include "common/verify.hh"
+#include "surface_util.hh"
 
 void pr::backend::vk::layer_extension_bundle::fill_with_instance_extensions(const char* layername)
 {
@@ -192,7 +192,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
     }
 
     // platform extensions
-    for (char const* const required_device_ext : device::Window::getRequiredInstanceExtensions())
+    for (char const* const required_device_ext : get_platform_instance_extensions())
     {
         if (!add_required_ext(required_device_ext))
             std::cerr << "[pr][backend][vk] Missing required extension " << required_device_ext << std::endl;

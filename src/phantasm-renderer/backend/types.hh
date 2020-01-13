@@ -188,6 +188,17 @@ struct backend_config
     unsigned num_cmdlists_per_allocator = 5;
 };
 
+/// opaque window handle
+struct native_window_handle
+{
+    /// win32: Window HWND handle, linux: X Window
+    void* native_a = nullptr;
+    /// win32: none, linux: X Display
+    void* native_b = nullptr;
+
+    native_window_handle(void* a, void* b = nullptr) : native_a(a), native_b(b) {}
+};
+
 // Maps to
 // D3D12: resource states
 // Vulkan: access masks, image layouts and pipeline stage dependencies

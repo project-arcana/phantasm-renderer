@@ -1,10 +1,5 @@
 #pragma once
 
-namespace pr::backend::device
-{
-class Window;
-};
-
 namespace pr::backend
 {
 struct shader_argument;

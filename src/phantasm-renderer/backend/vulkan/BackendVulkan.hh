@@ -23,7 +23,7 @@ namespace pr::backend::vk
 class BackendVulkan final : public Backend
 {
 public:
-    void initialize(backend_config const& config_arg, device::Window& window) override;
+    void initialize(backend_config const& config_arg, native_window_handle const& window_handle) override;
     ~BackendVulkan() override;
 
 public:

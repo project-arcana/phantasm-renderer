@@ -19,7 +19,7 @@ public:
     Backend& operator=(Backend&&) = delete;
     virtual ~Backend() = default;
 
-    virtual void initialize(backend_config const& config, device::Window& window) = 0;
+    virtual void initialize(backend_config const& config, native_window_handle const& window_handle) = 0;
 
     virtual void flushGPU() = 0;
 
