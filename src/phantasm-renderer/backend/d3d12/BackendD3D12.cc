@@ -193,3 +193,5 @@ void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::res
 bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }
 
 bool pr::backend::d3d12::BackendD3D12::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
+
+bool pr::backend::d3d12::BackendD3D12::gpuHasRaytracing() const { return mDevice.hasRaytracing(); }

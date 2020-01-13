@@ -136,6 +136,12 @@ public:
     bool startForcedDiagnosticCapture() override;
     bool endForcedDiagnosticCapture() override;
 
+    //
+    // GPU info interface
+    //
+
+    bool gpuHasRaytracing() const override;
+
 public:
     // backend-internal
 

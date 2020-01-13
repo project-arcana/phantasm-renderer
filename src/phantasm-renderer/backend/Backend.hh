@@ -157,6 +157,12 @@ public:
     /// true on success
     virtual bool endForcedDiagnosticCapture() = 0;
 
+    //
+    // GPU info interface
+    //
+
+    [[nodiscard]] virtual bool gpuHasRaytracing() const = 0;
+
 protected:
     Backend() = default;
 
