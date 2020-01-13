@@ -6,7 +6,14 @@ project(PhantasmRenderer)
 
 option(PR_BACKEND_VULKAN "enable Vulkan backend" ON)
 option(PR_BACKEND_D3D12 "enable DirectX 12 backend" ON)
+
+# If disabled, cmd::debug_marker is ignored
 option(PR_ENABLE_DEBUG_MARKERS "enable API debug markers" ON)
+
+# Enables PIX detection, marker support and capture forcing
+# requires WinPixEventRuntime.dll to be available to the executable (in the same folder)
+# this dll is included in extern/win32_pix_runtime/bin/
+option(PR_ENABLE_D3D12_PIX "enable DirectX 12 PIX integration" OFF)
 
 # =========================================
 # post-process options
@@ -100,14 +107,17 @@ endif()
 
 if (PR_BACKEND_D3D12)
     message(STATUS "[phantasm renderer] D3D12 backend enabled")
-    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12 USE_PIX)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
     target_link_libraries(phantasm-renderer PRIVATE
         "d3d12.lib" "dxgi.lib" "dxguid.lib"
-        "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/bin/WinPixEventRuntime.lib" # PIX Runtime
         )
 
     # PIX Runtime
-    target_include_directories(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/include/")
+    if (PR_ENABLE_D3D12_PIX)
+        target_link_libraries(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/bin/WinPixEventRuntime.lib")
+        target_include_directories(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/include/")
+        target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12_HAS_PIX USE_PIX)
+    endif()
 
 else()
     message(STATUS "[phantasm renderer] D3D12 backend disabled")
