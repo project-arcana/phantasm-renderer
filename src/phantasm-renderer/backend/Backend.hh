@@ -40,13 +40,13 @@ public:
     virtual void onResize(tg::isize2 size) = 0;
 
     /// returns the current backbuffer size
-    [[nodiscard]] virtual tg::isize2 getBackbufferSize() const = 0;
+    virtual tg::isize2 getBackbufferSize() const = 0;
 
     /// returns the backbuffer pixel format
-    [[nodiscard]] virtual format getBackbufferFormat() const = 0;
+    virtual format getBackbufferFormat() const = 0;
 
     /// returns the amount of backbuffers
-    [[nodiscard]] virtual unsigned getNumBackbuffers() const = 0;
+    virtual unsigned getNumBackbuffers() const = 0;
 
     /// Clears pending internal resize events, returns true if the
     /// backbuffer has resized since the last call
@@ -84,7 +84,7 @@ public:
     [[nodiscard]] virtual handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0) = 0;
 
     /// returns the mapped memory pointer, only valid for handles obtained from createMappedBuffer
-    [[nodiscard]] virtual std::byte* getMappedMemory(handle::resource res) = 0;
+    virtual std::byte* getMappedMemory(handle::resource res) = 0;
 
     /// flushes writes to memory pointers received from getMappedMemory(res),
     /// making them GPU-visible in any successively submitted command lists
@@ -161,7 +161,7 @@ public:
     // GPU info interface
     //
 
-    [[nodiscard]] virtual bool gpuHasRaytracing() const = 0;
+    virtual bool gpuHasRaytracing() const = 0;
 
 protected:
     Backend() = default;

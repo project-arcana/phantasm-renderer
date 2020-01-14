@@ -36,9 +36,9 @@ public:
     [[nodiscard]] handle::resource acquireBackbuffer() override;
     void present() override;
     void onResize(tg::isize2 size) override;
-    [[nodiscard]] tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
-    [[nodiscard]] format getBackbufferFormat() const override;
-    [[nodiscard]] unsigned int getNumBackbuffers() const override { return mSwapchain.getNumBackbuffers(); }
+    tg::isize2 getBackbufferSize() const override { return mSwapchain.getBackbufferSize(); }
+    format getBackbufferFormat() const override;
+    unsigned int getNumBackbuffers() const override { return mSwapchain.getNumBackbuffers(); }
 
 
     //
