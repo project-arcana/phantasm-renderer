@@ -112,7 +112,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
         auto const& chosen_gpu = gpu_infos[chosen_index];
         auto const& chosen_vk_gpu = vk_gpu_infos[chosen_gpu.index];
 
-        mDevice.initialize(chosen_vk_gpu, mSurface, config);
+        mDevice.initialize(chosen_vk_gpu, config);
         mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, 250, 250, config.present_mode);
     }
 

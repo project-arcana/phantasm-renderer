@@ -131,7 +131,7 @@ public:
     // GPU info interface
     //
 
-    bool gpuHasRaytracing() const override { return false; }
+    bool gpuHasRaytracing() const override { return mDevice.hasRaytracing(); }
 
 public:
     // backend-internal

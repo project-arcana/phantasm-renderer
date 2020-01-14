@@ -4,15 +4,17 @@
 #include <clean-core/capped_vector.hh>
 
 #include "common/verify.hh"
+#include "common/log.hh"
 #include "gpu_choice_util.hh"
 #include "queue_util.hh"
 
-void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config)
+void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, backend_config const& config)
 {
     mPhysicalDevice = device.physical_device;
     CC_ASSERT(mDevice == nullptr && "vk::Device initialized twice");
 
-    auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mPhysicalDevice);
+    mHasRaytracing = false;
+    auto const active_lay_ext = get_used_device_lay_ext(device.available_layers_extensions, config, mHasRaytracing);
 
     // chose family queue indices
     {
@@ -75,10 +77,28 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, VkSurfac
         mInformation.memory_properties = device.mem_props;
         mInformation.device_properties = device.physical_device_props;
     }
+
+    if (hasRaytracing() && config.enable_raytracing)
+    {
+        initializeRaytracing();
+    }
 }
 
 void pr::backend::vk::Device::destroy()
 {
     PR_VK_VERIFY_SUCCESS(vkDeviceWaitIdle(mDevice));
     vkDestroyDevice(mDevice, nullptr);
+}
+
+void pr::backend::vk::Device::initializeRaytracing()
+{
+    mInformation.raytrace_properties = {};
+    mInformation.raytrace_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
+
+    VkPhysicalDeviceProperties2 props = {};
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &mInformation.raytrace_properties;
+    props.properties = {};
+
+    vkGetPhysicalDeviceProperties2(mPhysicalDevice, &props);
 }

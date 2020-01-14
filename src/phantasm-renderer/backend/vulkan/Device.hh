@@ -19,7 +19,7 @@ public:
     Device& operator=(Device&&) noexcept = delete;
     Device() = default;
 
-    void initialize(vulkan_gpu_info const& device, VkSurfaceKHR surface, backend_config const& config);
+    void initialize(vulkan_gpu_info const& device, backend_config const& config);
     void destroy();
 
     VkQueue getQueueDirect() const { return mQueueDirect; }
@@ -33,10 +33,14 @@ public:
 public:
     VkPhysicalDeviceMemoryProperties const& getMemoryProperties() const { return mInformation.memory_properties; }
     VkPhysicalDeviceProperties const& getDeviceProperties() const { return mInformation.device_properties; }
+    bool hasRaytracing() const { return mHasRaytracing; }
 
 public:
     VkPhysicalDevice getPhysicalDevice() const { return mPhysicalDevice; }
     VkDevice getDevice() const { return mDevice; }
+
+private:
+    void initializeRaytracing();
 
 private:
     VkPhysicalDevice mPhysicalDevice;
@@ -58,6 +62,9 @@ private:
     {
         VkPhysicalDeviceMemoryProperties memory_properties;
         VkPhysicalDeviceProperties device_properties;
+        VkPhysicalDeviceRayTracingPropertiesNV raytrace_properties;
     } mInformation;
+
+    bool mHasRaytracing = false;
 };
 }
