@@ -5,6 +5,7 @@
 #include <clean-core/capped_vector.hh>
 #include <clean-core/utility.hh>
 
+#include <typed-geometry/types/objects/aabb.hh>
 #include <typed-geometry/types/size.hh>
 
 #include "detail/trivial_capped_vector.hh"
@@ -188,7 +189,7 @@ PR_DEFINE_CMD(draw)
 
     /// the scissor rectangle to set, none if -1
     /// left, top, right, bottom of the rectangle in absolute pixel values
-    tg::ivec4 scissor = tg::ivec4(-1, -1, -1, -1);
+    tg::iaabb2 scissor = tg::iaabb2(-1, -1);
 
 public:
     // convenience
@@ -218,7 +219,7 @@ public:
         std::memcpy(root_constants, &data, sizeof(T));
     }
 
-    void set_scissor(int left, int top, int right, int bot) { scissor = tg::ivec4(left, top, right, bot); }
+    void set_scissor(int left, int top, int right, int bot) { scissor = tg::iaabb2({left, top}, {right, bot}); }
 };
 
 PR_DEFINE_CMD(dispatch)

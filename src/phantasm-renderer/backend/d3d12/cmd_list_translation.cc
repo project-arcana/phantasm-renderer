@@ -192,9 +192,9 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         }
     }
 
-    if (draw.scissor.x != -1)
+    if (draw.scissor.min.x != -1)
     {
-        D3D12_RECT scissor_rect = {draw.scissor.x, draw.scissor.y, draw.scissor.z, draw.scissor.w};
+        D3D12_RECT scissor_rect = {draw.scissor.min.x, draw.scissor.min.y, draw.scissor.max.x, draw.scissor.max.y};
         _cmd_list->RSSetScissorRects(1, &scissor_rect);
     }
 

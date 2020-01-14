@@ -181,11 +181,12 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     bind_shader_arguments(draw.pipeline_state, draw.root_constants, draw.shader_arguments, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
     // Scissor
-    if (draw.scissor.x != -1)
+    if (draw.scissor.min.x != -1)
     {
         VkRect2D scissor_rect;
-        scissor_rect.offset = VkOffset2D{draw.scissor.x, draw.scissor.y};
-        scissor_rect.extent = VkExtent2D{static_cast<uint32_t>(draw.scissor.z - draw.scissor.x), static_cast<uint32_t>(draw.scissor.w - draw.scissor.y)};
+        scissor_rect.offset = VkOffset2D{draw.scissor.min.x, draw.scissor.min.y};
+        scissor_rect.extent
+            = VkExtent2D{static_cast<uint32_t>(draw.scissor.max.x - draw.scissor.min.x), static_cast<uint32_t>(draw.scissor.max.y - draw.scissor.min.y)};
         vkCmdSetScissor(_cmd_list, 0, 1, &scissor_rect);
     }
 
