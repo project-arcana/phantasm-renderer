@@ -1,5 +1,6 @@
 #include "accel_struct_pool.hh"
 
+#include <clean-core/utility.hh>
 #include <clean-core/vector.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
@@ -7,11 +8,42 @@
 
 #include "resource_pool.hh"
 
+namespace
+{
+void query_accel_struct_buffer_sizes(VkDevice device, VkAccelerationStructureNV raw_as, VkDeviceSize& out_accel_struct_buf_size, VkDeviceSize& out_scratch_buf_size)
+{
+    VkAccelerationStructureMemoryRequirementsInfoNV mem_req_info = {};
+    mem_req_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
+    mem_req_info.pNext = nullptr;
+    mem_req_info.accelerationStructure = raw_as;
+    mem_req_info.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV;
+
+    VkMemoryRequirements2 mem_req;
+    vkGetAccelerationStructureMemoryRequirementsNV(device, &mem_req_info, &mem_req);
+
+    // size of the acceleration structure itself
+    out_accel_struct_buf_size = mem_req.memoryRequirements.size;
+
+    // scratch buffer, maximum of the sizes for build and update
+    mem_req_info.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
+    vkGetAccelerationStructureMemoryRequirementsNV(device, &mem_req_info, &mem_req);
+    auto scratch_build_size = mem_req.memoryRequirements.size;
+
+    mem_req_info.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_UPDATE_SCRATCH_NV;
+    vkGetAccelerationStructureMemoryRequirementsNV(device, &mem_req_info, &mem_req);
+    auto scratch_update_size = mem_req.memoryRequirements.size;
+
+    out_scratch_buf_size = cc::max(scratch_build_size, scratch_update_size);
+}
+
+}
+
 pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::vk::AccelStructPool::blas_element> elements)
 {
     cc::vector<VkGeometryNV> element_geometries;
     element_geometries.reserve(elements.size());
 
+    // build the VkGeometryNVs from the vertex/index buffer pairs
     for (auto const& elem : elements)
     {
         auto const& vert_info = mResourcePool->getBufferInfo(elem.vertex_buffer);
@@ -49,6 +81,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
         egeom.flags = elem.is_opaque ? VK_GEOMETRY_OPAQUE_BIT_NV : 0;
     }
 
+    // Assemble the bottom level AS object
     VkAccelerationStructureCreateInfoNV as_create_info = {};
     as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
     as_create_info.pNext = nullptr;
@@ -62,7 +95,59 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
     as_create_info.info.pGeometries = element_geometries.data();
     as_create_info.compactedSize = 0;
 
-    return acquireAccelStruct(&as_create_info);
+    VkAccelerationStructureNV raw_as = nullptr;
+    PR_VK_VERIFY_SUCCESS(vkCreateAccelerationStructureNV(mDevice, &as_create_info, nullptr, &raw_as));
+
+    // Allocate AS and scratch buffers in the required sizes
+    VkDeviceSize buffer_size_as = 0, buffer_size_scratch = 0;
+    query_accel_struct_buffer_sizes(mDevice, raw_as, buffer_size_as, buffer_size_scratch);
+
+    auto const buffer_as = mResourcePool->createBufferInternal(buffer_size_as, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+    auto const buffer_scratch = mResourcePool->createBufferInternal(buffer_size_scratch, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+
+    // Bind the AS buffer's memory to the AS
+    VkBindAccelerationStructureMemoryInfoNV bind_mem_info = {};
+    bind_mem_info.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
+    bind_mem_info.pNext = nullptr;
+    bind_mem_info.accelerationStructure = raw_as;
+    bind_mem_info.memory = mResourcePool->getRawDeviceMemory(buffer_as);
+    bind_mem_info.memoryOffset = 0;
+    bind_mem_info.deviceIndexCount = 0;
+    bind_mem_info.pDeviceIndices = nullptr;
+
+    PR_VK_VERIFY_SUCCESS(vkBindAccelerationStructureMemoryNV(mDevice, 1, &bind_mem_info));
+
+    return acquireAccelStruct(raw_as, buffer_as, buffer_scratch);
+}
+
+pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLevelAS(unsigned num_instances)
+{
+    VkAccelerationStructureCreateInfoNV as_create_info = {};
+    as_create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
+    as_create_info.pNext = nullptr;
+    as_create_info.info = {};
+    as_create_info.info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
+    as_create_info.info.pNext = nullptr;
+    as_create_info.info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV;
+    as_create_info.info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
+    as_create_info.info.instanceCount = static_cast<uint32_t>(num_instances);
+    as_create_info.info.geometryCount = 0;
+    as_create_info.info.pGeometries = nullptr;
+    as_create_info.compactedSize = 0;
+
+    VkAccelerationStructureNV raw_as = nullptr;
+    PR_VK_VERIFY_SUCCESS(vkCreateAccelerationStructureNV(mDevice, &as_create_info, nullptr, &raw_as));
+
+    VkDeviceSize buffer_size_as = 0, buffer_size_scratch = 0;
+    query_accel_struct_buffer_sizes(mDevice, raw_as, buffer_size_as, buffer_size_scratch);
+
+    auto const buffer_as = mResourcePool->createBufferInternal(buffer_size_as, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+    auto const buffer_scratch = mResourcePool->createBufferInternal(buffer_size_scratch, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+
+    auto const buffer_size_instances = sizeof(vulkan_geometry_instance) * num_instances;
+    auto const buffer_instances = mResourcePool->createMappedBufferInternal(buffer_size_instances, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+
+    return acquireAccelStruct(raw_as, buffer_as, buffer_scratch, buffer_instances);
 }
 
 void pr::backend::vk::AccelStructPool::free(pr::backend::handle::accel_struct as)
@@ -94,7 +179,10 @@ void pr::backend::vk::AccelStructPool::free(cc::span<const pr::backend::handle::
     }
 }
 
-pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccelStruct(const VkAccelerationStructureCreateInfoNV* create_info)
+pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccelStruct(VkAccelerationStructureNV raw_as,
+                                                                                       handle::resource buffer_as,
+                                                                                       handle::resource buffer_scratch,
+                                                                                       handle::resource buffer_instances)
 {
     unsigned res;
     {
@@ -103,13 +191,27 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccel
     }
 
     accel_struct_node& new_node = mPool.get(res);
-    new_node.raw_as = nullptr;
+    new_node.raw_as = raw_as;
+    new_node.buffer_as = buffer_as;
+    new_node.buffer_scratch = buffer_scratch;
+    new_node.buffer_instances = buffer_instances;
 
-    PR_VK_VERIFY_SUCCESS(vkCreateAccelerationStructureNV(mDevice, create_info, nullptr, &new_node.raw_as));
+    if (new_node.buffer_instances.is_valid())
+    {
+        new_node.buffer_instances_map = mResourcePool->getMappedMemory(new_node.buffer_instances);
+    }
+    else
+    {
+        new_node.buffer_instances_map = nullptr;
+    }
+
     return {static_cast<handle::index_t>(res)};
 }
 
 void pr::backend::vk::AccelStructPool::internalFree(pr::backend::vk::AccelStructPool::accel_struct_node& node)
 {
     vkDestroyAccelerationStructureNV(mDevice, node.raw_as, nullptr);
+
+    cc::array const buffers_to_free = {node.buffer_as, node.buffer_scratch, node.buffer_instances};
+    mResourcePool->free(buffers_to_free);
 }

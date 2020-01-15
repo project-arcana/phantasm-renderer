@@ -101,7 +101,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(uint64_t size_bytes, unsigned stride_bytes, bool allow_uav)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -124,6 +124,22 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsign
     return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes);
 }
 
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage)
+{
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = size_bytes;
+    buffer_info.usage = usage;
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    VmaAllocation res_alloc;
+    VkBuffer res_buffer;
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
+    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes);
+}
+
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
 {
     VkBufferCreateInfo buffer_info = {};
@@ -133,6 +149,25 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
     // it might be required down the line to restrict this (as in, make it part of API)
     buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                         | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    VmaAllocation res_alloc;
+    VmaAllocationInfo res_alloc_info;
+    VkBuffer res_buffer;
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
+    CC_ASSERT(res_alloc_info.pMappedData != nullptr);
+    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
+}
+
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage)
+{
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = size_bytes;
+    buffer_info.usage = usage;
 
     VmaAllocationCreateInfo alloc_info = {};
     alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
@@ -230,6 +265,13 @@ void pr::backend::vk::ResourcePool::destroy()
     mAllocatorDescriptors.destroy();
 }
 
+VkDeviceMemory pr::backend::vk::ResourcePool::getRawDeviceMemory(pr::backend::handle::resource res) const
+{
+    VmaAllocationInfo alloc_info;
+    vmaGetAllocationInfo(mAllocator, internalGet(res).allocation, &alloc_info);
+    return alloc_info.deviceMemory;
+}
+
 pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image,
                                                                                       pr::backend::resource_state state,
                                                                                       VkImageView backbuffer_view,
@@ -249,7 +291,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferRes
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAllocation alloc, VkBuffer buffer, uint64_t buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
     VkDescriptorSetLayout cbv_desc_set_layout = nullptr;
@@ -283,7 +325,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
         VkDescriptorBufferInfo cbv_info = {};
         cbv_info.buffer = buffer;
         cbv_info.offset = 0;
-        cbv_info.range = cc::min(256u, buffer_width);
+        cbv_info.range = cc::min<uint64_t>(256, buffer_width);
 
         cc::capped_vector<VkWriteDescriptorSet, 2> writes;
         {
