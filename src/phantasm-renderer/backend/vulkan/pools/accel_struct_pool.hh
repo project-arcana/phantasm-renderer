@@ -27,7 +27,7 @@ public:
         bool is_opaque;
     };
 
-    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<blas_element const> elements);
+    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<blas_element const> elements, accel_struct_build_flags flags);
 
     [[nodiscard]] handle::accel_struct createTopLevelAS(unsigned num_instances);
 
