@@ -645,4 +645,22 @@ namespace pr::backend::vk::util
 
     CC_ASSERT(false && "to_native uncaught argument");
 }
+
+[[nodiscard]] inline constexpr VkBuildAccelerationStructureFlagsNV to_native_flags(accel_struct_build_flags flags)
+{
+    VkBuildAccelerationStructureFlagsNV res = 0;
+
+    if (flags & accel_struct_build_bits::allow_update)
+        res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
+    if (flags & accel_struct_build_bits::allow_compaction)
+        res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NV;
+    if (flags & accel_struct_build_bits::prefer_fast_trace)
+        res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV;
+    if (flags & accel_struct_build_bits::prefer_fast_build)
+        res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NV;
+    if (flags & accel_struct_build_bits::minimize_memory)
+        res |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NV;
+
+    return res;
+}
 }

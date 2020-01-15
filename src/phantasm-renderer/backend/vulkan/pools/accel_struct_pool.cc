@@ -3,6 +3,7 @@
 #include <clean-core/utility.hh>
 #include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
@@ -38,7 +39,8 @@ void query_accel_struct_buffer_sizes(VkDevice device, VkAccelerationStructureNV 
 
 }
 
-pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::vk::AccelStructPool::blas_element> elements)
+pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::vk::AccelStructPool::blas_element> elements,
+                                                                                        accel_struct_build_flags flags)
 {
     cc::vector<VkGeometryNV> element_geometries;
     element_geometries.reserve(elements.size());
@@ -89,7 +91,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
     as_create_info.info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
     as_create_info.info.pNext = nullptr;
     as_create_info.info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
-    as_create_info.info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
+    as_create_info.info.flags = util::to_native_flags(flags);
     as_create_info.info.instanceCount = 0;
     as_create_info.info.geometryCount = static_cast<uint32_t>(element_geometries.size());
     as_create_info.info.pGeometries = element_geometries.data();

@@ -537,4 +537,18 @@ struct render_target_config
     blend_op blend_op_alpha = blend_op::op_add;
 };
 
+using accel_struct_build_flags = uint8_t;
+namespace accel_struct_build_bits
+{
+enum accel_struct_build_bits_e : accel_struct_build_flags
+{
+    none = 0x0000,
+
+    allow_update = 0x0001,
+    allow_compaction = 0x0002,
+    prefer_fast_trace = 0x0004,
+    prefer_fast_build = 0x0008,
+    minimize_memory = 0x0010,
+};
+}
 }
