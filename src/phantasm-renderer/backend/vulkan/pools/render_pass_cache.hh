@@ -25,13 +25,13 @@ public:
     /// receive an existing render pass matching the framebuffer formats and config, or create a new one
     /// While pixel format information IS present in cmd::begin_render_pass, it is invalid if that RT is a backbuffer, which is why
     /// the additional override_rt_formats span is passed
-    [[nodiscard]] VkRenderPass getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, int num_samples, cc::span<format const> override_rt_formats);
+    [[nodiscard]] VkRenderPass getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, unsigned num_samples, cc::span<format const> override_rt_formats);
 
     /// destroys all elements inside, and clears the map
     void reset(VkDevice device);
 
 private:
-    static size_t hashKey(cmd::begin_render_pass const& brp, int num_samples, cc::span<const format> override_rt_formats);
+    static cc::hash_t hashKey(cmd::begin_render_pass const& brp, unsigned num_samples, cc::span<const format> override_rt_formats);
 
     backend::detail::cache_map<VkRenderPass> mCache;
 };

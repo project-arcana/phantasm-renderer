@@ -21,6 +21,8 @@ public:
 
     void initialize(backend_config const& config);
 
+    bool isValid() const { return mAdapter.is_valid(); }
+
     [[nodiscard]] IDXGIAdapter& getAdapter() const { return *mAdapter.get(); }
     [[nodiscard]] shared_com_ptr<IDXGIAdapter> getAdapterShared() const { return mAdapter; }
 
@@ -30,8 +32,7 @@ public:
 private:
     shared_com_ptr<IDXGIAdapter> mAdapter;
     shared_com_ptr<IDXGIFactory4> mFactory;
-
-private:
+    shared_com_ptr<IDXGIInfoQueue> mInfoQueue;
 };
 
 }

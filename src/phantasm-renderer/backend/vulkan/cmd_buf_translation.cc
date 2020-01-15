@@ -4,6 +4,7 @@
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
+#include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -49,22 +50,16 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::b
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::draw& draw)
 {
-    if (draw.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(draw.pipeline_state))
     {
         // a new handle::pipeline_state invalidates (!= always changes)
         //      - The bound pipeline layout
         //      - The bound render pass
         //      - The bound pipeline
 
-        _bound.pipeline_state = draw.pipeline_state;
         auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
 
-        if (pso_node.associated_pipeline_layout->raw_layout != _bound.raw_pipeline_layout)
-        {
-            // a new layout is used when binding arguments,
-            // and invalidates previously bound arguments
-            _bound.set_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
-        }
+        _bound.update_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
 
         auto const render_pass = _globals.pool_pipeline_states->getOrCreateRenderPass(pso_node, _bound.current_render_pass);
         if (render_pass != _bound.raw_render_pass)
@@ -100,7 +95,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     }
                 }
 
-                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.sve.resource.is_valid())
                 {
                     fb_image_views.push_back(_globals.pool_shader_views->makeImageView(_bound.current_render_pass.depth_target.sve));
                     fb_image_views_to_clean_up.push_back(fb_image_views.back());
@@ -141,7 +136,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
                     std::memcpy(&cv.color.float32, &rt.clear_value, sizeof(rt.clear_value));
                 }
 
-                if (_bound.current_render_pass.depth_target.sve.resource != handle::null_resource)
+                if (_bound.current_render_pass.depth_target.sve.resource.is_valid())
                 {
                     auto& cv = clear_values.emplace_back();
                     cv.depthStencil = {_bound.current_render_pass.depth_target.clear_value_depth,
@@ -165,7 +160,8 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
         _bound.index_buffer = draw.index_buffer;
         if (draw.index_buffer.is_valid())
         {
-            vkCmdBindIndexBuffer(_cmd_list, _globals.pool_resources->getRawBuffer(draw.index_buffer), 0, VK_INDEX_TYPE_UINT32);
+            auto const& ind_buf_info = _globals.pool_resources->getBufferInfo(draw.index_buffer);
+            vkCmdBindIndexBuffer(_cmd_list, ind_buf_info.raw_buffer, 0, (ind_buf_info.stride == 4) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
         }
     }
 
@@ -182,55 +178,48 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     }
 
     // Shader arguments
+    bind_shader_arguments(draw.pipeline_state, draw.root_constants, draw.shader_arguments, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+    // Scissor
+    if (draw.scissor.min.x != -1)
     {
-        auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
-        pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
-
-        for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
-        {
-            auto const& arg = draw.shader_arguments[i];
-            auto const& arg_vis = pipeline_layout.descriptor_set_visibilities[i];
-
-            if (arg.constant_buffer != handle::null_resource)
-            {
-                // Unconditionally set the CBV
-
-                _state_cache->touch_resource_in_shader(arg.constant_buffer, arg_vis);
-
-                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
-                vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1,
-                                        &cbv_desc_set, 1, &arg.constant_buffer_offset);
-            }
-
-            // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
-            {
-                _bound.shader_views[i] = arg.shader_view;
-                if (arg.shader_view != handle::null_shader_view)
-                {
-                    // touch all contained resources in the state cache
-                    for (auto const res : _globals.pool_shader_views->getResources(arg.shader_view))
-                    {
-                        // NOTE: this is pretty inefficient
-                        _state_cache->touch_resource_in_shader(res, arg_vis);
-                    }
-
-                    auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
-                    vkCmdBindDescriptorSets(_cmd_list, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
-                }
-            }
-        }
+        VkRect2D scissor_rect;
+        scissor_rect.offset = VkOffset2D{draw.scissor.min.x, draw.scissor.min.y};
+        scissor_rect.extent
+            = VkExtent2D{static_cast<uint32_t>(draw.scissor.max.x - draw.scissor.min.x), static_cast<uint32_t>(draw.scissor.max.y - draw.scissor.min.y)};
+        vkCmdSetScissor(_cmd_list, 0, 1, &scissor_rect);
     }
 
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, 0, 0, 0);
+        vkCmdDrawIndexed(_cmd_list, draw.num_indices, 1, draw.index_offset, static_cast<int32_t>(draw.vertex_offset), 0);
     }
     else
     {
-        vkCmdDraw(_cmd_list, draw.num_indices, 1, 0, 0);
+        vkCmdDraw(_cmd_list, draw.num_indices, 1, draw.vertex_offset, 0);
     }
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
+{
+    auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+
+    if (_bound.update_pso(dispatch.pipeline_state))
+    {
+        // a new handle::pipeline_state invalidates (!= always changes)
+        //      - The bound pipeline layout
+        //      - The bound pipeline
+
+        _bound.update_pipeline_layout(pso_node.associated_pipeline_layout->raw_layout);
+        vkCmdBindPipeline(_cmd_list, VK_PIPELINE_BIND_POINT_COMPUTE, pso_node.raw_pipeline);
+    }
+
+    // Shader arguments
+    bind_shader_arguments(dispatch.pipeline_state, dispatch.root_constants, dispatch.shader_arguments, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+    // Dispatch command
+    vkCmdDispatch(_cmd_list, dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);
 }
 
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::end_render_pass&)
@@ -248,26 +237,23 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
     // 1. They must not occur within an active render pass
     // 2. Render passes always expect all render targets to be transitioned to resource_state::render_target
     //    and depth targets to be transitioned to resource_state::depth_write
+    CC_ASSERT(_bound.raw_render_pass == nullptr && "Vulkan resource transitions must not occur during render passes");
 
     barrier_bundle<limits::max_resource_transitions, limits::max_resource_transitions, limits::max_resource_transitions> barriers;
 
     for (auto const& transition : transition_res.transitions)
     {
+        auto const after_dep = util::to_pipeline_stage_dependency(transition.target_state, util::to_pipeline_stage_flags_bitwise(transition.dependant_shaders));
+        CC_ASSERT(after_dep != 0 && "Transition shader dependencies must be specified if transitioning to a CBV/SRV/UAV");
+
         resource_state before;
         VkPipelineStageFlags before_dep;
-        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before, before_dep);
+        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, after_dep, before, before_dep);
 
         if (before_known && before != transition.target_state)
         {
             // The transition is neither the implicit initial one, nor redundant
-
-            // TODO: if the target state requires a pipeline stage in order to resolve
-            // this currently falls back to VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT
-            // there are two ways to fix this:
-            // - defer all barriers requiring shader info until the draw call (where shader views are updated)
-            // - or require an explicit target shader domain in cmd::transition_resources
-
-            state_change const change = state_change(before, transition.target_state, before_dep, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+            state_change const change = state_change(before, transition.target_state, before_dep, after_dep);
 
             // NOTE: in both cases we transition the entire resource (all subresources in D3D12 terms),
             // using stored information from the resource pool (img_info / buf_info respectively)
@@ -287,6 +273,31 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::t
     barriers.record(_cmd_list);
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::transition_image_slices& transition_images)
+{
+    // Image slice transitions are entirely explicit, and require the user to synchronize before/after resource states
+    // NOTE: we do not update the master state as it does not encompass subresource states
+
+    barrier_bundle<limits::max_resource_transitions> barriers;
+
+    for (auto const& transition : transition_images.transitions)
+    {
+        auto const before_dep
+            = util::to_pipeline_stage_dependency(transition.source_state, util::to_pipeline_stage_flags_bitwise(transition.source_dependencies));
+        auto const after_dep
+            = util::to_pipeline_stage_dependency(transition.target_state, util::to_pipeline_stage_flags_bitwise(transition.target_dependencies));
+
+        state_change const change = state_change(transition.source_state, transition.target_state, before_dep, after_dep);
+
+        CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
+        auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
+        barriers.add_image_barrier(img_info.raw_image, change, util::to_native_image_aspect(img_info.pixel_format),
+                                   static_cast<unsigned>(transition.mip_level), static_cast<unsigned>(transition.array_slice));
+    }
+
+    barriers.record(_cmd_list);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer& copy_buf)
 {
     auto const src_buffer = _globals.pool_resources->getRawBuffer(copy_buf.source);
@@ -299,19 +310,97 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::c
     vkCmdCopyBuffer(_cmd_list, src_buffer, dest_buffer, 1, &region);
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_texture& copy_text)
+{
+    auto const& src_image_info = _globals.pool_resources->getImageInfo(copy_text.source);
+    auto const& dest_image_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+
+    VkImageCopy copy = {};
+    copy.srcSubresource.aspectMask = util::to_native_image_aspect(src_image_info.pixel_format);
+    copy.srcSubresource.baseArrayLayer = copy_text.src_array_index;
+    copy.srcSubresource.layerCount = copy_text.num_array_slices;
+    copy.srcSubresource.mipLevel = copy_text.src_mip_index;
+    copy.dstSubresource.aspectMask = util::to_native_image_aspect(dest_image_info.pixel_format);
+    copy.dstSubresource.baseArrayLayer = copy_text.dest_array_index;
+    copy.dstSubresource.layerCount = copy_text.num_array_slices;
+    copy.dstSubresource.mipLevel = copy_text.dest_mip_index;
+    copy.extent.width = copy_text.width;
+    copy.extent.height = copy_text.height;
+    copy.extent.depth = copy_text.num_array_slices;
+
+    vkCmdCopyImage(_cmd_list, src_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dest_image_info.raw_image,
+                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
 {
     auto const src_buffer = _globals.pool_resources->getRawBuffer(copy_text.source);
-    auto const dest_image = _globals.pool_resources->getRawImage(copy_text.destination);
+    auto const& dest_image_info = _globals.pool_resources->getImageInfo(copy_text.destination);
 
     VkBufferImageCopy region = {};
     region.bufferOffset = uint32_t(copy_text.source_offset);
-    region.imageSubresource.aspectMask = util::to_native_image_aspect(copy_text.texture_format);
+    region.imageSubresource.aspectMask = util::to_native_image_aspect(dest_image_info.pixel_format);
     region.imageSubresource.baseArrayLayer = copy_text.dest_array_index;
     region.imageSubresource.layerCount = 1;
     region.imageSubresource.mipLevel = copy_text.dest_mip_index;
     region.imageExtent.width = copy_text.dest_width;
     region.imageExtent.height = copy_text.dest_height;
     region.imageExtent.depth = 1;
-    vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
+{
+    VkDebugUtilsLabelEXT label = {};
+    label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    label.pLabelName = marker.string_literal;
+
+    // this function pointer is not available in all configurations
+    if (vkCmdInsertDebugUtilsLabelEXT)
+        vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
+}
+
+void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend::handle::pipeline_state pso,
+                                                                     const std::byte* root_consts,
+                                                                     cc::span<const pr::backend::shader_argument> shader_args,
+                                                                     VkPipelineBindPoint bind_point)
+{
+    auto const& pso_node = _globals.pool_pipeline_states->get(pso);
+    pipeline_layout const& pipeline_layout = *pso_node.associated_pipeline_layout;
+
+    if (pipeline_layout.has_push_constants())
+    {
+        static_assert(sizeof(cmd::draw::root_constants) == sizeof(std::byte[limits::max_root_constant_bytes]), "root constants have wrong size");
+        static_assert(sizeof(cmd::draw::root_constants) == sizeof(cmd::dispatch::root_constants), "root constants have wrong size");
+
+        vkCmdPushConstants(_cmd_list, pipeline_layout.raw_layout, pipeline_layout.push_constant_stages, 0,
+                           sizeof(std::byte[limits::max_root_constant_bytes]), root_consts);
+    }
+
+    for (uint8_t i = 0; i < shader_args.size(); ++i)
+    {
+        auto& bound_arg = _bound.shader_args[i];
+        auto const& arg = shader_args[i];
+
+        if (arg.constant_buffer.is_valid())
+        {
+            if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+            {
+                auto const cbv_desc_set = _globals.pool_resources->getRawCBVDescriptorSet(arg.constant_buffer);
+                vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i + limits::max_shader_arguments, 1, &cbv_desc_set, 1,
+                                        &arg.constant_buffer_offset);
+            }
+        }
+
+        // Set the shader view if it has changed
+        if (bound_arg.update_shader_view(arg.shader_view))
+        {
+            if (arg.shader_view.is_valid())
+            {
+                auto const sv_desc_set = _globals.pool_shader_views->get(arg.shader_view);
+                vkCmdBindDescriptorSets(_cmd_list, bind_point, pipeline_layout.raw_layout, i, 1, &sv_desc_set, 0, nullptr);
+            }
+        }
+    }
 }

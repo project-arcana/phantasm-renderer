@@ -1,8 +1,7 @@
 #include "Device.hh"
 
-#include <iostream>
-
 #include "common/d3d12_sanitized.hh"
+#include "common/log.hh"
 #include "common/verify.hh"
 
 void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend_config& config)
@@ -11,7 +10,7 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend
     {
         auto const hr = D3D12GetDebugInterface(PR_COM_WRITE(mDREDSettings));
 
-        if (detail::hr_succeeded(hr))
+        if (detail::hr_succeeded(hr) && mDREDSettings.is_valid())
         {
             mDREDSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
             mDREDSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
@@ -19,7 +18,7 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend
         }
         else
         {
-            std::cout << "[pr][backend[d3d12] warning: failed to enable DRED" << std::endl;
+            log::err() << "warning: failed to enable DRED";
         }
     }
 

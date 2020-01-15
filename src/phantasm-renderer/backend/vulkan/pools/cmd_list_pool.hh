@@ -70,7 +70,7 @@ private:
 struct cmd_allocator_node
 {
 public:
-    void initialize(VkDevice device, int num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring);
+    void initialize(VkDevice device, unsigned num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring);
     void destroy(VkDevice device);
 
 public:
@@ -156,7 +156,7 @@ private:
 class CommandAllocatorBundle
 {
 public:
-    void initialize(VkDevice device, int num_allocators, int num_cmdlists_per_allocator, unsigned queue_family_index, FenceRingbuffer* fence_ring);
+    void initialize(VkDevice device, unsigned num_allocators, unsigned num_cmdlists_per_allocator, unsigned queue_family_index, FenceRingbuffer* fence_ring);
     void destroy(VkDevice device);
 
     /// Resets the given command list to use memory by an appropriate allocator
@@ -186,19 +186,20 @@ public:
     /// ONLY use the resulting index ONCE in either of the two freeOnSubmit overloads
     [[nodiscard]] unsigned acquireFence(VkFence& out_fence) { return mFenceRing.acquireFence(mDevice, out_fence); }
 
-    /// to be called when the given command list has been submitted, alongside the fence index that was used
-    /// the fence index is now consumed and must not be reused
+    /// to be called when the given command lists have been submitted, alongside the fence index that was used
+    /// the cmdlists and the fence index are now consumed and must not be reused
     void freeOnSubmit(handle::command_list cl, unsigned fence_index);
-
-    /// to be called when the given command lists have been submitted, alongside the fence index that was used
-    /// the fence index is now consumed and must not be reused
     void freeOnSubmit(cc::span<handle::command_list const> cls, unsigned fence_index);
-
-    /// to be called when the given command lists have been submitted, alongside the fence index that was used
-    /// the fence index is now consumed and must not be reused
     void freeOnSubmit(cc::span<cc::span<handle::command_list const> const> cls_nested, unsigned fence_index);
 
-    void freeOnDiscard(handle::command_list cl);
+    /// to be called when the given command lists will not be submitted down the line
+    /// the cmdlists are now consumed and must not be reused
+    void freeAndDiscard(cc::span<handle::command_list const> cls);
+
+    /// discards all command lists that are currently alive
+    /// all cmdlists acquired before this call are now consumed and must not be reused
+    /// returns the amount of cmdlists that were freed
+    unsigned discardAndFreeAll();
 
 public:
     struct cmd_list_node
@@ -229,7 +230,7 @@ public:
     }
 
 public:
-    void initialize(BackendVulkan& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
+    void initialize(BackendVulkan& backend, unsigned num_allocators_per_thread, unsigned num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
     void destroy();
 
 private:

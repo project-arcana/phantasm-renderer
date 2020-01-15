@@ -1,9 +1,8 @@
 #include "shader_view_pool.hh"
 
-#include <iostream>
-
 #include <clean-core/capped_vector.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
@@ -13,7 +12,8 @@
 
 pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::span<shader_view_element const> srvs,
                                                                          cc::span<shader_view_element const> uavs,
-                                                                         cc::span<const sampler_config> sampler_configs)
+                                                                         cc::span<const sampler_config> sampler_configs,
+                                                                         bool usage_compute)
 {
     // Create the layout, maps as follows:
     // SRV:
@@ -23,7 +23,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // UAV:
     //      Texture* -> VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
     //      Buffer   -> VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, static_cast<unsigned>(sampler_configs.size()));
+    auto const layout = mAllocator.createLayoutFromShaderViewArgs(srvs, uavs, static_cast<unsigned>(sampler_configs.size()), usage_compute);
 
     // Do acquires requiring synchronization
     VkDescriptorSet res_raw;
@@ -37,6 +37,7 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
     // Populate new node
     shader_view_node& new_node = mPool.get(pool_index);
     new_node.raw_desc_set = res_raw;
+    new_node.raw_desc_set_layout = layout;
 
     // Perform the writes
     {
@@ -44,62 +45,40 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
         cc::capped_vector<VkDescriptorBufferInfo, 64> buffer_infos;
         cc::capped_vector<VkDescriptorImageInfo, 64 + limits::max_shader_samplers> image_infos;
 
-        VkDescriptorType last_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-        auto current_buffer_range = 0u;
-        auto current_image_range = 0u;
-        auto current_binding_base = 0u;
+        auto const perform_write = [&](VkDescriptorType type, unsigned dest_binding, bool is_image) {
+            auto& write = writes.emplace_back();
+            write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.pNext = nullptr;
+            write.dstSet = res_raw;
+            write.descriptorType = type;
+            write.dstArrayElement = 0;
+            write.dstBinding = dest_binding;
+            write.descriptorCount = 1;
 
-        auto const flush_writes = [&]() {
-            if (current_buffer_range + current_image_range > 0u)
-            {
-                auto& write = writes.emplace_back();
-                write = {};
-                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                write.pNext = nullptr;
-                write.dstSet = res_raw;
-                write.descriptorType = last_type;
-                write.dstArrayElement = 0;
-                write.dstBinding = current_binding_base;
-
-                if (current_buffer_range > 0)
-                {
-                    write.descriptorCount = current_buffer_range;
-                    write.pBufferInfo = buffer_infos.data() + (buffer_infos.size() - current_buffer_range);
-                    current_buffer_range = 0;
-                }
-                else
-                {
-                    // current_image_range > 0
-                    write.descriptorCount = current_image_range;
-                    write.pImageInfo = image_infos.data() + (image_infos.size() - current_image_range);
-                    current_image_range = 0;
-                }
-
-
-                current_binding_base += write.descriptorCount;
-            }
+            if (is_image)
+                write.pImageInfo = image_infos.data() + (image_infos.size() - 1);
+            else
+                write.pBufferInfo = buffer_infos.data() + (buffer_infos.size() - 1);
         };
 
-        current_binding_base = spv::uav_binding_start;
-        for (auto const& uav : uavs)
+        for (auto i = 0u; i < uavs.size(); ++i)
         {
+            auto const& uav = uavs[i];
+
             new_node.resources.push_back(uav.resource);
 
             auto const uav_native_type = util::to_native_uav_desc_type(uav.dimension);
-            if (last_type != uav_native_type)
-            {
-                flush_writes();
-                last_type = uav_native_type;
-            }
+            auto const binding = spv::uav_binding_start + i;
 
             if (uav.dimension == shader_view_dimension::buffer)
             {
                 auto& uav_info = buffer_infos.emplace_back();
                 uav_info.buffer = mResourcePool->getRawBuffer(uav.resource);
                 uav_info.offset = uav.buffer_info.element_start;
-                uav_info.range = uav.buffer_info.element_size;
+                uav_info.range = uav.buffer_info.num_elements * uav.buffer_info.element_stride_bytes;
 
-                ++current_buffer_range;
+                perform_write(uav_native_type, binding, false);
             }
             else
             {
@@ -107,36 +86,31 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 CC_ASSERT(uav.dimension != shader_view_dimension::raytracing_accel_struct && "Raytracing acceleration structures not allowed as UAVs");
 
                 auto& img_info = image_infos.emplace_back();
-                img_info.imageView = makeImageView(uav);
+                img_info.imageView = makeImageView(uav, true);
                 img_info.imageLayout = util::to_image_layout(resource_state::unordered_access);
                 img_info.sampler = nullptr;
 
-                ++current_image_range;
+                perform_write(uav_native_type, binding, true);
             }
         }
 
-        flush_writes();
-
-        current_binding_base = spv::srv_binding_start;
-        for (auto const& srv : srvs)
+        for (auto i = 0u; i < srvs.size(); ++i)
         {
+            auto const& srv = srvs[i];
             new_node.resources.push_back(srv.resource);
 
-            auto const uav_native_type = util::to_native_srv_desc_type(srv.dimension);
-            if (last_type != uav_native_type)
-            {
-                flush_writes();
-                last_type = uav_native_type;
-            }
+
+            auto const srv_native_type = util::to_native_srv_desc_type(srv.dimension);
+            auto const binding = spv::srv_binding_start + i;
 
             if (srv.dimension == shader_view_dimension::buffer)
             {
                 auto& uav_info = buffer_infos.emplace_back();
                 uav_info.buffer = mResourcePool->getRawBuffer(srv.resource);
                 uav_info.offset = srv.buffer_info.element_start;
-                uav_info.range = srv.buffer_info.element_size;
+                uav_info.range = srv.buffer_info.num_elements * srv.buffer_info.element_stride_bytes;
 
-                ++current_buffer_range;
+                perform_write(srv_native_type, binding, false);
             }
             else if (srv.dimension == shader_view_dimension::raytracing_accel_struct)
             {
@@ -154,10 +128,8 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 write.dstSet = res_raw;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
                 write.dstArrayElement = 0;
-                write.dstBinding = current_binding_base;
+                write.dstBinding = binding;
                 write.descriptorCount = 1;
-
-                current_binding_base += write.descriptorCount;
             }
             else
             {
@@ -168,19 +140,16 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
                 img_info.sampler = nullptr;
 
-                ++current_image_range;
+                perform_write(srv_native_type, binding, true);
             }
         }
 
         if (sampler_configs.size() > 0)
         {
-            flush_writes();
-            last_type = VK_DESCRIPTOR_TYPE_SAMPLER;
-            current_binding_base = spv::sampler_binding_start;
-
             new_node.samplers.reserve(sampler_configs.size());
-            for (auto const& sampler_conf : sampler_configs)
+            for (auto i = 0u; i < sampler_configs.size(); ++i)
             {
+                auto const& sampler_conf = sampler_configs[i];
                 new_node.samplers.push_back(makeSampler(sampler_conf));
 
                 auto& img_info = image_infos.emplace_back();
@@ -188,11 +157,9 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
                 img_info.imageLayout = util::to_image_layout(resource_state::shader_resource);
                 img_info.sampler = new_node.samplers.back();
 
-                ++current_image_range;
+                perform_write(VK_DESCRIPTOR_TYPE_SAMPLER, spv::sampler_binding_start + i, true);
             }
         }
-
-        flush_writes();
 
         vkUpdateDescriptorSets(mAllocator.getDevice(), uint32_t(writes.size()), writes.data(), 0, nullptr);
 
@@ -205,9 +172,6 @@ pr::backend::handle::shader_view pr::backend::vk::ShaderViewPool::create(cc::spa
             new_node.image_views.push_back(img_info.imageView);
         }
     }
-
-    // Clean up the layout
-    vkDestroyDescriptorSetLayout(mAllocator.getDevice(), layout, nullptr);
 
     return {static_cast<handle::index_t>(pool_index)};
 }
@@ -227,6 +191,19 @@ void pr::backend::vk::ShaderViewPool::free(pr::backend::handle::shader_view sv)
     }
 }
 
+void pr::backend::vk::ShaderViewPool::free(cc::span<const pr::backend::handle::shader_view> svs)
+{
+    // This is a write access to the pool and allocator, and must be synced
+    auto lg = std::lock_guard(mMutex);
+    for (auto sv : svs)
+    {
+        shader_view_node& freed_node = mPool.get(static_cast<unsigned>(sv.index));
+        internalFree(freed_node);
+        mAllocator.free(freed_node.raw_desc_set);
+        mPool.release(static_cast<unsigned>(sv.index));
+    }
+}
+
 void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* res_pool, unsigned num_cbvs, unsigned num_srvs, unsigned num_uavs, unsigned num_samplers)
 {
     mDevice = device;
@@ -240,7 +217,7 @@ void pr::backend::vk::ShaderViewPool::initialize(VkDevice device, ResourcePool* 
 void pr::backend::vk::ShaderViewPool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](shader_view_node& leaked_node, unsigned) {
         ++num_leaks;
 
         internalFree(leaked_node);
@@ -249,24 +226,32 @@ void pr::backend::vk::ShaderViewPool::destroy()
 
     if (num_leaks > 0)
     {
-        std::cout << "[pr][backend][vk] warning: leaked " << num_leaks << " handle::shader_view object" << (num_leaks == 1 ? "" : "s") << std::endl;
+        log::info()("warning: leaked %d handle::shader_view object%s", num_leaks, num_leaks == 1 ? "" : "s");
     }
 
     mAllocator.destroy();
 }
 
-VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_element& sve) const
+VkImageView pr::backend::vk::ShaderViewPool::makeImageView(const shader_view_element& sve, bool is_uav) const
 {
     VkImageViewCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     info.image = mResourcePool->getRawImage(sve.resource);
     info.viewType = util::to_native_image_view_type(sve.dimension);
+
     info.format = util::to_vk_format(sve.pixel_format);
     info.subresourceRange.aspectMask = util::to_native_image_aspect(sve.pixel_format);
     info.subresourceRange.baseMipLevel = sve.texture_info.mip_start;
     info.subresourceRange.levelCount = sve.texture_info.mip_size;
     info.subresourceRange.baseArrayLayer = sve.texture_info.array_start;
     info.subresourceRange.layerCount = sve.texture_info.array_size;
+
+    // for UAVs, cubemaps are represented as 2D arrays of size 6 instead
+    if (is_uav && info.viewType == VK_IMAGE_VIEW_TYPE_CUBE)
+    {
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        info.subresourceRange.layerCount = 6;
+    }
 
     VkImageView res;
     auto const vr = vkCreateImageView(mDevice, &info, nullptr, &res);
@@ -315,4 +300,7 @@ void pr::backend::vk::ShaderViewPool::internalFree(pr::backend::vk::ShaderViewPo
     node.samplers.clear();
 
     node.resources.clear();
+
+    // destroy the descriptor set layout used for creation
+    vkDestroyDescriptorSetLayout(mDevice, node.raw_desc_set_layout, nullptr);
 }

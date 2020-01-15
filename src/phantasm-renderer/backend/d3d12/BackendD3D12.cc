@@ -2,10 +2,9 @@
 
 #include <clean-core/vector.hh>
 
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
 #include "cmd_list_translation.hh"
 #include "common/dxgi_format.hh"
+#include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
@@ -20,15 +19,15 @@ struct BackendD3D12::per_thread_component
 
 }
 
-void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, device::Window& window)
+void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, const native_window_handle& window_handle)
 {
     // Core components
     {
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
         mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), window.getHandle(),
-                              config.num_backbuffers, config.present_mode);
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(),
+                              cc::bit_cast<::HWND>(window_handle.native_a), config.num_backbuffers, config.present_mode);
     }
 
     auto& device = mDevice.getDevice();
@@ -56,20 +55,28 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 
         mPoolCmdLists.initialize(*this, config.num_cmdlist_allocators_per_thread, config.num_cmdlists_per_allocator, thread_allocator_ptrs);
     }
+
+    mDiagnostics.init();
 }
 
 pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 {
-    flushGPU();
-    mSwapchain.setFullscreen(false);
-
-    mPoolPSOs.destroy();
-    mPoolCmdLists.destroy();
-    mPoolResources.destroy();
-
-    for (auto& thread_comp : mThreadComponents)
+    if (mAdapter.isValid())
     {
-        thread_comp.cmd_list_allocator.destroy();
+        flushGPU();
+
+        mDiagnostics.free();
+
+        mSwapchain.setFullscreen(false);
+
+        mPoolPSOs.destroy();
+        mPoolCmdLists.destroy();
+        mPoolResources.destroy();
+
+        for (auto& thread_comp : mThreadComponents)
+        {
+            thread_comp.cmd_list_allocator.destroy();
+        }
     }
 }
 
@@ -95,6 +102,7 @@ pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::acquireBackbuffe
 
 void pr::backend::d3d12::BackendD3D12::onResize(tg::isize2 size)
 {
+    flushGPU();
     onInternalResize();
     mSwapchain.onResize(size);
 }
@@ -149,9 +157,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
             if (master_before != entry.required_initial)
             {
                 // transition to the state required as the initial one
-                auto& barrier = barriers.emplace_back();
-                util::populate_barrier_desc(barrier, mPoolResources.getRawResource(entry.ptr), util::to_native(master_before),
-                                            util::to_native(entry.required_initial));
+                barriers.push_back(util::get_barrier_desc(mPoolResources.getRawResource(entry.ptr), master_before, entry.required_initial));
             }
 
             // set the master state to the one in which this resource is left
@@ -177,3 +183,15 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
     if (num_cls_in_batch > 0)
         submit_flush();
 }
+
+void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::resource res) const
+{
+    (void)res;
+    log::info() << "printInformation unimplemented";
+}
+
+bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }
+
+bool pr::backend::d3d12::BackendD3D12::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
+
+bool pr::backend::d3d12::BackendD3D12::gpuHasRaytracing() const { return mDevice.hasRaytracing(); }

@@ -2,38 +2,51 @@
 
 #include <iostream>
 
+#include <phantasm-renderer/backend/limits.hh>
+
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
                                                                cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
-                                                               cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers)
+                                                               cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers,
+                                                               bool is_compute)
 {
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.empty() ? nullptr : root_params.data();
     desc.NumParameters = UINT(root_params.size());
     desc.pStaticSamplers = samplers.empty() ? nullptr : samplers.data();
     desc.NumStaticSamplers = UINT(samplers.size());
-    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    //            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
-    //                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    if (is_compute)
+    {
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
+                     | D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
+                     | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    }
+    else
+    {
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        //            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+        //                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    }
 
     shared_com_ptr<ID3DBlob> serialized_root_sig;
     shared_com_ptr<ID3DBlob> error_blob;
     auto const serialize_hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), error_blob.override());
     if (serialize_hr == E_INVALIDARG)
     {
-        std::cerr << "[pr][backend][d3d12] Root signature serialization failed: \n  " << (char*)error_blob->GetBufferPointer() << std::endl;
+        std::cerr << "[pr][backend][d3d12] Root signature serialization failed: \n  " << static_cast<char*>(error_blob->GetBufferPointer()) << std::endl;
     }
-    PR_D3D12_ASSERT(serialize_hr);
+    PR_D3D12_ASSERT_FULL(serialize_hr, &device);
 
 
     ID3D12RootSignature* res;
-    PR_D3D12_VERIFY(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), IID_PPV_ARGS(&res)));
+    PR_D3D12_VERIFY_FULL(device.CreateRootSignature(0, serialized_root_sig->GetBufferPointer(), serialized_root_sig->GetBufferSize(), IID_PPV_ARGS(&res)), &device);
     return res;
 }
 
-pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(const pr::backend::arg::shader_argument_shape& shape)
+pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signature_params::add_shader_argument_shape(const pr::backend::arg::shader_argument_shape& shape,
+                                                                                                                     bool add_fixed_root_constants)
 {
     shader_argument_map res_map;
     auto const argument_visibility = D3D12_SHADER_VISIBILITY_ALL; // NOTE: Eventually arguments could be constrained to stages
@@ -95,6 +108,20 @@ pr::backend::d3d12::shader_argument_map pr::backend::d3d12::detail::root_signatu
         res_map.sampler_table_param = uint32_t(-1);
     }
 
+    if (add_fixed_root_constants)
+    {
+        CD3DX12_ROOT_PARAMETER& root_consts = root_params.emplace_back();
+
+        static_assert(limits::max_root_constant_bytes % sizeof(DWORD32) == 0, "root constant size not divisible by dword32 size");
+        root_consts.InitAsConstants(limits::max_root_constant_bytes / sizeof(DWORD32), 1, _space, argument_visibility);
+
+        res_map.root_const_param = uint32_t(root_params.size() - 1);
+    }
+    else
+    {
+        res_map.root_const_param = uint32_t(-1);
+    }
+
     ++_space;
     return res_map;
 }
@@ -118,14 +145,20 @@ void pr::backend::d3d12::detail::root_signature_params::add_static_sampler(const
     );
 }
 
-void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_signature& root_sig, ID3D12Device& device, pr::backend::arg::shader_argument_shapes payload_shape)
+void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_signature& root_sig,
+                                                   ID3D12Device& device,
+                                                   pr::backend::arg::shader_argument_shapes payload_shape,
+                                                   bool add_fixed_root_constants,
+                                                   bool is_compute)
 {
     detail::root_signature_params parameters;
 
-    for (auto const& arg_shape : payload_shape)
+    for (auto i = 0u; i < payload_shape.size(); ++i)
     {
-        root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape));
+        auto const& arg_shape = payload_shape[i];
+        auto const add_rconsts = add_fixed_root_constants && i == 0;
+        root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape, add_rconsts));
     }
 
-    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers);
+    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers, is_compute);
 }

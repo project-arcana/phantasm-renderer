@@ -4,9 +4,9 @@ void pr::backend::vk::PipelineLayoutCache::initialize(unsigned max_elements) { m
 
 void pr::backend::vk::PipelineLayoutCache::destroy(VkDevice device) { reset(device); }
 
-pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, key_t key)
+pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCreate(VkDevice device, cc::span<const util::spirv_desc_info> reflected_ranges, bool has_push_constants)
 {
-    auto const hash = hashKey(key);
+    auto const hash = hashKey(reflected_ranges, has_push_constants);
 
     auto* const lookup = mCache.look_up(hash);
     if (lookup != nullptr)
@@ -14,7 +14,7 @@ pr::backend::vk::pipeline_layout* pr::backend::vk::PipelineLayoutCache::getOrCre
     else
     {
         auto* const insertion = mCache.insert(hash, pipeline_layout{});
-        insertion->initialize(device, key.reflected_ranges);
+        insertion->initialize(device, reflected_ranges, has_push_constants);
         return insertion;
     }
 }

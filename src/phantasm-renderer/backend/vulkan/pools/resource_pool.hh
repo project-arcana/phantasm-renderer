@@ -5,8 +5,10 @@
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/vulkan/memory/ResourceAllocator.hh>
 #include <phantasm-renderer/backend/vulkan/resources/descriptor_allocator.hh>
+
+typedef struct VmaAllocator_T* VmaAllocator;
+typedef struct VmaAllocation_T* VmaAllocation;
 
 namespace pr::backend::vk
 {
@@ -18,22 +20,25 @@ class ResourcePool
 public:
     // frontend-facing API
 
-    /// create a 2D texture
-    [[nodiscard]] handle::resource createTexture2D(backend::format format, int w, int h, int mips);
+    /// create a 1D, 2D or 3D texture, or a 1D/2D array
+    [[nodiscard]] handle::resource createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim, unsigned depth_or_array_size, bool allow_uav);
 
     /// create a render- or depth-stencil target
-    [[nodiscard]] handle::resource createRenderTarget(backend::format format, int w, int h, int samples);
+    [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
-    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, resource_state initial_state, unsigned stride_bytes = 0);
+    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav);
 
     /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
 
     void free(handle::resource res);
+    void free(cc::span<handle::resource const> resources);
 
     /// only valid for resources created with createMappedBuffer
     [[nodiscard]] std::byte* getMappedMemory(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)).buffer.map; }
+
+    void flushMappedMemory(handle::resource res);
 
 public:
     struct resource_node
@@ -49,8 +54,10 @@ public:
         {
             VkBuffer raw_buffer;
             /// a descriptor set containing a single UNIFORM_BUFFER_DYNAMIC descriptor,
-            /// unconditionally created for all buffers
+            /// unconditionally created for all qualified buffers
             VkDescriptorSet raw_uniform_dynamic_ds;
+            VkDescriptorSet raw_uniform_dynamic_ds_compute;
+
             uint32_t width;
             uint32_t stride; ///< vertex size or index size
             std::byte* map;
@@ -92,6 +99,10 @@ public:
 
     // Raw CBV uniform buffer dynamic descriptor set access
     [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const { return internalGet(res).buffer.raw_uniform_dynamic_ds; }
+    [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSetCompute(handle::resource res) const
+    {
+        return internalGet(res).buffer.raw_uniform_dynamic_ds_compute;
+    }
 
     // Additional information
     [[nodiscard]] bool isImage(handle::resource res) const { return internalGet(res).type == resource_node::resource_type::image; }
@@ -102,11 +113,8 @@ public:
     // Master state access
     //
 
-    [[nodiscard]] resource_state getResourceState(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)).master_state; }
-    [[nodiscard]] VkPipelineStageFlags getResourceStageDependency(handle::resource res) const
-    {
-        return mPool.get(static_cast<unsigned>(res.index)).master_state_dependency;
-    }
+    [[nodiscard]] resource_state getResourceState(handle::resource res) const { return internalGet(res).master_state; }
+    [[nodiscard]] VkPipelineStageFlags getResourceStageDependency(handle::resource res) const { return internalGet(res).master_state_dependency; }
 
     void setResourceState(handle::resource res, resource_state new_state, VkPipelineStageFlags new_state_dep)
     {
@@ -126,17 +134,16 @@ public:
     // the first of either Backend::present or Backend::resize
     //
 
-    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state, VkImageView backbuffer_view);
+    [[nodiscard]] handle::resource injectBackbufferResource(VkImage raw_image, resource_state state, VkImageView backbuffer_view, resource_state& out_prev_state);
 
     [[nodiscard]] bool isBackbuffer(handle::resource res) const { return res == mInjectedBackbufferResource; }
 
     [[nodiscard]] VkImageView getBackbufferView() const { return mInjectedBackbufferView; }
 
 private:
-    [[nodiscard]] handle::resource acquireBuffer(
-        VmaAllocation alloc, VkBuffer buffer, resource_state initial_state, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
+    [[nodiscard]] handle::resource acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
-    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, resource_state initial_state, unsigned num_mips, unsigned num_array_layers);
+    [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, unsigned num_mips, unsigned num_array_layers);
 
     [[nodiscard]] resource_node const& internalGet(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)); }
     [[nodiscard]] resource_node& internalGet(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)); }
@@ -155,7 +162,7 @@ private:
     VkImageView mInjectedBackbufferView = nullptr;
 
     /// "Backing" allocators
-    ResourceAllocator mAllocator;
+    VmaAllocator mAllocator = nullptr;
     DescriptorAllocator mAllocatorDescriptors;
     std::mutex mMutex;
 };

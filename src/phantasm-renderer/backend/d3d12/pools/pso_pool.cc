@@ -7,8 +7,9 @@
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
-                                                                                                     pr::backend::arg::framebuffer_format framebuffer_format,
+                                                                                                     pr::backend::arg::framebuffer_config const& framebuffer_format,
                                                                                                      pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                                     bool has_root_constants,
                                                                                                      pr::backend::arg::shader_stages shader_stages,
                                                                                                      const pr::primitive_pipeline_config& primitive_config)
 {
@@ -17,7 +18,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, {shader_arg_shapes});
+        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, false);
         pool_index = mPool.acquire();
     }
 
@@ -29,10 +30,35 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
         // Create PSO
         auto const vert_format_native = util::get_native_vertex_format(vertex_format.attributes);
         new_node.raw_pso = create_pipeline_state(*mDevice, root_sig->raw_root_sig, vert_format_native, framebuffer_format, shader_stages, primitive_config);
-        util::set_object_name(new_node.raw_pso, "PipelineStateObjectPool pso #%d", int(pool_index));
+        util::set_object_name(new_node.raw_pso, "pool pso #%d", int(pool_index));
     }
 
     new_node.primitive_topology = util::to_native_topology(primitive_config.topology);
+
+    return {static_cast<handle::index_t>(pool_index)};
+}
+
+pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
+                                                                                                            const pr::backend::arg::shader_stage& compute_shader,
+                                                                                                            bool has_root_constants)
+{
+    root_signature* root_sig;
+    unsigned pool_index;
+    // Do things requiring synchronization first
+    {
+        auto lg = std::lock_guard(mMutex);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, true);
+        pool_index = mPool.acquire();
+    }
+
+    // Populate new node
+    pso_node& new_node = mPool.get(pool_index);
+    new_node.associated_root_sig = root_sig;
+    new_node.primitive_topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+    // Create PSO
+    new_node.raw_pso = create_compute_pipeline_state(*mDevice, root_sig->raw_root_sig, compute_shader);
+    util::set_object_name(new_node.raw_pso, "pool compute pso #%d", int(pool_index));
 
     return {static_cast<handle::index_t>(pool_index)};
 }
@@ -62,7 +88,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 void pr::backend::d3d12::PipelineStateObjectPool::destroy()
 {
     auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](pso_node& leaked_node) {
+    mPool.iterate_allocated_nodes([&](pso_node& leaked_node, unsigned) {
         ++num_leaks;
         leaked_node.raw_pso->Release();
     });

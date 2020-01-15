@@ -18,7 +18,7 @@ void pr::backend::d3d12::DescriptorPageAllocator::initialize(ID3D12Device& devic
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    util::set_object_name(mHeap, "DescriptorPageAllocator t%d, s%d", int(type), int(num_descriptors));
+    util::set_object_name(mHeap, "desc page allocator, type %d, size %d", int(type), int(num_descriptors));
 
     mHeapStartCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
     mHeapStartGPU = mHeap->GetGPUDescriptorHandleForHeapStart();
@@ -106,6 +106,19 @@ void pr::backend::d3d12::ShaderViewPool::free(pr::backend::handle::shader_view s
     data.resources.clear();
     {
         auto lg = std::lock_guard(mMutex);
+        mSRVUAVAllocator.free(data.srv_uav_alloc_handle);
+        mSamplerAllocator.free(data.sampler_alloc_handle);
+        mPool.release(static_cast<unsigned>(sv.index));
+    }
+}
+
+void pr::backend::d3d12::ShaderViewPool::free(cc::span<const pr::backend::handle::shader_view> svs)
+{
+    auto lg = std::lock_guard(mMutex);
+    for (auto sv : svs)
+    {
+        auto& data = mPool.get(static_cast<unsigned>(sv.index));
+        data.resources.clear();
         mSRVUAVAllocator.free(data.srv_uav_alloc_handle);
         mSamplerAllocator.free(data.sampler_alloc_handle);
         mPool.release(static_cast<unsigned>(sv.index));

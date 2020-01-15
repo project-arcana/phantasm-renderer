@@ -24,9 +24,13 @@ class ShaderViewPool
 public:
     // frontend-facing API
 
-    [[nodiscard]] handle::shader_view create(cc::span<shader_view_element const> srvs, cc::span<shader_view_element const> uavs, cc::span<sampler_config const> samplers);
+    [[nodiscard]] handle::shader_view create(cc::span<shader_view_element const> srvs,
+                                             cc::span<shader_view_element const> uavs,
+                                             cc::span<sampler_config const> samplers,
+                                             bool usage_compute);
 
     void free(handle::shader_view sv);
+    void free(cc::span<handle::shader_view const> svs);
 
 public:
     // internal API
@@ -39,13 +43,19 @@ public:
         return mPool.get(static_cast<unsigned>(sv.index)).resources;
     }
 
-    [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve) const;
+    [[nodiscard]] VkImageView makeImageView(shader_view_element const& sve, bool is_uav = false) const;
 
 
 private:
     struct shader_view_node
     {
         VkDescriptorSet raw_desc_set;
+
+        // the descriptor set layout used to create the descriptor set proper
+        // This MUST stay alive, if it isn't alive, no warnings are emitted but
+        // vkCmdBindDescriptorSets spuriously crashes the driver with compute binding points
+        VkDescriptorSetLayout raw_desc_set_layout;
+
         // handles contained in this shader view, for state tracking
         cc::capped_vector<handle::resource, 16> resources;
 

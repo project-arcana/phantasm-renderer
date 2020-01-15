@@ -9,7 +9,7 @@ namespace pr::backend::detail
 /// Flat hash table with linear probing
 /// Does not store or care for the key type
 /// Unsynchronized, fixed-size, lookup results remain stable
-template <class ValT, class HashT = size_t>
+template <class ValT, class HashT = cc::hash_t>
 struct cache_map
 {
 public:

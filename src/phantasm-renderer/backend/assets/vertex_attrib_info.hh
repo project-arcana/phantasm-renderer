@@ -51,8 +51,6 @@ constexpr format to_attribute_format()
 
     else if constexpr (tg::is_comp_like<T, 4, cc::int16>)
         return af::rgba16i;
-    else if constexpr (tg::is_comp_like<T, 3, cc::int16>)
-        return af::rgb16i;
     else if constexpr (tg::is_comp_like<T, 2, cc::int16>)
         return af::rg16i;
     else if constexpr (tg::is_comp_like<T, 1, cc::int16>)
@@ -60,8 +58,6 @@ constexpr format to_attribute_format()
 
     else if constexpr (tg::is_comp_like<T, 4, cc::uint16>)
         return af::rgba16u;
-    else if constexpr (tg::is_comp_like<T, 3, cc::uint16>)
-        return af::rgb16u;
     else if constexpr (tg::is_comp_like<T, 2, cc::uint16>)
         return af::rg16u;
     else if constexpr (tg::is_comp_like<T, 1, cc::uint16>)
@@ -69,8 +65,6 @@ constexpr format to_attribute_format()
 
     else if constexpr (tg::is_comp_like<T, 4, cc::int8>)
         return af::rgba8i;
-    else if constexpr (tg::is_comp_like<T, 3, cc::int8>)
-        return af::rgb8i;
     else if constexpr (tg::is_comp_like<T, 2, cc::int8>)
         return af::rg8i;
     else if constexpr (tg::is_comp_like<T, 1, cc::int8>)
@@ -78,8 +72,6 @@ constexpr format to_attribute_format()
 
     else if constexpr (tg::is_comp_like<T, 4, cc::uint8>)
         return af::rgba8u;
-    else if constexpr (tg::is_comp_like<T, 3, cc::uint8>)
-        return af::rgb8u;
     else if constexpr (tg::is_comp_like<T, 2, cc::uint8>)
         return af::rg8u;
     else if constexpr (tg::is_comp_like<T, 1, cc::uint8>)

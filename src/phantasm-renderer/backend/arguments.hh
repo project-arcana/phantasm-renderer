@@ -1,32 +1,29 @@
 #pragma once
 
+#include <clean-core/capped_vector.hh>
 #include <clean-core/span.hh>
 
+#include "limits.hh"
 #include "types.hh"
 
 namespace pr::backend::arg
 {
-struct framebuffer_format
+struct framebuffer_config
 {
-    /// formats of the render targets, [0, n]
-    cc::span<format const> render_targets;
+    /// configs of the render targets, [0, n]
+    cc::capped_vector<render_target_config, limits::max_render_targets> render_targets;
+
+    bool logic_op_enable = false;
+    blend_logic_op logic_op = blend_logic_op::no_op;
+
     /// format of the depth stencil target, [0, 1]
-    cc::span<format const> depth_target;
+    cc::capped_vector<format, 1> depth_target;
 
-    constexpr bool operator==(framebuffer_format const& rhs) const noexcept
+    void add_render_target(format fmt)
     {
-        if (render_targets.size() != rhs.render_targets.size() || depth_target.size() != rhs.depth_target.size())
-            return false;
-
-        for (auto i = 0u; i < render_targets.size(); ++i)
-            if (render_targets[i] != rhs.render_targets[i])
-                return false;
-
-        if (!depth_target.empty())
-            if (depth_target[0] != rhs.depth_target[0])
-                return false;
-
-        return true;
+        render_target_config new_rt;
+        new_rt.format = fmt;
+        render_targets.push_back(new_rt);
     }
 };
 

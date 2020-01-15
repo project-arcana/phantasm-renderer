@@ -8,7 +8,7 @@
 ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& device,
                                                                ID3D12RootSignature* root_sig,
                                                                cc::span<const D3D12_INPUT_ELEMENT_DESC> vertex_input_layout,
-                                                               pr::backend::arg::framebuffer_format framebuffer_format,
+                                                               pr::backend::arg::framebuffer_config const& framebuffer_format,
                                                                pr::backend::arg::shader_stages shader_stages,
                                                                const pr::primitive_pipeline_config& config)
 {
@@ -37,12 +37,11 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
         case shader_domain::geometry:
             pso_desc.GS = to_bytecode(s);
             break;
-        case shader_domain::compute:
+        default:
             break;
         }
     }
 
-    pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 
     pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     pso_desc.RasterizerState.CullMode = util::to_native(config.cull);
@@ -57,9 +56,30 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
     pso_desc.PrimitiveTopologyType = util::to_native(config.topology);
 
     pso_desc.NumRenderTargets = UINT(framebuffer_format.render_targets.size());
+    pso_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 
     for (auto i = 0u; i < framebuffer_format.render_targets.size(); ++i)
-        pso_desc.RTVFormats[i] = util::to_dxgi_format(framebuffer_format.render_targets[i]);
+    {
+        auto const& rt = framebuffer_format.render_targets[i];
+        pso_desc.RTVFormats[i] = util::to_dxgi_format(rt.format);
+        pso_desc.BlendState.IndependentBlendEnable = pso_desc.BlendState.IndependentBlendEnable || rt.blend_enable;
+
+        if (rt.blend_enable)
+        {
+            auto& blend_state = pso_desc.BlendState.RenderTarget[i];
+
+            blend_state.LogicOpEnable = framebuffer_format.logic_op_enable;
+            blend_state.LogicOp = util::to_native(framebuffer_format.logic_op);
+
+            blend_state.BlendEnable = true;
+            blend_state.BlendOp = util::to_native(rt.blend_op_color);
+            blend_state.SrcBlend = util::to_native(rt.blend_color_src);
+            blend_state.DestBlend = util::to_native(rt.blend_color_dest);
+            blend_state.BlendOpAlpha = util::to_native(rt.blend_op_alpha);
+            blend_state.SrcBlendAlpha = util::to_native(rt.blend_alpha_src);
+            blend_state.DestBlendAlpha = util::to_native(rt.blend_alpha_dest);
+        }
+    }
 
     pso_desc.DSVFormat = pso_desc.DepthStencilState.DepthEnable ? util::to_dxgi_format(framebuffer_format.depth_target[0]) : DXGI_FORMAT_UNKNOWN;
 
@@ -70,5 +90,16 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
 
     ID3D12PipelineState* pso;
     PR_D3D12_VERIFY(device.CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&pso)));
+    return pso;
+}
+
+ID3D12PipelineState* pr::backend::d3d12::create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, const pr::backend::arg::shader_stage& compute_shader)
+{
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {};
+    pso_desc.pRootSignature = root_sig;
+    pso_desc.CS = D3D12_SHADER_BYTECODE{compute_shader.binary_data, compute_shader.binary_size};
+
+    ID3D12PipelineState* pso;
+    PR_D3D12_VERIFY(device.CreateComputePipelineState(&pso_desc, IID_PPV_ARGS(&pso)));
     return pso;
 }

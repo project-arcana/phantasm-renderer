@@ -32,25 +32,64 @@ PR_DEFINE_HANDLE(pipeline_state);
 /// command list handle, returned from compiles
 PR_DEFINE_HANDLE(command_list);
 
+/// raytracing acceleration structure handle
+PR_DEFINE_HANDLE(accel_struct);
+
 #undef PR_DEFINE_HANDLE
 }
 
 struct shader_argument
 {
     handle::resource constant_buffer;
-    unsigned constant_buffer_offset;
     handle::shader_view shader_view;
+    unsigned constant_buffer_offset;
 };
 
 enum class shader_domain : uint8_t
 {
-    pixel,
+    // graphics
     vertex,
-    domain,
     hull,
+    domain,
     geometry,
-    compute
+    pixel,
+
+    // compute
+    compute,
+
+    // raytracing
+    ray_gen,
+    ray_intersect,
+    ray_miss,
+    ray_closest_hit,
+    ray_any_hit,
 };
+
+using shader_domain_flags = uint16_t;
+namespace shader_domain_bits
+{
+enum shader_domain_bits_e : shader_domain_flags
+{
+    unspecified = 0x0000,
+
+    vertex = 0x0001,
+    hull = 0x0002,
+    domain = 0x0004,
+    geometry = 0x0008,
+    pixel = 0x0010,
+
+    compute = 0x0020,
+
+    ray_gen = 0x0040,
+    ray_intersect = 0x0080,
+    ray_miss = 0x0100,
+    ray_closest_hit = 0x0200,
+    ray_any_hit = 0x0400,
+
+    mask_all_raytrace_stages = ray_gen | ray_intersect | ray_miss | ray_closest_hit | ray_any_hit,
+    mask_all_graphics_stages = vertex | hull | domain | geometry | pixel,
+};
+}
 
 enum class queue_type : uint8_t
 {
@@ -77,12 +116,19 @@ enum class validation_level : uint8_t
     on,
 
     // D3D12: Whether to additionally enable GPU based validation (slow)
-    // Vulkan: No additional effect
+    //
+    // Vulkan: Whether to additionally enable LunarG GPU-assisted validation
+    //          Slow, and requires a reserved descriptor set. If your device
+    //          only has 8 (max shader args * 2), like an IGP, this could fail
+    //
+    // Extended validation for both APIs can prevent diagnostic tools like
+    // Renderdoc and NSight from working properly (PIX will work though)
     on_extended,
 
     // D3D12: Whether to additionally enable DRED (Device Removed Extended Data)
-    // with automatic breadcrumbs and pagefault recovery (very slow)
-    // see: https://docs.microsoft.com/en-us/windows/win32/direct3d12/use-dred
+    //          with automatic breadcrumbs and pagefault recovery (very slow)
+    //          see: https://docs.microsoft.com/en-us/windows/win32/direct3d12/use-dred
+    //
     // Vulkan: No additional effect
     on_extended_dred
 };
@@ -92,6 +138,19 @@ enum class present_mode : uint8_t
     allow_tearing,
     synced
 };
+
+using native_feature_flags = uint32_t;
+namespace native_feature_bits
+{
+/// Special features that are backend-specific, ignored if not applicable
+enum native_feature_bits_e : native_feature_flags
+{
+    none = 0,
+
+    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
+    vk_api_dump = 0x0001
+};
+}
 
 struct backend_config
 {
@@ -105,6 +164,9 @@ struct backend_config
     /// the strategy for choosing a physical GPU
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);
+
+    /// native features to enable
+    native_feature_flags native_features = native_feature_bits::none;
 
     /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;
@@ -127,6 +189,17 @@ struct backend_config
     /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;
     unsigned num_cmdlists_per_allocator = 5;
+};
+
+/// opaque window handle
+struct native_window_handle
+{
+    /// win32: Window HWND handle, linux: X Window
+    void* native_a = nullptr;
+    /// win32: none, linux: X Display
+    void* native_b = nullptr;
+
+    native_window_handle(void* a, void* b = nullptr) : native_a(a), native_b(b) {}
 };
 
 // Maps to
@@ -177,28 +250,25 @@ enum class format : uint8_t
     rg32u,
     r32u,
     rgba16i,
-    rgb16i,
     rg16i,
     r16i,
     rgba16u,
-    rgb16u,
     rg16u,
     r16u,
     rgba16f,
-    rgb16f,
     rg16f,
     r16f,
     rgba8i,
-    rgb8i,
     rg8i,
     r8i,
     rgba8u,
-    rgb8u,
     rg8u,
     r8u,
+    rgba8un,
+    rg8un,
+    r8un,
 
     // backbuffer formats
-    rgba8un,
     bgra8un,
 
     // depth formats
@@ -224,6 +294,12 @@ struct vertex_attribute_info
     format format;
 };
 
+enum class texture_dimension : uint8_t
+{
+    t1d,
+    t2d,
+    t3d
+};
 
 enum class shader_view_dimension : uint8_t
 {
@@ -258,7 +334,7 @@ struct shader_view_element
     struct sve_buffer_info
     {
         unsigned element_start;        ///< index of the first element in the buffer
-        unsigned element_size;         ///< amount of elements in the buffer
+        unsigned num_elements;         ///< amount of elements in the buffer
         unsigned element_stride_bytes; ///< the stride of elements in bytes
     };
 
@@ -266,6 +342,9 @@ struct shader_view_element
         sve_texture_info texture_info;
         sve_buffer_info buffer_info;
     };
+
+public:
+    // convenience
 
     void init_as_null() { resource = handle::null_resource; }
 
@@ -285,6 +364,26 @@ struct shader_view_element
         texture_info.mip_size = mip_size;
         texture_info.array_start = 0;
         texture_info.array_size = 1;
+    }
+
+    void init_as_texcube(handle::resource res, format pf)
+    {
+        resource = res;
+        pixel_format = pf;
+        dimension = shader_view_dimension::texturecube;
+        texture_info.mip_start = 0;
+        texture_info.mip_size = unsigned(-1);
+        texture_info.array_start = 0;
+        texture_info.array_size = 1;
+    }
+
+    void init_as_structured_buffer(handle::resource res, unsigned num_elements, unsigned stride_bytes)
+    {
+        resource = res;
+        dimension = shader_view_dimension::buffer;
+        buffer_info.num_elements = num_elements;
+        buffer_info.element_start = 0;
+        buffer_info.element_stride_bytes = stride_bytes;
     }
 };
 
@@ -357,11 +456,11 @@ struct sampler_config
         lod_bias = 0.f;
         max_anisotropy = anisotropy;
         compare_func = sampler_compare_func::disabled;
-        border_color = sampler_border_color::black_transparent_float;
+        border_color = sampler_border_color::white_float;
     }
 };
 
-inline bool operator==(sampler_config const& lhs, sampler_config const& rhs) noexcept
+inline constexpr bool operator==(sampler_config const& lhs, sampler_config const& rhs) noexcept
 {
     return lhs.filter == rhs.filter &&                 //
            lhs.address_u == rhs.address_u &&           //
@@ -381,6 +480,61 @@ enum class rt_clear_type : uint8_t
     clear,
     dont_care,
     load
+};
+
+enum class blend_logic_op : uint8_t
+{
+    no_op,
+    op_clear,
+    op_set,
+    op_copy,
+    op_copy_inverted,
+    op_invert,
+    op_and,
+    op_nand,
+    op_and_inverted,
+    op_and_reverse,
+    op_or,
+    op_nor,
+    op_xor,
+    op_or_reverse,
+    op_or_inverted,
+    op_equiv
+};
+
+enum class blend_op : uint8_t
+{
+    op_add,
+    op_subtract,
+    op_reverse_subtract,
+    op_min,
+    op_max
+};
+
+enum class blend_factor : uint8_t
+{
+    zero,
+    one,
+    src_color,
+    inv_src_color,
+    src_alpha,
+    inv_src_alpha,
+    dest_color,
+    inv_dest_color,
+    dest_alpha,
+    inv_dest_alpha
+};
+
+struct render_target_config
+{
+    format format = format::rgba8un;
+    bool blend_enable = false;
+    blend_factor blend_color_src = blend_factor::one;
+    blend_factor blend_color_dest = blend_factor::zero;
+    blend_op blend_op_color = blend_op::op_add;
+    blend_factor blend_alpha_src = blend_factor::one;
+    blend_factor blend_alpha_dest = blend_factor::zero;
+    blend_op blend_op_alpha = blend_op::op_add;
 };
 
 }

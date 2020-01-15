@@ -9,7 +9,7 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
     mSurface = surface;
     mDevice = device.getDevice();
     mPhysicalDevice = device.getPhysicalDevice();
-    mPresentQueue = device.getQueueGraphics();
+    mPresentQueue = device.getQueueDirect();
     mBackbufferSize = tg::isize2(-1, -1);
     mSyncMode = sync;
 
@@ -26,7 +26,7 @@ void pr::backend::vk::Swapchain::initialize(const pr::backend::vk::Device& devic
     {
         VkCommandPoolCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        info.queueFamilyIndex = static_cast<unsigned>(device.getQueueFamilyGraphics());
+        info.queueFamilyIndex = static_cast<unsigned>(device.getQueueFamilyDirect());
         PR_VK_VERIFY_SUCCESS(vkCreateCommandPool(mDevice, &info, nullptr, &mDummyPresentCommandPool));
     }
 
@@ -171,7 +171,7 @@ bool pr::backend::vk::Swapchain::present()
 
     ++mActiveFenceIndex;
     if (mActiveFenceIndex >= mBackbuffers.size())
-        mActiveFenceIndex -= mBackbuffers.size();
+        mActiveFenceIndex -= static_cast<unsigned>(mBackbuffers.size());
 
     vkWaitForFences(mDevice, 1, &mBackbuffers[mActiveFenceIndex].fence_command_buf_executed, VK_TRUE, UINT64_MAX);
     return true;

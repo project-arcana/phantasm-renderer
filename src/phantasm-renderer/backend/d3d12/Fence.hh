@@ -11,7 +11,7 @@ namespace pr::backend::d3d12
 class SimpleFence
 {
 public:
-    void initialize(ID3D12Device& device, char const* debug_name = nullptr);
+    void initialize(ID3D12Device& device);
     ~SimpleFence();
 
     SimpleFence() = default;
@@ -46,7 +46,7 @@ private:
 class Fence
 {
 public:
-    void initialize(ID3D12Device& device, char const* debug_name = nullptr) { mFence.initialize(device, debug_name); }
+    void initialize(ID3D12Device& device) { mFence.initialize(device); }
 
     void issueFence(ID3D12CommandQueue& queue)
     {
@@ -63,6 +63,8 @@ public:
     }
 
     void waitOnGPU(ID3D12CommandQueue& queue) { mFence.waitGPU(mCounter, queue); }
+
+    [[nodiscard]] ID3D12Fence* getRawFence() const { return mFence.getRawFence(); }
 
 private:
     SimpleFence mFence;
