@@ -32,6 +32,9 @@ PR_DEFINE_HANDLE(pipeline_state);
 /// command list handle, returned from compiles
 PR_DEFINE_HANDLE(command_list);
 
+/// raytracing acceleration structure handle
+PR_DEFINE_HANDLE(accel_struct);
+
 #undef PR_DEFINE_HANDLE
 }
 
