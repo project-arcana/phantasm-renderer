@@ -63,9 +63,9 @@ enum class shader_domain : uint8_t
 
     // raytracing
     ray_gen,
-    ray_intersect,
     ray_miss,
     ray_closest_hit,
+    ray_intersect,
     ray_any_hit,
 };
 
@@ -190,6 +190,7 @@ struct backend_config
     unsigned max_num_uavs = 2048;
     unsigned max_num_samplers = 1024;
     unsigned max_num_accel_structs = 2048;
+    unsigned max_num_raytrace_pipeline_states = 256;
 
     /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;

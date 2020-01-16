@@ -3,8 +3,8 @@
 #include <clean-core/assert.hh>
 #include <clean-core/capped_vector.hh>
 
-#include "common/verify.hh"
 #include "common/log.hh"
+#include "common/verify.hh"
 #include "gpu_choice_util.hh"
 #include "queue_util.hh"
 
@@ -78,7 +78,7 @@ void pr::backend::vk::Device::initialize(vulkan_gpu_info const& device, backend_
         mInformation.device_properties = device.physical_device_props;
     }
 
-    if (hasRaytracing() && config.enable_raytracing)
+    if (hasRaytracing())
     {
         initializeRaytracing();
     }

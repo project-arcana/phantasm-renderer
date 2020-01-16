@@ -11,6 +11,7 @@
 #include "Swapchain.hh"
 
 #include "common/diagnostic_util.hh"
+#include "pools/accel_struct_pool.hh"
 #include "pools/cmd_list_pool.hh"
 #include "pools/pso_pool.hh"
 #include "pools/resource_pool.hh"
@@ -106,15 +107,13 @@ public:
                                                              arg::framebuffer_config const& framebuffer_conf,
                                                              arg::shader_argument_shapes shader_arg_shapes,
                                                              bool has_root_constants,
-                                                             arg::shader_stages shader_stages,
+                                                             arg::graphics_shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
         return mPoolPSOs.createPipelineState(vertex_format, framebuffer_conf, shader_arg_shapes, has_root_constants, shader_stages, primitive_config);
     }
 
-    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
-                                                                    arg::shader_stage const& compute_shader,
-                                                                    bool has_root_constants) override
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_binary compute_shader, bool has_root_constants) override
     {
         return mPoolPSOs.createComputePipelineState(shader_arg_shapes, compute_shader, has_root_constants);
     }
@@ -132,6 +131,12 @@ public:
     //
     // Raytracing interface
     //
+
+    [[nodiscard]] handle::pipeline_state createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                       arg::raytracing_hit_groups hit_groups,
+                                                                       unsigned max_recursion,
+                                                                       unsigned max_payload_size_bytes,
+                                                                       unsigned max_attribute_size_bytes) override;
 
     handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
 
@@ -157,7 +162,7 @@ public:
     // GPU info interface
     //
 
-    bool gpuHasRaytracing() const override;
+    bool isRaytracingEnabled() const override;
 
 public:
     // backend-internal
@@ -178,6 +183,7 @@ private:
     CommandListPool mPoolCmdLists;
     PipelineStateObjectPool mPoolPSOs;
     ShaderViewPool mPoolShaderViews;
+    AccelStructPool mPoolAccelStructs;
 
     // Logic
     struct per_thread_component;

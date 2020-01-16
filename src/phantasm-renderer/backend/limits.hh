@@ -19,4 +19,10 @@ inline constexpr auto max_shader_samplers = 16u;
 
 /// the maximum size for compute root constants
 inline constexpr auto max_root_constant_bytes = 8u;
+
+/// the maximum amount of libraries
+inline constexpr auto max_raytracing_libraries = 8u;
+
+/// the maximum amount of hit groups
+inline constexpr auto max_raytracing_hit_groups = 16u;
 }

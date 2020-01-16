@@ -58,8 +58,8 @@ private:
     void internalFree(accel_struct_node& node);
 
 private:
-    VkDevice mDevice;
-    ResourcePool* mResourcePool;
+    VkDevice mDevice = nullptr;
+    ResourcePool* mResourcePool = nullptr;
 
     backend::detail::linked_pool<accel_struct_node, unsigned> mPool;
 

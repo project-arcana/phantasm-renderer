@@ -9,9 +9,9 @@ void pr::backend::d3d12::RootSignatureCache::destroy() { reset(); }
 pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getOrCreate(ID3D12Device& device,
                                                                                         arg::shader_argument_shapes arg_shapes,
                                                                                         bool has_root_constants,
-                                                                                        bool is_compute)
+                                                                                        bool is_non_graphics)
 {
-    auto const hash = hashKey(arg_shapes, has_root_constants, is_compute);
+    auto const hash = hashKey(arg_shapes, has_root_constants, is_non_graphics);
 
     auto* const lookup = mCache.look_up(hash);
     if (lookup != nullptr)
@@ -19,8 +19,8 @@ pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getO
     else
     {
         auto* const insertion = mCache.insert(hash, root_signature{});
-        initialize_root_signature(*insertion, device, arg_shapes, has_root_constants, is_compute);
-        util::set_object_name(insertion->raw_root_sig, "cached %sroot sig %zx", is_compute ? "compute " : "", hash);
+        initialize_root_signature(*insertion, device, arg_shapes, has_root_constants, is_non_graphics);
+        util::set_object_name(insertion->raw_root_sig, "cached %sroot sig %zx", is_non_graphics ? "non-graphics " : "graphics ", hash);
 
         return insertion;
     }

@@ -58,7 +58,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
         egeom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
         egeom.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
         egeom.geometry.triangles.vertexData = vert_info.raw_buffer;
-        egeom.geometry.triangles.vertexOffset = elem.vertex_offset * vert_info.stride;
+        egeom.geometry.triangles.vertexOffset = 0 * vert_info.stride;
         egeom.geometry.triangles.vertexCount = elem.num_vertices;
         egeom.geometry.triangles.vertexStride = vert_info.stride;
         egeom.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
@@ -69,7 +69,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
 
             egeom.geometry.triangles.indexData = mResourcePool->getRawBuffer(elem.index_buffer);
             egeom.geometry.triangles.indexCount = elem.num_indices;
-            egeom.geometry.triangles.indexOffset = index_stride * elem.index_offset;
+            egeom.geometry.triangles.indexOffset = index_stride * 0;
             egeom.geometry.triangles.indexType = index_stride == sizeof(uint16_t) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
         }
         else
@@ -198,6 +198,7 @@ void pr::backend::vk::AccelStructPool::free(cc::span<const pr::backend::handle::
 
 void pr::backend::vk::AccelStructPool::initialize(VkDevice device, pr::backend::vk::ResourcePool* res_pool, unsigned max_num_accel_structs)
 {
+    CC_ASSERT(mDevice == nullptr && mResourcePool == nullptr && "double init");
     mDevice = device;
     mResourcePool = res_pool;
     mPool.initialize(max_num_accel_structs);
@@ -205,15 +206,18 @@ void pr::backend::vk::AccelStructPool::initialize(VkDevice device, pr::backend::
 
 void pr::backend::vk::AccelStructPool::destroy()
 {
-    auto num_leaks = 0;
-    mPool.iterate_allocated_nodes([&](accel_struct_node& leaked_node, unsigned) {
-        ++num_leaks;
-        internalFree(leaked_node);
-    });
-
-    if (num_leaks > 0)
+    if (mDevice != nullptr)
     {
-        log::info()("warning: leaked %d handle::accel_struct object%s", num_leaks, num_leaks == 1 ? "" : "s");
+        auto num_leaks = 0;
+        mPool.iterate_allocated_nodes([&](accel_struct_node& leaked_node, unsigned) {
+            ++num_leaks;
+            internalFree(leaked_node);
+        });
+
+        if (num_leaks > 0)
+        {
+            log::info()("warning: leaked %d handle::accel_struct object%s", num_leaks, num_leaks == 1 ? "" : "s");
+        }
     }
 }
 

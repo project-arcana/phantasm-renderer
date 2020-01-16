@@ -50,18 +50,20 @@ struct shader_argument_shape
 /// A shader payload consists of [1, 4] shader arguments
 using shader_argument_shapes = cc::span<shader_argument_shape const>;
 
-/// A shader stage
+struct shader_binary
+{
+    std::byte* data; ///< pointer to the (backend-dependent) shader binary data
+    size_t size;
+};
+
 struct shader_stage
 {
-    /// pointer to the (backend-dependent) shader binary data
-    std::byte* binary_data;
-    size_t binary_size;
-    /// the shader domain of this stage
+    shader_binary binary;
     shader_domain domain;
 };
 
-/// A shader bundle consists of up to 1 stage per domain
-using shader_stages = cc::span<shader_stage const>;
+/// A graphics shader bundle consists of up to 1 shader per graphics stage
+using graphics_shader_stages = cc::span<shader_stage const>;
 
 inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes const& rhs) noexcept
 {
@@ -80,11 +82,30 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 struct blas_element
 {
     handle::resource vertex_buffer = handle::null_resource;
-    handle::resource index_buffer = handle::null_resource;
+    handle::resource index_buffer = handle::null_resource; ///< can be null
     unsigned num_vertices = 0;
-    unsigned vertex_offset = 0; ///< offset in number of vertices
     unsigned num_indices = 0;
-    unsigned index_offset = 0; ///< offset in number of indices
     bool is_opaque = true;
 };
+
+struct raytracing_shader_library
+{
+    shader_binary binary;
+    cc::span<wchar_t const* const> symbols;
+    cc::capped_vector<shader_argument_shape, limits::max_shader_arguments> argument_shapes;
+    bool has_root_constants = false;
+};
+
+using raytracing_shader_libraries = cc::span<raytracing_shader_library const>;
+
+struct raytracing_hit_group
+{
+    wchar_t const* name;
+    wchar_t const* closest_hit_symbol;
+    wchar_t const* any_hit_symbol = L"";
+    wchar_t const* intersection_symbol = L"";
+};
+
+using raytracing_hit_groups = cc::span<raytracing_hit_group const>;
+
 }

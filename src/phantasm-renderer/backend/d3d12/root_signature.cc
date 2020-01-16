@@ -1,23 +1,22 @@
 #include "root_signature.hh"
 
-#include <iostream>
-
 #include <phantasm-renderer/backend/limits.hh>
 
+#include <phantasm-renderer/backend/d3d12/common/log.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 
 ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
                                                                cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
                                                                cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers,
-                                                               bool is_compute)
+                                                               bool is_non_graphics)
 {
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.empty() ? nullptr : root_params.data();
     desc.NumParameters = UINT(root_params.size());
     desc.pStaticSamplers = samplers.empty() ? nullptr : samplers.data();
     desc.NumStaticSamplers = UINT(samplers.size());
-    if (is_compute)
+    if (is_non_graphics)
     {
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
                      | D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
@@ -35,7 +34,7 @@ ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& dev
     auto const serialize_hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), error_blob.override());
     if (serialize_hr == E_INVALIDARG)
     {
-        std::cerr << "[pr][backend][d3d12] Root signature serialization failed: \n  " << static_cast<char*>(error_blob->GetBufferPointer()) << std::endl;
+        log::err()("root signature serialization failed:\n%s", static_cast<char*>(error_blob->GetBufferPointer()));
     }
     PR_D3D12_ASSERT_FULL(serialize_hr, &device);
 
@@ -149,7 +148,7 @@ void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_sign
                                                    ID3D12Device& device,
                                                    pr::backend::arg::shader_argument_shapes payload_shape,
                                                    bool add_fixed_root_constants,
-                                                   bool is_compute)
+                                                   bool is_non_graphics)
 {
     detail::root_signature_params parameters;
 
@@ -160,5 +159,5 @@ void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_sign
         root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape, add_rconsts));
     }
 
-    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers, is_compute);
+    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers, is_non_graphics);
 }

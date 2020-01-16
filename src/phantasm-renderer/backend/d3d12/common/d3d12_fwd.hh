@@ -18,6 +18,7 @@ struct ID3D12DescriptorHeap;
 struct ID3D12RootSignature;
 struct ID3D12PipelineState;
 struct ID3D12GraphicsCommandList;
+struct ID3D12GraphicsCommandList5;
 struct ID3D12DeviceRemovedExtendedDataSettings;
 
 struct IDXGIAdapter;
@@ -29,3 +30,6 @@ struct IDXGraphicsAnalysis;
 
 struct D3D12_SHADER_BYTECODE;
 struct D3D12_INPUT_ELEMENT_DESC;
+
+struct D3D12_RAYTRACING_GEOMETRY_DESC;
+

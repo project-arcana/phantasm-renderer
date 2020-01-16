@@ -133,3 +133,8 @@ void pr::backend::d3d12::ShaderViewPool::initialize(ID3D12Device* device, pr::ba
     mSamplerAllocator.initialize(*device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, num_samplers);
     mPool.initialize(num_shader_views);
 }
+
+void pr::backend::d3d12::ShaderViewPool::destroy()
+{
+    // nothing
+}

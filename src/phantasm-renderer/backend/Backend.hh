@@ -118,12 +118,12 @@ public:
                                                                      arg::framebuffer_config const& framebuffer_conf,
                                                                      arg::shader_argument_shapes shader_arg_shapes,
                                                                      bool has_root_constants,
-                                                                     arg::shader_stages shader_stages,
+                                                                     arg::graphics_shader_stages shader_stages,
                                                                      pr::primitive_pipeline_config const& primitive_config)
         = 0;
 
     [[nodiscard]] virtual handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
-                                                                            arg::shader_stage const& compute_shader,
+                                                                            arg::shader_binary compute_shader,
                                                                             bool has_root_constants = false)
         = 0;
 
@@ -145,6 +145,13 @@ public:
     //
     // Raytracing interface
     //
+
+    [[nodiscard]] virtual handle::pipeline_state createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                               arg::raytracing_hit_groups hit_groups,
+                                                                               unsigned max_recursion,
+                                                                               unsigned max_payload_size_bytes,
+                                                                               unsigned max_attribute_size_bytes)
+        = 0;
 
     [[nodiscard]] virtual handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) = 0;
 
@@ -178,7 +185,7 @@ public:
     // GPU info interface
     //
 
-    virtual bool gpuHasRaytracing() const = 0;
+    virtual bool isRaytracingEnabled() const = 0;
 
 protected:
     Backend() = default;

@@ -145,6 +145,18 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
     return acquireBuffer(alloc, resource_state::undefined, size_bytes, stride_bytes);
 }
 
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBufferInternal(unsigned size_bytes, unsigned stride_bytes, bool allow_uav, D3D12_RESOURCE_STATES initial_state)
+{
+    auto desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
+
+    if (allow_uav)
+        desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    auto* const alloc = mAllocator.allocate(desc, initial_state);
+    util::set_object_name(alloc->GetResource(), "internal buffer");
+    return acquireBuffer(alloc, resource_state::unknown, size_bytes, stride_bytes);
+}
+
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);

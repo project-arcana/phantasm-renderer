@@ -104,6 +104,7 @@ public:
     // internal API
 
     void initialize(ID3D12Device* device, ResourcePool* res_pool, unsigned num_shader_views, unsigned num_srvs_uavs, unsigned num_samplers);
+    void destroy();
 
     [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getSRVUAVGPUHandle(handle::shader_view sv) const
     {

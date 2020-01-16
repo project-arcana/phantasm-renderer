@@ -10,6 +10,7 @@
 #include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
+#include "pools/accel_struct_pool.hh"
 #include "pools/pso_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/root_sig_cache.hh"
@@ -18,9 +19,10 @@
 void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* device,
                                                              pr::backend::d3d12::ShaderViewPool* sv_pool,
                                                              pr::backend::d3d12::ResourcePool* resource_pool,
-                                                             pr::backend::d3d12::PipelineStateObjectPool* pso_pool)
+                                                             pr::backend::d3d12::PipelineStateObjectPool* pso_pool,
+                                                             AccelStructPool* as_pool)
 {
-    _globals.initialize(device, sv_pool, resource_pool, pso_pool);
+    _globals.initialize(device, sv_pool, resource_pool, pso_pool, as_pool);
     _thread_local.initialize(*_globals.device);
 }
 
@@ -30,6 +32,7 @@ void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12Gra
                                                                        size_t buffer_size)
 {
     _cmd_list = list;
+    _cmd_list_rt = nullptr;
     _state_cache = state_cache;
 
     _bound.reset();
@@ -45,6 +48,10 @@ void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12Gra
 
     // close the list
     _cmd_list->Close();
+
+    // release the possibly QI'd raytracing command list
+    if (_cmd_list_rt != nullptr)
+        _cmd_list_rt->Release();
 
     // done
 }
@@ -378,15 +385,58 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_bottom_level& blas_update)
 {
-    log::err()("update_bottom_level unimplemented");
+    ensureRaytracingCmdList();
+
+    auto& dest_node = _globals.pool_accel_structs->getNode(blas_update.dest);
+    ID3D12Resource* const dest_as_buffer = _globals.pool_resources->getRawResource(dest_node.buffer_as);
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC as_create_info = {};
+    as_create_info.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+    as_create_info.Inputs.Flags = util::to_native_flags(dest_node.flags);
+    as_create_info.Inputs.NumDescs = static_cast<UINT>(dest_node.geometries.size());
+    as_create_info.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    as_create_info.Inputs.pGeometryDescs = dest_node.geometries.data();
+    as_create_info.DestAccelerationStructureData = dest_as_buffer->GetGPUVirtualAddress();
+    as_create_info.ScratchAccelerationStructureData = _globals.pool_resources->getRawResource(dest_node.buffer_scratch)->GetGPUVirtualAddress();
+
+    _cmd_list_rt->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
+
+    auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(dest_as_buffer);
+    _cmd_list_rt->ResourceBarrier(1, &uav_barrier);
 }
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_top_level& tlas_update)
 {
-    log::err()("update_top_level unimplemented");
+    ensureRaytracingCmdList();
+
+    auto& dest_node = _globals.pool_accel_structs->getNode(tlas_update.dest);
+    ID3D12Resource* const dest_as_buffer = _globals.pool_resources->getRawResource(dest_node.buffer_as);
+
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC as_create_info = {};
+    as_create_info.Inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+    as_create_info.Inputs.Flags = util::to_native_flags(dest_node.flags);
+    as_create_info.Inputs.NumDescs = tlas_update.num_instances;
+    as_create_info.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+    as_create_info.Inputs.pGeometryDescs = nullptr;
+    as_create_info.Inputs.InstanceDescs = _globals.pool_resources->getRawResource(dest_node.buffer_instances)->GetGPUVirtualAddress();
+    as_create_info.DestAccelerationStructureData = dest_node.raw_as_handle;
+    as_create_info.ScratchAccelerationStructureData = _globals.pool_resources->getRawResource(dest_node.buffer_scratch)->GetGPUVirtualAddress();
+
+    _cmd_list_rt->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
+
+    //    auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(dest_as_buffer);
+    //    _cmd_list_rt->ResourceBarrier(1, &uav_barrier);
 }
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::trace_rays& trace_rays) { log::err()("trace_rays unimplemented"); }
+
+void pr::backend::d3d12::command_list_translator::ensureRaytracingCmdList()
+{
+    if (_cmd_list_rt == nullptr)
+    {
+        PR_D3D12_VERIFY_FULL(_cmd_list->QueryInterface(IID_PPV_ARGS(&_cmd_list_rt)), _globals.device);
+    }
+}
 
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)
 {

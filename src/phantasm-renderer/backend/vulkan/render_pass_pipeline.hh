@@ -18,7 +18,7 @@ namespace pr::backend::vk
 [[nodiscard]] VkPipeline create_pipeline(VkDevice device,
                                          VkRenderPass render_pass,
                                          VkPipelineLayout pipeline_layout,
-                                         arg::shader_stages shaders,
+                                         arg::graphics_shader_stages shaders,
                                          pr::primitive_pipeline_config const& config,
                                          cc::span<VkVertexInputAttributeDescription const> vertex_attribs,
                                          uint32_t vertex_size,
