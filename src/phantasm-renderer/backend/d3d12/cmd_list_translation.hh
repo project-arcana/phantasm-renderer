@@ -72,6 +72,12 @@ struct command_list_translator
 
     void execute(cmd::debug_marker const& marker);
 
+    void execute(cmd::update_bottom_level const& blas_update);
+
+    void execute(cmd::update_top_level const& tlas_update);
+
+    void execute(cmd::trace_rays const& trace_rays);
+
 private:
     // non-owning constant (global)
     translator_global_memory _globals;

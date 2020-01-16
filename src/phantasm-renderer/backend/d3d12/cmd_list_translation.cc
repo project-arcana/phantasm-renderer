@@ -7,6 +7,7 @@
 #include "Swapchain.hh"
 #include "common/diagnostic_util.hh"
 #include "common/dxgi_format.hh"
+#include "common/log.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "pools/pso_pool.hh"
@@ -374,6 +375,18 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 {
     util::set_pix_marker(_cmd_list, 0, marker.string_literal);
 }
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_bottom_level& blas_update)
+{
+    log::err()("update_bottom_level unimplemented");
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_top_level& tlas_update)
+{
+    log::err()("update_top_level unimplemented");
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::trace_rays& trace_rays) { log::err()("trace_rays unimplemented"); }
 
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)
 {

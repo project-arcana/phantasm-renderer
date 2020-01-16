@@ -130,6 +130,22 @@ public:
     void submit(cc::span<handle::command_list const> cls) override;
 
     //
+    // Raytracing interface
+    //
+
+    handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
+
+    handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
+                                                      accel_struct_build_flags flags,
+                                                      uint64_t* out_native_handle = nullptr) override;
+
+    void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) override;
+
+    void free(handle::accel_struct as) override;
+
+    void freeRange(cc::span<handle::accel_struct const> as) override;
+
+    //
     // Debug interface
     //
 

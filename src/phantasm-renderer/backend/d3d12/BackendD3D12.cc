@@ -184,6 +184,30 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         submit_flush();
 }
 
+pr::backend::handle::accel_struct pr::backend::d3d12::BackendD3D12::createTopLevelAccelStruct(unsigned num_instances)
+{
+    log::err()("createTopLevelAccelStruct unimplemented");
+    return handle::null_accel_struct;
+}
+
+pr::backend::handle::accel_struct pr::backend::d3d12::BackendD3D12::createBottomLevelAccelStruct(cc::span<const pr::backend::arg::blas_element> elements,
+                                                                                                 pr::backend::accel_struct_build_flags flags,
+                                                                                                 uint64_t* out_native_handle)
+{
+    log::err()("createBottomLevelAccelStruct unimplemented");
+    return handle::null_accel_struct;
+}
+
+void pr::backend::d3d12::BackendD3D12::uploadTopLevelInstances(pr::backend::handle::accel_struct as,
+                                                               cc::span<const pr::backend::accel_struct_geometry_instance> instances)
+{
+    log::err()("uploadTopLevelInstances unimplemented");
+}
+
+void pr::backend::d3d12::BackendD3D12::free(pr::backend::handle::accel_struct as) { log::err()("free unimplemented"); }
+
+void pr::backend::d3d12::BackendD3D12::freeRange(cc::span<const pr::backend::handle::accel_struct> as) { log::err()("freeRange unimplemented"); }
+
 void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::resource res) const
 {
     (void)res;
