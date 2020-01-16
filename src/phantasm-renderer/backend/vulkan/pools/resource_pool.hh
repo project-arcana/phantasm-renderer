@@ -147,7 +147,8 @@ public:
     [[nodiscard]] VkImageView getBackbufferView() const { return mInjectedBackbufferView; }
 
 private:
-    [[nodiscard]] handle::resource acquireBuffer(VmaAllocation alloc, VkBuffer buffer, uint64_t buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
+    [[nodiscard]] handle::resource acquireBuffer(
+        VmaAllocation alloc, VkBuffer buffer, VkBufferUsageFlags usage, uint64_t buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
     [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, unsigned num_mips, unsigned num_array_layers);
 
@@ -166,6 +167,13 @@ private:
     /// The image view of the currently injected backbuffer, stored separately to
     /// not take up space in resource_node, there is always just a single injected backbuffer
     VkImageView mInjectedBackbufferView = nullptr;
+
+    /// Descriptor set layouts for buffer dynamic UBO descriptor sets
+    /// permanently kept alive (a: no recreation required, b: drivers can crash
+    /// without "data-compatible" descriptor sets being alive when binding
+    /// a descriptor to compute pipelines)
+    VkDescriptorSetLayout mSingleCBVLayout = nullptr;
+    VkDescriptorSetLayout mSingleCBVLayoutCompute = nullptr;
 
     /// "Backing" allocators
     VmaAllocator mAllocator = nullptr;

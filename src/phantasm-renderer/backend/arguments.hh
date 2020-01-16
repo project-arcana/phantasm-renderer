@@ -76,4 +76,15 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 
     return true;
 }
+
+struct blas_element
+{
+    handle::resource vertex_buffer = handle::null_resource;
+    handle::resource index_buffer = handle::null_resource;
+    unsigned num_vertices = 0;
+    unsigned vertex_offset = 0; ///< offset in number of vertices
+    unsigned num_indices = 0;
+    unsigned index_offset = 0; ///< offset in number of indices
+    bool is_opaque = true;
+};
 }

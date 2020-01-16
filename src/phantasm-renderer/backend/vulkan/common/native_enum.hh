@@ -650,15 +650,15 @@ namespace pr::backend::vk::util
 {
     VkBuildAccelerationStructureFlagsNV res = 0;
 
-    if (flags & accel_struct_build_bits::allow_update)
+    if (flags & accel_struct_build_flag_bits::allow_update)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
-    if (flags & accel_struct_build_bits::allow_compaction)
+    if (flags & accel_struct_build_flag_bits::allow_compaction)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NV;
-    if (flags & accel_struct_build_bits::prefer_fast_trace)
+    if (flags & accel_struct_build_flag_bits::prefer_fast_trace)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV;
-    if (flags & accel_struct_build_bits::prefer_fast_build)
+    if (flags & accel_struct_build_flag_bits::prefer_fast_build)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NV;
-    if (flags & accel_struct_build_bits::minimize_memory)
+    if (flags & accel_struct_build_flag_bits::minimize_memory)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NV;
 
     return res;

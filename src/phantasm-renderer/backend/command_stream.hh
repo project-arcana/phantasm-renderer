@@ -28,7 +28,10 @@ namespace detail
     PR_X(copy_buffer_to_texture)  \
     PR_X(begin_render_pass)       \
     PR_X(end_render_pass)         \
-    PR_X(debug_marker)
+    PR_X(debug_marker)            \
+    PR_X(update_bottom_level)     \
+    PR_X(update_top_level)        \
+    PR_X(trace_rays)
 
 enum class cmd_type : uint8_t
 {
@@ -350,6 +353,23 @@ PR_DEFINE_CMD(debug_marker)
 
     debug_marker() = default;
     debug_marker(char const* s) : string_literal(s) {}
+};
+
+PR_DEFINE_CMD(update_bottom_level)
+{
+    handle::accel_struct dest = handle::null_accel_struct;
+    handle::accel_struct source = handle::null_accel_struct;
+};
+
+PR_DEFINE_CMD(update_top_level)
+{
+    handle::accel_struct dest = handle::null_accel_struct;
+    unsigned num_instances = 0;
+};
+
+PR_DEFINE_CMD(trace_rays)
+{
+
 };
 
 #undef PR_DEFINE_CMD

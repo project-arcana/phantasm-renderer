@@ -34,9 +34,13 @@ PR_DEFINE_HANDLE(command_list);
 
 /// raytracing acceleration structure handle
 PR_DEFINE_HANDLE(accel_struct);
-
-#undef PR_DEFINE_HANDLE
 }
+
+#define PR_DEFINE_BIT_FLAGS(_name_, _type_) \
+    using _name_##s = _type_;               \
+    namespace _name_##_bits                 \
+    {                                       \
+        enum _name_##_bits_e : _name_##s
 
 struct shader_argument
 {
@@ -185,6 +189,7 @@ struct backend_config
     unsigned max_num_srvs = 2048;
     unsigned max_num_uavs = 2048;
     unsigned max_num_samplers = 1024;
+    unsigned max_num_accel_structs = 2048;
 
     /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;
@@ -537,18 +542,35 @@ struct render_target_config
     blend_op blend_op_alpha = blend_op::op_add;
 };
 
-using accel_struct_build_flags = uint8_t;
-namespace accel_struct_build_bits
-{
-enum accel_struct_build_bits_e : accel_struct_build_flags
-{
-    none = 0x0000,
-
-    allow_update = 0x0001,
-    allow_compaction = 0x0002,
-    prefer_fast_trace = 0x0004,
-    prefer_fast_build = 0x0008,
-    minimize_memory = 0x0010,
+PR_DEFINE_BIT_FLAGS(accel_struct_build_flag, uint8_t){
+    none = 0x00, allow_update = 0x01, allow_compaction = 0x02, prefer_fast_trace = 0x04, prefer_fast_build = 0x08, minimize_memory = 0x10,
 };
 }
+
+/// geometry instance within a top level acceleration structure (layout dictated by DXR/NV RT Vk Extension)
+struct accel_struct_geometry_instance
+{
+    /// Transform matrix, containing only the top 3 rows
+    float transform[12];
+    /// Instance index
+    uint32_t instance_id : 24;
+    /// Visibility mask
+    uint32_t mask : 8;
+    /// Index of the hit group which will be invoked when a ray hits the instance
+    uint32_t instance_offset : 24;
+    /// Instance flags, such as culling
+    uint32_t flags : 8;
+    /// Opaque handle of the bottom-level acceleration structure
+    uint64_t native_accel_struct_handle;
+};
+
+static_assert(sizeof(accel_struct_geometry_instance) == 64, "accel_struct_geometry_instance compiles to incorrect size");
+
+// these flags align exactly with both vulkan and d3d12, and are not translated
+PR_DEFINE_BIT_FLAGS(accel_struct_instance_flag, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
+                                                          force_opaque = 0x0004, force_no_opaque = 0x0008};
 }
+}
+
+#undef PR_DEFINE_HANDLE
+#undef PR_DEFINE_BIT_FLAGS

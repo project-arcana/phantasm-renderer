@@ -3,6 +3,7 @@
 #include <clean-core/utility.hh>
 #include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
@@ -39,7 +40,7 @@ void query_accel_struct_buffer_sizes(VkDevice device, VkAccelerationStructureNV 
 
 }
 
-pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::vk::AccelStructPool::blas_element> elements,
+pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::arg::blas_element> elements,
                                                                                         accel_struct_build_flags flags)
 {
     cc::vector<VkGeometryNV> element_geometries;
@@ -119,7 +120,9 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
 
     PR_VK_VERIFY_SUCCESS(vkBindAccelerationStructureMemoryNV(mDevice, 1, &bind_mem_info));
 
-    return acquireAccelStruct(raw_as, buffer_as, buffer_scratch);
+    auto const res = acquireAccelStruct(raw_as, flags, buffer_as, buffer_scratch);
+    moveGeometriesToAS(res, cc::move(element_geometries));
+    return res;
 }
 
 pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLevelAS(unsigned num_instances)
@@ -131,7 +134,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLev
     as_create_info.info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
     as_create_info.info.pNext = nullptr;
     as_create_info.info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV;
-    as_create_info.info.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
+    as_create_info.info.flags = 0;
     as_create_info.info.instanceCount = static_cast<uint32_t>(num_instances);
     as_create_info.info.geometryCount = 0;
     as_create_info.info.pGeometries = nullptr;
@@ -146,10 +149,22 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLev
     auto const buffer_as = mResourcePool->createBufferInternal(buffer_size_as, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
     auto const buffer_scratch = mResourcePool->createBufferInternal(buffer_size_scratch, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
 
-    auto const buffer_size_instances = sizeof(vulkan_geometry_instance) * num_instances;
+    auto const buffer_size_instances = sizeof(accel_struct_geometry_instance) * num_instances;
     auto const buffer_instances = mResourcePool->createMappedBufferInternal(buffer_size_instances, 0, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
 
-    return acquireAccelStruct(raw_as, buffer_as, buffer_scratch, buffer_instances);
+    // Bind the AS buffer's memory to the AS
+    VkBindAccelerationStructureMemoryInfoNV bind_mem_info = {};
+    bind_mem_info.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
+    bind_mem_info.pNext = nullptr;
+    bind_mem_info.accelerationStructure = raw_as;
+    bind_mem_info.memory = mResourcePool->getRawDeviceMemory(buffer_as);
+    bind_mem_info.memoryOffset = 0;
+    bind_mem_info.deviceIndexCount = 0;
+    bind_mem_info.pDeviceIndices = nullptr;
+
+    PR_VK_VERIFY_SUCCESS(vkBindAccelerationStructureMemoryNV(mDevice, 1, &bind_mem_info));
+
+    return acquireAccelStruct(raw_as, 0, buffer_as, buffer_scratch, buffer_instances);
 }
 
 void pr::backend::vk::AccelStructPool::free(pr::backend::handle::accel_struct as)
@@ -181,7 +196,35 @@ void pr::backend::vk::AccelStructPool::free(cc::span<const pr::backend::handle::
     }
 }
 
+void pr::backend::vk::AccelStructPool::initialize(VkDevice device, pr::backend::vk::ResourcePool* res_pool, unsigned max_num_accel_structs)
+{
+    mDevice = device;
+    mResourcePool = res_pool;
+    mPool.initialize(max_num_accel_structs);
+}
+
+void pr::backend::vk::AccelStructPool::destroy()
+{
+    auto num_leaks = 0;
+    mPool.iterate_allocated_nodes([&](accel_struct_node& leaked_node, unsigned) {
+        ++num_leaks;
+        internalFree(leaked_node);
+    });
+
+    if (num_leaks > 0)
+    {
+        log::info()("warning: leaked %d handle::accel_struct object%s", num_leaks, num_leaks == 1 ? "" : "s");
+    }
+}
+
+pr::backend::vk::AccelStructPool::accel_struct_node& pr::backend::vk::AccelStructPool::getNode(pr::backend::handle::accel_struct as)
+{
+    CC_ASSERT(as.is_valid());
+    return mPool.get(static_cast<unsigned>(as.index));
+}
+
 pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccelStruct(VkAccelerationStructureNV raw_as,
+                                                                                       accel_struct_build_flags flags,
                                                                                        handle::resource buffer_as,
                                                                                        handle::resource buffer_scratch,
                                                                                        handle::resource buffer_instances)
@@ -194,9 +237,14 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccel
 
     accel_struct_node& new_node = mPool.get(res);
     new_node.raw_as = raw_as;
+    new_node.raw_as_handle = 0;
     new_node.buffer_as = buffer_as;
     new_node.buffer_scratch = buffer_scratch;
     new_node.buffer_instances = buffer_instances;
+    new_node.flags = flags;
+    new_node.geometries.clear();
+
+    PR_VK_VERIFY_SUCCESS(vkGetAccelerationStructureHandleNV(mDevice, raw_as, sizeof(new_node.raw_as_handle), &new_node.raw_as_handle));
 
     if (new_node.buffer_instances.is_valid())
     {
@@ -208,6 +256,12 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccel
     }
 
     return {static_cast<handle::index_t>(res)};
+}
+
+void pr::backend::vk::AccelStructPool::moveGeometriesToAS(pr::backend::handle::accel_struct as, cc::vector<VkGeometryNV>&& geometries)
+{
+    CC_ASSERT(as.is_valid());
+    mPool.get(static_cast<unsigned>(as.index)).geometries = cc::move(geometries);
 }
 
 void pr::backend::vk::AccelStructPool::internalFree(pr::backend::vk::AccelStructPool::accel_struct_node& node)

@@ -3,7 +3,9 @@
 #include <mutex>
 
 #include <clean-core/span.hh>
+#include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/detail/linked_pool.hh>
 #include <phantasm-renderer/backend/types.hh>
 
@@ -16,18 +18,7 @@ class ResourcePool;
 class AccelStructPool
 {
 public:
-    struct blas_element
-    {
-        handle::resource vertex_buffer;
-        handle::resource index_buffer;
-        unsigned num_vertices;
-        unsigned vertex_offset; ///< offset in number of vertices
-        unsigned num_indices;
-        unsigned index_offset; ///< offset in number of indices
-        bool is_opaque;
-    };
-
-    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<blas_element const> elements, accel_struct_build_flags flags);
+    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<arg::blas_element const> elements, accel_struct_build_flags flags);
 
     [[nodiscard]] handle::accel_struct createTopLevelAS(unsigned num_instances);
 
@@ -35,39 +26,34 @@ public:
     void free(cc::span<handle::accel_struct const> as);
 
 public:
+    void initialize(VkDevice device, ResourcePool* res_pool, unsigned max_num_accel_structs);
+    void destroy();
+
+
+public:
     struct accel_struct_node
     {
         VkAccelerationStructureNV raw_as;
+        uint64_t raw_as_handle;
         std::byte* buffer_instances_map;
         handle::resource buffer_as;
         handle::resource buffer_scratch;
         handle::resource buffer_instances;
+        accel_struct_build_flags flags;
+        cc::vector<VkGeometryNV> geometries;
     };
 
-    /// Geometry instance, with the layout expected by VK_NV_ray_tracing
-    struct vulkan_geometry_instance
-    {
-        /// Transform matrix, containing only the top 3 rows
-        float transform[12];
-        /// Instance index
-        uint32_t instanceId : 24;
-        /// Visibility mask
-        uint32_t mask : 8;
-        /// Index of the hit group which will be invoked when a ray hits the instance
-        uint32_t instanceOffset : 24;
-        /// Instance flags, such as culling
-        uint32_t flags : 8;
-        /// Opaque handle of the bottom-level acceleration structure
-        uint64_t accelerationStructureHandle;
-    };
-
-    static_assert(sizeof(vulkan_geometry_instance) == 64, "vulkan_geometry_instance structure compiles to incorrect size");
+public:
+    accel_struct_node& getNode(handle::accel_struct as);
 
 private:
     handle::accel_struct acquireAccelStruct(VkAccelerationStructureNV raw_as,
+                                            accel_struct_build_flags flags,
                                             handle::resource buffer_as,
                                             handle::resource buffer_scratch,
                                             handle::resource buffer_instances = handle::null_resource);
+
+    void moveGeometriesToAS(handle::accel_struct as, cc::vector<VkGeometryNV>&& geometries);
 
     void internalFree(accel_struct_node& node);
 

@@ -143,6 +143,23 @@ public:
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
     //
+    // Raytracing interface
+    //
+
+    [[nodiscard]] virtual handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) = 0;
+
+    [[nodiscard]] virtual handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
+                                                                            accel_struct_build_flags flags,
+                                                                            uint64_t* out_native_handle = nullptr)
+        = 0;
+
+    virtual void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) = 0;
+
+    virtual void free(handle::accel_struct as) = 0;
+
+    virtual void freeRange(cc::span<handle::accel_struct const> as) = 0;
+
+    //
     // Debug interface
     //
 

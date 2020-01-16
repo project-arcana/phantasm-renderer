@@ -120,6 +120,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
     mPoolPipelines.initialize(mDevice.getDevice(), config.max_num_pipeline_states);
     mPoolResources.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice(), config.max_num_resources);
     mPoolShaderViews.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_cbvs, config.max_num_srvs, config.max_num_uavs, config.max_num_samplers);
+    mPoolAccelStructs.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_accel_structs);
 
     // Per-thread components and command list pool
     {
@@ -131,7 +132,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
 
         for (auto& thread_comp : mThreadComponents)
         {
-            thread_comp.translator.initialize(mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPipelines, &mPoolCmdLists);
+            thread_comp.translator.initialize(mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPipelines, &mPoolCmdLists, &mPoolAccelStructs);
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
@@ -149,6 +150,7 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
 
         mSwapchain.destroy();
 
+        mPoolAccelStructs.destroy();
         mPoolShaderViews.destroy();
         mPoolCmdLists.destroy();
         mPoolPipelines.destroy();
@@ -304,6 +306,34 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
     if (num_cls_in_batch > 0)
         submit_flush();
 }
+
+pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createTopLevelAccelStruct(unsigned num_instances)
+{
+    return mPoolAccelStructs.createTopLevelAS(num_instances);
+}
+
+pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createBottomLevelAccelStruct(cc::span<const pr::backend::arg::blas_element> elements,
+                                                                                               pr::backend::accel_struct_build_flags flags,
+                                                                                               uint64_t* out_native_handle)
+{
+    auto const res = mPoolAccelStructs.createBottomLevelAS(elements, flags);
+
+    if (out_native_handle != nullptr)
+        *out_native_handle = mPoolAccelStructs.getNode(res).raw_as_handle;
+
+    return res;
+}
+
+void pr::backend::vk::BackendVulkan::uploadTopLevelInstances(pr::backend::handle::accel_struct as, cc::span<const pr::backend::accel_struct_geometry_instance> instances)
+{
+    auto const& node = mPoolAccelStructs.getNode(as);
+    std::memcpy(node.buffer_instances_map, instances.data(), sizeof(accel_struct_geometry_instance) * instances.size());
+    flushMappedMemory(node.buffer_instances);
+}
+
+void pr::backend::vk::BackendVulkan::free(pr::backend::handle::accel_struct as) { mPoolAccelStructs.free(as); }
+
+void pr::backend::vk::BackendVulkan::freeRange(cc::span<const pr::backend::handle::accel_struct> as) { mPoolAccelStructs.free(as); }
 
 void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resource res) const
 {
