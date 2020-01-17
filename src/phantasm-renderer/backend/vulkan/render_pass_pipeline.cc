@@ -10,9 +10,9 @@
 #include "resources/transition_barrier.hh"
 #include "shader.hh"
 
-VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_format framebuffer, const pr::primitive_pipeline_config& config)
+VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuffer_config const& framebuffer, const pr::primitive_pipeline_config& config)
 {
-    auto const sample_bits = util::to_native_sample_flags(config.samples);
+    auto const sample_bits = util::to_native_sample_flags(static_cast<unsigned>(config.samples));
 
     VkRenderPass render_pass;
     {
@@ -21,11 +21,11 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
         VkAttachmentReference depth_attachment_ref = {};
         bool depth_present = false;
 
-        for (format rt : framebuffer.render_targets)
+        for (auto const& rt : framebuffer.render_targets)
         {
             auto& desc = attachments.emplace_back();
             desc = {};
-            desc.format = util::to_vk_format(rt);
+            desc.format = util::to_vk_format(rt.format);
             desc.samples = sample_bits;
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -88,7 +88,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, arg::framebuff
     return render_pass;
 }
 
-VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, int num_samples, cc::span<const format> override_rt_formats)
+VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::backend::cmd::begin_render_pass& begin_rp, unsigned num_samples, cc::span<const format> override_rt_formats)
 {
     auto const sample_bits = util::to_native_sample_flags(num_samples);
 
@@ -172,7 +172,8 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
                                             arg::shader_stages shaders,
                                             const pr::primitive_pipeline_config& config,
                                             cc::span<const VkVertexInputAttributeDescription> vertex_attribs,
-                                            uint32_t vertex_size)
+                                            uint32_t vertex_size,
+                                            arg::framebuffer_config const& framebuf_config)
 {
     bool const no_vertices = vertex_size == 0;
     if (no_vertices)
@@ -246,28 +247,34 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     VkPipelineMultisampleStateCreateInfo multisampling = {};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = util::to_native_sample_flags(config.samples);
+    multisampling.rasterizationSamples = util::to_native_sample_flags(static_cast<unsigned>(config.samples));
     multisampling.minSampleShading = 1.0f;          // Optional
     multisampling.pSampleMask = nullptr;            // Optional
     multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
     multisampling.alphaToOneEnable = VK_FALSE;      // Optional
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;  // Optional
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;             // Optional
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;  // Optional
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;             // Optional
+    cc::capped_vector<VkPipelineColorBlendAttachmentState, limits::max_render_targets> color_blend_attachments;
+
+    for (auto const& rt : framebuf_config.render_targets)
+    {
+        VkPipelineColorBlendAttachmentState& rt_attachment = color_blend_attachments.emplace_back();
+        rt_attachment = {};
+        rt_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        rt_attachment.blendEnable = rt.blend_enable ? VK_TRUE : VK_FALSE;
+        rt_attachment.srcColorBlendFactor = util::to_native(rt.blend_color_src);
+        rt_attachment.dstColorBlendFactor = util::to_native(rt.blend_color_dest);
+        rt_attachment.colorBlendOp = util::to_native(rt.blend_op_color);
+        rt_attachment.srcAlphaBlendFactor = util::to_native(rt.blend_alpha_src);
+        rt_attachment.dstAlphaBlendFactor = util::to_native(rt.blend_alpha_dest);
+        rt_attachment.alphaBlendOp = util::to_native(rt.blend_op_alpha);
+    }
 
     VkPipelineColorBlendStateCreateInfo colorBlending = {};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.logicOpEnable = framebuf_config.logic_op_enable ? VK_TRUE : VK_FALSE;
+    colorBlending.logicOp = util::to_native(framebuf_config.logic_op);
+    colorBlending.attachmentCount = static_cast<uint32_t>(color_blend_attachments.size());
+    colorBlending.pAttachments = color_blend_attachments.data();
     colorBlending.blendConstants[0] = 0.0f; // Optional
     colorBlending.blendConstants[1] = 0.0f; // Optional
     colorBlending.blendConstants[2] = 0.0f; // Optional
@@ -277,7 +284,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 
     VkPipelineDynamicStateCreateInfo dynamicState = {};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = dynamicStates.size();
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
@@ -318,5 +325,21 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
         shader.free(device);
     }
 
+    return res;
+}
+
+VkPipeline pr::backend::vk::create_compute_pipeline(VkDevice device, VkPipelineLayout pipeline_layout, const pr::backend::arg::shader_stage& compute_shader)
+{
+    shader shader_stage;
+    initialize_shader(shader_stage, device, compute_shader.binary_data, compute_shader.binary_size, shader_domain::compute);
+
+    VkComputePipelineCreateInfo pipeline_info = {};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipeline_info.layout = pipeline_layout;
+    pipeline_info.stage = get_shader_create_info(shader_stage);
+
+    VkPipeline res;
+    vkCreateComputePipelines(device, nullptr, 1, &pipeline_info, nullptr, &res);
+    shader_stage.free(device);
     return res;
 }

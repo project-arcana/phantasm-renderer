@@ -7,6 +7,13 @@ project(PhantasmRenderer)
 option(PR_BACKEND_VULKAN "enable Vulkan backend" ON)
 option(PR_BACKEND_D3D12 "enable DirectX 12 backend" ON)
 
+# If disabled, cmd::debug_marker is ignored
+option(PR_ENABLE_DEBUG_MARKERS "enable API debug markers" ON)
+
+# Enables PIX detection, marker support and capture forcing
+# requires WinPixEventRuntime.dll to be available to the executable (in the same folder)
+# this dll is included in extern/win32_pix_runtime/bin/
+option(PR_ENABLE_D3D12_PIX "enable DirectX 12 PIX integration" OFF)
 
 # =========================================
 # post-process options
@@ -47,13 +54,23 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
 
 add_library(phantasm-renderer STATIC ${SOURCES})
 
-target_include_directories(phantasm-renderer PUBLIC src/)
+target_include_directories(phantasm-renderer
+    PUBLIC
+        src/
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/renderdoc_app/include/"
+)
 
 target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
     reflector
+    rich-log
 )
+
+if (PR_ENABLE_DEBUG_MARKERS)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_ENABLE_DEBUG_MARKERS)
+endif()
 
 
 # =========================================
@@ -62,8 +79,12 @@ target_link_libraries(phantasm-renderer PUBLIC
 if (MSVC)
     target_compile_options(phantasm-renderer PUBLIC /MP)
 else()
+    # Pthread
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+
     target_compile_options(phantasm-renderer PRIVATE -Wall -fPIC)
-    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold -lX11)
+    target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold -lX11 PRIVATE Threads::Threads)
 endif()
 
 
@@ -87,7 +108,17 @@ endif()
 if (PR_BACKEND_D3D12)
     message(STATUS "[phantasm renderer] D3D12 backend enabled")
     target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12)
-    target_link_libraries(phantasm-renderer PRIVATE "d3d12.lib" "dxgi.lib" "d3dcompiler.lib")
+    target_link_libraries(phantasm-renderer PRIVATE
+        "d3d12.lib" "dxgi.lib" "dxguid.lib"
+        )
+
+    # PIX Runtime
+    if (PR_ENABLE_D3D12_PIX)
+        target_link_libraries(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/bin/WinPixEventRuntime.lib")
+        target_include_directories(phantasm-renderer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/win32_pix_runtime/include/")
+        target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_D3D12_HAS_PIX USE_PIX)
+    endif()
+
 else()
     message(STATUS "[phantasm renderer] D3D12 backend disabled")
 endif()

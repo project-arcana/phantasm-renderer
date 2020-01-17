@@ -1,16 +1,12 @@
 #include "Swapchain.hh"
 
-#include <iostream>
-
-#include <phantasm-renderer/backend/detail/string_array_util.hh>
-
 #include "common/util.hh"
 #include "common/verify.hh"
 
 namespace
 {
 // NOTE: The _SRGB variant crashes at factory.CreateSwapChainForHwnd
-constexpr auto s_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
+constexpr auto gc_backbuffer_format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 DXGI_SWAP_CHAIN_FLAG get_swapchain_flags(pr::backend::present_mode mode)
 {
@@ -31,7 +27,8 @@ void pr::backend::d3d12::Swapchain::initialize(
     {
         for (auto i = 0u; i < mBackbuffers.size(); ++i)
         {
-            mBackbuffers[i].fence.initialize(*mParentDevice, pr::backend::detail::formatted_stl_string("swapchain fence %i", i).c_str());
+            mBackbuffers[i].fence.initialize(*mParentDevice);
+            util::set_object_name(mBackbuffers[i].fence.getRawFence(), "swapchain fence #%u", i);
         }
     }
 
@@ -42,7 +39,7 @@ void pr::backend::d3d12::Swapchain::initialize(
         swapchain_desc.BufferCount = num_backbuffers;
         swapchain_desc.Width = 0;
         swapchain_desc.Height = 0;
-        swapchain_desc.Format = s_backbuffer_format;
+        swapchain_desc.Format = gc_backbuffer_format;
         swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapchain_desc.SampleDesc.Count = 1;
@@ -65,7 +62,7 @@ void pr::backend::d3d12::Swapchain::initialize(
         rtv_heap_desc.NodeMask = 0;
 
         PR_D3D12_VERIFY(mParentDevice->CreateDescriptorHeap(&rtv_heap_desc, PR_COM_WRITE(mRTVHeap)));
-        util::set_object_name(mRTVHeap, "Swapchain RTV Heap");
+        util::set_object_name(mRTVHeap, "swapchain RTV heap");
 
         updateBackbuffers();
     }
@@ -78,7 +75,7 @@ void pr::backend::d3d12::Swapchain::onResize(tg::isize2 size)
     mBackbufferSize = size;
     releaseBackbuffers();
     PR_D3D12_VERIFY(mSwapchain->ResizeBuffers(unsigned(mBackbuffers.size()), UINT(mBackbufferSize.width), UINT(mBackbufferSize.height),
-                                              s_backbuffer_format, get_swapchain_flags(mPresentMode)));
+                                              gc_backbuffer_format, get_swapchain_flags(mPresentMode)));
     updateBackbuffers();
 }
 
@@ -99,7 +96,7 @@ unsigned pr::backend::d3d12::Swapchain::waitForBackbuffer()
     return backbuffer_i;
 }
 
-DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return s_backbuffer_format; }
+DXGI_FORMAT pr::backend::d3d12::Swapchain::getBackbufferFormat() const { return gc_backbuffer_format; }
 
 void pr::backend::d3d12::Swapchain::updateBackbuffers()
 {
@@ -115,7 +112,7 @@ void pr::backend::d3d12::Swapchain::updateBackbuffers()
         backbuffer.rtv.ptr += rtv_size * i;
 
         PR_D3D12_VERIFY(mSwapchain->GetBuffer(i, IID_PPV_ARGS(&backbuffer.resource)));
-        util::set_object_name(backbuffer.resource, "Swapchain backbuffer %u", i);
+        util::set_object_name(backbuffer.resource, "swapchain backbuffer #%u", i);
 
         mParentDevice->CreateRenderTargetView(backbuffer.resource, nullptr, backbuffer.rtv);
 

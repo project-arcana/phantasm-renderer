@@ -4,8 +4,6 @@
 
 #include <clean-core/array.hh>
 
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
 #include "cmd_buf_translation.hh"
 #include "common/debug_callback.hh"
 #include "common/verify.hh"
@@ -14,6 +12,12 @@
 #include "layer_extension_util.hh"
 #include "loader/volk.hh"
 #include "resources/transition_barrier.hh"
+#include "surface_util.hh"
+
+namespace
+{
+constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+}
 
 namespace pr::backend::vk
 {
@@ -24,9 +28,21 @@ struct BackendVulkan::per_thread_component
 };
 }
 
-void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, device::Window& window)
+void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, const native_window_handle& window_handle)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
+
+    // copy explicitly for modifications
+    backend_config config = config_arg;
+
+    mDiagnostics.init();
+    if (mDiagnostics.is_renderdoc_present() && config.validation >= validation_level::on)
+    {
+        std::cout << "[pr][backend][vk] info: Validation layers requested while running RenderDoc, disabling due to known crashes" << std::endl;
+        config.validation = validation_level::off;
+    }
+
+    auto const active_lay_ext = get_used_instance_lay_ext(get_available_instance_lay_ext(), config);
 
     VkApplicationInfo app_info = {};
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -36,7 +52,6 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_1;
 
-    auto const active_lay_ext = get_used_instance_lay_ext(get_available_instance_lay_ext(), config);
 
     VkInstanceCreateInfo instance_info = {};
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -45,6 +60,27 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
     instance_info.ppEnabledExtensionNames = active_lay_ext.extensions.empty() ? nullptr : active_lay_ext.extensions.data();
     instance_info.enabledLayerCount = uint32_t(active_lay_ext.layers.size());
     instance_info.ppEnabledLayerNames = active_lay_ext.layers.empty() ? nullptr : active_lay_ext.layers.data();
+
+#ifdef VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT
+    cc::array<VkValidationFeatureEnableEXT, 3> extended_validation_enables
+        = {VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+           VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT};
+#else
+    cc::array<VkValidationFeatureEnableEXT, 2> extended_validation_enables
+        = {VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT};
+#endif
+
+    VkValidationFeaturesEXT extended_validation_features = {};
+
+    if (config.validation >= validation_level::on_extended)
+    {
+        // enable GPU-assisted validation
+        extended_validation_features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+        extended_validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(extended_validation_enables.size());
+        extended_validation_features.pEnabledValidationFeatures = extended_validation_enables.data();
+
+        instance_info.pNext = &extended_validation_features;
+    }
 
     // Create the instance
     VkResult create_res = vkCreateInstance(&instance_info, nullptr, &mInstance);
@@ -64,7 +100,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
         createDebugMessenger();
     }
 
-    window.createVulkanSurface(mInstance, mSurface);
+    mSurface = create_platform_surface(mInstance, window_handle);
 
     // GPU choice and device init
     {
@@ -76,9 +112,8 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
         auto const& chosen_gpu = gpu_infos[chosen_index];
         auto const& chosen_vk_gpu = vk_gpu_infos[chosen_gpu.index];
 
-        mDevice.initialize(chosen_vk_gpu, mSurface, config);
-        mAllocator.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice());
-        mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, window.getWidth(), window.getHeight(), config.present_mode);
+        mDevice.initialize(chosen_vk_gpu, config);
+        mSwapchain.initialize(mDevice, mSurface, config.num_backbuffers, 250, 250, config.present_mode);
     }
 
     // Pool init
@@ -106,32 +141,38 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config, de
 
 pr::backend::vk::BackendVulkan::~BackendVulkan()
 {
-    flushGPU();
-    mSwapchain.destroy();
-
-    mPoolShaderViews.destroy();
-    mPoolCmdLists.destroy();
-    mPoolPipelines.destroy();
-    mPoolResources.destroy();
-
-    for (auto& thread_cmp : mThreadComponents)
+    if (mInstance != nullptr)
     {
-        thread_cmp.cmd_list_allocator.destroy(mDevice.getDevice());
+        flushGPU();
+
+        mDiagnostics.free();
+
+        mSwapchain.destroy();
+
+        mPoolShaderViews.destroy();
+        mPoolCmdLists.destroy();
+        mPoolPipelines.destroy();
+        mPoolResources.destroy();
+
+        for (auto& thread_cmp : mThreadComponents)
+        {
+            thread_cmp.cmd_list_allocator.destroy(mDevice.getDevice());
+        }
+
+        vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
+        mDevice.destroy();
+
+        if (mDebugMessenger != nullptr)
+            vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
+
+        vkDestroyInstance(mInstance, nullptr);
     }
-
-    vkDestroySurfaceKHR(mInstance, mSurface, nullptr);
-    mAllocator.destroy();
-    mDevice.destroy();
-
-    if (mDebugMessenger != nullptr)
-        vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
-
-    vkDestroyInstance(mInstance, nullptr);
 }
 
 pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer()
 {
-    auto const acquire_success = mSwapchain.waitForBackbuffer();
+    auto const prev_backbuffer_index = mSwapchain.getCurrentBackbufferIndex();
+    bool const acquire_success = mSwapchain.waitForBackbuffer();
 
     if (!acquire_success)
     {
@@ -140,8 +181,12 @@ pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer(
     }
     else
     {
-        return mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
-                                                       mSwapchain.getCurrentBackbufferView());
+        resource_state prev_state;
+        auto const res = mPoolResources.injectBackbufferResource(mSwapchain.getCurrentBackbuffer(), mSwapchain.getCurrentBackbufferState(),
+                                                                 mSwapchain.getCurrentBackbufferView(), prev_state);
+
+        mSwapchain.setBackbufferState(prev_backbuffer_index, prev_state);
+        return res;
     }
 }
 
@@ -156,6 +201,7 @@ void pr::backend::vk::BackendVulkan::present()
 
 void pr::backend::vk::BackendVulkan::onResize(tg::isize2 size)
 {
+    flushGPU();
     onInternalResize();
     mSwapchain.onResize(size.width, size.height);
 }
@@ -181,9 +227,6 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
     unsigned last_cl_index = 0;
     unsigned num_cls_in_batch = 0;
 
-    // TODO
-    VkPipelineStageFlags const submitWaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
     auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
     auto const submit_flush = [&]() {
@@ -192,11 +235,11 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pWaitDstStageMask = &submitWaitStage;
+        submit_info.pWaitDstStageMask = &gc_submit_wait_stage;
         submit_info.commandBufferCount = unsigned(submit_batch.size());
         submit_info.pCommandBuffers = submit_batch.data();
 
-        PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mDevice.getQueueGraphics(), 1, &submit_info, submit_fence));
+        PR_VK_VERIFY_SUCCESS(vkQueueSubmit(mDevice.getQueueDirect(), 1, &submit_info, submit_fence));
 
         cc::array<cc::span<handle::command_list const>, 2> submit_spans = {barrier_lists, cls.subspan(last_cl_index, num_cls_in_batch)};
         mPoolCmdLists.freeOnSubmit(submit_spans, submit_fence_index);
@@ -224,7 +267,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
                 auto const master_dep_before = mPoolResources.getResourceStageDependency(entry.ptr);
 
                 // transition to the state required as the initial one
-                state_change const change = state_change(master_before, entry.required_initial, master_dep_before, entry.initial_shader_dependency);
+                state_change const change = state_change(master_before, entry.required_initial, master_dep_before, entry.initial_dependency);
 
                 if (mPoolResources.isImage(entry.ptr))
                 {
@@ -239,7 +282,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
             }
 
             // set the master state to the one in which this resource is left
-            mPoolResources.setResourceState(entry.ptr, entry.current, entry.current_shader_dependency);
+            mPoolResources.setResourceState(entry.ptr, entry.current, entry.current_dependency);
         }
 
         if (!barriers.empty())
@@ -264,7 +307,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
 void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resource res) const
 {
-    std::cout << "[pr][vk] Inspecting resource " << res.index << std::endl;
+    std::cout << "[pr][backend][vk] Inspecting resource " << res.index << std::endl;
     if (!res.is_valid())
         std::cout << "  invalid (== handle::null_resource)" << std::endl;
     else
@@ -272,19 +315,23 @@ void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resou
         if (mPoolResources.isImage(res))
         {
             auto const& info = mPoolResources.getImageInfo(res);
-            std::cout << "[pr][vk]  image, raw pointer: " << info.raw_image << std::endl;
-            std::cout << "[pr][vk]  " << info.num_mips << " mips, " << info.num_array_layers
+            std::cout << "[pr][backend][vk]  image, raw pointer: " << info.raw_image << std::endl;
+            std::cout << "[pr][backend][vk]  " << info.num_mips << " mips, " << info.num_array_layers
                       << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
         }
         else
         {
             auto const& info = mPoolResources.getBufferInfo(res);
-            std::cout << "[pr][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
-            std::cout << "[pr][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
-            std::cout << "[pr][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
+            std::cout << "[pr][backend][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
+            std::cout << "[pr][backend][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
+            std::cout << "[pr][backend][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
         }
     }
 }
+
+bool pr::backend::vk::BackendVulkan::startForcedDiagnosticCapture() { return mDiagnostics.start_capture(); }
+
+bool pr::backend::vk::BackendVulkan::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
 
 void pr::backend::vk::BackendVulkan::flushGPU() { vkDeviceWaitIdle(mDevice.getDevice()); }
 

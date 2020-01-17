@@ -1,10 +1,12 @@
 #pragma once
 
+#include <clean-core/assert.hh>
+
 #include <phantasm-renderer/backend/types.hh>
 
 namespace pr::backend::detail
 {
-[[nodiscard]] inline constexpr uint32_t pr_format_size_bytes(format fmt)
+[[nodiscard]] inline constexpr unsigned pr_format_size_bytes(format fmt)
 {
     switch (fmt)
     {
@@ -34,11 +36,6 @@ namespace pr::backend::detail
     case format::rgba16u:
         return 8;
 
-    case format::rgb16f:
-    case format::rgb16i:
-    case format::rgb16u:
-        return 6;
-
     case format::rg16f:
     case format::rg16i:
     case format::rg16u:
@@ -56,16 +53,14 @@ namespace pr::backend::detail
     case format::bgra8un:
         return 4;
 
-    case format::rgb8i:
-    case format::rgb8u:
-        return 3;
-
     case format::rg8i:
     case format::rg8u:
+    case format::rg8un:
         return 2;
 
     case format::r8i:
     case format::r8u:
+    case format::r8un:
         return 1;
 
     case format::depth32f_stencil8u:
@@ -73,6 +68,59 @@ namespace pr::backend::detail
     case format::depth24un_stencil8u:
         return 4;
     }
+    CC_ASSERT(false && "unknown format");
+    return 0;
+}
+
+[[nodiscard]] inline constexpr unsigned pr_format_num_components(format fmt)
+{
+    switch (fmt)
+    {
+    case format::rgba32f:
+    case format::rgba32i:
+    case format::rgba32u:
+    case format::rgba16f:
+    case format::rgba16i:
+    case format::rgba16u:
+    case format::rgba8i:
+    case format::rgba8u:
+    case format::rgba8un:
+    case format::bgra8un:
+        return 4;
+
+    case format::rgb32f:
+    case format::rgb32i:
+    case format::rgb32u:
+        return 3;
+
+    case format::rg32f:
+    case format::rg32i:
+    case format::rg32u:
+    case format::rg16f:
+    case format::rg16i:
+    case format::rg16u:
+    case format::rg8i:
+    case format::rg8u:
+    case format::rg8un:
+    case format::depth32f_stencil8u:
+    case format::depth24un_stencil8u:
+        return 2;
+
+    case format::r32f:
+    case format::r32i:
+    case format::r32u:
+    case format::depth32f:
+    case format::r16f:
+    case format::r16i:
+    case format::r16u:
+    case format::depth16un:
+    case format::r8i:
+    case format::r8u:
+    case format::r8un:
+        return 1;
+    }
+    CC_ASSERT(false && "unknown format");
+    return 0;
 }
 
 }

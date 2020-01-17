@@ -19,14 +19,8 @@ struct state_change
     VkPipelineStageFlags stages_before;
     VkPipelineStageFlags stages_after;
 
-    explicit state_change(resource_state before,
-                          resource_state after,
-                          VkPipelineStageFlags shader_stages_before = VK_PIPELINE_STAGE_HOST_BIT,
-                          VkPipelineStageFlags shader_stages_after = VK_PIPELINE_STAGE_HOST_BIT)
-      : before(before),
-        after(after),
-        stages_before(util::to_pipeline_stage_dependency(before, shader_stages_before)),
-        stages_after(util::to_pipeline_stage_dependency(after, shader_stages_after))
+    explicit state_change(resource_state before, resource_state after, VkPipelineStageFlags before_dep, VkPipelineStageFlags after_dep)
+      : before(before), after(after), stages_before(before_dep), stages_after(after_dep)
     {
     }
 };
@@ -50,10 +44,16 @@ struct stage_dependencies
         stages_before |= util::to_pipeline_stage_dependency(state_before, shader_dep_before);
         stages_after |= util::to_pipeline_stage_dependency(state_after, shader_dep_after);
     }
+
+    void reset()
+    {
+        stages_before = 0;
+        stages_after = 0;
+    }
 };
 
 [[nodiscard]] VkImageMemoryBarrier get_image_memory_barrier(
-    VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned num_mips = 1, unsigned num_layers = 1);
+    VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned mip_start, unsigned num_mips, unsigned array_start, unsigned num_layers);
 
 [[nodiscard]] VkBufferMemoryBarrier get_buffer_memory_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size);
 
@@ -83,10 +83,18 @@ struct barrier_bundle
     cc::capped_vector<VkBufferMemoryBarrier, Nbuf> barriers_buf;
     cc::capped_vector<VkMemoryBarrier, Nmem> barriers_mem;
 
+    // entire subresource barrier
     void add_image_barrier(VkImage image, state_change const& state_change, VkImageAspectFlags aspect)
     {
         dependencies.add_change(state_change);
-        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, VK_REMAINING_MIP_LEVELS, VK_REMAINING_ARRAY_LAYERS));
+        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS));
+    }
+
+    // specific level/slice barrier
+    void add_image_barrier(VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned mip_slice, unsigned array_slice = 0)
+    {
+        dependencies.add_change(state_change);
+        barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, mip_slice, 1, array_slice, 1));
     }
 
     void add_buffer_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size)
@@ -102,6 +110,14 @@ struct barrier_bundle
     {
         if (!empty())
             submit_barriers(cmd_buf, dependencies, barriers_img, barriers_buf, barriers_mem);
+    }
+
+    void reset()
+    {
+        dependencies.reset();
+        barriers_img.clear();
+        barriers_buf.clear();
+        barriers_mem.clear();
     }
 
     /// Record contained barriers to the given cmd buffer, close it, and submit it on the given queue

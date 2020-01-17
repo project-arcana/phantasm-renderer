@@ -42,8 +42,6 @@ namespace pr::backend::vk::util
 
     case bf::rgba16i:
         return VK_FORMAT_R16G16B16A16_SINT;
-    case bf::rgb16i:
-        return VK_FORMAT_R16G16B16_SINT;
     case bf::rg16i:
         return VK_FORMAT_R16G16_SINT;
     case bf::r16i:
@@ -51,8 +49,6 @@ namespace pr::backend::vk::util
 
     case bf::rgba16u:
         return VK_FORMAT_R16G16B16A16_UINT;
-    case bf::rgb16u:
-        return VK_FORMAT_R16G16B16_UINT;
     case bf::rg16u:
         return VK_FORMAT_R16G16_UINT;
     case bf::r16u:
@@ -60,8 +56,6 @@ namespace pr::backend::vk::util
 
     case bf::rgba16f:
         return VK_FORMAT_R16G16B16A16_SFLOAT;
-    case bf::rgb16f:
-        return VK_FORMAT_R16G16B16_SFLOAT;
     case bf::rg16f:
         return VK_FORMAT_R16G16_SFLOAT;
     case bf::r16f:
@@ -69,8 +63,6 @@ namespace pr::backend::vk::util
 
     case bf::rgba8i:
         return VK_FORMAT_R8G8B8A8_SINT;
-    case bf::rgb8i:
-        return VK_FORMAT_R8G8B8_SINT;
     case bf::rg8i:
         return VK_FORMAT_R8G8_SINT;
     case bf::r8i:
@@ -78,8 +70,6 @@ namespace pr::backend::vk::util
 
     case bf::rgba8u:
         return VK_FORMAT_R8G8B8A8_UINT;
-    case bf::rgb8u:
-        return VK_FORMAT_R8G8B8_UINT;
     case bf::rg8u:
         return VK_FORMAT_R8G8_UINT;
     case bf::r8u:
@@ -87,6 +77,11 @@ namespace pr::backend::vk::util
 
     case bf::rgba8un:
         return VK_FORMAT_R8G8B8A8_UNORM;
+    case bf::rg8un:
+        return VK_FORMAT_R8G8_UNORM;
+    case bf::r8un:
+        return VK_FORMAT_R8_UNORM;
+
     case bf::bgra8un:
         return VK_FORMAT_B8G8R8A8_UNORM;
 
@@ -99,6 +94,7 @@ namespace pr::backend::vk::util
     case bf::depth24un_stencil8u:
         return VK_FORMAT_D24_UNORM_S8_UINT;
     }
+    CC_ASSERT(false && "unknown format");
     return VK_FORMAT_UNDEFINED;
 }
 
@@ -136,8 +132,6 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R16G16B16A16_SINT:
         return bf::rgba16i;
-    case VK_FORMAT_R16G16B16_SINT:
-        return bf::rgb16i;
     case VK_FORMAT_R16G16_SINT:
         return bf::rg16i;
     case VK_FORMAT_R16_SINT:
@@ -145,8 +139,6 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R16G16B16A16_UINT:
         return bf::rgba16u;
-    case VK_FORMAT_R16G16B16_UINT:
-        return bf::rgb16u;
     case VK_FORMAT_R16G16_UINT:
         return bf::rg16u;
     case VK_FORMAT_R16_UINT:
@@ -154,8 +146,6 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R16G16B16A16_SFLOAT:
         return bf::rgba16f;
-    case VK_FORMAT_R16G16B16_SFLOAT:
-        return bf::rgb16f;
     case VK_FORMAT_R16G16_SFLOAT:
         return bf::rg16f;
     case VK_FORMAT_R16_SFLOAT:
@@ -163,8 +153,6 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R8G8B8A8_SINT:
         return bf::rgba8i;
-    case VK_FORMAT_R8G8B8_SINT:
-        return bf::rgb8i;
     case VK_FORMAT_R8G8_SINT:
         return bf::rg8i;
     case VK_FORMAT_R8_SINT:
@@ -172,8 +160,6 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R8G8B8A8_UINT:
         return bf::rgba8u;
-    case VK_FORMAT_R8G8B8_UINT:
-        return bf::rgb8u;
     case VK_FORMAT_R8G8_UINT:
         return bf::rg8u;
     case VK_FORMAT_R8_UINT:
@@ -181,6 +167,11 @@ namespace pr::backend::vk::util
 
     case VK_FORMAT_R8G8B8A8_UNORM:
         return bf::rgba8un;
+    case VK_FORMAT_R8G8_UNORM:
+        return bf::rg8un;
+    case VK_FORMAT_R8_UNORM:
+        return bf::r8un;
+
     case VK_FORMAT_B8G8R8A8_UNORM:
         return bf::bgra8un;
 

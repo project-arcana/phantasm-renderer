@@ -1,9 +1,11 @@
 #include "cmd_list_translation.hh"
 
 #include <phantasm-renderer/backend/detail/byte_util.hh>
+#include <phantasm-renderer/backend/detail/format_size.hh>
 #include <phantasm-renderer/backend/detail/incomplete_state_cache.hh>
 
 #include "Swapchain.hh"
+#include "common/diagnostic_util.hh"
 #include "common/dxgi_format.hh"
 #include "common/native_enum.hh"
 #include "common/util.hh"
@@ -80,7 +82,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     }
 
     resource_view_cpu_only dynamic_dsv;
-    if (begin_rp.depth_target.sve.resource != handle::null_resource)
+    if (begin_rp.depth_target.sve.resource.is_valid())
     {
         dynamic_dsv = _thread_local.lin_alloc_dsvs.allocate(1u);
         auto* const resource = _globals.pool_resources->getRawResource(begin_rp.depth_target.sve.resource);
@@ -110,17 +112,14 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     auto const& pso_node = _globals.pool_pipeline_states->get(draw.pipeline_state);
 
     // PSO
-    if (draw.pipeline_state != _bound.pipeline_state)
+    if (_bound.update_pso(draw.pipeline_state))
     {
-        _bound.pipeline_state = draw.pipeline_state;
         _cmd_list->SetPipelineState(pso_node.raw_pso);
     }
 
     // Root signature
-    if (pso_node.associated_root_sig->raw_root_sig != _bound.raw_root_sig)
+    if (_bound.update_root_sig(pso_node.associated_root_sig->raw_root_sig))
     {
-        // A new root signature invalidates bound shader arguments
-        _bound.set_root_sig(pso_node.associated_root_sig->raw_root_sig);
         _cmd_list->SetGraphicsRootSignature(_bound.raw_root_sig);
         _cmd_list->IASetPrimitiveTopology(pso_node.primitive_topology);
     }
@@ -133,11 +132,6 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         {
             auto const ibv = _globals.pool_resources->getIndexBufferView(draw.index_buffer);
             _cmd_list->IASetIndexBuffer(&ibv);
-        }
-        else
-        {
-            // TODO: does this even make sense?
-            //  _cmd_list->IASetIndexBuffer(nullptr);
         }
     }
 
@@ -156,21 +150,32 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     {
         auto const& root_sig = *pso_node.associated_root_sig;
 
+        // root constants
+        if (!root_sig.argument_maps.empty() && root_sig.argument_maps[0].root_const_param != unsigned(-1))
+        {
+            static_assert(sizeof(draw.root_constants) % sizeof(DWORD32) == 0, "root constant size not divisible by dword32 size");
+            _cmd_list->SetGraphicsRoot32BitConstants(root_sig.argument_maps[0].root_const_param, sizeof(draw.root_constants) / sizeof(DWORD32),
+                                                     draw.root_constants, 0);
+        }
+
         for (uint8_t i = 0; i < draw.shader_arguments.size(); ++i)
         {
+            auto& bound_arg = _bound.shader_args[i];
             auto const& arg = draw.shader_arguments[i];
             auto const& map = root_sig.argument_maps[i];
 
             if (map.cbv_param != uint32_t(-1))
             {
-                // Unconditionally set the CBV
-                auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
-                _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                // Set the CBV / offset if it has changed
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
+                    _cmd_list->SetGraphicsRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                }
             }
 
             // Set the shader view if it has changed
-            if (_bound.shader_views[i] != arg.shader_view)
-                _bound.shader_views[i] = arg.shader_view;
+            if (bound_arg.update_shader_view(arg.shader_view))
             {
                 if (map.srv_uav_table_param != uint32_t(-1))
                 {
@@ -187,15 +192,89 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
         }
     }
 
+    if (draw.scissor.min.x != -1)
+    {
+        D3D12_RECT scissor_rect = {draw.scissor.min.x, draw.scissor.min.y, draw.scissor.max.x, draw.scissor.max.y};
+        _cmd_list->RSSetScissorRects(1, &scissor_rect);
+    }
+
     // Draw command
     if (draw.index_buffer.is_valid())
     {
-        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, 0, 0, 0);
+        _cmd_list->DrawIndexedInstanced(draw.num_indices, 1, draw.index_offset, draw.vertex_offset, 0);
     }
     else
     {
-        _cmd_list->DrawInstanced(draw.num_indices, 1, 0, 0);
+        _cmd_list->DrawInstanced(draw.num_indices, 1, draw.vertex_offset, 0);
     }
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::dispatch& dispatch)
+{
+    auto const& pso_node = _globals.pool_pipeline_states->get(dispatch.pipeline_state);
+
+    // PSO
+    if (_bound.update_pso(dispatch.pipeline_state))
+    {
+        _cmd_list->SetPipelineState(pso_node.raw_pso);
+    }
+
+    // Root signature
+    if (_bound.update_root_sig(pso_node.associated_root_sig->raw_root_sig))
+    {
+        _cmd_list->SetComputeRootSignature(_bound.raw_root_sig);
+    }
+
+    // Shader arguments
+    {
+        auto const& root_sig = *pso_node.associated_root_sig;
+
+        // root constants
+        auto const root_constant_param = root_sig.argument_maps[0].root_const_param;
+        if (root_constant_param != unsigned(-1))
+        {
+            static_assert(sizeof(dispatch.root_constants) % sizeof(DWORD32) == 0, "root constant size not divisible by dword32 size");
+            _cmd_list->SetComputeRoot32BitConstants(root_constant_param, sizeof(dispatch.root_constants) / sizeof(DWORD32), dispatch.root_constants, 0);
+        }
+
+        // regular shader arguments
+        for (uint8_t i = 0; i < dispatch.shader_arguments.size(); ++i)
+        {
+            auto& bound_arg = _bound.shader_args[i];
+            auto const& arg = dispatch.shader_arguments[i];
+            auto const& map = root_sig.argument_maps[i];
+
+
+            if (map.cbv_param != uint32_t(-1))
+            {
+                // Set the CBV / offset if it has changed
+                if (bound_arg.update_cbv(arg.constant_buffer, arg.constant_buffer_offset))
+                {
+                    auto const cbv = _globals.pool_resources->getConstantBufferView(arg.constant_buffer);
+                    _cmd_list->SetComputeRootConstantBufferView(map.cbv_param, cbv.BufferLocation + arg.constant_buffer_offset);
+                }
+            }
+
+            // Set the shader view if it has changed
+            if (bound_arg.update_shader_view(arg.shader_view))
+            {
+                if (map.srv_uav_table_param != uint32_t(-1))
+                {
+                    auto const sv_desc_table = _globals.pool_shader_views->getSRVUAVGPUHandle(arg.shader_view);
+                    _cmd_list->SetComputeRootDescriptorTable(map.srv_uav_table_param, sv_desc_table);
+                }
+
+                if (map.sampler_table_param != uint32_t(-1))
+                {
+                    auto const sampler_desc_table = _globals.pool_shader_views->getSamplerGPUHandle(arg.shader_view);
+                    _cmd_list->SetComputeRootDescriptorTable(map.sampler_table_param, sampler_desc_table);
+                }
+            }
+        }
+    }
+
+    // Dispatch command
+    _cmd_list->Dispatch(dispatch.dispatch_x, dispatch.dispatch_y, dispatch.dispatch_z);
 }
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::end_render_pass&)
@@ -210,15 +289,33 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     for (auto const& transition : transition_res.transitions)
     {
         resource_state before;
-        bool before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before);
+        bool const before_known = _state_cache->transition_resource(transition.resource, transition.target_state, before);
 
         if (before_known && before != transition.target_state)
         {
             // The transition is neither the implicit initial one, nor redundant
-            auto& barrier = barriers.emplace_back();
-            util::populate_barrier_desc(barrier, _globals.pool_resources->getRawResource(transition.resource), util::to_native(before),
-                                        util::to_native(transition.target_state));
+            barriers.push_back(util::get_barrier_desc(_globals.pool_resources->getRawResource(transition.resource), before, transition.target_state));
         }
+    }
+
+    if (!barriers.empty())
+    {
+        _cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.data());
+    }
+}
+
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::transition_image_slices& transition_images)
+{
+    // Image slice transitions are entirely explicit, and require the user to synchronize before/after resource states
+    // NOTE: we do not update the master state as it does not encompass subresource states
+
+    cc::capped_vector<D3D12_RESOURCE_BARRIER, limits::max_resource_transitions> barriers;
+    for (auto const& transition : transition_images.transitions)
+    {
+        CC_ASSERT(_globals.pool_resources->isImage(transition.resource));
+        auto const& img_info = _globals.pool_resources->getImageInfo(transition.resource);
+        barriers.push_back(util::get_barrier_desc(_globals.pool_resources->getRawResource(transition.resource), transition.source_state,
+                                                  transition.target_state, transition.mip_level, transition.array_slice, img_info.num_mips));
     }
 
     if (!barriers.empty())
@@ -233,30 +330,53 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
                                 _globals.pool_resources->getRawResource(copy_buf.source), copy_buf.source_offset, copy_buf.size);
 }
 
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::copy_texture& copy_text)
+{
+    auto const& src_info = _globals.pool_resources->getImageInfo(copy_text.source);
+    auto const& dest_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+
+    for (auto array_offset = 0u; array_offset < copy_text.num_array_slices; ++array_offset)
+    {
+        auto const src_subres_index = copy_text.src_mip_index + (copy_text.src_array_index + array_offset) * src_info.num_mips;
+        auto const dest_subres_index = copy_text.dest_mip_index + (copy_text.dest_array_index + array_offset) * dest_info.num_mips;
+
+        CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), src_subres_index);
+        CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), dest_subres_index);
+        _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
+    }
+}
+
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::copy_buffer_to_texture& copy_text)
 {
-    auto const format_dxgi = util::to_dxgi_format(copy_text.texture_format);
+    auto const& dest_info = _globals.pool_resources->getImageInfo(copy_text.destination);
+    auto const pixel_bytes = backend::detail::pr_format_size_bytes(dest_info.pixel_format);
+    auto const format_dxgi = util::to_dxgi_format(dest_info.pixel_format);
 
     D3D12_SUBRESOURCE_FOOTPRINT footprint;
     footprint.Format = format_dxgi;
     footprint.Width = copy_text.dest_width;
     footprint.Height = copy_text.dest_height;
     footprint.Depth = 1;
-    footprint.RowPitch = mem::align_up(util::get_dxgi_bytes_per_pixel(format_dxgi) * copy_text.dest_width, 256);
+    footprint.RowPitch = mem::align_up(pixel_bytes * copy_text.dest_width, 256);
 
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint;
     placed_footprint.Offset = copy_text.source_offset;
     placed_footprint.Footprint = footprint;
 
-    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * copy_text.dest_mip_size;
+    auto const subres_index = copy_text.dest_mip_index + copy_text.dest_array_index * dest_info.num_mips;
 
     CD3DX12_TEXTURE_COPY_LOCATION const source(_globals.pool_resources->getRawResource(copy_text.source), placed_footprint);
     CD3DX12_TEXTURE_COPY_LOCATION const dest(_globals.pool_resources->getRawResource(copy_text.destination), subres_index);
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
 }
 
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
+{
+    util::set_pix_marker(_cmd_list, 0, marker.string_literal);
+}
+
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)
 {
-    lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 8);
+    lin_alloc_rtvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, limits::max_render_targets);
     lin_alloc_dsvs.initialize(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1);
 }

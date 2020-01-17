@@ -16,4 +16,7 @@ inline constexpr auto max_shader_arguments = 4u;
 
 /// the maximum amount of samplers per shader view
 inline constexpr auto max_shader_samplers = 16u;
+
+/// the maximum size for compute root constants
+inline constexpr auto max_root_constant_bytes = 8u;
 }

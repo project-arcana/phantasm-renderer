@@ -19,7 +19,7 @@ void pr::backend::d3d12::CPUDescriptorLinearAllocator::initialize(ID3D12Device& 
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     desc.NodeMask = 0;
     PR_D3D12_VERIFY(device.CreateDescriptorHeap(&desc, PR_COM_WRITE(mHeap)));
-    util::set_object_name(mHeap, "CPUDescriptorLinearAllocator heap s%d", int(mNumDescriptors));
+    util::set_object_name(mHeap, "linear cpu desc heap, size %d", int(mNumDescriptors));
     mHandleCPU = mHeap->GetCPUDescriptorHandleForHeapStart();
 }
 

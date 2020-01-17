@@ -21,10 +21,15 @@ public:
     // frontend-facing API
 
     [[nodiscard]] handle::pipeline_state createPipelineState(arg::vertex_format vertex_format,
-                                                             arg::framebuffer_format framebuffer_format,
+                                                             const arg::framebuffer_config& framebuffer_format,
                                                              arg::shader_argument_shapes shader_arg_shapes,
+                                                             bool has_root_constants,
                                                              arg::shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config);
+
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
+                                                                    arg::shader_stage const& compute_shader,
+                                                                    bool has_root_constants);
 
     void free(handle::pipeline_state ps);
 

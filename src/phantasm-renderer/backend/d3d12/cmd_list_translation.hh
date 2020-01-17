@@ -56,13 +56,21 @@ struct command_list_translator
 
     void execute(cmd::draw const& draw);
 
-    void execute(cmd::end_render_pass const& /*end_rp*/);
+    void execute(cmd::dispatch const& dispatch);
+
+    void execute(cmd::end_render_pass const& end_rp);
 
     void execute(cmd::transition_resources const& transition_res);
 
+    void execute(cmd::transition_image_slices const& transition_images);
+
     void execute(cmd::copy_buffer const& copy_buf);
 
+    void execute(cmd::copy_texture const& copy_text);
+
     void execute(cmd::copy_buffer_to_texture const& copy_text);
+
+    void execute(cmd::debug_marker const& marker);
 
 private:
     // non-owning constant (global)
@@ -83,7 +91,45 @@ private:
         handle::resource vertex_buffer;
 
         ID3D12RootSignature* raw_root_sig;
-        cc::array<handle::shader_view, limits::max_shader_arguments> shader_views;
+
+        struct shader_arg_info
+        {
+            handle::shader_view sv;
+            handle::resource cbv;
+            unsigned cbv_offset;
+
+            void reset()
+            {
+                sv = handle::null_shader_view;
+                cbv = handle::null_resource;
+                cbv_offset = 0;
+            }
+
+            /// returns true if the argument is different from the currently bound one
+            [[nodiscard]] bool update_shader_view(handle::shader_view new_sv)
+            {
+                if (sv != new_sv)
+                {
+                    sv = new_sv;
+                    return true;
+                }
+                return false;
+            }
+
+            /// returns true if the argument is different from the currently bound one
+            [[nodiscard]] bool update_cbv(handle::resource new_cbv, unsigned new_offset)
+            {
+                if (cbv_offset != new_offset || cbv != new_cbv)
+                {
+                    cbv_offset = new_offset;
+                    cbv = new_cbv;
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        cc::array<shader_arg_info, limits::max_shader_arguments> shader_args;
 
         void reset()
         {
@@ -96,10 +142,32 @@ private:
 
         void set_root_sig(ID3D12RootSignature* raw)
         {
-            for (auto& sv : shader_views)
-                sv = handle::null_shader_view;
+            // A new root signature invalidates bound shader arguments
+            for (auto& sa : shader_args)
+                sa.reset();
 
             raw_root_sig = raw;
+        }
+
+        /// returns true if the argument is different from the currently bound one
+        [[nodiscard]] bool update_root_sig(ID3D12RootSignature* raw)
+        {
+            if (raw_root_sig != raw)
+            {
+                set_root_sig(raw);
+                return true;
+            }
+            return false;
+        }
+
+        [[nodiscard]] bool update_pso(handle::pipeline_state new_pso)
+        {
+            if (pipeline_state != new_pso)
+            {
+                pipeline_state = new_pso;
+                return true;
+            }
+            return false;
         }
 
     } _bound;

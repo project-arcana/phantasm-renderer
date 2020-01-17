@@ -33,7 +33,7 @@ public:
     /// returns true on a successful present, false if a resize occured instead
     bool present();
 
-    /// wait for the next backbuffer
+    /// wait for the next backbuffer, updates mActiveImageIndex
     /// this has to be called before calls to getCurrent<X>
     /// if this returns false, the backbuffer has resized, and the frame should likely be discarded
     [[nodiscard]] bool waitForBackbuffer();
@@ -57,6 +57,8 @@ public:
     [[nodiscard]] VkFramebuffer getFramebuffer(unsigned i) const { return mBackbuffers[i].framebuffer; }
 
     [[nodiscard]] VkSwapchainKHR getSwapchain() const { return mSwapchain; }
+
+    void setBackbufferState(unsigned i, resource_state state) { mBackbuffers[i].state = state; }
 
 private:
     void createSwapchain(int width_hint, int height_hint);

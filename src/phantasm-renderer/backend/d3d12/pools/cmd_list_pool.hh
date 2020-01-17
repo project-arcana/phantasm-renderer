@@ -141,13 +141,16 @@ public:
         }
     }
 
-    void freeOnDiscard(handle::command_list cl)
+    void freeOnDiscard(cc::span<handle::command_list const> cls)
     {
-        cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));
+        auto lg = std::lock_guard(mMutex);
+        for (auto cl : cls)
         {
-            auto lg = std::lock_guard(mMutex);
-            freed_node.responsible_allocator->on_discard();
-            mPool.release(static_cast<unsigned>(cl.index));
+            if (cl.is_valid())
+            {
+                mPool.get(static_cast<unsigned>(cl.index)).responsible_allocator->on_discard();
+                mPool.release(static_cast<unsigned>(cl.index));
+            }
         }
     }
 

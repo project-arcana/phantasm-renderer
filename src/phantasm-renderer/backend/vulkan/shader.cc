@@ -16,19 +16,22 @@ namespace
     switch (domain)
     {
     case pr::backend::shader_domain::pixel:
-        return "mainPS";
+        return "main_ps";
     case pr::backend::shader_domain::vertex:
-        return "mainVS";
+        return "main_vs";
     case pr::backend::shader_domain::domain:
-        return "mainDS";
+        return "main_ds";
     case pr::backend::shader_domain::hull:
-        return "mainHS";
+        return "main_hs";
     case pr::backend::shader_domain::geometry:
-        return "mainGS";
+        return "main_gs";
+
     case pr::backend::shader_domain::compute:
-        return "mainCS";
+        return "main_cs";
+
+    default:
+        return "main";
     }
-    return "mainPS";
 }
 }
 

@@ -1,10 +1,9 @@
 #include "layer_extension_util.hh"
 
-#include <iostream>
-#include <phantasm-renderer/backend/device_tentative/window.hh>
-
+#include "common/log.hh"
 #include "common/unique_name_set.hh"
 #include "common/verify.hh"
+#include "surface_util.hh"
 
 void pr::backend::vk::layer_extension_bundle::fill_with_instance_extensions(const char* layername)
 {
@@ -138,7 +137,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
 {
     lay_ext_array used_res;
 
-    auto const add_required_layer = [&](char const* layer_name) {
+    auto const add_layer = [&](char const* layer_name) {
         if (available.layers.contains(layer_name))
         {
             used_res.layers.push_back(layer_name);
@@ -147,7 +146,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         return false;
     };
 
-    auto const add_required_ext = [&](char const* ext_name) {
+    auto const add_ext = [&](char const* ext_name) {
         if (available.extensions.contains(ext_name))
         {
             used_res.extensions.push_back(ext_name);
@@ -157,30 +156,45 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
     };
 
     // Decide upon active instance layers and extensions based on configuration and availability
-    if (config.validation != validation_level::off)
+    if (config.validation >= validation_level::on)
     {
-        if (!add_required_layer("VK_LAYER_LUNARG_standard_validation"))
+        if (!add_layer("VK_LAYER_KHRONOS_validation"))
         {
-            if (!add_required_layer("VK_LAYER_KHRONOS_validation"))
-            {
-                std::cerr << "[pr][vk] Validation enabled, but no layers available on Vulkan instance" << std::endl;
-                std::cerr << "[pr][vk] Download the LunarG SDK for your operating system," << std::endl;
-                std::cerr << "[pr][vk] then set the VK_LAYER_PATH environment variable to the" << std::endl;
-                std::cerr << "[pr][vk] absolute path towards <sdk>/x86_64/etc/vulkan/explicit_layer.d/" << std::endl;
-            }
+            log::err() << "[pr][backend][vk] Validation enabled, but no layers available on Vulkan instance";
+            log::err() << "[pr][backend][vk] Download the LunarG SDK for your operating system,";
+            log::err() << "[pr][backend][vk] then set these environment variables: (all paths absolute)";
+            log::err() << "[pr][backend][vk] VK_LAYER_PATH - <sdk>/x86_64/etc/vulkan/explicit_layer.d/";
+            log::err() << "[pr][backend][vk] VULKAN_SDK - <sdk>/x86_64/bin";
+            log::err() << "[pr][backend][vk] LD_LIBRARY_PATH - <VALUE>:<sdk>/x86_64/lib (append)";
         }
 
-        if (!add_required_ext("VK_EXT_debug_utils"))
+        if (!add_ext(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
         {
-            std::cerr << "Missing debug utils extension" << std::endl;
+            log::err() << "[pr][backend][vk] Missing debug utils extension";
+        }
+    }
+
+    if (config.validation >= validation_level::on_extended)
+    {
+        if (!add_ext("VK_EXT_validation_features"))
+        {
+            log::err() << "[pr][backend][vk] Missing GPU-assisted validation extension";
+        }
+    }
+
+    if (config.native_features & native_feature_bits::vk_api_dump)
+    {
+        if (!add_layer("VK_LAYER_LUNARG_api_dump"))
+        {
+            log::err() << "[pr][backend][vk] Missing API dump layer";
         }
     }
 
     // platform extensions
-    for (char const* const required_device_ext : device::Window::getRequiredInstanceExtensions())
+    for (char const* const required_device_ext : get_platform_instance_extensions())
     {
-        if (!add_required_ext(required_device_ext))
-            std::cerr << "[pr][vk] Missing required extension " << required_device_ext << std::endl;
+        if (!add_ext(required_device_ext))
+            log::err() << "[pr][backend][vk] Missing required extension" << required_device_ext;
     }
 
 
@@ -189,11 +203,11 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
 
 pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr::backend::vk::lay_ext_set& available,
                                                                         const pr::backend::backend_config& config,
-                                                                        VkPhysicalDevice physical)
+                                                                        bool& has_raytracing)
 {
     lay_ext_array used_res;
 
-    auto const add_required_layer = [&](char const* layer_name) {
+    auto const add_layer = [&](char const* layer_name) {
         if (available.layers.contains(layer_name))
         {
             used_res.layers.push_back(layer_name);
@@ -202,7 +216,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
         return false;
     };
 
-    auto const add_required_ext = [&](char const* ext_name) {
+    auto const add_ext = [&](char const* ext_name) {
         if (available.extensions.contains(ext_name))
         {
             used_res.extensions.push_back(ext_name);
@@ -211,9 +225,26 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
         return false;
     };
 
-    if (!add_required_ext(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+    if (!add_ext(VK_KHR_SWAPCHAIN_EXTENSION_NAME))
     {
-        std::cerr << "[pr][vk] Missing swapchain extension" << std::endl;
+        log::err() << "[pr][backend][vk] Missing swapchain extension";
+    }
+
+    has_raytracing = false;
+
+    if (config.enable_raytracing)
+    {
+        if (add_ext(VK_NV_RAY_TRACING_EXTENSION_NAME))
+        {
+            if (add_ext(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME))
+            {
+                has_raytracing = true;
+            }
+            else
+            {
+                log::err()("Missing raytracing extension dependency %s", VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+            }
+        }
     }
 
     return used_res;
