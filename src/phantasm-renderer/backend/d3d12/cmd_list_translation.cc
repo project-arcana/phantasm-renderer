@@ -428,7 +428,18 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     //    _cmd_list_rt->ResourceBarrier(1, &uav_barrier);
 }
 
-void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::trace_rays& trace_rays) { log::err()("trace_rays unimplemented"); }
+void pr::backend::d3d12::command_list_translator::execute(const cmd::dispatch_rays& dispatch_rays)
+{
+    log::err()("trace_rays unimplemented");
+
+    D3D12_DISPATCH_RAYS_DESC desc = {};
+
+    desc.Width = dispatch_rays.width;
+    desc.Height = dispatch_rays.height;
+    desc.Depth = dispatch_rays.depth;
+
+    _cmd_list_rt->DispatchRays(&desc);
+}
 
 void pr::backend::d3d12::command_list_translator::ensureRaytracingCmdList()
 {

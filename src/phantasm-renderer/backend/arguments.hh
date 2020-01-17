@@ -100,10 +100,10 @@ using raytracing_shader_libraries = cc::span<raytracing_shader_library const>;
 
 struct raytracing_hit_group
 {
-    wchar_t const* name;
-    wchar_t const* closest_hit_symbol;
-    wchar_t const* any_hit_symbol = L"";
-    wchar_t const* intersection_symbol = L"";
+    wchar_t const* name = nullptr;
+    wchar_t const* closest_hit_symbol = nullptr;
+    wchar_t const* any_hit_symbol = nullptr;
+    wchar_t const* intersection_symbol = nullptr;
 };
 
 using raytracing_hit_groups = cc::span<raytracing_hit_group const>;

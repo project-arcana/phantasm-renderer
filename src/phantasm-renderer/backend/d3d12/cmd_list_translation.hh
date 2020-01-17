@@ -79,7 +79,7 @@ struct command_list_translator
 
     void execute(cmd::update_top_level const& tlas_update);
 
-    void execute(cmd::trace_rays const& trace_rays);
+    void execute(cmd::dispatch_rays const& dispatch_rays);
 
 private:
     void ensureRaytracingCmdList();

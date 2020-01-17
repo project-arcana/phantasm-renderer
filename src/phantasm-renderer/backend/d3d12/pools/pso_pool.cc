@@ -4,6 +4,7 @@
 
 #include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/d3d12/common/log.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
 #include <phantasm-renderer/backend/d3d12/common/util.hh>
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
@@ -27,7 +28,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, false);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, root_signature_type::graphics);
         pool_index = mPool.acquire();
     }
 
@@ -56,7 +57,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     // Do things requiring synchronization first
     {
         auto lg = std::lock_guard(mMutex);
-        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, true);
+        root_sig = mRootSigCache.getOrCreate(*mDevice, shader_arg_shapes, has_root_constants, root_signature_type::compute);
         pool_index = mPool.acquire();
     }
 
@@ -92,7 +93,8 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
         for (auto const& lib : libraries)
         {
-            new_node.associated_root_signatures.push_back(mRootSigCache.getOrCreate(*mDevice, lib.argument_shapes, lib.has_root_constants, true));
+            new_node.associated_root_signatures.push_back(
+                mRootSigCache.getOrCreate(*mDevice, lib.argument_shapes, lib.has_root_constants, root_signature_type::raytrace_local));
         }
     }
 
@@ -111,7 +113,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
     for (auto const& lib : libraries)
     {
-        D3D12_DXIL_LIBRARY_DESC& new_desc = library_descs.emplace_back();
+        auto& new_desc = library_descs.emplace_back();
         new_desc.DXILLibrary = D3D12_SHADER_BYTECODE{lib.binary.data, lib.binary.size};
         new_desc.NumExports = static_cast<UINT>(lib.symbols.size());
 
@@ -119,7 +121,7 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
         for (wchar_t const* const symbol_string : lib.symbols)
         {
-            D3D12_EXPORT_DESC& new_export = export_descs.emplace_back();
+            auto& new_export = export_descs.emplace_back();
             new_export.Name = symbol_string;
             new_export.Flags = D3D12_EXPORT_FLAG_NONE;
             new_export.ExportToRename = nullptr;
@@ -129,7 +131,8 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
 
         new_desc.pExports = export_descs.data() + export_desc_offset;
 
-        D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION& new_association = library_rootsig_associations.emplace_back();
+        auto& new_association = library_rootsig_associations.emplace_back();
+        new_association.pSubobjectToAssociate = nullptr; // will be filled in later
         new_association.NumExports = new_desc.NumExports;
         new_association.pExports = all_symbols_contiguous.data() + export_desc_offset;
     }
@@ -144,8 +147,8 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
         new_desc.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
         new_desc.HitGroupExport = hg.name;
         new_desc.ClosestHitShaderImport = hg.closest_hit_symbol;
-        new_desc.AnyHitShaderImport = hg.any_hit_symbol ? hg.any_hit_symbol : L"";
-        new_desc.IntersectionShaderImport = hg.intersection_symbol ? hg.intersection_symbol : L"";
+        new_desc.AnyHitShaderImport = hg.any_hit_symbol;
+        new_desc.IntersectionShaderImport = hg.intersection_symbol;
     }
 
     // shader config + association
@@ -183,16 +186,18 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
             // subobject for root signature
             auto& subobj_rootsig = subobjects.emplace_back();
             subobj_rootsig.Type = D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE;
-            subobj_rootsig.pDesc = &new_node.associated_root_signatures[i];
+            subobj_rootsig.pDesc = &new_node.associated_root_signatures[i]->raw_root_sig;
 
-            // association: fill in subobject pointer
-            auto& rootsig_assoc = library_rootsig_associations[i];
-            rootsig_assoc.pSubobjectToAssociate = &subobj_rootsig;
+            // association
+            {
+                // fill in subobject pointer
+                library_rootsig_associations[i].pSubobjectToAssociate = &subobj_rootsig;
 
-            // subobject for association
-            auto& subobj_rootsig_assoc = subobjects.emplace_back();
-            subobj_rootsig_assoc.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
-            subobj.pDesc = &rootsig_assoc;
+                // subobject for association
+                auto& subobj_rootsig_assoc = subobjects.emplace_back();
+                subobj_rootsig_assoc.Type = D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION;
+                subobj_rootsig_assoc.pDesc = &library_rootsig_associations[i];
+            }
         }
 
         for (auto const& hit_desc : hit_group_descs)
@@ -288,7 +293,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::initialize(ID3D12Device* devic
 
     if (mDeviceRaytracing != nullptr)
     {
-        mEmptyRaytraceRootSignature = mRootSigCache.getOrCreate(*mDevice, {}, false, true)->raw_root_sig;
+        mEmptyRaytraceRootSignature = mRootSigCache.getOrCreate(*mDevice, {}, false, root_signature_type::raytrace_global)->raw_root_sig;
     }
 }
 

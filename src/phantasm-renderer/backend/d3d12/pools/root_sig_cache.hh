@@ -26,15 +26,15 @@ public:
 
     /// receive an existing root signature matching the shape, or create a new one
     /// returns a pointer which remains stable
-    [[nodiscard]] root_signature* getOrCreate(ID3D12Device& device, arg::shader_argument_shapes arg_shapes, bool has_root_constants, bool is_non_graphics);
+    [[nodiscard]] root_signature* getOrCreate(ID3D12Device& device, arg::shader_argument_shapes arg_shapes, bool has_root_constants, root_signature_type type);
 
     /// destroys all elements inside, and clears the map
     void reset();
 
 private:
-    static cc::hash_t hashKey(arg::shader_argument_shapes arg_shapes, bool has_root_constants, bool is_compute)
+    static cc::hash_t hashKey(arg::shader_argument_shapes arg_shapes, bool has_root_constants, root_signature_type type)
     {
-        return cc::make_hash(hash::compute(arg_shapes), is_compute, has_root_constants);
+        return cc::make_hash(hash::compute(arg_shapes), type, has_root_constants);
     }
 
     backend::detail::cache_map<root_signature> mCache;

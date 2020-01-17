@@ -9,24 +9,38 @@
 ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& device,
                                                                cc::span<const CD3DX12_ROOT_PARAMETER> root_params,
                                                                cc::span<const CD3DX12_STATIC_SAMPLER_DESC> samplers,
-                                                               bool is_non_graphics)
+                                                               root_signature_type type)
 {
     CD3DX12_ROOT_SIGNATURE_DESC desc = {};
     desc.pParameters = root_params.empty() ? nullptr : root_params.data();
     desc.NumParameters = UINT(root_params.size());
     desc.pStaticSamplers = samplers.empty() ? nullptr : samplers.data();
     desc.NumStaticSamplers = UINT(samplers.size());
-    if (is_non_graphics)
+
+    if (type == root_signature_type::graphics)
+    {
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        //            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+        //                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    }
+    else if (type == root_signature_type::compute)
     {
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
                      | D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
                      | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
     }
+    else if (type == root_signature_type::raytrace_local)
+    {
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+    }
+    else if (type == root_signature_type::raytrace_global)
+    {
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+    }
     else
     {
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-        //            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
-        //                 | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+        CC_ASSERT(false && "invalid root signature type");
     }
 
     shared_com_ptr<ID3DBlob> serialized_root_sig;
@@ -148,7 +162,7 @@ void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_sign
                                                    ID3D12Device& device,
                                                    pr::backend::arg::shader_argument_shapes payload_shape,
                                                    bool add_fixed_root_constants,
-                                                   bool is_non_graphics)
+                                                   root_signature_type type)
 {
     detail::root_signature_params parameters;
 
@@ -159,5 +173,5 @@ void pr::backend::d3d12::initialize_root_signature(pr::backend::d3d12::root_sign
         root_sig.argument_maps.push_back(parameters.add_shader_argument_shape(arg_shape, add_rconsts));
     }
 
-    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers, is_non_graphics);
+    root_sig.raw_root_sig = create_root_signature(device, parameters.root_params, parameters.samplers, type);
 }

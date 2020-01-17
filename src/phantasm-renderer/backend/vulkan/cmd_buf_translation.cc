@@ -414,7 +414,7 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::u
                          1, &mem_barrier, 0, nullptr, 0, nullptr);
 }
 
-void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::trace_rays& trace_rays) {}
+void pr::backend::vk::command_list_translator::execute(const cmd::dispatch_rays& dispatch_rays) {}
 
 void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend::handle::pipeline_state pso,
                                                                      const std::byte* root_consts,

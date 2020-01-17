@@ -31,7 +31,7 @@ namespace detail
     PR_X(debug_marker)            \
     PR_X(update_bottom_level)     \
     PR_X(update_top_level)        \
-    PR_X(trace_rays)
+    PR_X(dispatch_rays)
 
 enum class cmd_type : uint8_t
 {
@@ -367,9 +367,11 @@ PR_DEFINE_CMD(update_top_level)
     unsigned num_instances = 0;
 };
 
-PR_DEFINE_CMD(trace_rays)
+PR_DEFINE_CMD(dispatch_rays)
 {
-
+    unsigned width = 0;
+    unsigned height = 0;
+    unsigned depth = 0;
 };
 
 #undef PR_DEFINE_CMD
