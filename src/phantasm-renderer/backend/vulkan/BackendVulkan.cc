@@ -311,6 +311,7 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 }
 
 pr::backend::handle::pipeline_state pr::backend::vk::BackendVulkan::createRaytracingPipelineState(pr::backend::arg::raytracing_shader_libraries libraries,
+                                                                                                  arg::raytracing_argument_associations arg_assocs,
                                                                                                   pr::backend::arg::raytracing_hit_groups hit_groups,
                                                                                                   unsigned max_recursion,
                                                                                                   unsigned max_payload_size_bytes,

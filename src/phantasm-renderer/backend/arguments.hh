@@ -79,42 +79,49 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
     return true;
 }
 
+/// an element in a bottom-level acceleration strucutre
 struct blas_element
 {
     handle::resource vertex_buffer = handle::null_resource;
-    handle::resource index_buffer = handle::null_resource; ///< can be null
+    handle::resource index_buffer = handle::null_resource; ///< optional
     unsigned num_vertices = 0;
     unsigned num_indices = 0;
     bool is_opaque = true;
 };
 
+/// a raytracing shader library lists the symbol names it exports
 struct raytracing_shader_library
 {
     shader_binary binary;
-    cc::span<wchar_t const* const> symbols;
+    cc::capped_vector<wchar_t const*, 16> symbols;
+};
+
+/// associates symbols exported from libraries with their argument shapes
+struct raytracing_argument_association
+{
+    cc::capped_vector<wchar_t const*, 16> symbols;
     cc::capped_vector<shader_argument_shape, limits::max_shader_arguments> argument_shapes;
     bool has_root_constants = false;
 };
-
-using raytracing_shader_libraries = cc::span<raytracing_shader_library const>;
 
 struct raytracing_hit_group
 {
     wchar_t const* name = nullptr;
     wchar_t const* closest_hit_symbol = nullptr;
-    wchar_t const* any_hit_symbol = nullptr;
-    wchar_t const* intersection_symbol = nullptr;
+    wchar_t const* any_hit_symbol = nullptr;      ///< optional
+    wchar_t const* intersection_symbol = nullptr; ///< optional
 };
-
-using raytracing_hit_groups = cc::span<raytracing_hit_group const>;
 
 struct shader_table_record
 {
-    wchar_t const* symbol = nullptr;
-    void const* root_arg_data = nullptr;
-    uint32_t root_arg_size = 0;
+    wchar_t const* symbol = nullptr;     ///< name of the shader or hit group
+    void const* root_arg_data = nullptr; ///< optional, data of the root constant data
+    uint32_t root_arg_size = 0;          ///< size of the root constant data
     cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
 };
 
+using raytracing_shader_libraries = cc::span<raytracing_shader_library const>;
+using raytracing_argument_associations = cc::span<raytracing_argument_association const>;
+using raytracing_hit_groups = cc::span<raytracing_hit_group const>;
 using shader_table_records = cc::span<shader_table_record const>;
 }

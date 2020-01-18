@@ -32,6 +32,7 @@ public:
     [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_binary compute_shader, bool has_root_constants);
 
     [[nodiscard]] handle::pipeline_state createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                       arg::raytracing_argument_associations arg_assocs,
                                                                        arg::raytracing_hit_groups hit_groups,
                                                                        unsigned max_recursion,
                                                                        unsigned max_payload_size_bytes,
@@ -51,7 +52,7 @@ public:
     {
         ID3D12StateObject* raw_state_object;
         ID3D12StateObjectProperties* raw_state_object_props;
-        cc::capped_vector<root_signature*, limits::max_raytracing_libraries> associated_root_signatures;
+        cc::capped_vector<root_signature*, limits::max_raytracing_argument_assocs> associated_root_signatures;
     };
 
 public:

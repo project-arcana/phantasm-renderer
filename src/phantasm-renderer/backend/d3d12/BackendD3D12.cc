@@ -193,14 +193,15 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         submit_flush();
 }
 
-pr::backend::handle::pipeline_state pr::backend::d3d12::BackendD3D12::createRaytracingPipelineState(pr::backend::arg::raytracing_shader_libraries libraries,
-                                                                                                    pr::backend::arg::raytracing_hit_groups hit_groups,
+pr::backend::handle::pipeline_state pr::backend::d3d12::BackendD3D12::createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                                                    arg::raytracing_argument_associations arg_assocs,
+                                                                                                    arg::raytracing_hit_groups hit_groups,
                                                                                                     unsigned max_recursion,
                                                                                                     unsigned max_payload_size_bytes,
                                                                                                     unsigned max_attribute_size_bytes)
 {
     CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
-    return mPoolPSOs.createRaytracingPipelineState(libraries, hit_groups, max_recursion, max_payload_size_bytes, max_attribute_size_bytes);
+    return mPoolPSOs.createRaytracingPipelineState(libraries, arg_assocs, hit_groups, max_recursion, max_payload_size_bytes, max_attribute_size_bytes);
 }
 
 pr::backend::handle::accel_struct pr::backend::d3d12::BackendD3D12::createTopLevelAccelStruct(unsigned num_instances)
