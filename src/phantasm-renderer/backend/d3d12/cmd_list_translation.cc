@@ -430,9 +430,41 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::command_list_translator::execute(const cmd::dispatch_rays& dispatch_rays)
 {
-    log::err()("trace_rays unimplemented");
+    ensureRaytracingCmdList();
+
+    if (_bound.update_pso(dispatch_rays.pso))
+    {
+        _cmd_list_rt->SetPipelineState1(_globals.pool_pipeline_states->getRaytrace(dispatch_rays.pso).raw_state_object);
+    }
+
 
     D3D12_DISPATCH_RAYS_DESC desc = {};
+
+    {
+        auto const& table_info = _globals.pool_resources->getBufferInfo(dispatch_rays.table_raygen);
+        auto const va = _globals.pool_resources->getRawResource(dispatch_rays.table_raygen)->GetGPUVirtualAddress();
+
+        desc.RayGenerationShaderRecord.StartAddress = va;
+        desc.RayGenerationShaderRecord.SizeInBytes = table_info.width;
+    }
+
+    {
+        auto const& table_info = _globals.pool_resources->getBufferInfo(dispatch_rays.table_miss);
+        auto const va = _globals.pool_resources->getRawResource(dispatch_rays.table_miss)->GetGPUVirtualAddress();
+
+        desc.MissShaderTable.StartAddress = va;
+        desc.MissShaderTable.SizeInBytes = table_info.width;
+        desc.MissShaderTable.StrideInBytes = table_info.stride;
+    }
+
+    {
+        auto const& table_info = _globals.pool_resources->getBufferInfo(dispatch_rays.table_hitgroups);
+        auto const va = _globals.pool_resources->getRawResource(dispatch_rays.table_hitgroups)->GetGPUVirtualAddress();
+
+        desc.HitGroupTable.StartAddress = va;
+        desc.HitGroupTable.SizeInBytes = table_info.width;
+        desc.HitGroupTable.StrideInBytes = table_info.stride;
+    }
 
     desc.Width = dispatch_rays.width;
     desc.Height = dispatch_rays.height;

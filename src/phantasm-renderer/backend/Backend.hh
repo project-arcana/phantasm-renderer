@@ -162,6 +162,15 @@ public:
 
     virtual void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) = 0;
 
+    [[nodiscard]] virtual handle::resource getAccelStructBuffer(handle::accel_struct as) = 0;
+
+    [[nodiscard]] virtual shader_table_sizes calculateShaderTableSize(arg::shader_table_records ray_gen_records,
+                                                                      arg::shader_table_records miss_records,
+                                                                      arg::shader_table_records hit_group_records)
+        = 0;
+
+    virtual void writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records) = 0;
+
     virtual void free(handle::accel_struct as) = 0;
 
     virtual void freeRange(cc::span<handle::accel_struct const> as) = 0;

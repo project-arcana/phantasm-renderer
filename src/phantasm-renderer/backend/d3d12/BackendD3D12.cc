@@ -35,12 +35,14 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     // Global pools
     {
         mPoolResources.initialize(device, config.max_num_resources);
-        mPoolPSOs.initialize(&device, mDevice.getDeviceRaytracing(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
         mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
+        mPoolPSOs.initialize(&device, mDevice.getDeviceRaytracing(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
+
 
         if (isRaytracingEnabled())
         {
             mPoolAccelStructs.initialize(mDevice.getDeviceRaytracing(), &mPoolResources, config.max_num_accel_structs);
+            mShaderTableCtor.initialize(mDevice.getDeviceRaytracing(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
         }
     }
 
@@ -76,8 +78,8 @@ pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 
         mPoolCmdLists.destroy();
         mPoolAccelStructs.destroy();
-        mPoolShaderViews.destroy();
         mPoolPSOs.destroy();
+        mPoolShaderViews.destroy();
         mPoolResources.destroy();
 
         for (auto& thread_comp : mThreadComponents)
@@ -227,6 +229,23 @@ void pr::backend::d3d12::BackendD3D12::uploadTopLevelInstances(pr::backend::hand
     auto const& node = mPoolAccelStructs.getNode(as);
     std::memcpy(node.buffer_instances_map, instances.data(), sizeof(accel_struct_geometry_instance) * instances.size());
     // flushMappedMemory(node.buffer_instances); (no-op)
+}
+
+pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::getAccelStructBuffer(pr::backend::handle::accel_struct as)
+{
+    return mPoolAccelStructs.getNode(as).buffer_as;
+}
+
+pr::backend::shader_table_sizes pr::backend::d3d12::BackendD3D12::calculateShaderTableSize(pr::backend::arg::shader_table_records ray_gen_records,
+                                                                                           pr::backend::arg::shader_table_records miss_records,
+                                                                                           pr::backend::arg::shader_table_records hit_group_records)
+{
+    return mShaderTableCtor.calculateShaderTableSizes(ray_gen_records, miss_records, hit_group_records);
+}
+
+void pr::backend::d3d12::BackendD3D12::writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records)
+{
+    mShaderTableCtor.writeShaderTable(dest, pso, stride, records);
 }
 
 void pr::backend::d3d12::BackendD3D12::free(pr::backend::handle::accel_struct as)

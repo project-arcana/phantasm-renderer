@@ -162,8 +162,9 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuff
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocate(desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, D3D12_HEAP_TYPE_UPLOAD);
 
+    D3D12_RANGE read_range = {0, 0}; // write-only
     void* data_start_void;
-    alloc->GetResource()->Map(0, nullptr, &data_start_void);
+    alloc->GetResource()->Map(0, &read_range, &data_start_void);
     util::set_object_name(alloc->GetResource(), "respool mapped buffer");
     return acquireBuffer(alloc, resource_state::unknown, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(data_start_void));
 }

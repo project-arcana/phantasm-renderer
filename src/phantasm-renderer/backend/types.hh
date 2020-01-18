@@ -326,6 +326,7 @@ enum class shader_view_dimension : uint8_t
 struct shader_view_element
 {
     handle::resource resource;
+
     format pixel_format;
     shader_view_dimension dimension;
 
@@ -390,6 +391,12 @@ public:
         buffer_info.num_elements = num_elements;
         buffer_info.element_start = 0;
         buffer_info.element_stride_bytes = stride_bytes;
+    }
+
+    void init_as_accel_struct(handle::resource as_buffer)
+    {
+        resource = as_buffer;
+        dimension = shader_view_dimension::raytracing_accel_struct;
     }
 };
 
@@ -571,6 +578,14 @@ static_assert(sizeof(accel_struct_geometry_instance) == 64, "accel_struct_geomet
 PR_DEFINE_BIT_FLAGS(accel_struct_instance_flag, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
                                                           force_opaque = 0x0004, force_no_opaque = 0x0008};
 }
+
+/// the size and element-strides of a shader table
+struct shader_table_sizes
+{
+    uint32_t ray_gen_stride_bytes = 0;
+    uint32_t miss_stride_bytes = 0;
+    uint32_t hit_group_stride_bytes = 0;
+};
 }
 
 #undef PR_DEFINE_HANDLE

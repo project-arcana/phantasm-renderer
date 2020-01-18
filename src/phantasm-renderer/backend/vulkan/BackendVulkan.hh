@@ -136,6 +136,14 @@ public:
 
     void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) override;
 
+    [[nodiscard]] handle::resource getAccelStructBuffer(handle::accel_struct as) override;
+
+    [[nodiscard]] shader_table_sizes calculateShaderTableSize(arg::shader_table_records ray_gen_records,
+                                                              arg::shader_table_records miss_records,
+                                                              arg::shader_table_records hit_group_records) override;
+
+    void writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records) override;
+
     void free(handle::accel_struct as) override;
 
     void freeRange(cc::span<handle::accel_struct const> as) override;

@@ -40,6 +40,9 @@ public:
 
     [[nodiscard]] handle_t allocate(int num_descriptors)
     {
+        if (num_descriptors <= 0)
+            return -1;
+
         auto const res_page = mPageAllocator.allocate(num_descriptors);
         CC_RUNTIME_ASSERT(res_page != -1 && "descriptor_page_allocator overcommitted!");
         return res_page;
@@ -109,14 +112,17 @@ public:
     [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getSRVUAVGPUHandle(handle::shader_view sv) const
     {
         // cached fastpath
-        return mPool.get(static_cast<unsigned>(sv.index)).srv_uav_handle;
+        return internalGet(sv).srv_uav_handle;
     }
 
     [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE getSamplerGPUHandle(handle::shader_view sv) const
     {
         // cached fastpath
-        return mPool.get(static_cast<unsigned>(sv.index)).sampler_handle;
+        return internalGet(sv).sampler_handle;
     }
+
+    bool hasSRVsUAVs(handle::shader_view sv) const { return internalGet(sv).srv_uav_alloc_handle != -1; }
+    bool hasSamplers(handle::shader_view sv) const { return internalGet(sv).sampler_alloc_handle != -1; }
 
     //
     // Receive contained resource handles for state management
@@ -124,13 +130,13 @@ public:
 
     [[nodiscard]] cc::span<handle::resource const> getSRVs(handle::shader_view sv) const
     {
-        auto const& data = mPool.get(static_cast<unsigned>(sv.index));
+        auto const& data = internalGet(sv);
         return cc::span{data.resources.data(), static_cast<size_t>(data.num_srvs)};
     }
 
     [[nodiscard]] cc::span<handle::resource const> getUAVs(handle::shader_view sv) const
     {
-        auto const& data = mPool.get(static_cast<unsigned>(sv.index));
+        auto const& data = internalGet(sv);
         return cc::span{data.resources.data() + data.num_srvs, static_cast<size_t>(data.num_uavs)};
     }
 
@@ -154,6 +160,19 @@ private:
         DescriptorPageAllocator::handle_t sampler_alloc_handle;
     };
 
+private:
+    [[nodiscard]] shader_view_data const& internalGet(handle::shader_view res) const
+    {
+        CC_ASSERT(res.is_valid() && "invalid shader_view handle");
+        return mPool.get(static_cast<unsigned>(res.index));
+    }
+    [[nodiscard]] shader_view_data& internalGet(handle::shader_view res)
+    {
+        CC_ASSERT(res.is_valid() && "invalid shader_view handle");
+        return mPool.get(static_cast<unsigned>(res.index));
+    }
+
+private:
     // non-owning
     ID3D12Device* mDevice;
     ResourcePool* mResourcePool;

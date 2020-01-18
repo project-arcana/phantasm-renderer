@@ -2,7 +2,10 @@
 
 #include <iostream>
 
+#include <clean-core/utility.hh>
 #include <clean-core/vector.hh>
+
+#include <phantasm-renderer/backend/detail/byte_util.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/log.hh>
 #include <phantasm-renderer/backend/d3d12/common/native_enum.hh>
@@ -10,10 +13,11 @@
 #include <phantasm-renderer/backend/d3d12/common/verify.hh>
 #include <phantasm-renderer/backend/d3d12/pipeline_state.hh>
 
+#include "resource_pool.hh"
+
 namespace
 {
 constexpr pr::backend::handle::index_t gc_raytracing_handle_offset = 1073741824;
-
 }
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool::createPipelineState(pr::backend::arg::vertex_format vertex_format,
@@ -240,10 +244,10 @@ pr::backend::handle::pipeline_state pr::backend::d3d12::PipelineStateObjectPool:
     state_obj.NumSubobjects = static_cast<UINT>(subobjects.size());
     state_obj.pSubobjects = subobjects.data();
 
-    ID3D12StateObject* res = nullptr;
-    PR_D3D12_VERIFY(mDeviceRaytracing->CreateStateObject(&state_obj, IID_PPV_ARGS(&res)));
-
-    new_node.raw_state_object = res;
+    // Create the state object
+    PR_D3D12_VERIFY(mDeviceRaytracing->CreateStateObject(&state_obj, IID_PPV_ARGS(&new_node.raw_state_object)));
+    // QI the properties for access to shader identifiers
+    PR_D3D12_VERIFY(new_node.raw_state_object->QueryInterface(IID_PPV_ARGS(&new_node.raw_state_object_props)));
 
     return {static_cast<handle::index_t>(pool_index + gc_raytracing_handle_offset)};
 }
@@ -259,6 +263,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::free(pr::backend::handle::pipe
         unsigned const pool_idx = static_cast<unsigned>(ps.index - gc_raytracing_handle_offset);
         rt_pso_node& freed_node = mPoolRaytracing.get(pool_idx);
         freed_node.raw_state_object->Release();
+        freed_node.raw_state_object_props->Release();
 
         {
             auto lg = std::lock_guard(mMutex);
@@ -308,6 +313,7 @@ void pr::backend::d3d12::PipelineStateObjectPool::destroy()
     mPoolRaytracing.iterate_allocated_nodes([&](rt_pso_node& leaked_node, unsigned) {
         ++num_leaks;
         leaked_node.raw_state_object->Release();
+        leaked_node.raw_state_object_props->Release();
     });
 
     if (num_leaks > 0)

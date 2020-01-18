@@ -41,31 +41,32 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::
 
     // Populate the data entry and fill out descriptors
     {
-        auto& data = mPool.get(pool_index);
-        data.sampler_alloc_handle = sampler_alloc;
-        data.srv_uav_alloc_handle = srv_uav_alloc;
+        auto& new_node = mPool.get(pool_index);
+        new_node.sampler_alloc_handle = sampler_alloc;
+        new_node.srv_uav_alloc_handle = srv_uav_alloc;
+        new_node.resources.clear();
 
         // Create the descriptors in-place
         // SRVs and UAVs
+        if (srv_uav_alloc != -1)
         {
             auto const srv_uav_cpu_base = mSRVUAVAllocator.getCPUStart(srv_uav_alloc);
             auto srv_uav_desc_index = 0u;
 
             for (auto const& srv : srvs)
             {
-                data.resources.push_back(srv.resource);
+                new_node.resources.push_back(srv.resource);
 
                 ID3D12Resource* const raw_resource = mResourcePool->getRawResource(srv.resource);
                 auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(srv_uav_cpu_base, srv_uav_desc_index++);
-
                 // Create a SRV based on the shader_view_element
                 auto const srv_desc = util::create_srv_desc(srv, raw_resource);
-                mDevice->CreateShaderResourceView(raw_resource, &srv_desc, cpu_handle);
+                mDevice->CreateShaderResourceView(srv.dimension == shader_view_dimension::raytracing_accel_struct ? nullptr : raw_resource, &srv_desc, cpu_handle);
             }
 
             for (auto const& uav : uavs)
             {
-                data.resources.push_back(uav.resource);
+                new_node.resources.push_back(uav.resource);
 
                 ID3D12Resource* const raw_resource = mResourcePool->getRawResource(uav.resource);
                 auto const cpu_handle = mSRVUAVAllocator.incrementToIndex(srv_uav_cpu_base, srv_uav_desc_index++);
@@ -74,9 +75,16 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::
                 auto const uav_desc = util::create_uav_desc(uav);
                 mDevice->CreateUnorderedAccessView(raw_resource, nullptr, &uav_desc, cpu_handle);
             }
+
+            new_node.srv_uav_handle = mSRVUAVAllocator.getGPUStart(srv_uav_alloc);
+        }
+        else
+        {
+            new_node.srv_uav_handle = {};
         }
 
         // Samplers
+        if (sampler_alloc != -1)
         {
             auto const sampler_cpu_base = mSamplerAllocator.getCPUStart(sampler_alloc);
             auto sampler_desc_index = 0u;
@@ -89,12 +97,16 @@ pr::backend::handle::shader_view pr::backend::d3d12::ShaderViewPool::create(cc::
                 auto const sampler_desc = util::create_sampler_desc(sampler_conf);
                 mDevice->CreateSampler(&sampler_desc, cpu_handle);
             }
+
+            new_node.sampler_handle = mSamplerAllocator.getGPUStart(sampler_alloc);
+        }
+        else
+        {
+            new_node.sampler_handle = {};
         }
 
-        data.srv_uav_handle = mSRVUAVAllocator.getGPUStart(srv_uav_alloc);
-        data.sampler_handle = mSamplerAllocator.getGPUStart(sampler_alloc);
-        data.num_srvs = cc::uint16(srvs.size());
-        data.num_uavs = cc::uint16(uavs.size());
+        new_node.num_srvs = cc::uint16(srvs.size());
+        new_node.num_uavs = cc::uint16(uavs.size());
     }
 
     return {static_cast<handle::index_t>(pool_index)};
@@ -136,5 +148,5 @@ void pr::backend::d3d12::ShaderViewPool::initialize(ID3D12Device* device, pr::ba
 
 void pr::backend::d3d12::ShaderViewPool::destroy()
 {
-    // nothing
+    // nothing, the heaps themselves are being destroyed
 }

@@ -348,6 +348,25 @@ void pr::backend::vk::BackendVulkan::uploadTopLevelInstances(pr::backend::handle
     flushMappedMemory(node.buffer_instances);
 }
 
+pr::backend::handle::resource pr::backend::vk::BackendVulkan::getAccelStructBuffer(pr::backend::handle::accel_struct as)
+{
+    log::err()("calculateShaderTableSize unimplemented");
+    return handle::null_resource;
+}
+
+pr::backend::shader_table_sizes pr::backend::vk::BackendVulkan::calculateShaderTableSize(pr::backend::arg::shader_table_records ray_gen_records,
+                                                                                         pr::backend::arg::shader_table_records miss_records,
+                                                                                         pr::backend::arg::shader_table_records hit_group_records)
+{
+    log::err()("calculateShaderTableSize unimplemented");
+    return {};
+}
+
+void pr::backend::vk::BackendVulkan::writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records)
+{
+    log::err()("writeShaderTable unimplemented");
+}
+
 void pr::backend::vk::BackendVulkan::free(pr::backend::handle::accel_struct as)
 {
     CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");

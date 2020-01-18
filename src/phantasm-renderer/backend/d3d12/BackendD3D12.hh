@@ -16,6 +16,7 @@
 #include "pools/pso_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
+#include "shader_table_construction.hh"
 
 namespace pr::backend::device
 {
@@ -138,13 +139,21 @@ public:
                                                                        unsigned max_payload_size_bytes,
                                                                        unsigned max_attribute_size_bytes) override;
 
-    handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
+    [[nodiscard]] handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
 
-    handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
-                                                      accel_struct_build_flags flags,
-                                                      uint64_t* out_native_handle = nullptr) override;
+    [[nodiscard]] handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
+                                                                    accel_struct_build_flags flags,
+                                                                    uint64_t* out_native_handle = nullptr) override;
 
     void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) override;
+
+    [[nodiscard]] handle::resource getAccelStructBuffer(handle::accel_struct as) override;
+
+    [[nodiscard]] shader_table_sizes calculateShaderTableSize(arg::shader_table_records ray_gen_records,
+                                                              arg::shader_table_records miss_records,
+                                                              arg::shader_table_records hit_group_records) override;
+
+    void writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records) override;
 
     void free(handle::accel_struct as) override;
 
@@ -189,6 +198,7 @@ private:
     struct per_thread_component;
     cc::array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
+    ShaderTableConstructor mShaderTableCtor;
 
     // Misc
     util::diagnostic_state mDiagnostics;

@@ -108,4 +108,13 @@ struct raytracing_hit_group
 
 using raytracing_hit_groups = cc::span<raytracing_hit_group const>;
 
+struct shader_table_record
+{
+    wchar_t const* symbol = nullptr;
+    void const* root_arg_data = nullptr;
+    uint32_t root_arg_size = 0;
+    cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+};
+
+using shader_table_records = cc::span<shader_table_record const>;
 }

@@ -369,6 +369,10 @@ PR_DEFINE_CMD(update_top_level)
 
 PR_DEFINE_CMD(dispatch_rays)
 {
+    handle::pipeline_state pso = handle::null_pipeline_state;
+    handle::resource table_raygen = handle::null_resource;
+    handle::resource table_miss = handle::null_resource;
+    handle::resource table_hitgroups = handle::null_resource;
     unsigned width = 0;
     unsigned height = 0;
     unsigned depth = 0;

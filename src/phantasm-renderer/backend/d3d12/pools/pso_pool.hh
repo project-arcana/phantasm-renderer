@@ -13,6 +13,8 @@
 
 namespace pr::backend::d3d12
 {
+class ResourcePool;
+
 /// The high-level allocator for PSOs and root signatures
 /// Synchronized
 class PipelineStateObjectPool
@@ -48,6 +50,7 @@ public:
     struct rt_pso_node
     {
         ID3D12StateObject* raw_state_object;
+        ID3D12StateObjectProperties* raw_state_object_props;
         cc::capped_vector<root_signature*, limits::max_raytracing_libraries> associated_root_signatures;
     };
 
