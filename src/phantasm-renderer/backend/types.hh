@@ -20,22 +20,24 @@ inline constexpr index_t null_handle_index = index_t(-1);
     inline constexpr _type_ null_##_type_ = {null_handle_index}
 
 
-/// generic resource (Image, Buffer, RT)
+/// generic resource (buffer, texture, render target)
 PR_DEFINE_HANDLE(resource);
 
-/// shader arguments := handle::shader_view (SRVs + UAVs) + handle::resource (CBV) + uint (CBV offset)
+/// shader_view := (SRVs + UAVs + Samplers)
+/// shader argument := handle::shader_view + handle::resource (CBV) + uint (CBV offset)
 PR_DEFINE_HANDLE(shader_view);
 
-/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats)
+/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
 PR_DEFINE_HANDLE(pipeline_state);
 
-/// command list handle, returned from compiles
+/// recorded command list, ready to submit or discard
 PR_DEFINE_HANDLE(command_list);
 
 /// raytracing acceleration structure handle
 PR_DEFINE_HANDLE(accel_struct);
 }
 
+// create an enum that is namespaced but non-class (for bitwise operations)
 #define PR_DEFINE_BIT_FLAGS(_name_, _type_) \
     using _name_##_t = _type_;              \
     namespace _name_                        \
@@ -140,10 +142,11 @@ enum class present_mode : uint8_t
 };
 
 /// Special features that are backend-specific, ignored if not applicable
-PR_DEFINE_BIT_FLAGS(native_feature_flags, uint32_t){none = 0,
-
-                                                    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
-                                                    vk_api_dump = 0x0001};
+PR_DEFINE_BIT_FLAGS(native_feature_flags, uint32_t){
+    none = 0,
+    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
+    vk_api_dump = 0x0001,
+};
 }
 
 struct backend_config
@@ -279,7 +282,7 @@ enum class format : uint8_t
 /// returns true if the format is a depth OR depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
 
-/// returns true if the format is a depth stencil format+
+/// returns true if the format is a depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_stencil_format(format fmt) { return fmt >= format::depth32f_stencil8u; }
 
 /// information about a single vertex attribute
@@ -383,6 +386,7 @@ public:
         buffer_info.element_stride_bytes = stride_bytes;
     }
 
+    /// receive the buffer handle from getAccelStructBuffer
     void init_as_accel_struct(handle::resource as_buffer)
     {
         resource = as_buffer;
@@ -545,7 +549,7 @@ PR_DEFINE_BIT_FLAGS(accel_struct_build_flags, uint8_t){
 };
 }
 
-/// geometry instance within a top level acceleration structure (layout dictated by DXR/NV RT Vk Extension)
+/// geometry instance within a top level acceleration structure (layout dictated by DXR/Vulkan RT Extension)
 struct accel_struct_geometry_instance
 {
     /// Transform matrix, containing only the top 3 rows

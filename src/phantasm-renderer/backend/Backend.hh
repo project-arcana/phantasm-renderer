@@ -187,8 +187,8 @@ public:
     /// and forces a capture start, returns true on success
     virtual bool startForcedDiagnosticCapture() = 0;
 
-    /// ends a previously started forced diagnostic capture, returns
-    /// true on success
+    /// ends a previously started forced diagnostic capture,
+    /// returns true on success
     virtual bool endForcedDiagnosticCapture() = 0;
 
     //

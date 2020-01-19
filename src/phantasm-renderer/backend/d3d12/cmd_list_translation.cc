@@ -395,7 +395,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     as_create_info.Inputs.Flags = util::to_native_flags(dest_node.flags);
     as_create_info.Inputs.NumDescs = static_cast<UINT>(dest_node.geometries.size());
     as_create_info.Inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-    as_create_info.Inputs.pGeometryDescs = dest_node.geometries.data();
+    as_create_info.Inputs.pGeometryDescs = dest_node.geometries.empty() ? nullptr : dest_node.geometries.data();
     as_create_info.DestAccelerationStructureData = dest_as_buffer->GetGPUVirtualAddress();
     as_create_info.ScratchAccelerationStructureData = _globals.pool_resources->getRawResource(dest_node.buffer_scratch)->GetGPUVirtualAddress();
 

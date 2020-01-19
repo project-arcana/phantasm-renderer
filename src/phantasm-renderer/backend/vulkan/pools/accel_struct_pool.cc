@@ -273,8 +273,8 @@ void pr::backend::vk::AccelStructPool::moveGeometriesToAS(pr::backend::handle::a
 
 void pr::backend::vk::AccelStructPool::internalFree(pr::backend::vk::AccelStructPool::accel_struct_node& node)
 {
-    vkDestroyAccelerationStructureNV(mDevice, node.raw_as, nullptr);
-
     cc::array const buffers_to_free = {node.buffer_as, node.buffer_scratch, node.buffer_instances};
     mResourcePool->free(buffers_to_free);
+
+    vkDestroyAccelerationStructureNV(mDevice, node.raw_as, nullptr);
 }
