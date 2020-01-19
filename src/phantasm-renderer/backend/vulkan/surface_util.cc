@@ -13,6 +13,10 @@
 #include <X11/Xlib.h>
 #endif
 
+#ifdef PR_BACKEND_HAS_SDL2
+#include <SDL2/SDL_vulkan.h>
+#endif
+
 #ifdef PR_BACKEND_VULKAN
 namespace
 {
@@ -36,13 +40,32 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
     surface_info.hinstance = GetModuleHandle(nullptr);
     PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &res_surface));
 #elif defined(CC_OS_LINUX)
-    VkXlibSurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    surface_info.dpy = static_cast<::Display*>(window_handle.native_b);
-    surface_info.window = cc::bit_cast<::Window>(window_handle.native_a);
-    surface_info.pNext = nullptr;
-    surface_info.flags = 0;
-    PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
+
+    if (window_handle.native_a && window_handle.native_b)
+    {
+        // XLib mode
+        VkXlibSurfaceCreateInfoKHR surface_info = {};
+        surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        surface_info.dpy = static_cast<::Display*>(window_handle.native_b);
+        surface_info.window = cc::bit_cast<::Window>(window_handle.native_a);
+        surface_info.pNext = nullptr;
+        surface_info.flags = 0;
+        PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
+    }
+    else if (window_handle.native_a && !window_handle.native_b)
+    {
+        // SDL2 mode
+#ifdef PR_BACKEND_HAS_SDL2
+        SDL_Vulkan_CreateSurface(static_cast<::SDL_Window*>(window_handle.native_a), instance, &res_surface);
+#else
+        CC_RUNTIME_ASSERT(false && "SDL support disabled, window_handle invalid");
+#endif
+    }
+    else
+    {
+        CC_RUNTIME_ASSERT(false && "window_handle invalid");
+    }
+
 #else
 #error "Unimplemented platform"
 #endif

@@ -138,7 +138,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
     }
 }
 
-pr::backend::vk::BackendVulkan::~BackendVulkan()
+void pr::backend::vk::BackendVulkan::destroy()
 {
     if (mInstance != nullptr)
     {
@@ -166,7 +166,13 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
             vkDestroyDebugUtilsMessengerEXT(mInstance, mDebugMessenger, nullptr);
 
         vkDestroyInstance(mInstance, nullptr);
+        mInstance = nullptr;
     }
+}
+
+pr::backend::vk::BackendVulkan::~BackendVulkan()
+{
+    destroy();
 }
 
 pr::backend::handle::resource pr::backend::vk::BackendVulkan::acquireBackbuffer()

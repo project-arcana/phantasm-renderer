@@ -14,6 +14,7 @@ option(PR_ENABLE_DEBUG_MARKERS "enable API debug markers" ON)
 # requires WinPixEventRuntime.dll to be available to the executable (in the same folder)
 # this dll is included in extern/win32_pix_runtime/bin/
 option(PR_ENABLE_D3D12_PIX "enable DirectX 12 PIX integration" OFF)
+option(PR_ENABLE_SDL2 "Search for and enable SDL2 integration" ON)
 
 # =========================================
 # post-process options
@@ -126,4 +127,16 @@ endif()
 if (MSVC)
     # For device_tentative
     target_link_libraries(phantasm-renderer PRIVATE "Shcore.lib")
+endif()
+
+if (PR_ENABLE_SDL2)
+    find_package(SDL2)
+    if (SDL2_LIBRARIES)
+        message(STATUS "[phantasm renderer] SDL2 support enabled")
+        target_include_directories(phantasm-renderer PUBLIC ${SDL2_INCLUDE_DIRS})
+        target_link_libraries(phantasm-renderer PUBLIC ${SDL2_LIBRARIES})
+        target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_HAS_SDL2)
+    else()
+        message(STATUS "[phantasm renderer] SDL2 not found")
+    endif()
 endif()

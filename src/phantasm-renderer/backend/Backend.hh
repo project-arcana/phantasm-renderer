@@ -20,6 +20,7 @@ public:
     virtual ~Backend() = default;
 
     virtual void initialize(backend_config const& config, native_window_handle const& window_handle) = 0;
+    virtual void destroy() = 0;
 
     virtual void flushGPU() = 0;
 
