@@ -94,7 +94,7 @@ public:
     virtual void free(handle::resource res) = 0;
 
     /// destroy multiple resource
-    virtual void free_range(cc::span<handle::resource const> resources) = 0;
+    virtual void freeRange(cc::span<handle::resource const> resources) = 0;
 
     //
     // Shader view interface
@@ -108,7 +108,7 @@ public:
 
     virtual void free(handle::shader_view sv) = 0;
 
-    virtual void free_range(cc::span<handle::shader_view const> svs) = 0;
+    virtual void freeRange(cc::span<handle::shader_view const> svs) = 0;
 
     //
     // Pipeline state interface
@@ -157,7 +157,7 @@ public:
     [[nodiscard]] virtual handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) = 0;
 
     [[nodiscard]] virtual handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
-                                                                            accel_struct_build_flags flags,
+                                                                            accel_struct_build_flags_t flags,
                                                                             uint64_t* out_native_handle = nullptr)
         = 0;
 

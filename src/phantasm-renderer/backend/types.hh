@@ -37,10 +37,10 @@ PR_DEFINE_HANDLE(accel_struct);
 }
 
 #define PR_DEFINE_BIT_FLAGS(_name_, _type_) \
-    using _name_##s = _type_;               \
-    namespace _name_##_bits                 \
+    using _name_##_t = _type_;              \
+    namespace _name_                        \
     {                                       \
-        enum _name_##_bits_e : _name_##s
+    enum _name_##_e : _name_##_t
 
 struct shader_argument
 {
@@ -69,11 +69,7 @@ enum class shader_domain : uint8_t
     ray_any_hit,
 };
 
-using shader_domain_flags = uint16_t;
-namespace shader_domain_bits
-{
-enum shader_domain_bits_e : shader_domain_flags
-{
+PR_DEFINE_BIT_FLAGS(shader_domain_flags, uint16_t){
     unspecified = 0x0000,
 
     vertex = 0x0001,
@@ -143,17 +139,11 @@ enum class present_mode : uint8_t
     synced
 };
 
-using native_feature_flags = uint32_t;
-namespace native_feature_bits
-{
 /// Special features that are backend-specific, ignored if not applicable
-enum native_feature_bits_e : native_feature_flags
-{
-    none = 0,
+PR_DEFINE_BIT_FLAGS(native_feature_flags, uint32_t){none = 0,
 
-    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
-    vk_api_dump = 0x0001
-};
+                                                    /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
+                                                    vk_api_dump = 0x0001};
 }
 
 struct backend_config
@@ -170,7 +160,7 @@ struct backend_config
     unsigned explicit_adapter_index = unsigned(-1);
 
     /// native features to enable
-    native_feature_flags native_features = native_feature_bits::none;
+    native_feature_flags_t native_features = native_feature_flags::none;
 
     /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;
@@ -550,7 +540,7 @@ struct render_target_config
     blend_op blend_op_alpha = blend_op::op_add;
 };
 
-PR_DEFINE_BIT_FLAGS(accel_struct_build_flag, uint8_t){
+PR_DEFINE_BIT_FLAGS(accel_struct_build_flags, uint8_t){
     none = 0x00, allow_update = 0x01, allow_compaction = 0x02, prefer_fast_trace = 0x04, prefer_fast_build = 0x08, minimize_memory = 0x10,
 };
 }
@@ -575,8 +565,8 @@ struct accel_struct_geometry_instance
 static_assert(sizeof(accel_struct_geometry_instance) == 64, "accel_struct_geometry_instance compiles to incorrect size");
 
 // these flags align exactly with both vulkan and d3d12, and are not translated
-PR_DEFINE_BIT_FLAGS(accel_struct_instance_flag, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
-                                                          force_opaque = 0x0004, force_no_opaque = 0x0008};
+PR_DEFINE_BIT_FLAGS(accel_struct_instance_flags, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
+                                                           force_opaque = 0x0004, force_no_opaque = 0x0008};
 }
 
 /// the size and element-strides of a shader table

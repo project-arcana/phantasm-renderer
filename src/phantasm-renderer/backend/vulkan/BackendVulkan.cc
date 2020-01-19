@@ -323,7 +323,7 @@ pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createTopLevel
 }
 
 pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createBottomLevelAccelStruct(cc::span<const pr::backend::arg::blas_element> elements,
-                                                                                               pr::backend::accel_struct_build_flags flags,
+                                                                                               accel_struct_build_flags_t flags,
                                                                                                uint64_t* out_native_handle)
 {
     CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");

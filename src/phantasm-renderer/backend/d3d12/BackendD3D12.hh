@@ -83,7 +83,7 @@ public:
 
     void free(handle::resource res) override { mPoolResources.free(res); }
 
-    void free_range(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }
+    void freeRange(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }
 
 
     //
@@ -100,7 +100,7 @@ public:
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }
 
-    void free_range(cc::span<handle::shader_view const> svs) override { mPoolShaderViews.free(svs); }
+    void freeRange(cc::span<handle::shader_view const> svs) override { mPoolShaderViews.free(svs); }
 
     //
     // Pipeline state interface
@@ -145,7 +145,7 @@ public:
     [[nodiscard]] handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
 
     [[nodiscard]] handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
-                                                                    accel_struct_build_flags flags,
+                                                                    accel_struct_build_flags_t flags,
                                                                     uint64_t* out_native_handle = nullptr) override;
 
     void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) override;

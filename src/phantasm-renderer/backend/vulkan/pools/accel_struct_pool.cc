@@ -42,7 +42,7 @@ void query_accel_struct_buffer_sizes(VkDevice device, VkAccelerationStructureNV 
 }
 
 pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::arg::blas_element> elements,
-                                                                                        accel_struct_build_flags flags)
+                                                                                        accel_struct_build_flags_t flags)
 {
     cc::vector<VkGeometryNV> element_geometries;
     element_geometries.reserve(elements.size());
@@ -231,7 +231,7 @@ pr::backend::vk::AccelStructPool::accel_struct_node& pr::backend::vk::AccelStruc
 }
 
 pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::acquireAccelStruct(VkAccelerationStructureNV raw_as,
-                                                                                       accel_struct_build_flags flags,
+                                                                                       accel_struct_build_flags_t flags,
                                                                                        handle::resource buffer_as,
                                                                                        handle::resource buffer_scratch,
                                                                                        handle::resource buffer_instances)

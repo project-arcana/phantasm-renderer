@@ -18,7 +18,7 @@ class ResourcePool;
 class AccelStructPool
 {
 public:
-    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<arg::blas_element const> elements, accel_struct_build_flags flags);
+    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<arg::blas_element const> elements, accel_struct_build_flags_t flags);
 
     [[nodiscard]] handle::accel_struct createTopLevelAS(unsigned num_instances);
 
@@ -39,7 +39,7 @@ public:
         handle::resource buffer_as;
         handle::resource buffer_scratch;
         handle::resource buffer_instances;
-        accel_struct_build_flags flags;
+        accel_struct_build_flags_t flags;
         cc::vector<VkGeometryNV> geometries;
     };
 
@@ -48,7 +48,7 @@ public:
 
 private:
     handle::accel_struct acquireAccelStruct(VkAccelerationStructureNV raw_as,
-                                            accel_struct_build_flags flags,
+                                            accel_struct_build_flags_t flags,
                                             handle::resource buffer_as,
                                             handle::resource buffer_scratch,
                                             handle::resource buffer_instances = handle::null_resource);

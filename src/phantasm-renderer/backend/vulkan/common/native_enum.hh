@@ -125,31 +125,31 @@ namespace pr::backend::vk::util
     CC_ASSERT(false && "to_native uncaught argument");
 }
 
-[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_flags domain)
+[[nodiscard]] inline constexpr VkPipelineStageFlags to_pipeline_stage_flags_bitwise(pr::backend::shader_domain_flags_t domain)
 {
     VkPipelineStageFlags res = 0;
 
-    if (domain & shader_domain_bits::vertex)
+    if (domain & shader_domain_flags::vertex)
         res |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 
-    if (domain & shader_domain_bits::hull)
+    if (domain & shader_domain_flags::hull)
         res |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
 
-    if (domain & shader_domain_bits::domain)
+    if (domain & shader_domain_flags::domain)
         res |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
 
-    if (domain & shader_domain_bits::geometry)
+    if (domain & shader_domain_flags::geometry)
         res |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
 
-    if (domain & shader_domain_bits::pixel)
+    if (domain & shader_domain_flags::pixel)
         res |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 
-    if (domain & shader_domain_bits::compute)
+    if (domain & shader_domain_flags::compute)
         res |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
 
-    if (domain & shader_domain_bits::mask_all_raytrace_stages)
+    if (domain & shader_domain_flags::mask_all_raytrace_stages)
         res |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
 
     return res;
@@ -646,19 +646,19 @@ namespace pr::backend::vk::util
     CC_ASSERT(false && "to_native uncaught argument");
 }
 
-[[nodiscard]] inline constexpr VkBuildAccelerationStructureFlagsNV to_native_flags(accel_struct_build_flags flags)
+[[nodiscard]] inline constexpr VkBuildAccelerationStructureFlagsNV to_native_flags(accel_struct_build_flags_t flags)
 {
     VkBuildAccelerationStructureFlagsNV res = 0;
 
-    if (flags & accel_struct_build_flag_bits::allow_update)
+    if (flags & accel_struct_build_flags::allow_update)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
-    if (flags & accel_struct_build_flag_bits::allow_compaction)
+    if (flags & accel_struct_build_flags::allow_compaction)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NV;
-    if (flags & accel_struct_build_flag_bits::prefer_fast_trace)
+    if (flags & accel_struct_build_flags::prefer_fast_trace)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV;
-    if (flags & accel_struct_build_flag_bits::prefer_fast_build)
+    if (flags & accel_struct_build_flags::prefer_fast_build)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NV;
-    if (flags & accel_struct_build_flag_bits::minimize_memory)
+    if (flags & accel_struct_build_flags::minimize_memory)
         res |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NV;
 
     return res;

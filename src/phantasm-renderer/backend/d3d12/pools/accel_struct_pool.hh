@@ -18,7 +18,7 @@ class ResourcePool;
 class AccelStructPool
 {
 public:
-    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<arg::blas_element const> elements, accel_struct_build_flags flags);
+    [[nodiscard]] handle::accel_struct createBottomLevelAS(cc::span<arg::blas_element const> elements, accel_struct_build_flags_t flags);
 
     [[nodiscard]] handle::accel_struct createTopLevelAS(unsigned num_instances);
 
@@ -43,7 +43,7 @@ public:
         handle::resource buffer_as;
         handle::resource buffer_scratch;
         handle::resource buffer_instances;
-        accel_struct_build_flags flags;
+        accel_struct_build_flags_t flags;
         cc::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometries;
 
         void reset()
@@ -53,7 +53,7 @@ public:
             buffer_as = handle::null_resource;
             buffer_scratch = handle::null_resource;
             buffer_instances = handle::null_resource;
-            flags = accel_struct_build_flag_bits::none;
+            flags = accel_struct_build_flags::none;
             geometries.clear();
         }
     };

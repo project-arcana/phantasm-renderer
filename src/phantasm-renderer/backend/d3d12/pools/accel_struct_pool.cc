@@ -11,7 +11,7 @@
 #include "resource_pool.hh"
 
 pr::backend::handle::accel_struct pr::backend::d3d12::AccelStructPool::createBottomLevelAS(cc::span<const pr::backend::arg::blas_element> elements,
-                                                                                           accel_struct_build_flags flags)
+                                                                                           accel_struct_build_flags_t flags)
 {
     handle::accel_struct res_handle;
     accel_struct_node& new_node = acquireAccelStruct(res_handle);
