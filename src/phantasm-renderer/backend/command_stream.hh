@@ -26,6 +26,7 @@ namespace detail
     PR_X(copy_buffer)             \
     PR_X(copy_texture)            \
     PR_X(copy_buffer_to_texture)  \
+    PR_X(resolve_texture)         \
     PR_X(begin_render_pass)       \
     PR_X(end_render_pass)         \
     PR_X(debug_marker)            \
@@ -345,6 +346,33 @@ public:
         dest_height = dest_h;
         dest_mip_index = dest_mip_i;
         dest_array_index = dest_arr_i;
+    }
+};
+
+PR_DEFINE_CMD(resolve_texture)
+{
+    handle::resource source;
+    handle::resource destination;
+    unsigned src_mip_index;    ///< index of the MIP level to read from (usually: 0)
+    unsigned src_array_index;  ///< index of the array element to read from (usually: 0)
+    unsigned dest_mip_index;   ///< index of the MIP level to write to (usually: 0)
+    unsigned dest_array_index; ///< index of the array element to write to (usually: 0)
+    unsigned width;            ///< width of the destination texture (in the specified MIP map and array element) (ignored on d3d12)
+    unsigned height;           ///< height of the destination texture (in the specified MIP map and array element) (ignored on d3d12)
+
+public:
+    // convenience
+
+    void init_symmetric(handle::resource src, handle::resource dest, unsigned width, unsigned height, unsigned mip_index = 0, unsigned array_index = 0)
+    {
+        source = src;
+        destination = dest;
+        this->width = width;
+        this->height = height;
+        src_mip_index = mip_index;
+        dest_mip_index = mip_index;
+        src_array_index = array_index;
+        dest_array_index = array_index;
     }
 };
 
