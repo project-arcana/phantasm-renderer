@@ -353,12 +353,12 @@ PR_DEFINE_CMD(resolve_texture)
 {
     handle::resource source;
     handle::resource destination;
-    unsigned src_mip_index;    ///< index of the MIP level to read from
-    unsigned src_array_index;  ///< index of the first array element to read from (usually: 0)
-    unsigned dest_mip_index;   ///< index of the MIP level to write to
-    unsigned dest_array_index; ///< index of the first array element to write to (usually: 0)
-    unsigned width;            ///< width of the destination texture (in the specified MIP map and array element(s))
-    unsigned height;           ///< height of the destination texture (in the specified MIP map and array
+    unsigned src_mip_index;    ///< index of the MIP level to read from (usually: 0)
+    unsigned src_array_index;  ///< index of the array element to read from (usually: 0)
+    unsigned dest_mip_index;   ///< index of the MIP level to write to (usually: 0)
+    unsigned dest_array_index; ///< index of the array element to write to (usually: 0)
+    unsigned width;            ///< width of the destination texture (in the specified MIP map and array element) (ignored on d3d12)
+    unsigned height;           ///< height of the destination texture (in the specified MIP map and array element) (ignored on d3d12)
 
 public:
     // convenience
