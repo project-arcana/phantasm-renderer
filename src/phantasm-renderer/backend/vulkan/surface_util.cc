@@ -53,7 +53,7 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
         surface_info.hinstance = GetModuleHandle(nullptr);
         PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &res_surface));
 #else
-        CC_RUNTIME_ASSERT(false && "SDL handle given, but compiled on non-win32 platform");
+        CC_RUNTIME_ASSERT(false && "Win32 HWND given, but compiled on non-win32 platform");
 #endif
     }
     else if (window_handle.type == native_window_handle::wh_xlib)
@@ -62,8 +62,8 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
 #ifdef CC_OS_LINUX
         VkXlibSurfaceCreateInfoKHR surface_info = {};
         surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-        surface_info.dpy = static_cast<::Display*>(window_handle.value.xlib_handles.display);
-        surface_info.window = cc::bit_cast<::Window>(window_handle.xlib_handles.window);
+        surface_info.dpy = window_handle.value.xlib_handles.display;
+        surface_info.window = window_handle.value.xlib_handles.window;
         surface_info.pNext = nullptr;
         surface_info.flags = 0;
         PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
