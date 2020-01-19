@@ -1,10 +1,7 @@
 #include "util.hh"
 
-#include <cstdarg>
-#include <cstdio>
-
-#include <clean-core/bit_cast.hh>
 #include <clean-core/assert.hh>
+#include <clean-core/bit_cast.hh>
 
 #include "vk_format.hh"
 
@@ -32,26 +29,15 @@ VkVertexInputBindingDescription pr::backend::vk::util::get_vertex_binding(uint32
     return res;
 }
 
-void pr::backend::vk::util::set_object_name(VkDevice device, VkBuffer object, const char* fmt, ...)
+void pr::backend::vk::util::set_object_name(VkDevice device, VkObjectType obj_type, void* obj_handle, const char* string)
 {
-    // TODO: this crashes for some reason
-    CC_ASSERT(false && "vk set_object_name unfinished");
-    if (fmt != nullptr)
+    if (vkSetDebugUtilsObjectNameEXT)
     {
-        char name_formatted[1024];
-        {
-            va_list args;
-            va_start(args, fmt);
-            std::vsnprintf(name_formatted, 1024, fmt, args);
-            va_end(args);
-        }
-
-        VkDebugMarkerObjectNameInfoEXT name_info = {};
-        name_info.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
-        name_info.objectType = VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT;
-        name_info.object = cc::bit_cast<uint64_t>(object);
-        name_info.pObjectName = name_formatted;
-
-        vkDebugMarkerSetObjectNameEXT(device, &name_info);
+        VkDebugUtilsObjectNameInfoEXT name_info = {};
+        name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        name_info.objectType = obj_type;
+        name_info.objectHandle = cc::bit_cast<uint64_t>(obj_handle);
+        name_info.pObjectName = string;
+        vkSetDebugUtilsObjectNameEXT(device, &name_info);
     }
 }

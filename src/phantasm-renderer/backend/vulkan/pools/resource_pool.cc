@@ -122,6 +122,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(uint64
     VmaAllocation res_alloc;
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
+    util::set_object_name(mDevice, res_buffer, "respool buffer");
     return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes);
 }
 
@@ -138,6 +139,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBufferInterna
     VmaAllocation res_alloc;
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
+    util::set_object_name(mDevice, res_buffer, "respool internal buffer");
     return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes);
 }
 
@@ -160,6 +162,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
     CC_ASSERT(res_alloc_info.pMappedData != nullptr);
+    util::set_object_name(mDevice, res_buffer, "respool mapped buffer");
     return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
 
@@ -179,6 +182,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBufferI
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
     CC_ASSERT(res_alloc_info.pMappedData != nullptr);
+    util::set_object_name(mDevice, res_buffer, "respool internal mapped buffer");
     return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
 

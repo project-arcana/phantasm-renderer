@@ -153,7 +153,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBufferInte
         desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     auto* const alloc = mAllocator.allocate(desc, initial_state);
-    util::set_object_name(alloc->GetResource(), "internal buffer");
+    util::set_object_name(alloc->GetResource(), "respool internal buffer");
     return acquireBuffer(alloc, resource_state::unknown, size_bytes, stride_bytes);
 }
 

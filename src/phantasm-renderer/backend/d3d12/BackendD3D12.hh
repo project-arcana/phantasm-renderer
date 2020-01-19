@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/fwd_array.hh>
+
 #include <phantasm-renderer/backend/Backend.hh>
 #include <phantasm-renderer/backend/types.hh>
 
@@ -197,7 +199,7 @@ private:
 
     // Logic
     struct per_thread_component;
-    cc::array<per_thread_component> mThreadComponents;
+    cc::fwd_array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
     ShaderTableConstructor mShaderTableCtor;
 
