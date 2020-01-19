@@ -1,10 +1,8 @@
 #pragma once
 
-#include <clean-core/forward.hh>
 #include <clean-core/hash.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
-#include <phantasm-renderer/primitive_pipeline_config.hh>
 
 namespace pr::backend::hash
 {
@@ -17,14 +15,4 @@ inline cc::hash_t compute(arg::shader_argument_shapes const v)
         res = cc::hash_combine(res, compute(e));
     return res;
 }
-
-struct compute_functor
-{
-    template <class KeyT>
-    cc::hash_t operator()(KeyT&& v) const noexcept
-    {
-        return compute(cc::forward<KeyT&&>(v));
-    }
-};
-
 }
