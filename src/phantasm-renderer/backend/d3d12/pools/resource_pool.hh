@@ -18,13 +18,16 @@ public:
     // frontend-facing API
 
     /// create a 1D, 2D or 3D texture, or a 1D/2D array
-    [[nodiscard]] handle::resource createTexture(format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1, bool allow_uav = false);
+    [[nodiscard]] handle::resource createTexture(
+        format format, unsigned w, unsigned h, unsigned mips, texture_dimension dim = texture_dimension::t2d, unsigned depth_or_array_size = 1, bool allow_uav = false);
 
     /// create a render- or depth-stencil target
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav);
+
+    [[nodiscard]] handle::resource createBufferInternal(unsigned size_bytes, unsigned stride_bytes, bool allow_uav, D3D12_RESOURCE_STATES initial_state);
 
     /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
@@ -146,8 +149,16 @@ private:
 
     [[nodiscard]] handle::resource acquireImage(D3D12MA::Allocation* alloc, format pixel_format, resource_state initial_state, unsigned num_mips, unsigned num_array_layers);
 
-    [[nodiscard]] resource_node const& internalGet(handle::resource res) const { return mPool.get(static_cast<unsigned>(res.index)); }
-    [[nodiscard]] resource_node& internalGet(handle::resource res) { return mPool.get(static_cast<unsigned>(res.index)); }
+    [[nodiscard]] resource_node const& internalGet(handle::resource res) const
+    {
+        CC_ASSERT(res.is_valid() && "invalid resource handle");
+        return mPool.get(static_cast<unsigned>(res.index));
+    }
+    [[nodiscard]] resource_node& internalGet(handle::resource res)
+    {
+        CC_ASSERT(res.is_valid() && "invalid resource handle");
+        return mPool.get(static_cast<unsigned>(res.index));
+    }
 
 private:
     /// The main pool data

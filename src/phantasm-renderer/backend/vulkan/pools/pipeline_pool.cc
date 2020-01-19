@@ -12,7 +12,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
                                                                                        pr::backend::arg::framebuffer_config const& framebuffer_config,
                                                                                        pr::backend::arg::shader_argument_shapes shader_arg_shapes,
                                                                                        bool should_have_push_constants,
-                                                                                       pr::backend::arg::shader_stages shader_stages,
+                                                                                       pr::backend::arg::graphics_shader_stages shader_stages,
                                                                                        const pr::primitive_pipeline_config& primitive_config)
 {
     // Patch and reflect SPIR-V binaries
@@ -29,7 +29,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 
         for (auto const& shader : shader_stages)
         {
-            patched_shader_stages.push_back(util::create_patched_spirv(shader.binary_data, shader.binary_size, spirv_info));
+            patched_shader_stages.push_back(util::create_patched_spirv(shader.binary.data, shader.binary.size, spirv_info));
         }
 
         shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info.descriptor_infos);
@@ -81,7 +81,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createPipelin
 }
 
 pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createComputePipelineState(pr::backend::arg::shader_argument_shapes shader_arg_shapes,
-                                                                                              const pr::backend::arg::shader_stage& compute_shader,
+                                                                                              arg::shader_binary compute_shader,
                                                                                               bool should_have_push_constants)
 {
     // Patch and reflect SPIR-V binary
@@ -92,7 +92,7 @@ pr::backend::handle::pipeline_state pr::backend::vk::PipelinePool::createCompute
 
     {
         util::spirv_refl_info spirv_info;
-        patched_shader_stage = util::create_patched_spirv(compute_shader.binary_data, compute_shader.binary_size, spirv_info);
+        patched_shader_stage = util::create_patched_spirv(compute_shader.data, compute_shader.size, spirv_info);
         shader_descriptor_ranges = util::merge_spirv_descriptors(spirv_info.descriptor_infos);
         has_push_constants = spirv_info.has_push_constants;
 
@@ -155,6 +155,7 @@ void pr::backend::vk::PipelinePool::initialize(VkDevice device, unsigned max_num
 void pr::backend::vk::PipelinePool::destroy()
 {
     auto num_leaks = 0;
+
     mPool.iterate_allocated_nodes([&](pso_node& leaked_node, unsigned) {
         ++num_leaks;
         vkDestroyPipeline(mDevice, leaked_node.raw_pipeline, nullptr);

@@ -7,6 +7,7 @@
 
 #include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
+#include <phantasm-renderer/backend/vulkan/common/util.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
@@ -17,6 +18,21 @@ namespace
 unsigned calculate_num_mip_levels(unsigned width, unsigned height)
 {
     return static_cast<unsigned>(tg::floor(tg::log2(static_cast<float>(cc::max(width, height))))) + 1u;
+}
+
+constexpr char const* get_tex_dim_literal(pr::backend::texture_dimension tdim)
+{
+    using td = pr::backend::texture_dimension;
+    switch (tdim)
+    {
+    case td::t1d:
+        return "1d";
+    case td::t2d:
+        return "2d";
+    case td::t3d:
+        return "3d";
+    }
+    return "ud";
 }
 }
 
@@ -63,6 +79,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+    util::set_object_name(mDevice, res_image, "respool texture%s[%u] m%u", get_tex_dim_literal(dim), depth_or_array_size, image_info.mipLevels);
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
@@ -98,10 +115,16 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+
+    if (backend::is_depth_format(format))
+        util::set_object_name(mDevice, res_image, "respool depth stencil target");
+    else
+        util::set_object_name(mDevice, res_image, "respool render target");
+
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(uint64_t size_bytes, unsigned stride_bytes, bool allow_uav)
 {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -121,7 +144,25 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createBuffer(unsign
     VmaAllocation res_alloc;
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
-    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes);
+    util::set_object_name(mDevice, res_buffer, "respool buffer");
+    return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes);
+}
+
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage)
+{
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = size_bytes;
+    buffer_info.usage = usage;
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    VmaAllocation res_alloc;
+    VkBuffer res_buffer;
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, nullptr));
+    util::set_object_name(mDevice, res_buffer, "respool internal buffer");
+    return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes);
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
@@ -143,7 +184,28 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBuffer(
     VkBuffer res_buffer;
     PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
     CC_ASSERT(res_alloc_info.pMappedData != nullptr);
-    return acquireBuffer(res_alloc, res_buffer, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
+    util::set_object_name(mDevice, res_buffer, "respool mapped buffer");
+    return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
+}
+
+pr::backend::handle::resource pr::backend::vk::ResourcePool::createMappedBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage)
+{
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = size_bytes;
+    buffer_info.usage = usage;
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    alloc_info.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+    VmaAllocation res_alloc;
+    VmaAllocationInfo res_alloc_info;
+    VkBuffer res_buffer;
+    PR_VK_VERIFY_SUCCESS(vmaCreateBuffer(mAllocator, &buffer_info, &alloc_info, &res_buffer, &res_alloc, &res_alloc_info));
+    CC_ASSERT(res_alloc_info.pMappedData != nullptr);
+    util::set_object_name(mDevice, res_buffer, "respool internal mapped buffer");
+    return acquireBuffer(res_alloc, res_buffer, buffer_info.usage, size_bytes, stride_bytes, cc::bit_cast<std::byte*>(res_alloc_info.pMappedData));
 }
 
 void pr::backend::vk::ResourcePool::free(pr::backend::handle::resource res)
@@ -190,6 +252,7 @@ void pr::backend::vk::ResourcePool::flushMappedMemory(pr::backend::handle::resou
 
 void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources)
 {
+    mDevice = device;
     {
         VmaAllocatorCreateInfo create_info = {};
         create_info.physicalDevice = physical;
@@ -206,6 +269,9 @@ void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevi
         backbuffer_node.type = resource_node::resource_type::image;
         backbuffer_node.master_state = resource_state::undefined;
     }
+
+    mSingleCBVLayout = mAllocatorDescriptors.createSingleCBVLayout(false);
+    mSingleCBVLayoutCompute = mAllocatorDescriptors.createSingleCBVLayout(true);
 }
 
 void pr::backend::vk::ResourcePool::destroy()
@@ -227,7 +293,17 @@ void pr::backend::vk::ResourcePool::destroy()
     vmaDestroyAllocator(mAllocator);
     mAllocator = nullptr;
 
+    vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), mSingleCBVLayout, nullptr);
+    vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), mSingleCBVLayoutCompute, nullptr);
+
     mAllocatorDescriptors.destroy();
+}
+
+VkDeviceMemory pr::backend::vk::ResourcePool::getRawDeviceMemory(pr::backend::handle::resource res) const
+{
+    VmaAllocationInfo alloc_info;
+    vmaGetAllocationInfo(mAllocator, internalGet(res).allocation, &alloc_info);
+    return alloc_info.deviceMemory;
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferResource(VkImage raw_image,
@@ -249,11 +325,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::injectBackbufferRes
     return mInjectedBackbufferResource;
 }
 
-pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
+pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(
+    VmaAllocation alloc, VkBuffer buffer, VkBufferUsageFlags usage, uint64_t buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
+    bool const create_cbv_desc = (buffer_width < 65536) && (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
     unsigned res;
-    VkDescriptorSetLayout cbv_desc_set_layout = nullptr;
-    VkDescriptorSetLayout cbv_desc_set_layout_compute = nullptr;
     VkDescriptorSet cbv_desc_set = nullptr;
     VkDescriptorSet cbv_desc_set_compute = nullptr;
     {
@@ -262,13 +339,11 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
         // This is a write access to the pool and must be synced
         res = mPool.acquire();
 
-        if (buffer_width < 65536)
+        if (create_cbv_desc)
         {
-            // This is a write access to mAllocator descriptors
-            cbv_desc_set_layout = mAllocatorDescriptors.createSingleCBVLayout(false);
-            cbv_desc_set_layout_compute = mAllocatorDescriptors.createSingleCBVLayout(true);
-            cbv_desc_set = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout);
-            cbv_desc_set_compute = mAllocatorDescriptors.allocDescriptor(cbv_desc_set_layout_compute);
+            // This is a write access to mAllocatorDescriptors
+            cbv_desc_set = mAllocatorDescriptors.allocDescriptor(mSingleCBVLayout);
+            cbv_desc_set_compute = mAllocatorDescriptors.allocDescriptor(mSingleCBVLayoutCompute);
         }
     }
 
@@ -278,12 +353,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
     // platform-specific limit, this right here is just a hack
     // We require separate paths in the resource pool (and therefore in the entire API)
     // for "CBV" buffers, and other buffers.
-    if (buffer_width < 65536)
+    if (create_cbv_desc)
     {
         VkDescriptorBufferInfo cbv_info = {};
         cbv_info.buffer = buffer;
         cbv_info.offset = 0;
-        cbv_info.range = cc::min(256u, buffer_width);
+        cbv_info.range = cc::min<uint64_t>(256, buffer_width);
 
         cc::capped_vector<VkWriteDescriptorSet, 2> writes;
         {
@@ -297,14 +372,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::acquireBuffer(VmaAl
             write.dstArrayElement = 0;
             write.dstBinding = spv::cbv_binding_start;
 
-            // same thinga again, for the compute desc set
+            // same thing again, for the compute desc set
             writes.push_back(write);
             writes.back().dstSet = cbv_desc_set_compute;
         }
 
         vkUpdateDescriptorSets(mAllocatorDescriptors.getDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout, nullptr);
-        vkDestroyDescriptorSetLayout(mAllocatorDescriptors.getDevice(), cbv_desc_set_layout_compute, nullptr);
     }
 
     resource_node& new_node = mPool.get(res);

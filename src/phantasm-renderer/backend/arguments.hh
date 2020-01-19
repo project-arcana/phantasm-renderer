@@ -50,18 +50,20 @@ struct shader_argument_shape
 /// A shader payload consists of [1, 4] shader arguments
 using shader_argument_shapes = cc::span<shader_argument_shape const>;
 
-/// A shader stage
+struct shader_binary
+{
+    std::byte* data; ///< pointer to the (backend-dependent) shader binary data
+    size_t size;
+};
+
 struct shader_stage
 {
-    /// pointer to the (backend-dependent) shader binary data
-    std::byte* binary_data;
-    size_t binary_size;
-    /// the shader domain of this stage
+    shader_binary binary;
     shader_domain domain;
 };
 
-/// A shader bundle consists of up to 1 stage per domain
-using shader_stages = cc::span<shader_stage const>;
+/// A graphics shader bundle consists of up to 1 shader per graphics stage
+using graphics_shader_stages = cc::span<shader_stage const>;
 
 inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes const& rhs) noexcept
 {
@@ -76,4 +78,50 @@ inline bool operator==(shader_argument_shapes const& lhs, shader_argument_shapes
 
     return true;
 }
+
+/// an element in a bottom-level acceleration strucutre
+struct blas_element
+{
+    handle::resource vertex_buffer = handle::null_resource;
+    handle::resource index_buffer = handle::null_resource; ///< optional
+    unsigned num_vertices = 0;
+    unsigned num_indices = 0;
+    bool is_opaque = true;
+};
+
+/// a raytracing shader library lists the symbol names it exports
+struct raytracing_shader_library
+{
+    shader_binary binary;
+    cc::capped_vector<wchar_t const*, 16> symbols;
+};
+
+/// associates symbols exported from libraries with their argument shapes
+struct raytracing_argument_association
+{
+    cc::capped_vector<wchar_t const*, 16> symbols;
+    cc::capped_vector<shader_argument_shape, limits::max_shader_arguments> argument_shapes;
+    bool has_root_constants = false;
+};
+
+struct raytracing_hit_group
+{
+    wchar_t const* name = nullptr;
+    wchar_t const* closest_hit_symbol = nullptr;
+    wchar_t const* any_hit_symbol = nullptr;      ///< optional
+    wchar_t const* intersection_symbol = nullptr; ///< optional
+};
+
+struct shader_table_record
+{
+    wchar_t const* symbol = nullptr;     ///< name of the shader or hit group
+    void const* root_arg_data = nullptr; ///< optional, data of the root constant data
+    uint32_t root_arg_size = 0;          ///< size of the root constant data
+    cc::capped_vector<shader_argument, limits::max_shader_arguments> shader_arguments;
+};
+
+using raytracing_shader_libraries = cc::span<raytracing_shader_library const>;
+using raytracing_argument_associations = cc::span<raytracing_argument_association const>;
+using raytracing_hit_groups = cc::span<raytracing_hit_group const>;
+using shader_table_records = cc::span<shader_table_record const>;
 }

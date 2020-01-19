@@ -19,7 +19,7 @@ VkImageMemoryBarrier pr::backend::vk::get_image_memory_barrier(VkImage image, co
     return barrier;
 }
 
-VkBufferMemoryBarrier pr::backend::vk::get_buffer_memory_barrier(VkBuffer buffer, const pr::backend::vk::state_change& state_change, unsigned buffer_size)
+VkBufferMemoryBarrier pr::backend::vk::get_buffer_memory_barrier(VkBuffer buffer, const pr::backend::vk::state_change& state_change, uint64_t buffer_size)
 {
     VkBufferMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;

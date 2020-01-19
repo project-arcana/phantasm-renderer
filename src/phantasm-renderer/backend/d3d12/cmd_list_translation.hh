@@ -20,6 +20,7 @@ class ShaderViewPool;
 class ResourcePool;
 class PipelineStateObjectPool;
 class CPUDescriptorLinearAllocator;
+class AccelStructPool;
 
 struct translator_thread_local_memory
 {
@@ -31,24 +32,26 @@ struct translator_thread_local_memory
 
 struct translator_global_memory
 {
-    void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool)
+    void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool, AccelStructPool* as_pool)
     {
         this->device = device;
         this->pool_shader_views = sv_pool;
         this->pool_resources = resource_pool;
         this->pool_pipeline_states = pso_pool;
+        this->pool_accel_structs = as_pool;
     }
 
     ID3D12Device* device;
     ShaderViewPool* pool_shader_views;
     ResourcePool* pool_resources;
     PipelineStateObjectPool* pool_pipeline_states;
+    AccelStructPool* pool_accel_structs;
 };
 
 /// responsible for filling command lists, 1 per thread
 struct command_list_translator
 {
-    void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool);
+    void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool, AccelStructPool* as_pool);
 
     void translateCommandList(ID3D12GraphicsCommandList* list, pr::backend::detail::incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
 
@@ -72,6 +75,15 @@ struct command_list_translator
 
     void execute(cmd::debug_marker const& marker);
 
+    void execute(cmd::update_bottom_level const& blas_update);
+
+    void execute(cmd::update_top_level const& tlas_update);
+
+    void execute(cmd::dispatch_rays const& dispatch_rays);
+
+private:
+    void ensureRaytracingCmdList();
+
 private:
     // non-owning constant (global)
     translator_global_memory _globals;
@@ -82,6 +94,7 @@ private:
     // non-owning dynamic
     pr::backend::detail::incomplete_state_cache* _state_cache = nullptr;
     ID3D12GraphicsCommandList* _cmd_list = nullptr;
+    ID3D12GraphicsCommandList5* _cmd_list_rt = nullptr;
 
     // dynamic state
     struct

@@ -28,7 +28,10 @@ namespace detail
     PR_X(copy_buffer_to_texture)  \
     PR_X(begin_render_pass)       \
     PR_X(end_render_pass)         \
-    PR_X(debug_marker)
+    PR_X(debug_marker)            \
+    PR_X(update_bottom_level)     \
+    PR_X(update_top_level)        \
+    PR_X(dispatch_rays)
 
 enum class cmd_type : uint8_t
 {
@@ -121,7 +124,7 @@ PR_DEFINE_CMD(transition_resources)
     {
         handle::resource resource;
         resource_state target_state;
-        shader_domain_flags dependant_shaders;
+        shader_domain_flags_t dependant_shaders;
     };
 
     cmd_vector<transition_info, limits::max_resource_transitions> transitions;
@@ -132,7 +135,7 @@ public:
     /// add a barrier for resource [res] into new state [target]
     /// if the target state is a CBV/SRV/UAV, depending_shader must be
     /// the union of shaders depending upon this resource next (can be omitted on d3d12)
-    void add(handle::resource res, resource_state target, shader_domain_flags depending_shader = shader_domain_bits::unspecified)
+    void add(handle::resource res, resource_state target, shader_domain_flags_t depending_shader = shader_domain_flags::unspecified)
     {
         transitions.push_back(transition_info{res, target, depending_shader});
     }
@@ -147,8 +150,8 @@ PR_DEFINE_CMD(transition_image_slices)
         handle::resource resource;
         resource_state source_state;
         resource_state target_state;
-        shader_domain_flags source_dependencies;
-        shader_domain_flags target_dependencies;
+        shader_domain_flags_t source_dependencies;
+        shader_domain_flags_t target_dependencies;
         int mip_level;
         int array_slice;
     };
@@ -162,14 +165,15 @@ public:
     /// if the source/target state is a CBV/SRV/UAV, source/target_dep
     /// must be the union of shaders {previously accessing the resource (source) / depending upon this resource next (target)}
     /// (both can be omitted on d3d12)
-    void add(handle::resource res, resource_state source, resource_state target, shader_domain_flags source_dep, shader_domain_flags target_dep, int level, int slice)
+    void add(handle::resource res, resource_state source, resource_state target, shader_domain_flags_t source_dep, shader_domain_flags_t target_dep,
+             int level, int slice)
     {
         transitions.push_back(slice_transition_info{res, source, target, source_dep, target_dep, level, slice});
     }
 
     void add(handle::resource res, resource_state source, resource_state target, int level, int slice)
     {
-        add(res, source, target, shader_domain_bits::unspecified, shader_domain_bits::unspecified, level, slice);
+        add(res, source, target, shader_domain_flags::unspecified, shader_domain_flags::unspecified, level, slice);
     }
 };
 
@@ -350,6 +354,29 @@ PR_DEFINE_CMD(debug_marker)
 
     debug_marker() = default;
     debug_marker(char const* s) : string_literal(s) {}
+};
+
+PR_DEFINE_CMD(update_bottom_level)
+{
+    handle::accel_struct dest = handle::null_accel_struct;
+    handle::accel_struct source = handle::null_accel_struct;
+};
+
+PR_DEFINE_CMD(update_top_level)
+{
+    handle::accel_struct dest = handle::null_accel_struct;
+    unsigned num_instances = 0;
+};
+
+PR_DEFINE_CMD(dispatch_rays)
+{
+    handle::pipeline_state pso = handle::null_pipeline_state;
+    handle::resource table_raygen = handle::null_resource;
+    handle::resource table_miss = handle::null_resource;
+    handle::resource table_hitgroups = handle::null_resource;
+    unsigned width = 0;
+    unsigned height = 0;
+    unsigned depth = 0;
 };
 
 #undef PR_DEFINE_CMD

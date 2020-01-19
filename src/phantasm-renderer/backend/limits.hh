@@ -7,6 +7,7 @@ namespace pr::backend::limits
 inline constexpr auto max_render_targets = 8u;
 
 /// the maximum amount of resource transitions per transition command
+/// configurable
 inline constexpr auto max_resource_transitions = 4u;
 
 /// the maximum amount of shader arguments per draw- or compute dispatch command
@@ -15,8 +16,18 @@ inline constexpr auto max_resource_transitions = 4u;
 inline constexpr auto max_shader_arguments = 4u;
 
 /// the maximum amount of samplers per shader view
+/// configurable
 inline constexpr auto max_shader_samplers = 16u;
 
 /// the maximum size for compute root constants
+/// configurable in increments of sizeof(DWORD32)
 inline constexpr auto max_root_constant_bytes = 8u;
+
+/// the maximum amount of argument associations
+/// configurable
+inline constexpr auto max_raytracing_argument_assocs = 8u;
+
+/// the maximum amount of hit groups
+/// configurable
+inline constexpr auto max_raytracing_hit_groups = 16u;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/fwd_array.hh>
+
 #include <phantasm-renderer/backend/Backend.hh>
 #include <phantasm-renderer/backend/detail/thread_association.hh>
 #include <phantasm-renderer/backend/types.hh>
@@ -8,6 +10,7 @@
 #include "Swapchain.hh"
 
 #include "common/diagnostic_util.hh"
+#include "pools/accel_struct_pool.hh"
 #include "pools/cmd_list_pool.hh"
 #include "pools/pipeline_pool.hh"
 #include "pools/resource_pool.hh"
@@ -69,7 +72,7 @@ public:
     void flushMappedMemory(handle::resource res) override { mPoolResources.flushMappedMemory(res); }
 
     void free(handle::resource res) override { mPoolResources.free(res); }
-    void free_range(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }
+    void freeRange(cc::span<handle::resource const> resources) override { mPoolResources.free(resources); }
 
 
     //
@@ -86,7 +89,7 @@ public:
 
     void free(handle::shader_view sv) override { mPoolShaderViews.free(sv); }
 
-    void free_range(cc::span<handle::shader_view const> svs) override { mPoolShaderViews.free(svs); }
+    void freeRange(cc::span<handle::shader_view const> svs) override { mPoolShaderViews.free(svs); }
 
     //
     // Pipeline state interface
@@ -96,15 +99,13 @@ public:
                                                              arg::framebuffer_config const& framebuffer_conf,
                                                              arg::shader_argument_shapes shader_arg_shapes,
                                                              bool has_root_constants,
-                                                             arg::shader_stages shader_stages,
+                                                             arg::graphics_shader_stages shader_stages,
                                                              pr::primitive_pipeline_config const& primitive_config) override
     {
         return mPoolPipelines.createPipelineState(vertex_format, framebuffer_conf, shader_arg_shapes, has_root_constants, shader_stages, primitive_config);
     }
 
-    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
-                                                                    arg::shader_stage const& compute_shader,
-                                                                    bool has_root_constants) override
+    [[nodiscard]] handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes, arg::shader_binary compute_shader, bool has_root_constants) override
     {
         return mPoolPipelines.createComputePipelineState(shader_arg_shapes, compute_shader, has_root_constants);
     }
@@ -120,6 +121,37 @@ public:
     void submit(cc::span<handle::command_list const> cls) override;
 
     //
+    // Raytracing interface
+    //
+
+    [[nodiscard]] handle::pipeline_state createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                       arg::raytracing_argument_associations arg_assocs,
+                                                                       arg::raytracing_hit_groups hit_groups,
+                                                                       unsigned max_recursion,
+                                                                       unsigned max_payload_size_bytes,
+                                                                       unsigned max_attribute_size_bytes) override;
+
+    handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) override;
+
+    handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
+                                                      accel_struct_build_flags_t flags,
+                                                      uint64_t* out_native_handle = nullptr) override;
+
+    void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) override;
+
+    [[nodiscard]] handle::resource getAccelStructBuffer(handle::accel_struct as) override;
+
+    [[nodiscard]] shader_table_sizes calculateShaderTableSize(arg::shader_table_records ray_gen_records,
+                                                              arg::shader_table_records miss_records,
+                                                              arg::shader_table_records hit_group_records) override;
+
+    void writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records) override;
+
+    void free(handle::accel_struct as) override;
+
+    void freeRange(cc::span<handle::accel_struct const> as) override;
+
+    //
     // Debug interface
     //
 
@@ -131,7 +163,7 @@ public:
     // GPU info interface
     //
 
-    bool gpuHasRaytracing() const override { return mDevice.hasRaytracing(); }
+    bool isRaytracingEnabled() const override { return mDevice.hasRaytracing(); }
 
 public:
     // backend-internal
@@ -155,10 +187,11 @@ public:
     CommandListPool mPoolCmdLists;
     PipelinePool mPoolPipelines;
     ShaderViewPool mPoolShaderViews;
+    AccelStructPool mPoolAccelStructs;
 
     // Logic
     struct per_thread_component;
-    cc::array<per_thread_component> mThreadComponents;
+    cc::fwd_array<per_thread_component> mThreadComponents;
     backend::detail::thread_association mThreadAssociation;
 
     // Misc

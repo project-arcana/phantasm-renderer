@@ -27,10 +27,14 @@ public:
     [[nodiscard]] handle::resource createRenderTarget(backend::format format, unsigned w, unsigned h, unsigned samples);
 
     /// create a buffer, with an element stride if its an index or vertex buffer
-    [[nodiscard]] handle::resource createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav);
+    [[nodiscard]] handle::resource createBuffer(uint64_t size_bytes, unsigned stride_bytes, bool allow_uav);
+
+    [[nodiscard]] handle::resource createBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage);
 
     /// create a mapped, UPLOAD_HEAP buffer, with an element stride if its an index or vertex buffer
     [[nodiscard]] handle::resource createMappedBuffer(unsigned size_bytes, unsigned stride_bytes = 0);
+
+    [[nodiscard]] handle::resource createMappedBufferInternal(uint64_t size_bytes, unsigned stride_bytes, VkBufferUsageFlags usage);
 
     void free(handle::resource res);
     void free(cc::span<handle::resource const> resources);
@@ -58,8 +62,8 @@ public:
             VkDescriptorSet raw_uniform_dynamic_ds;
             VkDescriptorSet raw_uniform_dynamic_ds_compute;
 
-            uint32_t width;
             uint32_t stride; ///< vertex size or index size
+            uint64_t width;
             std::byte* map;
         };
 
@@ -96,6 +100,8 @@ public:
 
     [[nodiscard]] VkBuffer getRawBuffer(handle::resource res) const { return internalGet(res).buffer.raw_buffer; }
     [[nodiscard]] VkImage getRawImage(handle::resource res) const { return internalGet(res).image.raw_image; }
+
+    [[nodiscard]] VkDeviceMemory getRawDeviceMemory(handle::resource res) const;
 
     // Raw CBV uniform buffer dynamic descriptor set access
     [[nodiscard]] VkDescriptorSet getRawCBVDescriptorSet(handle::resource res) const { return internalGet(res).buffer.raw_uniform_dynamic_ds; }
@@ -141,7 +147,8 @@ public:
     [[nodiscard]] VkImageView getBackbufferView() const { return mInjectedBackbufferView; }
 
 private:
-    [[nodiscard]] handle::resource acquireBuffer(VmaAllocation alloc, VkBuffer buffer, unsigned buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
+    [[nodiscard]] handle::resource acquireBuffer(
+        VmaAllocation alloc, VkBuffer buffer, VkBufferUsageFlags usage, uint64_t buffer_width = 0, unsigned buffer_stride = 0, std::byte* buffer_map = nullptr);
 
     [[nodiscard]] handle::resource acquireImage(VmaAllocation alloc, VkImage buffer, format pixel_format, unsigned num_mips, unsigned num_array_layers);
 
@@ -161,7 +168,15 @@ private:
     /// not take up space in resource_node, there is always just a single injected backbuffer
     VkImageView mInjectedBackbufferView = nullptr;
 
+    /// Descriptor set layouts for buffer dynamic UBO descriptor sets
+    /// permanently kept alive (a: no recreation required, b: drivers can crash
+    /// without "data-compatible" descriptor sets being alive when binding
+    /// a descriptor to compute pipelines)
+    VkDescriptorSetLayout mSingleCBVLayout = nullptr;
+    VkDescriptorSetLayout mSingleCBVLayoutCompute = nullptr;
+
     /// "Backing" allocators
+    VkDevice mDevice = nullptr;
     VmaAllocator mAllocator = nullptr;
     DescriptorAllocator mAllocatorDescriptors;
     std::mutex mMutex;
