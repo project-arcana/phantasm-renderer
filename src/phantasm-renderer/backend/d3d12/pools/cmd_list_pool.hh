@@ -132,7 +132,7 @@ public:
         auto lg = std::lock_guard(mMutex);
         for (auto const& cl : cls)
         {
-            if (cl == handle::null_command_list)
+            if (!cl.is_valid())
                 continue;
 
             cmd_list_node& freed_node = mPool.get(static_cast<unsigned>(cl.index));

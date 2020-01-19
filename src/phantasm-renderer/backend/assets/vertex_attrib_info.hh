@@ -79,7 +79,7 @@ constexpr format to_attribute_format()
 
     else
     {
-        static_assert(sizeof(T) == 0, "Unknown type");
+        static_assert(sizeof(T) == 0, "incompatbile attribute type");
         return af::rgba32f;
     }
 }
