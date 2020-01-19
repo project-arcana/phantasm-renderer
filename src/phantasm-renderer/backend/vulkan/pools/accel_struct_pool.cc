@@ -5,6 +5,7 @@
 
 #include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
+#include <phantasm-renderer/backend/vulkan/common/util.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>
 
@@ -100,6 +101,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createBottom
 
     VkAccelerationStructureNV raw_as = nullptr;
     PR_VK_VERIFY_SUCCESS(vkCreateAccelerationStructureNV(mDevice, &as_create_info, nullptr, &raw_as));
+    util::set_object_name(mDevice, raw_as, "pool bottom-level accel struct s%u", static_cast<unsigned>(element_geometries.size()));
 
     // Allocate AS and scratch buffers in the required sizes
     VkDeviceSize buffer_size_as = 0, buffer_size_scratch = 0;
@@ -142,6 +144,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLev
 
     VkAccelerationStructureNV raw_as = nullptr;
     PR_VK_VERIFY_SUCCESS(vkCreateAccelerationStructureNV(mDevice, &as_create_info, nullptr, &raw_as));
+    util::set_object_name(mDevice, raw_as, "pool top-level accel struct s%u", num_instances);
 
     VkDeviceSize buffer_size_as = 0, buffer_size_scratch = 0;
     query_accel_struct_buffer_sizes(mDevice, raw_as, buffer_size_as, buffer_size_scratch);

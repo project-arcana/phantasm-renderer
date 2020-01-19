@@ -19,6 +19,21 @@ unsigned calculate_num_mip_levels(unsigned width, unsigned height)
 {
     return static_cast<unsigned>(tg::floor(tg::log2(static_cast<float>(cc::max(width, height))))) + 1u;
 }
+
+constexpr char const* get_tex_dim_literal(pr::backend::texture_dimension tdim)
+{
+    using td = pr::backend::texture_dimension;
+    switch (tdim)
+    {
+    case td::t1d:
+        return "1d";
+    case td::t2d:
+        return "2d";
+    case td::t3d:
+        return "3d";
+    }
+    return "ud";
+}
 }
 
 pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
@@ -64,6 +79,7 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createTexture(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+    util::set_object_name(mDevice, res_image, "respool texture%s[%u] m%u", get_tex_dim_literal(dim), depth_or_array_size, image_info.mipLevels);
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 
@@ -99,6 +115,12 @@ pr::backend::handle::resource pr::backend::vk::ResourcePool::createRenderTarget(
     VmaAllocation res_alloc;
     VkImage res_image;
     PR_VK_VERIFY_SUCCESS(vmaCreateImage(mAllocator, &image_info, &alloc_info, &res_image, &res_alloc, nullptr));
+
+    if (backend::is_depth_format(format))
+        util::set_object_name(mDevice, res_image, "respool depth stencil target");
+    else
+        util::set_object_name(mDevice, res_image, "respool render target");
+
     return acquireImage(res_alloc, res_image, format, image_info.mipLevels, image_info.arrayLayers);
 }
 

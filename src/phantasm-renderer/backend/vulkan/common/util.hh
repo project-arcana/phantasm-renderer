@@ -58,6 +58,8 @@ inline constexpr VkObjectType get_object_type()
         return VK_OBJECT_TYPE_IMAGE;
     else if constexpr (std::is_same_v<VkT, VkShaderModule_T>)
         return VK_OBJECT_TYPE_SHADER_MODULE;
+    else if constexpr (std::is_same_v<VkT, VkFence_T>)
+        return VK_OBJECT_TYPE_FENCE;
     else if constexpr (std::is_same_v<VkT, VkAccelerationStructureNV_T>)
         return VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV;
     else
