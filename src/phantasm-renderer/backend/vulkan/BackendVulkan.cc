@@ -13,11 +13,6 @@
 #include "resources/transition_barrier.hh"
 #include "surface_util.hh"
 
-namespace
-{
-constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-}
-
 namespace pr::backend::vk
 {
 struct BackendVulkan::per_thread_component
@@ -240,7 +235,6 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pWaitDstStageMask = &gc_submit_wait_stage;
         submit_info.commandBufferCount = unsigned(submit_batch.size());
         submit_info.pCommandBuffers = submit_batch.data();
 

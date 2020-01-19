@@ -7,6 +7,7 @@
 
 #include <phantasm-renderer/backend/vulkan/common/log.hh>
 #include <phantasm-renderer/backend/vulkan/common/native_enum.hh>
+#include <phantasm-renderer/backend/vulkan/common/util.hh>
 #include <phantasm-renderer/backend/vulkan/common/verify.hh>
 #include <phantasm-renderer/backend/vulkan/common/vk_format.hh>
 #include <phantasm-renderer/backend/vulkan/loader/spirv_patch_util.hh>
@@ -225,6 +226,7 @@ void pr::backend::vk::ResourcePool::flushMappedMemory(pr::backend::handle::resou
 
 void pr::backend::vk::ResourcePool::initialize(VkPhysicalDevice physical, VkDevice device, unsigned max_num_resources)
 {
+    mDevice = device;
     {
         VmaAllocatorCreateInfo create_info = {};
         create_info.physicalDevice = physical;

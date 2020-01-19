@@ -55,7 +55,7 @@ struct stage_dependencies
 [[nodiscard]] VkImageMemoryBarrier get_image_memory_barrier(
     VkImage image, state_change const& state_change, VkImageAspectFlags aspect, unsigned mip_start, unsigned num_mips, unsigned array_start, unsigned num_layers);
 
-[[nodiscard]] VkBufferMemoryBarrier get_buffer_memory_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size);
+[[nodiscard]] VkBufferMemoryBarrier get_buffer_memory_barrier(VkBuffer buffer, state_change const& state_change, uint64_t buffer_size);
 
 
 void submit_barriers(VkCommandBuffer cmd_buf,
@@ -97,7 +97,7 @@ struct barrier_bundle
         barriers_img.push_back(get_image_memory_barrier(image, state_change, aspect, mip_slice, 1, array_slice, 1));
     }
 
-    void add_buffer_barrier(VkBuffer buffer, state_change const& state_change, unsigned buffer_size)
+    void add_buffer_barrier(VkBuffer buffer, state_change const& state_change, uint64_t buffer_size)
     {
         dependencies.add_change(state_change);
         barriers_buf.push_back(get_buffer_memory_barrier(buffer, state_change, buffer_size));

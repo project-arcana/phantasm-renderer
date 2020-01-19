@@ -40,4 +40,6 @@ inline void set_viewport(VkCommandBuffer command_buf, tg::isize2 size, int start
 [[nodiscard]] cc::capped_vector<VkVertexInputAttributeDescription, 16> get_native_vertex_format(cc::span<vertex_attribute_info const> attrib_info);
 
 [[nodiscard]] VkVertexInputBindingDescription get_vertex_binding(uint32_t vertex_size);
+
+void set_object_name(VkDevice device, VkBuffer object, char const* name, ...);
 }

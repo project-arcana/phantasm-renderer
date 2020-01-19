@@ -176,6 +176,7 @@ private:
     VkDescriptorSetLayout mSingleCBVLayoutCompute = nullptr;
 
     /// "Backing" allocators
+    VkDevice mDevice = nullptr;
     VmaAllocator mAllocator = nullptr;
     DescriptorAllocator mAllocatorDescriptors;
     std::mutex mMutex;
