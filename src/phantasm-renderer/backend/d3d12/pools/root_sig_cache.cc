@@ -1,6 +1,7 @@
 #include "root_sig_cache.hh"
 
 #include <phantasm-renderer/backend/d3d12/common/util.hh>
+#include <phantasm-renderer/backend/detail/hash.hh>
 
 namespace
 {
@@ -32,7 +33,7 @@ pr::backend::d3d12::root_signature* pr::backend::d3d12::RootSignatureCache::getO
                                                                                         bool has_root_constants,
                                                                                         root_signature_type type)
 {
-    auto const hash = hashKey(arg_shapes, has_root_constants, type);
+    auto const hash = cc::make_hash(hash::compute(arg_shapes), type, has_root_constants);
 
     auto* const lookup = mCache.look_up(hash);
     if (lookup != nullptr)

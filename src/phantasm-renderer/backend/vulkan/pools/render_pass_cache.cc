@@ -25,7 +25,6 @@ VkRenderPass pr::backend::vk::RenderPassCache::getOrCreate(VkDevice device, cmd:
 void pr::backend::vk::RenderPassCache::reset(VkDevice device)
 {
     mCache.iterate_elements([&](VkRenderPass elem) { vkDestroyRenderPass(device, elem, nullptr); });
-
     mCache.clear();
 }
 
