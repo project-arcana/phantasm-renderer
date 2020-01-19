@@ -9,6 +9,10 @@
 #include "common/util.hh"
 #include "common/verify.hh"
 
+#ifdef PR_BACKEND_HAS_SDL2
+#include <SDL2/SDL_syswm.h>
+#endif
+
 namespace pr::backend::d3d12
 {
 struct BackendD3D12::per_thread_component
@@ -26,8 +30,32 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
         mAdapter.initialize(config);
         mDevice.initialize(mAdapter.getAdapter(), config);
         mGraphicsQueue.initialize(mDevice.getDevice(), queue_type::graphics);
-        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(),
-                              cc::bit_cast<::HWND>(window_handle.native_a), config.num_backbuffers, config.present_mode);
+
+        ::HWND native_hwnd = nullptr;
+        {
+            if (window_handle.type == native_window_handle::wh_win32_hwnd)
+            {
+                native_hwnd = window_handle.value.win32_hwnd;
+            }
+            else if (window_handle.type == native_window_handle::wh_sdl)
+            {
+#ifdef PR_BACKEND_HAS_SDL2
+                SDL_SysWMinfo wmInfo;
+                SDL_VERSION(&wmInfo.version)
+                SDL_GetWindowWMInfo(cc::bit_cast<::SDL_Window*>(window_handle.value.sdl_handle), &wmInfo);
+                native_hwnd = wmInfo.info.win.window;
+#else
+                CC_RUNTIME_ASSERT(false && "SDL handle given, but compiled without SDL present");
+#endif
+            }
+            else
+            {
+                CC_RUNTIME_ASSERT(false && "unimplemented window handle type");
+            }
+        }
+
+        mSwapchain.initialize(mAdapter.getFactory(), mDevice.getDeviceShared(), mGraphicsQueue.getQueueShared(), native_hwnd, config.num_backbuffers,
+                              config.present_mode);
     }
 
     auto& device = mDevice.getDevice();
@@ -66,7 +94,7 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     mDiagnostics.init();
 }
 
-pr::backend::d3d12::BackendD3D12::~BackendD3D12()
+void pr::backend::d3d12::BackendD3D12::destroy()
 {
     if (mAdapter.isValid())
     {
@@ -86,8 +114,12 @@ pr::backend::d3d12::BackendD3D12::~BackendD3D12()
         {
             thread_comp.cmd_list_allocator.destroy();
         }
+
+        mAdapter.invalidate();
     }
 }
+
+pr::backend::d3d12::BackendD3D12::~BackendD3D12() { destroy(); }
 
 void pr::backend::d3d12::BackendD3D12::flushGPU()
 {

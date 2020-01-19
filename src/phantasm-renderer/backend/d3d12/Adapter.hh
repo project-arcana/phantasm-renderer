@@ -22,6 +22,7 @@ public:
     void initialize(backend_config const& config);
 
     bool isValid() const { return mAdapter.is_valid(); }
+    void invalidate();
 
     [[nodiscard]] IDXGIAdapter& getAdapter() const { return *mAdapter.get(); }
     [[nodiscard]] shared_com_ptr<IDXGIAdapter> getAdapterShared() const { return mAdapter; }

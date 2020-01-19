@@ -2,6 +2,9 @@
 
 #include <cstdint>
 
+struct SDL_Window;
+typedef struct HWND__* HWND;
+
 namespace pr::backend
 {
 namespace handle
@@ -193,12 +196,32 @@ struct backend_config
 /// opaque window handle
 struct native_window_handle
 {
-    /// win32: Window HWND handle, linux: X Window
-    void* native_a = nullptr;
-    /// win32: none, linux: X Display
-    void* native_b = nullptr;
+    enum wh_type : uint8_t
+    {
+        wh_sdl,
+        wh_win32_hwnd,
+        wh_xlib
+    };
 
-    native_window_handle(void* a, void* b = nullptr) : native_a(a), native_b(b) {}
+    wh_type type;
+
+    union {
+        SDL_Window* sdl_handle;
+        HWND win32_hwnd;
+        struct
+        {
+            void* window;
+            void* display;
+        } xlib_handles;
+    } value;
+
+    native_window_handle(HWND hwnd) : type(wh_win32_hwnd) { value.win32_hwnd = hwnd; }
+    native_window_handle(SDL_Window* sdl_window) : type(wh_sdl) { value.sdl_handle = sdl_window; }
+    native_window_handle(void* xlib_win, void* xlib_display) : type(wh_xlib)
+    {
+        value.xlib_handles.window = xlib_win;
+        value.xlib_handles.display = xlib_display;
+    }
 };
 
 // Maps to
