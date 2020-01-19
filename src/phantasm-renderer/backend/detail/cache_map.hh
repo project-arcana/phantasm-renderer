@@ -46,10 +46,10 @@ public:
     {
         CC_ASSERT(hash != tombstone_hash && "illegal hash value");
 
-        auto index = hash % _hashes.size();
+        unsigned index = hash % _hashes.size();
         for (auto _ = 0u; _ < _hashes.size(); ++_)
         {
-            index = cc::wrapped_increment(index, _hashes.size());
+            index = cc::wrapped_increment<unsigned>(index, _hashes.size());
 
             if (_hashes[index] == tombstone_hash)
             {
@@ -83,10 +83,10 @@ private:
     [[nodiscard]] size_t find_hash(HashT hash) const
     {
         CC_ASSERT(hash != tombstone_hash && "illegal hash value");
-        auto index = hash % _hashes.size();
+        unsigned index = hash % _hashes.size();
         for (auto _ = 0u; _ < _hashes.size(); ++_)
         {
-            index = cc::wrapped_increment(index, _hashes.size());
+            index = cc::wrapped_increment<unsigned>(index, _hashes.size());
 
             if (_hashes[index] == hash)
             {
