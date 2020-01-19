@@ -378,6 +378,19 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     _cmd_list->CopyTextureRegion(&dest, 0, 0, 0, &source, nullptr);
 }
 
+void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::resolve_texture& resolve)
+{
+    auto const src_raw = _globals.pool_resources->getRawResource(resolve.source);
+    auto const dest_raw = _globals.pool_resources->getRawResource(resolve.destination);
+
+    auto const& src_info = _globals.pool_resources->getImageInfo(resolve.source);
+    auto const& dest_info = _globals.pool_resources->getImageInfo(resolve.destination);
+    auto const src_subres_index = resolve.src_mip_index + resolve.src_array_index * src_info.num_mips;
+    auto const dest_subres_index = resolve.dest_mip_index + resolve.dest_array_index * dest_info.num_mips;
+
+    _cmd_list->ResolveSubresource(dest_raw, dest_subres_index, src_raw, src_subres_index, util::to_dxgi_format(dest_info.pixel_format));
+}
+
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
 {
     util::set_pix_marker(_cmd_list, 0, marker.string_literal);

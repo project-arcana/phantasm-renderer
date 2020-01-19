@@ -351,6 +351,36 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::c
     vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::resolve_texture& resolve)
+{
+    constexpr auto src_layout = util::to_image_layout(resource_state::resolve_src);
+    constexpr auto dest_layout = util::to_image_layout(resource_state::resolve_dest);
+
+    auto const src_image = _globals.pool_resources->getRawImage(resolve.source);
+    auto const dest_image = _globals.pool_resources->getRawImage(resolve.destination);
+
+    auto const& dest_info = _globals.pool_resources->getImageInfo(resolve.destination);
+
+    VkImageResolve region = {};
+
+    region.srcSubresource.aspectMask = is_depth_format(dest_info.pixel_format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel = resolve.src_mip_index;
+    region.srcSubresource.layerCount = 1;
+    region.srcSubresource.baseArrayLayer = resolve.src_array_index;
+
+    region.dstSubresource.aspectMask = region.srcSubresource.aspectMask;
+    region.dstSubresource.mipLevel = resolve.dest_mip_index;
+    region.dstSubresource.layerCount = 1;
+    region.dstSubresource.baseArrayLayer = resolve.dest_array_index;
+    region.srcOffset = {};
+    region.dstOffset = {};
+    region.extent.width = resolve.width;
+    region.extent.height = resolve.height;
+    region.extent.depth = 1;
+
+    vkCmdResolveImage(_cmd_list, src_image, src_layout, dest_image, dest_layout, 1, &region);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
 {
     VkDebugUtilsLabelEXT label = {};

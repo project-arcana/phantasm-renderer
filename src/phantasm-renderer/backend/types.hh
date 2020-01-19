@@ -227,6 +227,9 @@ enum class resource_state : uint8_t
     copy_src,
     copy_dest,
 
+    resolve_src,
+    resolve_dest,
+
     present,
 
     raytrace_accel_struct,

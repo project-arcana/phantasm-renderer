@@ -43,6 +43,11 @@ namespace pr::backend::vk::util
     case rs::copy_dest:
         return VK_ACCESS_TRANSFER_WRITE_BIT;
 
+    case rs::resolve_src:
+        return VK_ACCESS_MEMORY_READ_BIT;
+    case rs::resolve_dest:
+        return VK_ACCESS_MEMORY_WRITE_BIT;
+
     case rs::present:
         return VK_ACCESS_MEMORY_READ_BIT;
 
@@ -79,6 +84,11 @@ namespace pr::backend::vk::util
     case rs::copy_src:
         return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     case rs::copy_dest:
+        return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    case rs::resolve_src:
+        return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    case rs::resolve_dest:
         return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
     case rs::present:
@@ -184,6 +194,10 @@ namespace pr::backend::vk::util
 
     case rs::copy_src:
     case rs::copy_dest:
+        return VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    case rs::resolve_src:
+    case rs::resolve_dest:
         return VK_PIPELINE_STAGE_TRANSFER_BIT;
 
     case rs::present:

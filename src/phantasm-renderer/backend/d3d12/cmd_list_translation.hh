@@ -73,6 +73,8 @@ struct command_list_translator
 
     void execute(cmd::copy_buffer_to_texture const& copy_text);
 
+    void execute(cmd::resolve_texture const& resolve);
+
     void execute(cmd::debug_marker const& marker);
 
     void execute(cmd::update_bottom_level const& blas_update);

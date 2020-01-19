@@ -45,6 +45,11 @@ namespace pr::backend::d3d12::util
     case rs::copy_dest:
         return D3D12_RESOURCE_STATE_COPY_DEST;
 
+    case rs::resolve_src:
+        return D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    case rs::resolve_dest:
+        return D3D12_RESOURCE_STATE_RESOLVE_DEST;
+
     case rs::present:
         return D3D12_RESOURCE_STATE_PRESENT;
 
