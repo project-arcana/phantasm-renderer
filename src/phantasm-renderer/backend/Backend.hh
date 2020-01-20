@@ -94,7 +94,7 @@ public:
     virtual void free(handle::resource res) = 0;
 
     /// destroy multiple resource
-    virtual void free_range(cc::span<handle::resource const> resources) = 0;
+    virtual void freeRange(cc::span<handle::resource const> resources) = 0;
 
     //
     // Shader view interface
@@ -108,7 +108,7 @@ public:
 
     virtual void free(handle::shader_view sv) = 0;
 
-    virtual void free_range(cc::span<handle::shader_view const> svs) = 0;
+    virtual void freeRange(cc::span<handle::shader_view const> svs) = 0;
 
     //
     // Pipeline state interface
@@ -118,12 +118,12 @@ public:
                                                                      arg::framebuffer_config const& framebuffer_conf,
                                                                      arg::shader_argument_shapes shader_arg_shapes,
                                                                      bool has_root_constants,
-                                                                     arg::shader_stages shader_stages,
+                                                                     arg::graphics_shader_stages shader_stages,
                                                                      pr::primitive_pipeline_config const& primitive_config)
         = 0;
 
     [[nodiscard]] virtual handle::pipeline_state createComputePipelineState(arg::shader_argument_shapes shader_arg_shapes,
-                                                                            arg::shader_stage const& compute_shader,
+                                                                            arg::shader_binary compute_shader,
                                                                             bool has_root_constants = false)
         = 0;
 
@@ -143,6 +143,40 @@ public:
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
 
     //
+    // Raytracing interface
+    //
+
+    [[nodiscard]] virtual handle::pipeline_state createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                               arg::raytracing_argument_associations arg_assocs,
+                                                                               arg::raytracing_hit_groups hit_groups,
+                                                                               unsigned max_recursion,
+                                                                               unsigned max_payload_size_bytes,
+                                                                               unsigned max_attribute_size_bytes)
+        = 0;
+
+    [[nodiscard]] virtual handle::accel_struct createTopLevelAccelStruct(unsigned num_instances) = 0;
+
+    [[nodiscard]] virtual handle::accel_struct createBottomLevelAccelStruct(cc::span<arg::blas_element const> elements,
+                                                                            accel_struct_build_flags_t flags,
+                                                                            uint64_t* out_native_handle = nullptr)
+        = 0;
+
+    virtual void uploadTopLevelInstances(handle::accel_struct as, cc::span<accel_struct_geometry_instance const> instances) = 0;
+
+    [[nodiscard]] virtual handle::resource getAccelStructBuffer(handle::accel_struct as) = 0;
+
+    [[nodiscard]] virtual shader_table_sizes calculateShaderTableSize(arg::shader_table_records ray_gen_records,
+                                                                      arg::shader_table_records miss_records,
+                                                                      arg::shader_table_records hit_group_records)
+        = 0;
+
+    virtual void writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records) = 0;
+
+    virtual void free(handle::accel_struct as) = 0;
+
+    virtual void freeRange(cc::span<handle::accel_struct const> as) = 0;
+
+    //
     // Debug interface
     //
 
@@ -153,15 +187,15 @@ public:
     /// and forces a capture start, returns true on success
     virtual bool startForcedDiagnosticCapture() = 0;
 
-    /// ends a previously started forced diagnostic capture, returns
-    /// true on success
+    /// ends a previously started forced diagnostic capture,
+    /// returns true on success
     virtual bool endForcedDiagnosticCapture() = 0;
 
     //
     // GPU info interface
     //
 
-    virtual bool gpuHasRaytracing() const = 0;
+    virtual bool isRaytracingEnabled() const = 0;
 
 protected:
     Backend() = default;

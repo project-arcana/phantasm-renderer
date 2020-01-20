@@ -122,8 +122,8 @@ pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::
     res.domain = reflect_to_pr(module.shader_stage);
     patchSpvReflectShader(module, res.domain, out_info.descriptor_infos);
 
-    res.binary_size = spvReflectGetCodeSize(&module);
-    res.binary_data = cc::bit_cast<std::byte*>(module._internal->spirv_code);
+    res.binary.size = spvReflectGetCodeSize(&module);
+    res.binary.data = cc::bit_cast<std::byte*>(module._internal->spirv_code);
 
     // check for push constants
     {
@@ -148,7 +148,7 @@ pr::backend::arg::shader_stage pr::backend::vk::util::create_patched_spirv(std::
 void pr::backend::vk::util::free_patched_spirv(const arg::shader_stage& val)
 {
     // do the same thing spirv-reflect would have done in spvReflectDestroyShaderModule
-    ::free(val.binary_data);
+    ::free(val.binary.data);
 }
 
 cc::vector<pr::backend::vk::util::spirv_desc_info> pr::backend::vk::util::merge_spirv_descriptors(cc::span<spirv_desc_info> desc_infos)

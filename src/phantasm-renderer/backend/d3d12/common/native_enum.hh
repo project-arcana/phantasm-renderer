@@ -45,6 +45,11 @@ namespace pr::backend::d3d12::util
     case rs::copy_dest:
         return D3D12_RESOURCE_STATE_COPY_DEST;
 
+    case rs::resolve_src:
+        return D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    case rs::resolve_dest:
+        return D3D12_RESOURCE_STATE_RESOLVE_DEST;
+
     case rs::present:
         return D3D12_RESOURCE_STATE_PRESENT;
 
@@ -500,5 +505,23 @@ namespace pr::backend::d3d12::util
     }
 
     CC_ASSERT(false && "to_native uncaught argument");
+}
+
+[[nodiscard]] inline constexpr D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS to_native_flags(accel_struct_build_flags_t flags)
+{
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS res = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+
+    if (flags & accel_struct_build_flags::allow_update)
+        res |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+    if (flags & accel_struct_build_flags::allow_compaction)
+        res |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
+    if (flags & accel_struct_build_flags::prefer_fast_trace)
+        res |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+    if (flags & accel_struct_build_flags::prefer_fast_build)
+        res |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD;
+    if (flags & accel_struct_build_flags::minimize_memory)
+        res |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_MINIMIZE_MEMORY;
+
+    return res;
 }
 }

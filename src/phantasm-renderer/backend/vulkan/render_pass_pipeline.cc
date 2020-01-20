@@ -169,7 +169,7 @@ VkRenderPass pr::backend::vk::create_render_pass(VkDevice device, const pr::back
 VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
                                             VkRenderPass render_pass,
                                             VkPipelineLayout pipeline_layout,
-                                            arg::shader_stages shaders,
+                                            arg::graphics_shader_stages shaders,
                                             const pr::primitive_pipeline_config& config,
                                             cc::span<const VkVertexInputAttributeDescription> vertex_attribs,
                                             uint32_t vertex_size,
@@ -187,7 +187,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
     for (auto const& shader : shaders)
     {
         auto& new_shader = shader_stages.emplace_back();
-        initialize_shader(new_shader, device, shader.binary_data, shader.binary_size, shader.domain);
+        initialize_shader(new_shader, device, shader.binary.data, shader.binary.size, shader.domain);
 
         shader_stage_create_infos.push_back(get_shader_create_info(new_shader));
     }
@@ -331,7 +331,7 @@ VkPipeline pr::backend::vk::create_pipeline(VkDevice device,
 VkPipeline pr::backend::vk::create_compute_pipeline(VkDevice device, VkPipelineLayout pipeline_layout, const pr::backend::arg::shader_stage& compute_shader)
 {
     shader shader_stage;
-    initialize_shader(shader_stage, device, compute_shader.binary_data, compute_shader.binary_size, shader_domain::compute);
+    initialize_shader(shader_stage, device, compute_shader.binary.data, compute_shader.binary.size, shader_domain::compute);
 
     VkComputePipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

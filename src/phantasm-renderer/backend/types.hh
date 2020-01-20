@@ -20,23 +20,29 @@ inline constexpr index_t null_handle_index = index_t(-1);
     inline constexpr _type_ null_##_type_ = {null_handle_index}
 
 
-/// generic resource (Image, Buffer, RT)
+/// generic resource (buffer, texture, render target)
 PR_DEFINE_HANDLE(resource);
 
-/// shader arguments := handle::shader_view (SRVs + UAVs) + handle::resource (CBV) + uint (CBV offset)
+/// shader_view := (SRVs + UAVs + Samplers)
+/// shader argument := handle::shader_view + handle::resource (CBV) + uint (CBV offset)
 PR_DEFINE_HANDLE(shader_view);
 
-/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats)
+/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
 PR_DEFINE_HANDLE(pipeline_state);
 
-/// command list handle, returned from compiles
+/// recorded command list, ready to submit or discard
 PR_DEFINE_HANDLE(command_list);
 
 /// raytracing acceleration structure handle
 PR_DEFINE_HANDLE(accel_struct);
-
-#undef PR_DEFINE_HANDLE
 }
+
+// create an enum that is namespaced but non-class (for bitwise operations)
+#define PR_DEFINE_BIT_FLAGS(_name_, _type_) \
+    using _name_##_t = _type_;              \
+    namespace _name_                        \
+    {                                       \
+    enum _name_##_e : _name_##_t
 
 struct shader_argument
 {
@@ -59,17 +65,13 @@ enum class shader_domain : uint8_t
 
     // raytracing
     ray_gen,
-    ray_intersect,
     ray_miss,
     ray_closest_hit,
+    ray_intersect,
     ray_any_hit,
 };
 
-using shader_domain_flags = uint16_t;
-namespace shader_domain_bits
-{
-enum shader_domain_bits_e : shader_domain_flags
-{
+PR_DEFINE_BIT_FLAGS(shader_domain_flags, uint16_t){
     unspecified = 0x0000,
 
     vertex = 0x0001,
@@ -139,16 +141,11 @@ enum class present_mode : uint8_t
     synced
 };
 
-using native_feature_flags = uint32_t;
-namespace native_feature_bits
-{
 /// Special features that are backend-specific, ignored if not applicable
-enum native_feature_bits_e : native_feature_flags
-{
+PR_DEFINE_BIT_FLAGS(native_feature_flags, uint32_t){
     none = 0,
-
     /// Vulkan: Enables VK_LAYER_LUNARG_api_dump (prints all API calls to stdout)
-    vk_api_dump = 0x0001
+    vk_api_dump = 0x0001,
 };
 }
 
@@ -166,7 +163,7 @@ struct backend_config
     unsigned explicit_adapter_index = unsigned(-1);
 
     /// native features to enable
-    native_feature_flags native_features = native_feature_bits::none;
+    native_feature_flags_t native_features = native_feature_flags::none;
 
     /// whether to enable DXR / VK raytracing features if available
     bool enable_raytracing = true;
@@ -185,6 +182,8 @@ struct backend_config
     unsigned max_num_srvs = 2048;
     unsigned max_num_uavs = 2048;
     unsigned max_num_samplers = 1024;
+    unsigned max_num_accel_structs = 2048;
+    unsigned max_num_raytrace_pipeline_states = 256;
 
     /// command list allocator size (total = #threads * #allocs/thread * #lists/alloc)
     unsigned num_cmdlist_allocators_per_thread = 5;
@@ -227,6 +226,9 @@ enum class resource_state : uint8_t
 
     copy_src,
     copy_dest,
+
+    resolve_src,
+    resolve_dest,
 
     present,
 
@@ -283,7 +285,7 @@ enum class format : uint8_t
 /// returns true if the format is a depth OR depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_format(format fmt) { return fmt >= format::depth32f; }
 
-/// returns true if the format is a depth stencil format+
+/// returns true if the format is a depth stencil format
 [[nodiscard]] inline constexpr bool is_depth_stencil_format(format fmt) { return fmt >= format::depth32f_stencil8u; }
 
 /// information about a single vertex attribute
@@ -320,6 +322,7 @@ enum class shader_view_dimension : uint8_t
 struct shader_view_element
 {
     handle::resource resource;
+
     format pixel_format;
     shader_view_dimension dimension;
 
@@ -384,6 +387,13 @@ public:
         buffer_info.num_elements = num_elements;
         buffer_info.element_start = 0;
         buffer_info.element_stride_bytes = stride_bytes;
+    }
+
+    /// receive the buffer handle from getAccelStructBuffer
+    void init_as_accel_struct(handle::resource as_buffer)
+    {
+        resource = as_buffer;
+        dimension = shader_view_dimension::raytracing_accel_struct;
     }
 };
 
@@ -537,4 +547,43 @@ struct render_target_config
     blend_op blend_op_alpha = blend_op::op_add;
 };
 
+PR_DEFINE_BIT_FLAGS(accel_struct_build_flags, uint8_t){
+    none = 0x00, allow_update = 0x01, allow_compaction = 0x02, prefer_fast_trace = 0x04, prefer_fast_build = 0x08, minimize_memory = 0x10,
+};
 }
+
+/// geometry instance within a top level acceleration structure (layout dictated by DXR/Vulkan RT Extension)
+struct accel_struct_geometry_instance
+{
+    /// Transform matrix, containing only the top 3 rows
+    float transform[12];
+    /// Instance index
+    uint32_t instance_id : 24;
+    /// Visibility mask
+    uint32_t mask : 8;
+    /// Index of the hit group which will be invoked when a ray hits the instance
+    uint32_t instance_offset : 24;
+    /// Instance flags, such as culling
+    uint32_t flags : 8;
+    /// Opaque handle of the bottom-level acceleration structure
+    uint64_t native_accel_struct_handle;
+};
+
+static_assert(sizeof(accel_struct_geometry_instance) == 64, "accel_struct_geometry_instance compiles to incorrect size");
+
+// these flags align exactly with both vulkan and d3d12, and are not translated
+PR_DEFINE_BIT_FLAGS(accel_struct_instance_flags, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
+                                                           force_opaque = 0x0004, force_no_opaque = 0x0008};
+}
+
+/// the size and element-strides of a shader table
+struct shader_table_sizes
+{
+    uint32_t ray_gen_stride_bytes = 0;
+    uint32_t miss_stride_bytes = 0;
+    uint32_t hit_group_stride_bytes = 0;
+};
+}
+
+#undef PR_DEFINE_HANDLE
+#undef PR_DEFINE_BIT_FLAGS

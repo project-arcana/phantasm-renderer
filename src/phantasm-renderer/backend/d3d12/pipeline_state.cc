@@ -9,14 +9,14 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
                                                                ID3D12RootSignature* root_sig,
                                                                cc::span<const D3D12_INPUT_ELEMENT_DESC> vertex_input_layout,
                                                                pr::backend::arg::framebuffer_config const& framebuffer_format,
-                                                               pr::backend::arg::shader_stages shader_stages,
+                                                               pr::backend::arg::graphics_shader_stages shader_stages,
                                                                const pr::primitive_pipeline_config& config)
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = {!vertex_input_layout.empty() ? vertex_input_layout.data() : nullptr, UINT(vertex_input_layout.size())};
     pso_desc.pRootSignature = root_sig;
 
-    constexpr auto const to_bytecode = [](arg::shader_stage const& s) { return D3D12_SHADER_BYTECODE{s.binary_data, s.binary_size}; };
+    constexpr auto const to_bytecode = [](arg::shader_stage const& s) { return D3D12_SHADER_BYTECODE{s.binary.data, s.binary.size}; };
 
     for (arg::shader_stage const& s : shader_stages)
     {
@@ -93,11 +93,11 @@ ID3D12PipelineState* pr::backend::d3d12::create_pipeline_state(ID3D12Device& dev
     return pso;
 }
 
-ID3D12PipelineState* pr::backend::d3d12::create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, const pr::backend::arg::shader_stage& compute_shader)
+ID3D12PipelineState* pr::backend::d3d12::create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, std::byte const* binary_data, size_t binary_size)
 {
     D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.pRootSignature = root_sig;
-    pso_desc.CS = D3D12_SHADER_BYTECODE{compute_shader.binary_data, compute_shader.binary_size};
+    pso_desc.CS = D3D12_SHADER_BYTECODE{binary_data, binary_size};
 
     ID3D12PipelineState* pso;
     PR_D3D12_VERIFY(device.CreateComputePipelineState(&pso_desc, IID_PPV_ARGS(&pso)));

@@ -13,8 +13,8 @@ namespace pr::backend::d3d12
                                                          ID3D12RootSignature* root_sig,
                                                          cc::span<D3D12_INPUT_ELEMENT_DESC const> vertex_input_layout,
                                                          const arg::framebuffer_config& framebuffer_format,
-                                                         arg::shader_stages shader_stages,
+                                                         arg::graphics_shader_stages shader_stages,
                                                          pr::primitive_pipeline_config const& config);
 
-[[nodiscard]] ID3D12PipelineState* create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, arg::shader_stage const& compute_shader);
+[[nodiscard]] ID3D12PipelineState* create_compute_pipeline_state(ID3D12Device& device, ID3D12RootSignature* root_sig, const std::byte* binary_data, size_t binary_size);
 }

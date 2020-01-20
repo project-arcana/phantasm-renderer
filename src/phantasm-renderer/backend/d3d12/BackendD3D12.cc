@@ -35,8 +35,15 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     // Global pools
     {
         mPoolResources.initialize(device, config.max_num_resources);
-        mPoolPSOs.initialize(&device, config.max_num_pipeline_states);
         mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
+        mPoolPSOs.initialize(&device, mDevice.getDeviceRaytracing(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
+
+
+        if (isRaytracingEnabled())
+        {
+            mPoolAccelStructs.initialize(mDevice.getDeviceRaytracing(), &mPoolResources, config.max_num_accel_structs);
+            mShaderTableCtor.initialize(mDevice.getDeviceRaytracing(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
+        }
     }
 
     // Per-thread components and command list pool
@@ -49,7 +56,7 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 
         for (auto& thread_comp : mThreadComponents)
         {
-            thread_comp.translator.initialize(&device, &mPoolShaderViews, &mPoolResources, &mPoolPSOs);
+            thread_comp.translator.initialize(&device, &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
@@ -69,8 +76,10 @@ pr::backend::d3d12::BackendD3D12::~BackendD3D12()
 
         mSwapchain.setFullscreen(false);
 
-        mPoolPSOs.destroy();
         mPoolCmdLists.destroy();
+        mPoolAccelStructs.destroy();
+        mPoolPSOs.destroy();
+        mPoolShaderViews.destroy();
         mPoolResources.destroy();
 
         for (auto& thread_comp : mThreadComponents)
@@ -184,6 +193,74 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         submit_flush();
 }
 
+pr::backend::handle::pipeline_state pr::backend::d3d12::BackendD3D12::createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
+                                                                                                    arg::raytracing_argument_associations arg_assocs,
+                                                                                                    arg::raytracing_hit_groups hit_groups,
+                                                                                                    unsigned max_recursion,
+                                                                                                    unsigned max_payload_size_bytes,
+                                                                                                    unsigned max_attribute_size_bytes)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    return mPoolPSOs.createRaytracingPipelineState(libraries, arg_assocs, hit_groups, max_recursion, max_payload_size_bytes, max_attribute_size_bytes);
+}
+
+pr::backend::handle::accel_struct pr::backend::d3d12::BackendD3D12::createTopLevelAccelStruct(unsigned num_instances)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    return mPoolAccelStructs.createTopLevelAS(num_instances);
+}
+
+pr::backend::handle::accel_struct pr::backend::d3d12::BackendD3D12::createBottomLevelAccelStruct(cc::span<const pr::backend::arg::blas_element> elements,
+                                                                                                 accel_struct_build_flags_t flags,
+                                                                                                 uint64_t* out_native_handle)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    auto const res = mPoolAccelStructs.createBottomLevelAS(elements, flags);
+
+    if (out_native_handle != nullptr)
+        *out_native_handle = mPoolAccelStructs.getNode(res).raw_as_handle;
+
+    return res;
+}
+
+void pr::backend::d3d12::BackendD3D12::uploadTopLevelInstances(pr::backend::handle::accel_struct as,
+                                                               cc::span<const pr::backend::accel_struct_geometry_instance> instances)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    auto const& node = mPoolAccelStructs.getNode(as);
+    std::memcpy(node.buffer_instances_map, instances.data(), sizeof(accel_struct_geometry_instance) * instances.size());
+    // flushMappedMemory(node.buffer_instances); (no-op)
+}
+
+pr::backend::handle::resource pr::backend::d3d12::BackendD3D12::getAccelStructBuffer(pr::backend::handle::accel_struct as)
+{
+    return mPoolAccelStructs.getNode(as).buffer_as;
+}
+
+pr::backend::shader_table_sizes pr::backend::d3d12::BackendD3D12::calculateShaderTableSize(pr::backend::arg::shader_table_records ray_gen_records,
+                                                                                           pr::backend::arg::shader_table_records miss_records,
+                                                                                           pr::backend::arg::shader_table_records hit_group_records)
+{
+    return mShaderTableCtor.calculateShaderTableSizes(ray_gen_records, miss_records, hit_group_records);
+}
+
+void pr::backend::d3d12::BackendD3D12::writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records)
+{
+    mShaderTableCtor.writeShaderTable(dest, pso, stride, records);
+}
+
+void pr::backend::d3d12::BackendD3D12::free(pr::backend::handle::accel_struct as)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    mPoolAccelStructs.free(as);
+}
+
+void pr::backend::d3d12::BackendD3D12::freeRange(cc::span<const pr::backend::handle::accel_struct> as)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    mPoolAccelStructs.free(as);
+}
+
 void pr::backend::d3d12::BackendD3D12::printInformation(pr::backend::handle::resource res) const
 {
     (void)res;
@@ -194,4 +271,4 @@ bool pr::backend::d3d12::BackendD3D12::startForcedDiagnosticCapture() { return m
 
 bool pr::backend::d3d12::BackendD3D12::endForcedDiagnosticCapture() { return mDiagnostics.end_capture(); }
 
-bool pr::backend::d3d12::BackendD3D12::gpuHasRaytracing() const { return mDevice.hasRaytracing(); }
+bool pr::backend::d3d12::BackendD3D12::isRaytracingEnabled() const { return mDevice.hasRaytracing(); }

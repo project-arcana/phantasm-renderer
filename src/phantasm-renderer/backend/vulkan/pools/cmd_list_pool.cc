@@ -4,6 +4,7 @@
 
 #include <phantasm-renderer/backend/detail/flat_map.hh>
 #include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
+#include <phantasm-renderer/backend/vulkan/common/util.hh>
 
 void pr::backend::vk::cmd_allocator_node::initialize(VkDevice device, unsigned num_cmd_lists, unsigned queue_family_index, FenceRingbuffer* fence_ring)
 {
@@ -180,10 +181,12 @@ void pr::backend::vk::FenceRingbuffer::initialize(VkDevice device, unsigned num_
     VkFenceCreateInfo fence_info = {};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    for (auto& fence : mFences)
+    for (auto i = 0u; i < mFences.size(); ++i)
     {
+        auto& fence = mFences[i];
         fence.ref_count.store(0);
         PR_VK_VERIFY_SUCCESS(vkCreateFence(device, &fence_info, nullptr, &fence.raw_fence));
+        util::set_object_name(device, fence.raw_fence, "ringbuffer fence %u of %u", i, num_fences);
     }
 }
 

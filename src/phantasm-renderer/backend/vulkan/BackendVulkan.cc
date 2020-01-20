@@ -1,11 +1,10 @@
 #include "BackendVulkan.hh"
 
-#include <iostream>
-
 #include <clean-core/array.hh>
 
 #include "cmd_buf_translation.hh"
 #include "common/debug_callback.hh"
+#include "common/log.hh"
 #include "common/verify.hh"
 #include "common/vk_format.hh"
 #include "gpu_choice_util.hh"
@@ -13,11 +12,6 @@
 #include "loader/volk.hh"
 #include "resources/transition_barrier.hh"
 #include "surface_util.hh"
-
-namespace
-{
-constexpr VkPipelineStageFlags gc_submit_wait_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-}
 
 namespace pr::backend::vk
 {
@@ -38,7 +32,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
     mDiagnostics.init();
     if (mDiagnostics.is_renderdoc_present() && config.validation >= validation_level::on)
     {
-        std::cout << "[pr][backend][vk] info: Validation layers requested while running RenderDoc, disabling due to known crashes" << std::endl;
+        log::info()("info: Validation layers requested while running RenderDoc, disabling due to known crashes");
         config.validation = validation_level::off;
     }
 
@@ -121,6 +115,11 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
     mPoolResources.initialize(mDevice.getPhysicalDevice(), mDevice.getDevice(), config.max_num_resources);
     mPoolShaderViews.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_cbvs, config.max_num_srvs, config.max_num_uavs, config.max_num_samplers);
 
+    if (isRaytracingEnabled())
+    {
+        mPoolAccelStructs.initialize(mDevice.getDevice(), &mPoolResources, config.max_num_accel_structs);
+    }
+
     // Per-thread components and command list pool
     {
         mThreadAssociation.initialize();
@@ -131,7 +130,7 @@ void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg
 
         for (auto& thread_comp : mThreadComponents)
         {
-            thread_comp.translator.initialize(mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPipelines, &mPoolCmdLists);
+            thread_comp.translator.initialize(mDevice.getDevice(), &mPoolShaderViews, &mPoolResources, &mPoolPipelines, &mPoolCmdLists, &mPoolAccelStructs);
             thread_allocator_ptrs.push_back(&thread_comp.cmd_list_allocator);
         }
 
@@ -149,6 +148,7 @@ pr::backend::vk::BackendVulkan::~BackendVulkan()
 
         mSwapchain.destroy();
 
+        mPoolAccelStructs.destroy();
         mPoolShaderViews.destroy();
         mPoolCmdLists.destroy();
         mPoolPipelines.destroy();
@@ -235,7 +235,6 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
 
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pWaitDstStageMask = &gc_submit_wait_stage;
         submit_info.commandBufferCount = unsigned(submit_batch.size());
         submit_info.pCommandBuffers = submit_batch.data();
 
@@ -305,26 +304,95 @@ void pr::backend::vk::BackendVulkan::submit(cc::span<const pr::backend::handle::
         submit_flush();
 }
 
+pr::backend::handle::pipeline_state pr::backend::vk::BackendVulkan::createRaytracingPipelineState(pr::backend::arg::raytracing_shader_libraries libraries,
+                                                                                                  arg::raytracing_argument_associations arg_assocs,
+                                                                                                  pr::backend::arg::raytracing_hit_groups hit_groups,
+                                                                                                  unsigned max_recursion,
+                                                                                                  unsigned max_payload_size_bytes,
+                                                                                                  unsigned max_attribute_size_bytes)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    log::err()("createRaytracingPipelineState unimplemented");
+    return handle::null_pipeline_state;
+}
+
+pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createTopLevelAccelStruct(unsigned num_instances)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    return mPoolAccelStructs.createTopLevelAS(num_instances);
+}
+
+pr::backend::handle::accel_struct pr::backend::vk::BackendVulkan::createBottomLevelAccelStruct(cc::span<const pr::backend::arg::blas_element> elements,
+                                                                                               accel_struct_build_flags_t flags,
+                                                                                               uint64_t* out_native_handle)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    auto const res = mPoolAccelStructs.createBottomLevelAS(elements, flags);
+
+    if (out_native_handle != nullptr)
+        *out_native_handle = mPoolAccelStructs.getNode(res).raw_as_handle;
+
+    return res;
+}
+
+void pr::backend::vk::BackendVulkan::uploadTopLevelInstances(pr::backend::handle::accel_struct as, cc::span<const pr::backend::accel_struct_geometry_instance> instances)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    auto const& node = mPoolAccelStructs.getNode(as);
+    std::memcpy(node.buffer_instances_map, instances.data(), sizeof(accel_struct_geometry_instance) * instances.size());
+    flushMappedMemory(node.buffer_instances);
+}
+
+pr::backend::handle::resource pr::backend::vk::BackendVulkan::getAccelStructBuffer(pr::backend::handle::accel_struct as)
+{
+    log::err()("calculateShaderTableSize unimplemented");
+    return handle::null_resource;
+}
+
+pr::backend::shader_table_sizes pr::backend::vk::BackendVulkan::calculateShaderTableSize(pr::backend::arg::shader_table_records ray_gen_records,
+                                                                                         pr::backend::arg::shader_table_records miss_records,
+                                                                                         pr::backend::arg::shader_table_records hit_group_records)
+{
+    log::err()("calculateShaderTableSize unimplemented");
+    return {};
+}
+
+void pr::backend::vk::BackendVulkan::writeShaderTable(std::byte* dest, handle::pipeline_state pso, unsigned stride, arg::shader_table_records records)
+{
+    log::err()("writeShaderTable unimplemented");
+}
+
+void pr::backend::vk::BackendVulkan::free(pr::backend::handle::accel_struct as)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    mPoolAccelStructs.free(as);
+}
+
+void pr::backend::vk::BackendVulkan::freeRange(cc::span<const pr::backend::handle::accel_struct> as)
+{
+    CC_ASSERT(isRaytracingEnabled() && "raytracing is not enabled");
+    mPoolAccelStructs.free(as);
+}
+
 void pr::backend::vk::BackendVulkan::printInformation(pr::backend::handle::resource res) const
 {
-    std::cout << "[pr][backend][vk] Inspecting resource " << res.index << std::endl;
+    log::info() << "Inspecting resource " << res.index;
     if (!res.is_valid())
-        std::cout << "  invalid (== handle::null_resource)" << std::endl;
+        log::info() << "  invalid (== handle::null_resource)";
     else
     {
         if (mPoolResources.isImage(res))
         {
             auto const& info = mPoolResources.getImageInfo(res);
-            std::cout << "[pr][backend][vk]  image, raw pointer: " << info.raw_image << std::endl;
-            std::cout << "[pr][backend][vk]  " << info.num_mips << " mips, " << info.num_array_layers
-                      << " array layers, format: " << unsigned(info.pixel_format) << std::endl;
+            log::info() << " image, raw pointer: " << info.raw_image;
+            log::info() << " " << info.num_mips << " mips, " << info.num_array_layers << " array layers, format: " << unsigned(info.pixel_format);
         }
         else
         {
             auto const& info = mPoolResources.getBufferInfo(res);
-            std::cout << "[pr][backend][vk]  buffer, raw pointer: " << info.raw_buffer << std::endl;
-            std::cout << "[pr][backend][vk]  " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map << std::endl;
-            std::cout << "[pr][backend][vk]  raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds << std::endl;
+            log::info() << " buffer, raw pointer: " << info.raw_buffer;
+            log::info() << " " << info.width << " width, " << info.stride << " stride, raw mapped ptr: " << info.map;
+            log::info() << " raw dynamic CBV descriptor set: " << info.raw_uniform_dynamic_ds;
         }
     }
 }

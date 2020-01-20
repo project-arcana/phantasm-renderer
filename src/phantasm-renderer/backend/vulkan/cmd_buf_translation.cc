@@ -8,6 +8,7 @@
 #include "common/native_enum.hh"
 #include "common/util.hh"
 #include "common/verify.hh"
+#include "pools/accel_struct_pool.hh"
 #include "pools/cmd_list_pool.hh"
 #include "pools/pipeline_layout_cache.hh"
 #include "pools/pipeline_pool.hh"
@@ -350,6 +351,36 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::c
     vkCmdCopyBufferToImage(_cmd_list, src_buffer, dest_image_info.raw_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::resolve_texture& resolve)
+{
+    constexpr auto src_layout = util::to_image_layout(resource_state::resolve_src);
+    constexpr auto dest_layout = util::to_image_layout(resource_state::resolve_dest);
+
+    auto const src_image = _globals.pool_resources->getRawImage(resolve.source);
+    auto const dest_image = _globals.pool_resources->getRawImage(resolve.destination);
+
+    auto const& dest_info = _globals.pool_resources->getImageInfo(resolve.destination);
+
+    VkImageResolve region = {};
+
+    region.srcSubresource.aspectMask = is_depth_format(dest_info.pixel_format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel = resolve.src_mip_index;
+    region.srcSubresource.layerCount = 1;
+    region.srcSubresource.baseArrayLayer = resolve.src_array_index;
+
+    region.dstSubresource.aspectMask = region.srcSubresource.aspectMask;
+    region.dstSubresource.mipLevel = resolve.dest_mip_index;
+    region.dstSubresource.layerCount = 1;
+    region.dstSubresource.baseArrayLayer = resolve.dest_array_index;
+    region.srcOffset = {};
+    region.dstOffset = {};
+    region.extent.width = resolve.width;
+    region.extent.height = resolve.height;
+    region.extent.depth = 1;
+
+    vkCmdResolveImage(_cmd_list, src_image, src_layout, dest_image, dest_layout, 1, &region);
+}
+
 void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::debug_marker& marker)
 {
     VkDebugUtilsLabelEXT label = {};
@@ -360,6 +391,60 @@ void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::d
     if (vkCmdInsertDebugUtilsLabelEXT)
         vkCmdInsertDebugUtilsLabelEXT(_cmd_list, &label);
 }
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::update_bottom_level& blas_update)
+{
+    auto& dest_node = _globals.pool_accel_structs->getNode(blas_update.dest);
+    auto const src = blas_update.source.is_valid() ? _globals.pool_accel_structs->getNode(blas_update.source).raw_as : nullptr;
+    auto const dest_scratch = _globals.pool_resources->getRawBuffer(dest_node.buffer_scratch);
+
+    VkAccelerationStructureInfoNV build_info = {};
+    build_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
+    build_info.pNext = nullptr;
+    build_info.flags = util::to_native_flags(dest_node.flags);
+    build_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
+    build_info.geometryCount = static_cast<uint32_t>(dest_node.geometries.size());
+    build_info.pGeometries = dest_node.geometries.empty() ? nullptr : dest_node.geometries.data();
+    build_info.instanceCount = 0;
+
+    vkCmdBuildAccelerationStructureNV(_cmd_list, &build_info, nullptr, 0, (src == nullptr) ? VK_FALSE : VK_TRUE, dest_node.raw_as, src, dest_scratch, 0);
+
+    VkMemoryBarrier mem_barrier = {};
+    mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    mem_barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
+    mem_barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
+
+    vkCmdPipelineBarrier(_cmd_list, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0,
+                         1, &mem_barrier, 0, nullptr, 0, nullptr);
+}
+
+void pr::backend::vk::command_list_translator::execute(const pr::backend::cmd::update_top_level& tlas_update)
+{
+    auto& dest_node = _globals.pool_accel_structs->getNode(tlas_update.dest);
+    auto const dest_scratch = _globals.pool_resources->getRawBuffer(dest_node.buffer_scratch);
+
+    VkAccelerationStructureInfoNV build_info = {};
+    build_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
+    build_info.pNext = nullptr;
+    build_info.flags = util::to_native_flags(dest_node.flags);
+    build_info.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV;
+    build_info.geometryCount = 0;
+    build_info.pGeometries = nullptr;
+    build_info.instanceCount = tlas_update.num_instances;
+
+    vkCmdBuildAccelerationStructureNV(_cmd_list, &build_info, _globals.pool_resources->getRawBuffer(dest_node.buffer_instances), 0, VK_FALSE,
+                                      dest_node.raw_as, nullptr, dest_scratch, 0);
+
+    VkMemoryBarrier mem_barrier = {};
+    mem_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    mem_barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
+    mem_barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV;
+
+    vkCmdPipelineBarrier(_cmd_list, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0,
+                         1, &mem_barrier, 0, nullptr, 0, nullptr);
+}
+
+void pr::backend::vk::command_list_translator::execute(const cmd::dispatch_rays& dispatch_rays) {}
 
 void pr::backend::vk::command_list_translator::bind_shader_arguments(pr::backend::handle::pipeline_state pso,
                                                                      const std::byte* root_consts,
