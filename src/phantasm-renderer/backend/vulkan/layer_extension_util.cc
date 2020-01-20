@@ -1,5 +1,7 @@
 #include "layer_extension_util.hh"
 
+#include <phantasm-renderer/backend/config.hh>
+
 #include "common/log.hh"
 #include "common/unique_name_set.hh"
 #include "common/verify.hh"
@@ -182,7 +184,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_instance_lay_ext(const 
         }
     }
 
-    if (config.native_features & native_feature_flags::vk_api_dump)
+    if (config.native_features & backend_config::native_feature_vk_api_dump)
     {
         if (!add_layer("VK_LAYER_LUNARG_api_dump"))
         {
@@ -242,7 +244,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
             }
             else
             {
-                log::err()("Missing raytracing extension dependency %s", VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+                log::err()("Missing raytracing extension dependency {}", VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
             }
         }
     }

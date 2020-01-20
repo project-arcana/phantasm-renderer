@@ -43,7 +43,7 @@ VkBool32 pr::backend::vk::detail::debug_callback(VkDebugUtilsMessageSeverityFlag
 {
     // if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
     {
-        log::err()("[API][%s][%s] %s", to_literal(type), to_literal(severity), callback_data->pMessage);
+        log::err()("[API][{}][{}] {}", to_literal(type), to_literal(severity), callback_data->pMessage);
     }
     return VK_FALSE;
 }

@@ -2,7 +2,7 @@
 
 #include <clean-core/array.hh>
 
-#include <phantasm-renderer/backend/command_stream.hh>
+#include <phantasm-renderer/backend/commands.hh>
 
 #include <phantasm-renderer/backend/d3d12/common/d3d12_fwd.hh>
 #include <phantasm-renderer/backend/d3d12/pools/linear_descriptor_allocator.hh>

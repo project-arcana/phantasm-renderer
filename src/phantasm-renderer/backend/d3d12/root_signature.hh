@@ -55,7 +55,7 @@ private:
 struct root_signature
 {
     ID3D12RootSignature* raw_root_sig;
-    cc::capped_vector<shader_argument_map, 4> argument_maps;
+    cc::capped_vector<shader_argument_map, limits::max_shader_arguments> argument_maps;
 };
 
 /// add_fixed_root_constants: create a fixed root constant field in register(b1, space0)

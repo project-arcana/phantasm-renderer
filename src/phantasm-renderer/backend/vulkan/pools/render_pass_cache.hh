@@ -5,7 +5,7 @@
 #include <phantasm-renderer/backend/detail/cache_map.hh>
 #include <phantasm-renderer/backend/types.hh>
 
-#include <phantasm-renderer/backend/vulkan/loader/volk.hh>
+#include <phantasm-renderer/backend/vulkan/loader/vulkan_fwd.hh>
 
 namespace pr::backend::cmd
 {

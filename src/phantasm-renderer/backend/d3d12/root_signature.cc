@@ -48,7 +48,7 @@ ID3D12RootSignature* pr::backend::d3d12::create_root_signature(ID3D12Device& dev
     auto const serialize_hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1_0, serialized_root_sig.override(), error_blob.override());
     if (serialize_hr == E_INVALIDARG)
     {
-        log::err()("root signature serialization failed:\n%s", static_cast<char*>(error_blob->GetBufferPointer()));
+        log::err()("root signature serialization failed:\n{}", static_cast<char*>(error_blob->GetBufferPointer()));
     }
     PR_D3D12_ASSERT_FULL(serialize_hr, &device);
 

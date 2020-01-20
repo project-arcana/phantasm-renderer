@@ -2,7 +2,7 @@
 
 #include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/types.hh>
+#include <phantasm-renderer/backend/fwd.hh>
 
 #include "loader/vulkan_fwd.hh"
 

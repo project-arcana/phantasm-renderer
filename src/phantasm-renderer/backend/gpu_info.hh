@@ -5,7 +5,7 @@
 #include <clean-core/span.hh>
 #include <clean-core/string.hh>
 
-#include "types.hh"
+#include "config.hh"
 
 namespace pr::backend
 {

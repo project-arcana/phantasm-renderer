@@ -287,7 +287,7 @@ void pr::backend::vk::ResourcePool::destroy()
 
     if (num_leaks > 0)
     {
-        log::info()("warning: leaked %d handle::resource object%s", num_leaks, num_leaks == 1 ? "" : "s");
+        log::info()("warning: leaked {} handle::resource object{}", num_leaks, num_leaks == 1 ? "" : "s");
     }
 
     vmaDestroyAllocator(mAllocator);

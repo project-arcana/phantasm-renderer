@@ -226,7 +226,7 @@ void pr::backend::vk::ShaderViewPool::destroy()
 
     if (num_leaks > 0)
     {
-        log::info()("warning: leaked %d handle::shader_view object%s", num_leaks, num_leaks == 1 ? "" : "s");
+        log::info()("warning: leaked {} handle::shader_view object{}", num_leaks, num_leaks == 1 ? "" : "s");
     }
 
     mAllocator.destroy();

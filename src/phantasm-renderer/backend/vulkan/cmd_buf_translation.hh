@@ -2,7 +2,7 @@
 
 #include <clean-core/array.hh>
 
-#include <phantasm-renderer/backend/command_stream.hh>
+#include <phantasm-renderer/backend/commands.hh>
 
 #include <phantasm-renderer/backend/vulkan/common/vk_incomplete_state_cache.hh>
 #include <phantasm-renderer/backend/vulkan/loader/volk.hh>

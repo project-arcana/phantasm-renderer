@@ -27,6 +27,7 @@ class BackendVulkan final : public Backend
 {
 public:
     void initialize(backend_config const& config_arg, native_window_handle const& window_handle) override;
+    void destroy() override;
     ~BackendVulkan() override;
 
 public:

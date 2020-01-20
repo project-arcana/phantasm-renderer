@@ -4,6 +4,7 @@
 
 #include <typed-geometry/types/size.hh>
 
+#include <phantasm-renderer/backend/config.hh>
 #include <phantasm-renderer/backend/types.hh>
 
 #include "loader/volk.hh"

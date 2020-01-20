@@ -1,5 +1,10 @@
 #pragma once
 
+namespace pr
+{
+struct primitive_pipeline_config;
+}
+
 namespace pr::backend
 {
 struct shader_argument;
@@ -8,6 +13,7 @@ struct vertex_attribute_info;
 struct shader_view_element;
 struct sampler_config;
 struct render_target_config;
+struct native_window_handle;
 
 struct gpu_info;
 

@@ -1,8 +1,10 @@
 #include "surface_util.hh"
 
 #include <clean-core/array.hh>
-#include <clean-core/macros.hh>
 #include <clean-core/bit_cast.hh>
+#include <clean-core/macros.hh>
+
+#include <phantasm-renderer/backend/window_handle.hh>
 
 #include "common/verify.hh"
 #include "loader/volk.hh"
@@ -11,6 +13,10 @@
 #include <clean-core/native/win32_sanitized.hh>
 #elif defined(CC_OS_LINUX)
 #include <X11/Xlib.h>
+#endif
+
+#ifdef PR_BACKEND_HAS_SDL2
+#include <SDL2/SDL_vulkan.h>
 #endif
 
 #ifdef PR_BACKEND_VULKAN
@@ -29,23 +35,48 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
 {
     VkSurfaceKHR res_surface = nullptr;
 
-#ifdef CC_OS_WINDOWS
-    VkWin32SurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surface_info.hwnd = static_cast<::HWND>(window_handle.native_a);
-    surface_info.hinstance = GetModuleHandle(nullptr);
-    PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &res_surface));
-#elif defined(CC_OS_LINUX)
-    VkXlibSurfaceCreateInfoKHR surface_info = {};
-    surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    surface_info.dpy = static_cast<::Display*>(window_handle.native_b);
-    surface_info.window = cc::bit_cast<::Window>(window_handle.native_a);
-    surface_info.pNext = nullptr;
-    surface_info.flags = 0;
-    PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
+
+    if (window_handle.type == native_window_handle::wh_sdl)
+    {
+        // SDL2 mode
+#ifdef PR_BACKEND_HAS_SDL2
+        SDL_Vulkan_CreateSurface(static_cast<::SDL_Window*>(window_handle.value.sdl_handle), instance, &res_surface);
 #else
-#error "Unimplemented platform"
+        CC_RUNTIME_ASSERT(false && "SDL handle given, but compiled without SDL present");
 #endif
+    }
+    else if (window_handle.type == native_window_handle::wh_win32_hwnd)
+    {
+        // Native HWND mode
+#ifdef CC_OS_WINDOWS
+        VkWin32SurfaceCreateInfoKHR surface_info = {};
+        surface_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        surface_info.hwnd = window_handle.value.win32_hwnd;
+        surface_info.hinstance = GetModuleHandle(nullptr);
+        PR_VK_VERIFY_SUCCESS(vkCreateWin32SurfaceKHR(instance, &surface_info, nullptr, &res_surface));
+#else
+        CC_RUNTIME_ASSERT(false && "Win32 HWND given, but compiled on non-win32 platform");
+#endif
+    }
+    else if (window_handle.type == native_window_handle::wh_xlib)
+    {
+        // XLib mode
+#ifdef CC_OS_LINUX
+        VkXlibSurfaceCreateInfoKHR surface_info = {};
+        surface_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        surface_info.dpy = window_handle.value.xlib_handles.display;
+        surface_info.window = window_handle.value.xlib_handles.window;
+        surface_info.pNext = nullptr;
+        surface_info.flags = 0;
+        PR_VK_VERIFY_SUCCESS(vkCreateXlibSurfaceKHR(instance, &surface_info, nullptr, &res_surface));
+#else
+        CC_RUNTIME_ASSERT(false && "Xlib handle given, but compiled on non-linux platform");
+#endif
+    }
+    else
+    {
+        CC_RUNTIME_ASSERT(false && "unimplemented window handle type");
+    }
 
     return res_surface;
 }
