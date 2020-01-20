@@ -1,6 +1,6 @@
 #include "adapter_choice_util.hh"
 
-#include <string>
+#include <cstdio>
 
 #include <clean-core/array.hh>
 #include <clean-core/assert.hh>
@@ -70,7 +70,6 @@ cc::vector<pr::backend::gpu_info> pr::backend::d3d12::get_adapter_candidates()
                 DXGI_ADAPTER_DESC adapter_desc;
                 PR_D3D12_VERIFY(temp_adapter->GetDesc(&adapter_desc));
 
-                std::wstring description_wide = adapter_desc.Description;
 
                 auto& new_candidate = res.emplace_back();
                 new_candidate.vendor = get_gpu_vendor_from_id(adapter_desc.VendorId);
@@ -80,7 +79,9 @@ cc::vector<pr::backend::gpu_info> pr::backend::d3d12::get_adapter_candidates()
                 new_candidate.dedicated_system_memory_bytes = adapter_desc.DedicatedSystemMemory;
                 new_candidate.shared_system_memory_bytes = adapter_desc.SharedSystemMemory;
 
-                new_candidate.description = cc::string(std::string(description_wide.begin(), description_wide.end()));
+                char description_nonwide[sizeof(adapter_desc.Description) + 8];
+                std::snprintf(description_nonwide, sizeof(description_nonwide), "%ws", adapter_desc.Description);
+                new_candidate.description = cc::string(description_nonwide);
 
                 if (max_feature_level < D3D_FEATURE_LEVEL_12_0)
                     new_candidate.capabilities = gpu_capabilities::insufficient;
