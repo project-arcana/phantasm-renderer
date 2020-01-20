@@ -5,9 +5,8 @@ PRB is an abstraction over Vulkan and D3D12, aiming to be succinct without restr
 
 - Small API surface
 - High performance
-- Free threadedness
 - Explicit lifetimes
-- Sane defaults
+- Heavy multithreading
 - Low boilerplate
 
 ## Objects
