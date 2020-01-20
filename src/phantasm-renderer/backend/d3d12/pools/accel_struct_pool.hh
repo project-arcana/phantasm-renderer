@@ -53,7 +53,7 @@ public:
             buffer_as = handle::null_resource;
             buffer_scratch = handle::null_resource;
             buffer_instances = handle::null_resource;
-            flags = accel_struct_build_flags::none;
+            flags = {};
             geometries.clear();
         }
     };

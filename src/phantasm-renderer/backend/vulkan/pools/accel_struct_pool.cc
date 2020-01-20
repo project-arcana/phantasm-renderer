@@ -167,7 +167,7 @@ pr::backend::handle::accel_struct pr::backend::vk::AccelStructPool::createTopLev
 
     PR_VK_VERIFY_SUCCESS(vkBindAccelerationStructureMemoryNV(mDevice, 1, &bind_mem_info));
 
-    return acquireAccelStruct(raw_as, 0, buffer_as, buffer_scratch, buffer_instances);
+    return acquireAccelStruct(raw_as, {}, buffer_as, buffer_scratch, buffer_instances);
 }
 
 void pr::backend::vk::AccelStructPool::free(pr::backend::handle::accel_struct as)

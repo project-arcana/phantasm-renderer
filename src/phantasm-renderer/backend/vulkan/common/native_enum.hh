@@ -139,27 +139,27 @@ namespace pr::backend::vk::util
 {
     VkPipelineStageFlags res = 0;
 
-    if (domain & shader_domain_flags::vertex)
+    if (domain & shader_domain::vertex)
         res |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 
-    if (domain & shader_domain_flags::hull)
+    if (domain & shader_domain::hull)
         res |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
 
-    if (domain & shader_domain_flags::domain)
+    if (domain & shader_domain::domain)
         res |= VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
 
-    if (domain & shader_domain_flags::geometry)
+    if (domain & shader_domain::geometry)
         res |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
 
-    if (domain & shader_domain_flags::pixel)
+    if (domain & shader_domain::pixel)
         res |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 
-    if (domain & shader_domain_flags::compute)
+    if (domain & shader_domain::compute)
         res |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
 
-    if (domain & shader_domain_flags::mask_all_raytrace_stages)
+    if (domain.has_any_of(shader_domain_mask_all_ray))
         res |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV;
 
     return res;
