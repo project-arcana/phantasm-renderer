@@ -242,7 +242,7 @@ pr::backend::vk::lay_ext_array pr::backend::vk::get_used_device_lay_ext(const pr
             }
             else
             {
-                log::err()("Missing raytracing extension dependency %s", VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+                log::err()("Missing raytracing extension dependency {}", VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
             }
         }
     }
