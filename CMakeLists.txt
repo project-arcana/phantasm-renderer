@@ -65,7 +65,6 @@ target_include_directories(phantasm-renderer
 target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
-    reflector
     rich-log
 )
 
@@ -139,4 +138,10 @@ if (PR_ENABLE_SDL2)
     else()
         message(STATUS "[phantasm renderer] SDL2 not found")
     endif()
+endif()
+
+if (TARGET reflector)
+    target_link_libraries(phantasm-renderer PUBLIC reflector)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_HAS_REFLECTOR)
+    message(STATUS "[phantasm renderer] reflector found")
 endif()

@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef PR_BACKEND_HAS_REFLECTOR
+
 #include <clean-core/typedefs.hh>
 
 #include <reflector/members.hh>
@@ -116,3 +118,5 @@ template <class VertT>
 }
 
 }
+
+#endif
