@@ -4,6 +4,8 @@
 #include <clean-core/bit_cast.hh>
 #include <clean-core/macros.hh>
 
+#include <phantasm-renderer/backend/window_handle.hh>
+
 #include "common/verify.hh"
 #include "loader/volk.hh"
 

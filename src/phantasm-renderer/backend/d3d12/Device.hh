@@ -1,6 +1,6 @@
 #pragma once
 
-#include <phantasm-renderer/backend/types.hh>
+#include <phantasm-renderer/backend/config.hh>
 
 #include "common/d3d12_fwd.hh"
 #include "common/shared_com_ptr.hh"

@@ -2,6 +2,8 @@
 
 #include <clean-core/vector.hh>
 
+#include <phantasm-renderer/backend/window_handle.hh>
+
 #include "cmd_list_translation.hh"
 #include "common/dxgi_format.hh"
 #include "common/log.hh"

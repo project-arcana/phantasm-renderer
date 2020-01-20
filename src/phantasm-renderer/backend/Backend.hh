@@ -2,8 +2,6 @@
 
 #include <typed-geometry/types/size.hh>
 
-#include <phantasm-renderer/fwd.hh>
-
 #include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/fwd.hh>
 
