@@ -4,7 +4,7 @@
 #include <clean-core/span.hh>
 
 #include <phantasm-renderer/backend/arguments.hh>
-#include <phantasm-renderer/backend/command_stream.hh>
+#include <phantasm-renderer/backend/commands.hh>
 #include <phantasm-renderer/primitive_pipeline_config.hh>
 
 #include "loader/volk.hh"

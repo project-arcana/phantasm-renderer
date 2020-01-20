@@ -4,18 +4,6 @@
 
 namespace pr::backend::mem
 {
-template <class T>
-constexpr T kb(T x)
-{
-    return x * 1024;
-}
-
-template <class T>
-constexpr T mb(T x)
-{
-    return x * 1024 * 1024;
-}
-
 // From D3D12 sample MiniEngine
 // https://github.com/Microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Math/Common.h
 template <class T>

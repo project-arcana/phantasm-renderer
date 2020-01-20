@@ -124,3 +124,10 @@ void pr::backend::d3d12::Adapter::initialize(const backend_config& config)
         }
     }
 }
+
+void pr::backend::d3d12::Adapter::invalidate()
+{
+    mInfoQueue = nullptr;
+    mFactory = nullptr;
+    mAdapter = nullptr;
+}

@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <clean-core/array.hh>
+#include <clean-core/utility.hh>
 
 namespace pr::backend::detail
 {
@@ -44,9 +45,11 @@ public:
     ValT* insert(HashT hash, ValT const& value)
     {
         CC_ASSERT(hash != tombstone_hash && "illegal hash value");
-        for (auto offset = 0u; offset < _hashes.size(); ++offset)
+
+        unsigned index = hash % _hashes.size();
+        for (auto _ = 0u; _ < _hashes.size(); ++_)
         {
-            auto const index = (hash + offset) % _hashes.size();
+            index = cc::wrapped_increment<unsigned>(index, _hashes.size());
 
             if (_hashes[index] == tombstone_hash)
             {
@@ -80,9 +83,10 @@ private:
     [[nodiscard]] size_t find_hash(HashT hash) const
     {
         CC_ASSERT(hash != tombstone_hash && "illegal hash value");
-        for (auto offset = 0u; offset < _hashes.size(); ++offset)
+        unsigned index = hash % _hashes.size();
+        for (auto _ = 0u; _ < _hashes.size(); ++_)
         {
-            auto const index = (hash + offset) % _hashes.size();
+            index = cc::wrapped_increment<unsigned>(index, _hashes.size());
 
             if (_hashes[index] == hash)
             {

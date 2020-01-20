@@ -2,7 +2,6 @@
 
 #include <cstring>
 
-#include <clean-core/capped_vector.hh>
 #include <clean-core/utility.hh>
 
 #include <typed-geometry/types/objects/aabb.hh>

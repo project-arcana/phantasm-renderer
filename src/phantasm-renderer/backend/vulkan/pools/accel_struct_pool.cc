@@ -219,7 +219,7 @@ void pr::backend::vk::AccelStructPool::destroy()
 
         if (num_leaks > 0)
         {
-            log::info()("warning: leaked %d handle::accel_struct object%s", num_leaks, num_leaks == 1 ? "" : "s");
+            log::info()("warning: leaked {} handle::accel_struct object{}", num_leaks, num_leaks == 1 ? "" : "s");
         }
     }
 }

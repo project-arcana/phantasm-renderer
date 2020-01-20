@@ -2,6 +2,7 @@
 
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backend/Backend.hh>
+#include <phantasm-renderer/backend/config.hh>
 #include <phantasm-renderer/backends.hh>
 
 using namespace pr;

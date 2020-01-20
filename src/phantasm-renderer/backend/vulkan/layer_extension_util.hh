@@ -5,7 +5,7 @@
 
 #include <clean-core/span.hh>
 
-#include <phantasm-renderer/backend/types.hh>
+#include <phantasm-renderer/backend/fwd.hh>
 
 #include "common/unique_name_set.hh"
 #include "loader/volk.hh"

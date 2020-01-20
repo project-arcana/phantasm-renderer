@@ -2,8 +2,6 @@
 
 #include <typed-geometry/types/size.hh>
 
-#include <phantasm-renderer/fwd.hh>
-
 #include <phantasm-renderer/backend/arguments.hh>
 #include <phantasm-renderer/backend/fwd.hh>
 
@@ -20,6 +18,7 @@ public:
     virtual ~Backend() = default;
 
     virtual void initialize(backend_config const& config, native_window_handle const& window_handle) = 0;
+    virtual void destroy() = 0;
 
     virtual void flushGPU() = 0;
 
@@ -87,13 +86,13 @@ public:
     virtual std::byte* getMappedMemory(handle::resource res) = 0;
 
     /// flushes writes to memory pointers received from getMappedMemory(res),
-    /// making them GPU-visible in any successively submitted command lists
+    /// making them GPU-visible in any successively submitted command lists (no-op on d3d12)
     virtual void flushMappedMemory(handle::resource res) = 0;
 
     /// destroy a resource
     virtual void free(handle::resource res) = 0;
 
-    /// destroy multiple resource
+    /// destroy multiple resources
     virtual void freeRange(cc::span<handle::resource const> resources) = 0;
 
     //

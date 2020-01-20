@@ -74,13 +74,13 @@ void print_dred_information(ID3D12Device* device)
             auto num_breadcrumbs = 0u;
             while (breadcrumb != nullptr && num_breadcrumbs < 10)
             {
-                log::dred()("bc #%d size %d", num_breadcrumbs, breadcrumb->BreadcrumbCount);
+                log::dred()("bc #{} size {}", num_breadcrumbs, breadcrumb->BreadcrumbCount);
 
                 if (breadcrumb->pCommandListDebugNameA != nullptr)
-                    log::dred()("  on list\"%s\"", breadcrumb->pCommandListDebugNameA);
+                    log::dred()("  on list\"{}\"", breadcrumb->pCommandListDebugNameA);
 
                 if (breadcrumb->pCommandQueueDebugNameA != nullptr)
-                    log::dred()("  on queue\"%s\"", breadcrumb->pCommandQueueDebugNameA);
+                    log::dred()("  on queue\"{}\"", breadcrumb->pCommandQueueDebugNameA);
 
 
                 auto logger = log::dred();
@@ -113,13 +113,13 @@ void print_dred_information(ID3D12Device* device)
 
         if (SUCCEEDED(hr2))
         {
-            log::dred()("pagefault VA: %u", DredPageFaultOutput.PageFaultVA);
+            log::dred()("pagefault VA: {}", DredPageFaultOutput.PageFaultVA);
 
             D3D12_DRED_ALLOCATION_NODE const* freed_node = DredPageFaultOutput.pHeadRecentFreedAllocationNode;
             while (freed_node != nullptr)
             {
                 if (freed_node->ObjectNameA)
-                    log::dred()("recently freed: %s", freed_node->ObjectNameA);
+                    log::dred()("recently freed: {}", freed_node->ObjectNameA);
 
                 freed_node = freed_node->pNext;
             }
@@ -128,7 +128,7 @@ void print_dred_information(ID3D12Device* device)
             while (allocated_node != nullptr)
             {
                 if (allocated_node->ObjectNameA)
-                    log::dred()("allocated: %s", allocated_node->ObjectNameA);
+                    log::dred()("allocated: {}", allocated_node->ObjectNameA);
 
                 allocated_node = allocated_node->pNext;
             }
@@ -185,7 +185,7 @@ void pr::backend::d3d12::detail::dred_assert_handler(void* device_child, const c
     }
     else
     {
-        log::err()("Failed to recover device from ID3D12DeviceChild %p", device_child);
+        log::err()("Failed to recover device from ID3D12DeviceChild {}", device_child);
     }
 
     // TODO: Graceful shutdown
