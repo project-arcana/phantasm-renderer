@@ -1,9 +1,7 @@
 
 # Phantasm Renderer Backend
 
-PRB is an abstraction over Vulkan and D3D12, aiming to be succinct without restricting access to the underlying APIs within reason.
-
-Goals:
+PRB is an abstraction over Vulkan and D3D12, aiming to be succinct without restricting access to the underlying APIs within reason. Primary goals:
 
 - Small API surface
 - High performance
@@ -14,7 +12,7 @@ Goals:
 
 ## Objects
 
-The core of PRB is the backend. This is the only type in the library with methods. Everything happening with regards to the real graphics API is instructed through the backend. The two backends  (`BackendD3D12` and `BackendVulkan`) share a virtual interface and can be used interchangably.
+The core of PRB is the backend. This is the only type in the library with methods<sup>[1](#footnote1)</sup>. Everything happening with regards to the real graphics API is instructed through the backend. The two backends  (`BackendD3D12` and `BackendVulkan`) share a virtual interface and can be used interchangably.
 
 PRB has four main objects, accessed using lightweight, POD handles.
 
@@ -47,9 +45,10 @@ Commands are almost entirely stateless. The only state is the currently active r
 
 ### Shader Arguments
 
-PRB is opinionated with regards to shader inputs. There are four input types, following D3D12 conventions:
+There are four shader input types, following D3D12 conventions:
 
 1. CBVs - Constant Buffer Views
+
     A read-only buffer of limited size. HLSL `b` register.
 
     ```HLSL
@@ -63,6 +62,7 @@ PRB is opinionated with regards to shader inputs. There are four input types, fo
     ```
 
 2. SRVs - Shader Resource Views
+
     A read-only texture, or a large, strided buffer. HLSL `t` register.
 
     ```HLSL
@@ -72,6 +72,7 @@ PRB is opinionated with regards to shader inputs. There are four input types, fo
     ```
 
 3. UAVs - Unordered Access Views
+
     A read-write texture or buffer. HLSL `u` register.
 
     ```HLSL
@@ -79,13 +80,14 @@ PRB is opinionated with regards to shader inputs. There are four input types, fo
     ```
 
 4. Samplers
+
     State regarding the way to sample textures. HLSL `s` register.
 
     ```HLSL
     SamplerState g_sampler                              : register(s0, space0);
     ```
 
-Shaders in PRB can be fed with 0 to 4 "shader arguments". A shader argument consists of a `handle::shader_view`, a CBV, and an offset into the CBV memory. Shader arguments correspond to HLSL spaces. Argument 0 is space0, 1 is space1, and so forth.
+Shaders in PRB can be fed with 0 to 4 "shader arguments". A shader argument consists of a `handle::shader_view`, a CBV, and an offset into the CBV memory. Shader arguments correspond to HLSL spaces. Argument 0 is `space0`, 1 is `space1`, and so forth.
 
 Inputs are not strictly typed, for example, a `Texture2D` can be supplied by simply "viewing" a single array slice of a texture array. Details regarding this process can be inferred from the creation of `handle::shader_view`, and the `shader_view_element` type.
 
@@ -164,3 +166,7 @@ Some parts of the API require less care when using D3D12:
 3. `Backend::acquireBackbuffer` will never fail.
 
 Some other fields of `cmd` structs might also be optional, which will be noted in comments.
+
+---
+
+<a name="footnote1">1</a>: Methods with side-effects, other types do have convenience initializers and so forth.
