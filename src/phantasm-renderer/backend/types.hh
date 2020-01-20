@@ -25,12 +25,12 @@ inline constexpr index_t null_handle_index = index_t(-1);
 /// generic resource (buffer, texture, render target)
 PR_DEFINE_HANDLE(resource);
 
+/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
+PR_DEFINE_HANDLE(pipeline_state);
+
 /// shader_view := (SRVs + UAVs + Samplers)
 /// shader argument := handle::shader_view + handle::resource (CBV) + uint (CBV offset)
 PR_DEFINE_HANDLE(shader_view);
-
-/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
-PR_DEFINE_HANDLE(pipeline_state);
 
 /// recorded command list, ready to submit or discard
 PR_DEFINE_HANDLE(command_list);
