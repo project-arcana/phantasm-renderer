@@ -17,27 +17,30 @@ The core of PRB is the backend. This is the only type in the library with method
 PRB has four main objects, accessed using lightweight, POD handles.
 
 1. `handle::resource`
+
     A texture, render target, or buffer of any form
 
 2. `handle::pipeline_state`
+
     Shaders, their input shape, and various pipeline configuration options form a pipeline_state. Graphics, compute, or raytracing.
 
 3. `handle::shader_view`
+
     Shader views are a combination of resource views, for access in a shader.
 
 4. `handle::command_list`
-    Represents a recorded command list ready for GPU submission. Only valid between `recordCommandList` and the first of either `submit` or `discard`.
+
+    Represents a recorded command list ready for GPU submission.
 
 ### Commands
 
 Commands do the heavy lifting in communicating with a PRB backend. They are simple structs, which are written contiguously into a piece of memory ("software command buffer"). This memory is then passed to the backend,
 
 ```C++
-/// create a command list handle from a software command buffer
 handle::command_list recordCommandList(std::byte* buffer, size_t size);
 ```
 
-creating a `handle::command_list`. Command list recording is CPU-only, and entirely free-threaded. The received handle is eventually submitted to the GPU using `submit`.
+creating a `handle::command_list`. Command list recording is CPU-only, and entirely free-threaded. The received handle is eventually submitted to the GPU using `Backend::submit`, or freed using `Backend::discard`. Both of these calls consume the handle, command lists cannot be submitted multiple times.
 
 Commands live in the `cmd` namespace, found in `commands.hh`. For easy command buffer writing, `command_stream_writer` is provided in the same header.
 
@@ -52,8 +55,7 @@ There are four shader input types, following D3D12 conventions:
     A read-only buffer of limited size. HLSL `b` register.
 
     ```HLSL
-    struct camera_constants
-    {
+    struct camera_constants {
         float4x4 view_proj;
         float3 cam_pos;
     };
@@ -87,7 +89,7 @@ There are four shader input types, following D3D12 conventions:
     SamplerState g_sampler                              : register(s0, space0);
     ```
 
-Shaders in PRB can be fed with 0 to 4 "shader arguments". A shader argument consists of a `handle::shader_view`, a CBV, and an offset into the CBV memory. Shader arguments correspond to HLSL spaces. Argument 0 is `space0`, 1 is `space1`, and so forth.
+Shaders in PRB can be fed with up to 4 "shader arguments". Each shader argument consists of a `handle::shader_view` and a CBV (`handle::resource`). Shader arguments correspond to HLSL spaces. Argument 0 is `space0`, 1 is `space1`, and so forth.
 
 Inputs are not strictly typed, for example, a `Texture2D` can be supplied by simply "viewing" a single array slice of a texture array. Details regarding this process can be inferred from the creation of `handle::shader_view`, and the `shader_view_element` type.
 
@@ -95,7 +97,7 @@ Shader view "shapes", as in the amount of arguments, and the amount of inputs pe
 
 ## Threading
 
-With one exception, the PRB backend is entirely free-threaded and internally synchronized. The internal synchronization is minimal, and parallel recording of command lists is encouraged. The exception is the `backend::submit` method, which must only be called on one thread at a time.
+With one exception, the PRB backend is entirely free-threaded and internally synchronized. The synchronization is minimal, and parallel recording of command lists is encouraged, which takes place on thread-local components. The exception is the `Backend::submit` method, which must only be called on one thread at a time.
 
 ## Resource States
 
@@ -111,24 +113,19 @@ In the steady state, there is very little interaction with the backend apart fro
 while (window_open)
 {
     if (window_resized)
-    {
         backend.onResize({w, h});
-    }
 
     if (backend.clearPendingResize())
     {
-        // the backend backbuffer has resized,
-        // re-create window size dependant resources
-
-        // think of this event as entirely independent from
-        // a window resize, do all your resize logic here
+        // the backend backbuffer has resized, re-create window size dependant resources
+        // think of this event as entirely independent from a window resize, do all your resize logic here
     }
 
     // ... write and record command lists ...
 
     auto const backbuffer = backend.acquireBackbuffer();
 
-    if (!backbuffer.is_valid())
+    if (!backbuffer.is_valid()) 
     {
         // backbuffer acquire has failed, discard this frame
         backend.discard(cmdlists);
