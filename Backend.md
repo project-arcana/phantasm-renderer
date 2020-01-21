@@ -5,9 +5,8 @@ PRB is an abstraction over Vulkan and D3D12, aiming to be succinct without restr
 
 - Small API surface
 - High performance
-- Free threadedness
 - Explicit lifetimes
-- Sane defaults
+- Heavy multithreading
 - Low boilerplate
 
 ## Objects
@@ -116,18 +115,17 @@ while (window_open)
         backend.onResize({w, h});
 
     if (backend.clearPendingResize())
-    {
-        // the backend backbuffer has resized, re-create window size dependant resources
+    { // the backbuffer has resized, re-create size dependant resources
         // think of this event as entirely independent from a window resize, do all your resize logic here
+        // use backend.getBackbufferSize()
     }
 
-    // ... write and record command lists ...
+    // ... write and record main command lists ...
 
-    auto const backbuffer = backend.acquireBackbuffer();
+    auto const backbuffer = backend.acquireBackbuffer(); // as late as possible
 
     if (!backbuffer.is_valid()) 
-    {
-        // backbuffer acquire has failed, discard this frame
+    { // backbuffer acquire has failed, discard this frame
         backend.discard(cmdlists);
         continue;
     }
@@ -158,7 +156,7 @@ As PRB is a relatively thin layer over the native APIs, memory access to mapped 
 
 Some parts of the API require less care when using D3D12:
 
-1. Resource state transitions can omit shader depdencies.
+1. Resource state transitions can omit shader dependencies.
 2. `Backend::flushMappedMemory` does nothing and can be ignored.
 3. `Backend::acquireBackbuffer` will never fail.
 
