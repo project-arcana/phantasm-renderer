@@ -17,9 +17,6 @@ template <class T, uint8_t N>
 struct trivial_capped_vector
 {
     static_assert(std::is_trivially_copyable_v<T>, "T not trivial enough");
-    static_assert(std::is_trivially_destructible_v<T>, "T not trivial enough");
-    static_assert(std::is_trivially_copy_assignable_v<T>, "T not trivial enough");
-    static_assert(std::is_trivially_move_assignable_v<T>, "T not trivial enough");
     static_assert(N > 0, "empty capped vector not allowed");
 
     // properties
