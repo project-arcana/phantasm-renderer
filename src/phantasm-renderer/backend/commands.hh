@@ -51,8 +51,8 @@ enum class cmd_queue_type : uint8_t
 
 struct cmd_base
 {
-    cmd_type type;
-    cmd_base(cmd_type t) : type(t) {}
+    cmd_type s_internal_type;
+    cmd_base(cmd_type t) : s_internal_type(t) {}
 };
 
 template <cmd_type TYPE, cmd_queue_type QUEUE = cmd_queue_type::graphics>
@@ -450,7 +450,7 @@ PR_CMD_TYPE_VALUES
 template <class F>
 void dynamic_dispatch(detail::cmd_base const& base, F& callback)
 {
-    switch (base.type)
+    switch (base.s_internal_type)
     {
 #define PR_X(_val_)                                                            \
     case detail::cmd_type::_val_:                                              \
@@ -494,7 +494,7 @@ public:
 
         iterator& operator++()
         {
-            auto const advance = cmd::detail::get_command_size(_pos->type);
+            auto const advance = cmd::detail::get_command_size(_pos->s_internal_type);
             _pos = reinterpret_cast<cmd::detail::cmd_base*>(reinterpret_cast<std::byte*>(_pos) + advance);
             _remaining_size -= advance;
             return *this;

@@ -115,7 +115,9 @@ bool pr::backend::d3d12::cmd_allocator_node::is_submit_counter_up_to_date() cons
     return (submits_since_reset == possible_submits_remaining);
 }
 
-pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist, CommandAllocatorBundle& thread_allocator)
+pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist,
+                                                                              CommandAllocatorBundle& thread_allocator,
+                                                                              ID3D12Fence* fence_to_set)
 {
     unsigned res_handle;
     {
@@ -127,6 +129,7 @@ pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID
 
     cmd_list_node& new_node = mPool.get(res_handle);
     new_node.responsible_allocator = thread_allocator.acquireMemory(out_cmdlist);
+    new_node.fence_to_set = fence_to_set;
 
     return {static_cast<handle::index_t>(res_handle)};
 }

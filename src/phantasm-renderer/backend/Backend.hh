@@ -133,13 +133,26 @@ public:
     //
 
     /// create a command list handle from a software command buffer
-    [[nodiscard]] virtual handle::command_list recordCommandList(std::byte* buffer, size_t size) = 0;
+    /// event_to_set: optional, will be set once the command list has finished executing (on the GPU, after submission)
+    [[nodiscard]] virtual handle::command_list recordCommandList(std::byte* buffer, size_t size, handle::event event_to_set = handle::null_event) = 0;
 
     /// destroy the given command list handles
     virtual void discard(cc::span<handle::command_list const> cls) = 0;
 
     /// submit and destroy the given command list handles
     virtual void submit(cc::span<handle::command_list const> cls) = 0;
+
+    //
+    // Event interface
+    //
+
+    /// create an event, starts out unset
+    [[nodiscard]] virtual handle::event createEvent() = 0;
+
+    /// if the event is set, unsets it and returns true, otherwise returns false
+    [[nodiscard]] virtual bool tryUnsetEvent(handle::event event) = 0;
+
+    virtual void free(cc::span<handle::event const> events) = 0;
 
     //
     // Raytracing interface

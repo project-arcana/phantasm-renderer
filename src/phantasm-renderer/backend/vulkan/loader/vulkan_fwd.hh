@@ -21,6 +21,7 @@ extern "C"
     PR_VK_DEFINE_HANDLE(VkRenderPass);
     PR_VK_DEFINE_HANDLE(VkCommandPool);
     PR_VK_DEFINE_HANDLE(VkFence);
+    PR_VK_DEFINE_HANDLE(VkEvent);
     PR_VK_DEFINE_HANDLE(VkSemaphore);
     PR_VK_DEFINE_HANDLE(VkAccelerationStructureNV);
 

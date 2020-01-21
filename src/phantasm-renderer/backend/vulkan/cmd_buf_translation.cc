@@ -17,7 +17,7 @@
 #include "resources/transition_barrier.hh"
 
 void pr::backend::vk::command_list_translator::translateCommandList(
-    VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size)
+    VkCommandBuffer list, handle::command_list list_handle, vk_incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size, VkEvent event_to_set)
 {
     _cmd_list = list;
     _cmd_list_handle = list_handle;
@@ -35,6 +35,11 @@ void pr::backend::vk::command_list_translator::translateCommandList(
     {
         // end the last render pass
         vkCmdEndRenderPass(_cmd_list);
+    }
+
+    if (event_to_set != nullptr)
+    {
+        vkCmdSetEvent(_cmd_list, event_to_set, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
     }
 
     // close the list
