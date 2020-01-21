@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <clean-core/flags.hh>
+
 namespace pr::backend
 {
 namespace handle
@@ -23,26 +25,21 @@ inline constexpr index_t null_handle_index = index_t(-1);
 /// generic resource (buffer, texture, render target)
 PR_DEFINE_HANDLE(resource);
 
+/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
+PR_DEFINE_HANDLE(pipeline_state);
+
 /// shader_view := (SRVs + UAVs + Samplers)
 /// shader argument := handle::shader_view + handle::resource (CBV) + uint (CBV offset)
 PR_DEFINE_HANDLE(shader_view);
-
-/// pipeline state (vertex layout, primitive config, shaders, framebuffer formats, ...)
-PR_DEFINE_HANDLE(pipeline_state);
 
 /// recorded command list, ready to submit or discard
 PR_DEFINE_HANDLE(command_list);
 
 /// raytracing acceleration structure handle
 PR_DEFINE_HANDLE(accel_struct);
-}
 
-// create an enum that is namespaced but non-class (for bitwise operations)
-#define PR_DEFINE_BIT_FLAGS(_name_, _type_) \
-    using _name_##_t = _type_;              \
-    namespace _name_                        \
-    {                                       \
-    enum _name_##_e : _name_##_t
+#undef PR_DEFINE_HANDLE
+}
 
 struct shader_argument
 {
@@ -71,27 +68,14 @@ enum class shader_domain : uint8_t
     ray_any_hit,
 };
 
-PR_DEFINE_BIT_FLAGS(shader_domain_flags, uint16_t){
-    unspecified = 0x0000,
+using shader_domain_flags_t = cc::flags<shader_domain, 16>;
+CC_FLAGS_ENUM_SIZED(shader_domain, 16);
 
-    vertex = 0x0001,
-    hull = 0x0002,
-    domain = 0x0004,
-    geometry = 0x0008,
-    pixel = 0x0010,
+inline constexpr shader_domain_flags_t shader_domain_mask_all_graphics
+    = shader_domain::vertex | shader_domain::hull | shader_domain::domain | shader_domain::geometry | shader_domain::pixel;
 
-    compute = 0x0020,
-
-    ray_gen = 0x0040,
-    ray_intersect = 0x0080,
-    ray_miss = 0x0100,
-    ray_closest_hit = 0x0200,
-    ray_any_hit = 0x0400,
-
-    mask_all_raytrace_stages = ray_gen | ray_intersect | ray_miss | ray_closest_hit | ray_any_hit,
-    mask_all_graphics_stages = vertex | hull | domain | geometry | pixel,
-};
-}
+inline constexpr shader_domain_flags_t shader_domain_mask_all_ray
+    = shader_domain::ray_gen | shader_domain::ray_miss | shader_domain::ray_closest_hit | shader_domain::ray_intersect | shader_domain::ray_any_hit;
 
 enum class queue_type : uint8_t
 {
@@ -216,7 +200,6 @@ enum class shader_view_dimension : uint8_t
     texturecube_array,
     raytracing_accel_struct
 };
-
 
 struct shader_view_element
 {
@@ -446,10 +429,17 @@ struct render_target_config
     blend_op blend_op_alpha = blend_op::op_add;
 };
 
-PR_DEFINE_BIT_FLAGS(accel_struct_build_flags, uint8_t){
-    none = 0x00, allow_update = 0x01, allow_compaction = 0x02, prefer_fast_trace = 0x04, prefer_fast_build = 0x08, minimize_memory = 0x10,
+enum class accel_struct_build_flags : uint8_t
+{
+    allow_update,
+    allow_compaction,
+    prefer_fast_trace,
+    prefer_fast_build,
+    minimize_memory
 };
-}
+
+CC_FLAGS_ENUM(accel_struct_build_flags);
+using accel_struct_build_flags_t = cc::flags<accel_struct_build_flags>;
 
 /// geometry instance within a top level acceleration structure (layout dictated by DXR/Vulkan RT Extension)
 struct accel_struct_geometry_instance
@@ -471,8 +461,17 @@ struct accel_struct_geometry_instance
 static_assert(sizeof(accel_struct_geometry_instance) == 64, "accel_struct_geometry_instance compiles to incorrect size");
 
 // these flags align exactly with both vulkan and d3d12, and are not translated
-PR_DEFINE_BIT_FLAGS(accel_struct_instance_flags, uint32_t){none = 0x0000, triangle_cull_disable = 0x0001, triangle_front_counterclockwise = 0x0002,
-                                                           force_opaque = 0x0004, force_no_opaque = 0x0008};
+using accel_struct_instance_flags_t = uint32_t;
+namespace accel_struct_instance_flags
+{
+enum accel_struct_instance_flags_e : accel_struct_instance_flags_t
+{
+    none = 0x0000,
+    triangle_cull_disable = 0x0001,
+    triangle_front_counterclockwise = 0x0002,
+    force_opaque = 0x0004,
+    force_no_opaque = 0x0008
+};
 }
 
 /// the size and element-strides of a shader table
@@ -483,6 +482,3 @@ struct shader_table_sizes
     uint32_t hit_group_stride_bytes = 0;
 };
 }
-
-#undef PR_DEFINE_HANDLE
-#undef PR_DEFINE_BIT_FLAGS

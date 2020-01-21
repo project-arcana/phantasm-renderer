@@ -57,7 +57,7 @@ namespace pr::backend::d3d12::util
         return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
     }
 
-
+    CC_ASSERT(false && "to_native uncaught argument");
     return D3D12_RESOURCE_STATE_COMMON;
 }
 
@@ -75,6 +75,7 @@ namespace pr::backend::d3d12::util
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 }
 
 [[nodiscard]] inline constexpr D3D12_PRIMITIVE_TOPOLOGY to_native_topology(pr::primitive_topology topology)
@@ -91,6 +92,7 @@ namespace pr::backend::d3d12::util
         return D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST; // TODO
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
 
 [[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(pr::depth_function depth_func)
@@ -117,6 +119,7 @@ namespace pr::backend::d3d12::util
         return D3D12_COMPARISON_FUNC_NEVER;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_COMPARISON_FUNC_LESS;
 }
 
 [[nodiscard]] inline constexpr D3D12_CULL_MODE to_native(pr::cull_mode cull_mode)
@@ -131,6 +134,7 @@ namespace pr::backend::d3d12::util
         return D3D12_CULL_MODE_FRONT;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_CULL_MODE_NONE;
 }
 
 [[nodiscard]] inline constexpr D3D12_COMMAND_LIST_TYPE to_native(queue_type type)
@@ -145,6 +149,7 @@ namespace pr::backend::d3d12::util
         return D3D12_COMMAND_LIST_TYPE_COMPUTE;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_COMMAND_LIST_TYPE_DIRECT;
 }
 
 [[nodiscard]] inline constexpr D3D12_SRV_DIMENSION to_native_srv_dim(shader_view_dimension sv_dim)
@@ -174,7 +179,9 @@ namespace pr::backend::d3d12::util
     case shader_view_dimension::raytracing_accel_struct:
         return D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
     }
+
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_SRV_DIMENSION_BUFFER;
 }
 
 [[nodiscard]] inline constexpr D3D12_UAV_DIMENSION to_native_uav_dim(shader_view_dimension sv_dim)
@@ -231,6 +238,7 @@ namespace pr::backend::d3d12::util
     case shader_view_dimension::texture3d:
         return D3D12_RTV_DIMENSION_TEXTURE3D;
     default:
+        CC_ASSERT(false && "to_native uncaught argument");
         return D3D12_RTV_DIMENSION_UNKNOWN;
     }
 }
@@ -257,9 +265,9 @@ namespace pr::backend::d3d12::util
     case shader_view_dimension::texture2d_ms_array:
         return D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
     default:
+        CC_ASSERT(false && "to_native uncaught argument");
         return D3D12_DSV_DIMENSION_UNKNOWN;
     }
-    CC_ASSERT(false && "to_native uncaught argument");
 }
 
 [[nodiscard]] inline constexpr D3D12_FILTER to_native(sampler_filter filter, bool with_compare)
@@ -313,6 +321,7 @@ namespace pr::backend::d3d12::util
         }
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_FILTER_MIN_MAG_MIP_POINT;
 }
 
 [[nodiscard]] inline constexpr D3D12_TEXTURE_ADDRESS_MODE to_native(sampler_address_mode mode)
@@ -329,6 +338,7 @@ namespace pr::backend::d3d12::util
         return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 }
 
 [[nodiscard]] inline constexpr D3D12_COMPARISON_FUNC to_native(sampler_compare_func mode)
@@ -354,6 +364,7 @@ namespace pr::backend::d3d12::util
         return D3D12_COMPARISON_FUNC_ALWAYS;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_COMPARISON_FUNC_NEVER;
 }
 
 [[nodiscard]] inline constexpr D3D12_STATIC_BORDER_COLOR to_native(sampler_border_color color)
@@ -371,6 +382,7 @@ namespace pr::backend::d3d12::util
         return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
 }
 
 
@@ -388,6 +400,7 @@ namespace pr::backend::d3d12::util
         return 1.f;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return 1.f;
 }
 
 [[nodiscard]] inline constexpr float to_border_color_alpha(sampler_border_color color)
@@ -404,6 +417,7 @@ namespace pr::backend::d3d12::util
         return 1.f;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return 1.f;
 }
 
 [[nodiscard]] inline constexpr D3D12_RESOURCE_DIMENSION to_native(texture_dimension dim)
@@ -418,6 +432,7 @@ namespace pr::backend::d3d12::util
         return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
 }
 
 [[nodiscard]] inline constexpr D3D12_LOGIC_OP to_native(blend_logic_op op)
@@ -458,6 +473,7 @@ namespace pr::backend::d3d12::util
         return D3D12_LOGIC_OP_EQUIV;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_LOGIC_OP_NOOP;
 }
 
 [[nodiscard]] inline constexpr D3D12_BLEND_OP to_native(blend_op op)
@@ -476,6 +492,7 @@ namespace pr::backend::d3d12::util
         return D3D12_BLEND_OP_MAX;
     }
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_BLEND_OP_ADD;
 }
 
 [[nodiscard]] inline constexpr D3D12_BLEND to_native(blend_factor bf)
@@ -505,6 +522,7 @@ namespace pr::backend::d3d12::util
     }
 
     CC_ASSERT(false && "to_native uncaught argument");
+    return D3D12_BLEND_ZERO;
 }
 
 [[nodiscard]] inline constexpr D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS to_native_flags(accel_struct_build_flags_t flags)

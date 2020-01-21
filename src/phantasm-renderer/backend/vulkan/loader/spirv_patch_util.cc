@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <clean-core/array.hh>
+#include <clean-core/assert.hh>
 #include <clean-core/bit_cast.hh>
 #include <clean-core/utility.hh>
 
@@ -43,6 +44,8 @@ namespace
     case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
         return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
     }
+    CC_ASSERT(false && "uncaught to_native argument");
+    return {};
 }
 
 [[nodiscard]] constexpr pr::backend::shader_domain reflect_to_pr(SpvReflectShaderStageFlagBits shader_stage_flags)
@@ -63,6 +66,8 @@ namespace
     case SPV_REFLECT_SHADER_STAGE_COMPUTE_BIT:
         return sd::compute;
     }
+    CC_ASSERT(false && "uncaught to_native argument");
+    return {};
 }
 
 void patchSpvReflectShader(SpvReflectShaderModule& module, pr::backend::shader_domain current_stage, cc::vector<pr::backend::vk::util::spirv_desc_info>& out_desc_infos)

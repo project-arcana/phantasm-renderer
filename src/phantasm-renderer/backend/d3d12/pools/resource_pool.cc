@@ -133,7 +133,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createRenderTarg
     }
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(unsigned size_bytes, unsigned stride_bytes, bool allow_uav)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uint64_t size_bytes, unsigned stride_bytes, bool allow_uav)
 {
     auto desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
 
@@ -145,7 +145,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBuffer(uns
     return acquireBuffer(alloc, resource_state::undefined, size_bytes, stride_bytes);
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBufferInternal(unsigned size_bytes, unsigned stride_bytes, bool allow_uav, D3D12_RESOURCE_STATES initial_state)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBufferInternal(uint64_t size_bytes, unsigned stride_bytes, bool allow_uav, D3D12_RESOURCE_STATES initial_state)
 {
     auto desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
 
@@ -157,7 +157,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createBufferInte
     return acquireBuffer(alloc, resource_state::unknown, size_bytes, stride_bytes);
 }
 
-pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuffer(unsigned size_bytes, unsigned stride_bytes)
+pr::backend::handle::resource pr::backend::d3d12::ResourcePool::createMappedBuffer(uint64_t size_bytes, unsigned stride_bytes)
 {
     auto const desc = CD3DX12_RESOURCE_DESC::Buffer(size_bytes);
     auto* const alloc = mAllocator.allocate(desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, D3D12_HEAP_TYPE_UPLOAD);
@@ -207,7 +207,7 @@ void pr::backend::d3d12::ResourcePool::free(cc::span<const pr::backend::handle::
 }
 
 pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireBuffer(
-    D3D12MA::Allocation* alloc, pr::backend::resource_state initial_state, unsigned buffer_width, unsigned buffer_stride, std::byte* buffer_map)
+    D3D12MA::Allocation* alloc, pr::backend::resource_state initial_state, uint64_t buffer_width, unsigned buffer_stride, std::byte* buffer_map)
 {
     unsigned res;
     {
@@ -220,7 +220,7 @@ pr::backend::handle::resource pr::backend::d3d12::ResourcePool::acquireBuffer(
     new_node.resource = alloc->GetResource();
     new_node.type = resource_node::resource_type::buffer;
     new_node.master_state = initial_state;
-    new_node.buffer.width = buffer_width;
+    new_node.buffer.width = static_cast<unsigned>(buffer_width);
     new_node.buffer.stride = buffer_stride;
     new_node.buffer.map = buffer_map;
 
