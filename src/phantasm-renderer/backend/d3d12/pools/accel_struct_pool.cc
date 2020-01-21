@@ -19,7 +19,7 @@ pr::backend::handle::accel_struct pr::backend::d3d12::AccelStructPool::createBot
 
     new_node.geometries.reserve(elements.size());
 
-    // build the VkGeometryNVs from the vertex/index buffer pairs
+    // build the D3D12_RAYTRACING_GEOMETRY_DESCs from the vertex/index buffer pairs
     for (auto const& elem : elements)
     {
         auto const& vert_info = mResourcePool->getBufferInfo(elem.vertex_buffer);
@@ -163,7 +163,7 @@ void pr::backend::d3d12::AccelStructPool::destroy()
 
         if (num_leaks > 0)
         {
-            log::info()("warning: leaked %d handle::accel_struct object%s", num_leaks, num_leaks == 1 ? "" : "s");
+            log::info()("warning: leaked {} handle::accel_struct object{}", num_leaks, num_leaks == 1 ? "" : "s");
         }
     }
 }
@@ -186,16 +186,8 @@ pr::backend::d3d12::AccelStructPool::accel_struct_node& pr::backend::d3d12::Acce
     return mPool.get(res);
 }
 
-void pr::backend::d3d12::AccelStructPool::moveGeometriesToAS(pr::backend::handle::accel_struct as)
-{
-    CC_ASSERT(as.is_valid());
-    //    mPool.get(static_cast<unsigned>(as.index)).geometries = cc::move(geometries);
-}
-
 void pr::backend::d3d12::AccelStructPool::internalFree(pr::backend::d3d12::AccelStructPool::accel_struct_node& node)
 {
-    //    vkDestroyAccelerationStructureNV(mDevice, node.raw_as, nullptr);
-
     cc::array const buffers_to_free = {node.buffer_as, node.buffer_scratch, node.buffer_instances};
     mResourcePool->free(buffers_to_free);
 }

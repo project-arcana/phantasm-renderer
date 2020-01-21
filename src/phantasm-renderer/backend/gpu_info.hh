@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <clean-core/flags.hh>
 #include <clean-core/span.hh>
 #include <clean-core/string.hh>
 
@@ -27,15 +28,20 @@ enum class gpu_capabilities : uint8_t
     insufficient,
     level_1,
     level_2,
-    level_3,
-    level_4,
-    level_5,
-    level_6,
-    level_7,
-    level_8,
-    level_9,
-    level_10
+    level_3
 };
+
+// explicit GPU features
+enum class gpu_feature : uint8_t
+{
+    raytracing,
+    shading_rate_t1,
+    shading_rate_t2,
+    hlsl_sm6,
+    hlsl_wave_ops
+};
+
+using gpu_feature_flags = cc::flags<gpu_feature, 16>;
 
 struct gpu_info
 {

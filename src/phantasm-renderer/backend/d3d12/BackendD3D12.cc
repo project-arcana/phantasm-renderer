@@ -66,13 +66,13 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     {
         mPoolResources.initialize(device, config.max_num_resources);
         mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
-        mPoolPSOs.initialize(&device, mDevice.getDeviceRaytracing(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
+        mPoolPSOs.initialize(&device, mDevice.getDevice5(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
         mPoolEvents.initialize(&device, config.max_num_events);
 
         if (isRaytracingEnabled())
         {
-            mPoolAccelStructs.initialize(mDevice.getDeviceRaytracing(), &mPoolResources, config.max_num_accel_structs);
-            mShaderTableCtor.initialize(mDevice.getDeviceRaytracing(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
+            mPoolAccelStructs.initialize(mDevice.getDevice5(), &mPoolResources, config.max_num_accel_structs);
+            mShaderTableCtor.initialize(mDevice.getDevice5(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
         }
     }
 

@@ -97,3 +97,68 @@ cc::vector<pr::backend::gpu_info> pr::backend::d3d12::get_adapter_candidates()
 
     return res;
 }
+
+pr::backend::gpu_feature_flags pr::backend::d3d12::check_capabilities(ID3D12Device* device)
+{
+    gpu_feature_flags res = {};
+    shared_com_ptr<ID3D12Device5> device5;
+
+    // Capability checks
+
+    // SM 6.0
+    {
+        D3D12_FEATURE_DATA_SHADER_MODEL feat_data = {D3D_SHADER_MODEL_6_0};
+        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &feat_data, sizeof(feat_data)));
+
+        if (success && feat_data.HighestShaderModel >= D3D_SHADER_MODEL_6_0)
+        {
+            res |= gpu_feature::hlsl_sm6;
+        }
+    }
+
+    // SM 6.0 wave intrinsics
+    if (res.has(gpu_feature::hlsl_sm6))
+    {
+        D3D12_FEATURE_DATA_D3D12_OPTIONS1 feat_data = {};
+        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &feat_data, sizeof(feat_data)));
+
+        if (success && feat_data.WaveOps)
+        {
+            res |= gpu_feature::hlsl_wave_ops;
+        }
+    }
+
+    // DXR raytracing support and device query
+    {
+        D3D12_FEATURE_DATA_D3D12_OPTIONS5 feat_data = {};
+        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feat_data, sizeof(feat_data)));
+        if (success && feat_data.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+        {
+            auto const query_success = SUCCEEDED(device->QueryInterface(PR_COM_WRITE(device5)));
+            if (query_success && device5.is_valid())
+            {
+                res |= gpu_feature::raytracing;
+            }
+        }
+    }
+
+    // Variable rate shading
+    {
+        D3D12_FEATURE_DATA_D3D12_OPTIONS6 feat_data = {};
+        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &feat_data, sizeof(feat_data)));
+        if (success)
+        {
+            if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_1)
+            {
+                res |= gpu_feature::shading_rate_t1;
+            }
+
+            if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
+            {
+                res |= gpu_feature::shading_rate_t2;
+            }
+        }
+    }
+
+    return res;
+}
