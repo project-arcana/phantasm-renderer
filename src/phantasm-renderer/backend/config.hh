@@ -58,7 +58,7 @@ struct backend_config
     adapter_preference adapter_preference = adapter_preference::highest_vram;
     unsigned explicit_adapter_index = unsigned(-1);
 
-    enum native_feature_flags
+    enum native_feature_flags : uint8_t
     {
         native_feature_none = 0,
         native_feature_vk_api_dump = 1 << 0

@@ -88,11 +88,11 @@ There are four shader input types, following D3D12 conventions:
     SamplerState g_sampler                              : register(s0, space0);
     ```
 
-Shaders in PRB can be fed with up to 4 "shader arguments". Each shader argument consists of a `handle::shader_view` and a CBV (`handle::resource`). Shader arguments correspond to HLSL spaces. Argument 0 is `space0`, 1 is `space1`, and so forth.
+Shaders in PRB can be fed with up to 4 "shader arguments". Each shader argument consists of SRVs, UAVs and samplers, all of which combine into a single `handle::shader_view`, and a separate CBV (`handle::resource`). Shader arguments correspond to HLSL spaces. Argument 0 is `space0`, 1 is `space1`, and so forth. The supplied order of inputs corresponds to the HLSL registers.
+
+Shader argument "shapes", as in the amount of arguments, and the amount of inputs per argument type, are supplied when creating a `handle::pipeline_state`. The actual argument values are supplied in commands, like `cmd::draw`.
 
 Inputs are not strictly typed, for example, a `Texture2D` can be supplied by simply "viewing" a single array slice of a texture array. Details regarding this process can be inferred from the creation of `handle::shader_view`, and the `shader_view_element` type.
-
-Shader view "shapes", as in the amount of arguments, and the amount of inputs per argument, are supplied when creating a `handle::pipeline_state`. The actual argument values are supplied in commands, like `cmd::draw`.
 
 ## Threading
 
@@ -100,7 +100,7 @@ With one exception, the PRB backend is entirely free-threaded and internally syn
 
 ## Resource States
 
-PRB exposes a simplified version of resource states, especially when compared with Vulkan. Additionally, resource transitions only ever specify the after-state, the before-state is internally tracked (including thread- and record-order safety).
+PRB exposes a simplified version of resource states, especially when compared to Vulkan. Additionally, resource transitions only ever specify the after-state, the before-state is internally tracked (including thread- and record-order safety).
 
 When transitioning towards `shader_resource` or `unordered_access`, the shader stage(s) which will use the resource next must also be specified.
 
@@ -124,7 +124,7 @@ while (window_open)
 
     auto const backbuffer = backend.acquireBackbuffer(); // as late as possible
 
-    if (!backbuffer.is_valid()) 
+    if (!backbuffer.is_valid())
     { // backbuffer acquire has failed, discard this frame
         backend.discard(cmdlists);
         continue;
@@ -160,7 +160,35 @@ Some parts of the API require less care when using D3D12:
 2. `Backend::flushMappedMemory` does nothing and can be ignored.
 3. `Backend::acquireBackbuffer` will never fail.
 
-Some other fields of `cmd` structs might also be optional, which will be noted in comments.
+Some other fields of `cmd` structs might also be optional, which is noted in comments.
+
+## Additional Details
+
+### Root Constants
+
+`cmd::draw` and `cmd::dispatch` can additionally supply up to 8 bytes of data as root constants (push constants in Vulkan). Whether shaders take in root constants is specified at creation of `handle::pipeline_state`.
+
+In HLSL, root constants are simply CBVs, always in register `b1`, `space0`. When compiling to SPIR-V, the CBV must be attributed like this:
+
+```HLSL
+[[vk::push_constant]] ConstantBuffer<my_struct> g_settings          : register(b1, space0);
+```
+
+### Window Handles
+
+PRB currently does not support a headless mode and requires a `native_window_handle` at initialization for swapchain creation. Supported types are Win32 windows (`HWND`), SDL2 windows (`SDL_Window*`), and Xlib windows (`Window` and `Display*`).
+
+### Render Diagnostic Integration
+
+PRB detects RenderDoc and PIX, and can force a capture, using `Backend::startForcedDiagnosticCapture` and `Backend::endForcedDiagnosticCapture` respectively. PIX integration requires enabling the cmake option `PR_ENABLE_D3D12_PIX`, and requires having the PIX DLL available (next to) the executable. It is included here: `extern/win32_pix_runtime/bin/WinPixEventRuntime.dll`
+
+### Backend Configuration
+
+All backend configurability occurs at initialization using `backend_config`. Most default settings can be used without adjustment, but `validation`, `num_threads` and possibly `adapter_preference` should likely be adjusted.
+
+### Raytracing
+
+Work in progress. The features are functional in D3D12, but API is very likely to change in the future.
 
 ---
 
