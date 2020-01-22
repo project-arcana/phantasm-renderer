@@ -64,8 +64,6 @@ public:
 private:
     accel_struct_node& acquireAccelStruct(handle::accel_struct& out_handle);
 
-    void moveGeometriesToAS(handle::accel_struct as /*, cc::vector<VkGeometryNV>&& geometries*/);
-
     void internalFree(accel_struct_node& node);
 
 private:

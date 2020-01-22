@@ -35,6 +35,9 @@ PR_DEFINE_HANDLE(shader_view);
 /// recorded command list, ready to submit or discard
 PR_DEFINE_HANDLE(command_list);
 
+/// synchronization primitive. can be "set" by a command_list after it completed executing
+PR_DEFINE_HANDLE(event);
+
 /// raytracing acceleration structure handle
 PR_DEFINE_HANDLE(accel_struct);
 

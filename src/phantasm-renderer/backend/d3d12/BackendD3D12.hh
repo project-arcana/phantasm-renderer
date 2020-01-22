@@ -18,6 +18,7 @@
 #include "pools/pso_pool.hh"
 #include "pools/resource_pool.hh"
 #include "pools/shader_view_pool.hh"
+#include "pools/event_pool.hh"
 #include "shader_table_construction.hh"
 
 namespace pr::backend::device
@@ -128,9 +129,21 @@ public:
     // Command list interface
     //
 
-    [[nodiscard]] handle::command_list recordCommandList(std::byte* buffer, size_t size) override;
+    [[nodiscard]] handle::command_list recordCommandList(std::byte* buffer, size_t size, handle::event event_to_set = handle::null_event) override;
     void discard(cc::span<handle::command_list const> cls) override { mPoolCmdLists.freeOnDiscard(cls); }
     void submit(cc::span<handle::command_list const> cls) override;
+
+    //
+    // Event interface
+    //
+
+    /// create an event, starts out unset
+    [[nodiscard]] handle::event createEvent() override { return mPoolEvents.createEvent(); }
+
+    /// if the event is set, unsets it and returns true, otherwise returns false
+    [[nodiscard]] bool tryUnsetEvent(handle::event event) override;
+
+    void free(cc::span<handle::event const> events) override { mPoolEvents.free(events); }
 
     //
     // Raytracing interface
@@ -196,6 +209,7 @@ private:
     CommandListPool mPoolCmdLists;
     PipelineStateObjectPool mPoolPSOs;
     ShaderViewPool mPoolShaderViews;
+    EventPool mPoolEvents;
     AccelStructPool mPoolAccelStructs;
 
     // Logic

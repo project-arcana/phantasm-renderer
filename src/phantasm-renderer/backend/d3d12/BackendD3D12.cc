@@ -66,13 +66,13 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
     {
         mPoolResources.initialize(device, config.max_num_resources);
         mPoolShaderViews.initialize(&device, &mPoolResources, config.max_num_cbvs, config.max_num_srvs + config.max_num_uavs, config.max_num_samplers);
-        mPoolPSOs.initialize(&device, mDevice.getDeviceRaytracing(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
-
+        mPoolPSOs.initialize(&device, mDevice.getDevice5(), config.max_num_pipeline_states, config.max_num_raytrace_pipeline_states);
+        mPoolEvents.initialize(&device, config.max_num_events);
 
         if (isRaytracingEnabled())
         {
-            mPoolAccelStructs.initialize(mDevice.getDeviceRaytracing(), &mPoolResources, config.max_num_accel_structs);
-            mShaderTableCtor.initialize(mDevice.getDeviceRaytracing(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
+            mPoolAccelStructs.initialize(mDevice.getDevice5(), &mPoolResources, config.max_num_accel_structs);
+            mShaderTableCtor.initialize(mDevice.getDevice5(), &mPoolShaderViews, &mPoolResources, &mPoolPSOs, &mPoolAccelStructs);
         }
     }
 
@@ -108,6 +108,8 @@ void pr::backend::d3d12::BackendD3D12::destroy()
 
         mPoolCmdLists.destroy();
         mPoolAccelStructs.destroy();
+
+        mPoolEvents.destroy();
         mPoolPSOs.destroy();
         mPoolShaderViews.destroy();
         mPoolResources.destroy();
@@ -152,12 +154,14 @@ void pr::backend::d3d12::BackendD3D12::onResize(tg::isize2 size)
 
 pr::backend::format pr::backend::d3d12::BackendD3D12::getBackbufferFormat() const { return util::to_pr_format(mSwapchain.getBackbufferFormat()); }
 
-pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size)
+pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordCommandList(std::byte* buffer, size_t size, handle::event event_to_set)
 {
     auto& thread_comp = mThreadComponents[mThreadAssociation.get_current_index()];
 
+    ID3D12Fence* const raw_fence_to_set = event_to_set.is_valid() ? mPoolEvents.get(event_to_set) : nullptr;
+
     ID3D12GraphicsCommandList* raw_list;
-    auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator);
+    auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator, raw_fence_to_set);
     thread_comp.translator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
     return res;
 }
@@ -225,6 +229,25 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
 
     if (num_cls_in_batch > 0)
         submit_flush();
+}
+
+bool pr::backend::d3d12::BackendD3D12::tryUnsetEvent(pr::backend::handle::event event)
+{
+    auto* const raw_fence = mPoolEvents.get(event);
+
+    auto const completed_val = raw_fence->GetCompletedValue();
+    if (completed_val == 1)
+    {
+        // "signalled", reset to 0
+        raw_fence->Signal(0);
+        return true;
+    }
+    else
+    {
+        // these fences should only ever be 0 or 1
+        CC_ASSERT(completed_val == 0 && "unexpected fence value in handle::event check");
+        return false;
+    }
 }
 
 pr::backend::handle::pipeline_state pr::backend::d3d12::BackendD3D12::createRaytracingPipelineState(arg::raytracing_shader_libraries libraries,
