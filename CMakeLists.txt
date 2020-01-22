@@ -63,6 +63,7 @@ target_include_directories(phantasm-renderer
 )
 
 target_link_libraries(phantasm-renderer PUBLIC
+    phantasm-hardware-interface
     clean-core
     typed-geometry
     rich-log

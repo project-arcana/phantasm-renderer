@@ -15,8 +15,8 @@
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/vertex_type.hh>
 
-#include <phantasm-renderer/backend/types.hh>
-#include <phantasm-renderer/backend/window_handle.hh>
+#include <phantasm-hardware-interface/types.hh>
+#include <phantasm-hardware-interface/window_handle.hh>
 
 namespace pr
 {
@@ -67,9 +67,9 @@ public:
     // ctors
 public:
     /// constructs a context with a default backend (usually vulkan)
-    Context(backend::window_handle const& window_handle);
+    Context(phi::window_handle const& window_handle);
     /// constructs a context with a specified backend
-    Context(cc::poly_unique_ptr<backend::Backend> backend);
+    Context(cc::poly_unique_ptr<phi::Backend> backend);
 
     ~Context();
 
@@ -82,7 +82,7 @@ public:
 
     // members
 private:
-    cc::poly_unique_ptr<backend::Backend> mBackend;
+    cc::poly_unique_ptr<phi::Backend> mBackend;
 };
 
 // ============================== IMPLEMENTATION ==============================

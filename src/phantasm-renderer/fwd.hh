@@ -3,18 +3,18 @@
 #include "format.hh"
 #include "view_type.hh"
 
-namespace pr
-{
-class Device;
-class Context;
-class Queue;
-
-namespace backend
+namespace phi
 {
 struct backend_config;
 struct window_handle;
 class Backend;
 }
+
+namespace pr
+{
+class Device;
+class Context;
+class Queue;
 
 template <class VertexT>
 class VertexShader;

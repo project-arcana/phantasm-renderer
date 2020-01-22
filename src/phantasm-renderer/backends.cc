@@ -2,18 +2,18 @@
 
 #include <clean-core/poly_unique_ptr.hh>
 
-#ifdef PR_BACKEND_VULKAN
-#include <phantasm-renderer/backend/vulkan/BackendVulkan.hh>
+#ifdef PHI_BACKEND_VULKAN
+#include <phantasm-hardware-interface/vulkan/BackendVulkan.hh>
 #endif
 
-#ifdef PR_BACKEND_D3D12
-#include <phantasm-renderer/backend/d3d12/BackendD3D12.hh>
+#ifdef PHI_BACKEND_D3D12
+#include <phantasm-hardware-interface/d3d12/BackendD3D12.hh>
 #endif
 
-cc::poly_unique_ptr<pr::backend::Backend> pr::make_vulkan_backend(backend::window_handle const& window_handle, const pr::backend::backend_config& cfg)
+cc::poly_unique_ptr<phi::Backend> pr::make_vulkan_backend(phi::window_handle const& window_handle, const phi::backend_config& cfg)
 {
-#ifdef PR_BACKEND_VULKAN
-    auto res = cc::make_poly_unique<backend::vk::BackendVulkan>();
+#ifdef PHI_BACKEND_VULKAN
+    auto res = cc::make_poly_unique<phi::vk::BackendVulkan>();
     res->initialize(cfg, window_handle);
     return std::move(res);
 #else
@@ -22,10 +22,10 @@ cc::poly_unique_ptr<pr::backend::Backend> pr::make_vulkan_backend(backend::windo
 #endif
 }
 
-cc::poly_unique_ptr<pr::backend::Backend> pr::make_d3d12_backend(backend::window_handle const& window_handle, const pr::backend::backend_config& cfg)
+cc::poly_unique_ptr<phi::Backend> pr::make_d3d12_backend(phi::window_handle const& window_handle, const phi::backend_config& cfg)
 {
-#ifdef PR_BACKEND_D3D12
-    auto res = cc::make_poly_unique<backend::d3d12::BackendD3D12>();
+#ifdef PHI_BACKEND_D3D12
+    auto res = cc::make_poly_unique<phi::d3d12::BackendD3D12>();
     res->initialize(cfg, window_handle);
     return std::move(res);
 #else

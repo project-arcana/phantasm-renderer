@@ -1,8 +1,8 @@
 #pragma once
 
-#include <phantasm-renderer/backend/types.hh>
+#include <phantasm-hardware-interface/types.hh>
 
 namespace pr
 {
-using backend::format;
+using phi::format;
 }
