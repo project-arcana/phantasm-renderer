@@ -1,12 +1,13 @@
 #pragma once
 
+#include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/resource_list.hh>
 
 namespace pr
 {
 // see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkGraphicsPipelineCreateInfo.html
-template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
+template <class VertexT, format FragmentF, class BoundResourceList, class... UnboundResources>
 class PrimitivePipeline
 {
 public:
@@ -25,7 +26,7 @@ public:
     }
 
     template <class... NewResources>
-    bound_pipeline_type<VertexT, FragmentT, append_resource_list<BoundResourceList, NewResources...>, remove_resource_prefix<resource_list<UnboundResources...>, NewResources...>>
+    bound_pipeline_type<VertexT, FragmentF, append_resource_list<BoundResourceList, NewResources...>, remove_resource_prefix<resource_list<UnboundResources...>, NewResources...>>
     bind(NewResources const&... resources)
     {
         static_assert(sizeof...(NewResources) <= sizeof...(UnboundResources), "trying to bind too many resources");

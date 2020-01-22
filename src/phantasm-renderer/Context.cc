@@ -22,13 +22,13 @@ void Context::submit(const CompiledFrame& frame)
     // TODO
 }
 
-Context::Context()
+Context::Context(backend::window_handle const& window_handle)
 {
     backend::backend_config cfg;
 #ifndef CC_RELEASE
-    cfg.validation = backend::validation_level::on;
+    cfg.validation = backend::validation_level::on_extended;
 #endif
-    // mBackend = make_vulkan_backend(cfg);
+    mBackend = make_vulkan_backend(window_handle, cfg);
 }
 
 Context::Context(cc::poly_unique_ptr<backend::Backend> backend) : mBackend(std::move(backend)) {}
