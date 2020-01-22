@@ -9,6 +9,7 @@ void pr::backend::vk::RenderPassCache::destroy(VkDevice device) { reset(device);
 
 VkRenderPass pr::backend::vk::RenderPassCache::getOrCreate(VkDevice device, cmd::begin_render_pass const& brp, unsigned num_samples, cc::span<const format> override_rt_formats)
 {
+    // render passes, and the hash, only depend on RT formats, clear ops, and the amount of samples
     auto const hash = hashKey(brp, num_samples, override_rt_formats);
 
     auto* const lookup = mCache.look_up(hash);
