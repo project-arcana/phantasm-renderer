@@ -30,4 +30,9 @@ void pr::backend::d3d12::Device::initialize(IDXGIAdapter& adapter, const backend
 
     // QIs
     auto const got_device5 = SUCCEEDED(mDevice->QueryInterface(PR_COM_WRITE(mDevice5)));
+    if (!got_device5)
+    {
+        // this is likely redundant, but just to make sure
+        mDevice5 = nullptr;
+    }
 }

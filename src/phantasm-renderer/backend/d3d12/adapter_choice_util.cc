@@ -101,7 +101,6 @@ cc::vector<pr::backend::gpu_info> pr::backend::d3d12::get_adapter_candidates()
 pr::backend::gpu_feature_flags pr::backend::d3d12::check_capabilities(ID3D12Device* device)
 {
     gpu_feature_flags res = {};
-    shared_com_ptr<ID3D12Device5> device5;
 
     // Capability checks
 
@@ -128,37 +127,43 @@ pr::backend::gpu_feature_flags pr::backend::d3d12::check_capabilities(ID3D12Devi
         }
     }
 
-    // DXR raytracing support and device query
+    // Device5 (this is purely OS-based, Win10 1809+)
+    shared_com_ptr<ID3D12Device5> device5;
+    auto const has_device5 = SUCCEEDED(device->QueryInterface(PR_COM_WRITE(device5)));
+
+    // features requiring windows 1809+
+    if (has_device5)
     {
-        D3D12_FEATURE_DATA_D3D12_OPTIONS5 feat_data = {};
-        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feat_data, sizeof(feat_data)));
-        if (success && feat_data.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+        // Raytracing
         {
-            auto const query_success = SUCCEEDED(device->QueryInterface(PR_COM_WRITE(device5)));
-            if (query_success && device5.is_valid())
+            D3D12_FEATURE_DATA_D3D12_OPTIONS5 feat_data = {};
+            auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &feat_data, sizeof(feat_data)));
+            if (success && feat_data.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
             {
                 res |= gpu_feature::raytracing;
             }
         }
-    }
 
-    // Variable rate shading
-    {
-        D3D12_FEATURE_DATA_D3D12_OPTIONS6 feat_data = {};
-        auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &feat_data, sizeof(feat_data)));
-        if (success)
+        // Variable rate shading
+        // NOTE: This feature additionally requires GraphicsCommandList5, which is Win10 1903+, but without it this check fails
         {
-            if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_1)
+            D3D12_FEATURE_DATA_D3D12_OPTIONS6 feat_data = {};
+            auto const success = SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &feat_data, sizeof(feat_data)));
+            if (success)
             {
-                res |= gpu_feature::shading_rate_t1;
-            }
+                if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_1)
+                {
+                    res |= gpu_feature::shading_rate_t1;
+                }
 
-            if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
-            {
-                res |= gpu_feature::shading_rate_t2;
+                if (feat_data.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2)
+                {
+                    res |= gpu_feature::shading_rate_t2;
+                }
             }
         }
     }
+
 
     return res;
 }
