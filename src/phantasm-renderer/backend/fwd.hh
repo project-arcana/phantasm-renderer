@@ -13,7 +13,7 @@ struct vertex_attribute_info;
 struct shader_view_element;
 struct sampler_config;
 struct render_target_config;
-struct native_window_handle;
+struct window_handle;
 
 struct gpu_info;
 

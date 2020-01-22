@@ -2,6 +2,7 @@
 
 #ifdef PR_BACKEND_HAS_REFLECTOR
 
+#include <clean-core/capped_vector.hh>
 #include <clean-core/typedefs.hh>
 
 #include <reflector/members.hh>

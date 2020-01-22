@@ -25,7 +25,7 @@ struct BackendD3D12::per_thread_component
 
 }
 
-void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, const native_window_handle& window_handle)
+void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_config& config, const window_handle& window_handle)
 {
     // Core components
     {
@@ -35,11 +35,11 @@ void pr::backend::d3d12::BackendD3D12::initialize(const pr::backend::backend_con
 
         ::HWND native_hwnd = nullptr;
         {
-            if (window_handle.type == native_window_handle::wh_win32_hwnd)
+            if (window_handle.type == window_handle::wh_win32_hwnd)
             {
                 native_hwnd = window_handle.value.win32_hwnd;
             }
-            else if (window_handle.type == native_window_handle::wh_sdl)
+            else if (window_handle.type == window_handle::wh_sdl)
             {
 #ifdef PR_BACKEND_HAS_SDL2
                 SDL_SysWMinfo wmInfo;

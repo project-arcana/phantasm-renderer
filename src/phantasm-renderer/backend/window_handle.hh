@@ -10,8 +10,8 @@ typedef XID Window;
 
 namespace pr::backend
 {
-/// opaque window handle
-struct native_window_handle
+/// opaque native window handle
+struct window_handle
 {
     enum wh_type : uint8_t
     {
@@ -32,9 +32,9 @@ struct native_window_handle
         } xlib_handles;
     } value;
 
-    native_window_handle(::HWND hwnd) : type(wh_win32_hwnd) { value.win32_hwnd = hwnd; }
-    native_window_handle(::SDL_Window* sdl_window) : type(wh_sdl) { value.sdl_handle = sdl_window; }
-    native_window_handle(::Window xlib_win, ::Display* xlib_display) : type(wh_xlib)
+    window_handle(::HWND hwnd) : type(wh_win32_hwnd) { value.win32_hwnd = hwnd; }
+    window_handle(::SDL_Window* sdl_window) : type(wh_sdl) { value.sdl_handle = sdl_window; }
+    window_handle(::Window xlib_win, ::Display* xlib_display) : type(wh_xlib)
     {
         value.xlib_handles.window = xlib_win;
         value.xlib_handles.display = xlib_display;

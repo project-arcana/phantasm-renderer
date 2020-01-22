@@ -31,12 +31,12 @@ constexpr cc::array<char const*, 2> gc_required_vulkan_extensions = {VK_KHR_SURF
 }
 #endif
 
-VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const pr::backend::native_window_handle& window_handle)
+VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const pr::backend::window_handle& window_handle)
 {
     VkSurfaceKHR res_surface = nullptr;
 
 
-    if (window_handle.type == native_window_handle::wh_sdl)
+    if (window_handle.type == window_handle::wh_sdl)
     {
         // SDL2 mode
 #ifdef PR_BACKEND_HAS_SDL2
@@ -45,7 +45,7 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
         CC_RUNTIME_ASSERT(false && "SDL handle given, but compiled without SDL present");
 #endif
     }
-    else if (window_handle.type == native_window_handle::wh_win32_hwnd)
+    else if (window_handle.type == window_handle::wh_win32_hwnd)
     {
         // Native HWND mode
 #ifdef CC_OS_WINDOWS
@@ -58,7 +58,7 @@ VkSurfaceKHR pr::backend::vk::create_platform_surface(VkInstance instance, const
         CC_RUNTIME_ASSERT(false && "Win32 HWND given, but compiled on non-win32 platform");
 #endif
     }
-    else if (window_handle.type == native_window_handle::wh_xlib)
+    else if (window_handle.type == window_handle::wh_xlib)
     {
         // XLib mode
 #ifdef CC_OS_LINUX

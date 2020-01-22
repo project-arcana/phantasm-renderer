@@ -22,7 +22,7 @@ struct BackendVulkan::per_thread_component
 };
 }
 
-void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, const native_window_handle& window_handle)
+void pr::backend::vk::BackendVulkan::initialize(const backend_config& config_arg, const window_handle& window_handle)
 {
     PR_VK_VERIFY_SUCCESS(volkInitialize());
 
