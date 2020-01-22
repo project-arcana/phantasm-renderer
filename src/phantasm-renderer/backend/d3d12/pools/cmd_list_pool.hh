@@ -115,7 +115,10 @@ class CommandListPool
 public:
     // frontend-facing API (not quite, command_list can only be compiled immediately)
 
-    [[nodiscard]] handle::command_list create(ID3D12GraphicsCommandList*& out_cmdlist, CommandAllocatorBundle& thread_allocator, ID3D12Fence* fence_to_set = nullptr);
+    [[nodiscard]] handle::command_list create(ID3D12GraphicsCommandList*& out_cmdlist,
+                                              ID3D12GraphicsCommandList5** out_cmdlist5,
+                                              CommandAllocatorBundle& thread_allocator,
+                                              ID3D12Fence* fence_to_set = nullptr);
 
     void freeOnSubmit(handle::command_list cl, ID3D12CommandQueue& queue)
     {
@@ -168,6 +171,7 @@ public:
 
 public:
     ID3D12GraphicsCommandList* getRawList(handle::command_list cl) const { return mRawLists[static_cast<unsigned>(cl.index)]; }
+    ID3D12GraphicsCommandList5* getRawList5(handle::command_list cl) const { return mRawLists5[static_cast<unsigned>(cl.index)]; }
 
     backend::detail::incomplete_state_cache* getStateCache(handle::command_list cl)
     {
@@ -177,6 +181,9 @@ public:
 public:
     void initialize(BackendD3D12& backend, int num_allocators_per_thread, int num_cmdlists_per_allocator, cc::span<CommandAllocatorBundle*> thread_allocators);
     void destroy();
+
+private:
+    void queryList5();
 
 private:
     struct cmd_list_node
@@ -196,7 +203,9 @@ private:
     /// a parallel array to the pool, identically indexed
     /// the cmdlists must stay alive even while "unallocated"
     cc::array<ID3D12GraphicsCommandList*> mRawLists;
+    cc::array<ID3D12GraphicsCommandList5*> mRawLists5;
 
     std::mutex mMutex;
+    bool mHasLists5 = false;
 };
 }

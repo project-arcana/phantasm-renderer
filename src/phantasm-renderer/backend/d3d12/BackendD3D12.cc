@@ -161,8 +161,9 @@ pr::backend::handle::command_list pr::backend::d3d12::BackendD3D12::recordComman
     ID3D12Fence* const raw_fence_to_set = event_to_set.is_valid() ? mPoolEvents.get(event_to_set) : nullptr;
 
     ID3D12GraphicsCommandList* raw_list;
-    auto const res = mPoolCmdLists.create(raw_list, thread_comp.cmd_list_allocator, raw_fence_to_set);
-    thread_comp.translator.translateCommandList(raw_list, mPoolCmdLists.getStateCache(res), buffer, size);
+    ID3D12GraphicsCommandList5* raw_list5;
+    auto const res = mPoolCmdLists.create(raw_list, &raw_list5, thread_comp.cmd_list_allocator, raw_fence_to_set);
+    thread_comp.translator.translateCommandList(raw_list, raw_list5, mPoolCmdLists.getStateCache(res), buffer, size);
     return res;
 }
 
@@ -214,7 +215,7 @@ void pr::backend::d3d12::BackendD3D12::submit(cc::span<const pr::backend::handle
         if (!barriers.empty())
         {
             ID3D12GraphicsCommandList* t_cmd_list;
-            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, thread_comp.cmd_list_allocator));
+            barrier_lists.push_back(mPoolCmdLists.create(t_cmd_list, nullptr, thread_comp.cmd_list_allocator));
             t_cmd_list->ResourceBarrier(UINT(barriers.size()), barriers.size() > 0 ? barriers.data() : nullptr);
             t_cmd_list->Close();
             submit_batch.push_back(t_cmd_list);

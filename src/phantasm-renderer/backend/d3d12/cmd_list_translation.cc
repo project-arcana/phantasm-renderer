@@ -27,12 +27,13 @@ void pr::backend::d3d12::command_list_translator::initialize(ID3D12Device* devic
 }
 
 void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12GraphicsCommandList* list,
+                                                                       ID3D12GraphicsCommandList5* list5,
                                                                        backend::detail::incomplete_state_cache* state_cache,
                                                                        std::byte* buffer,
                                                                        size_t buffer_size)
 {
     _cmd_list = list;
-    _cmd_list_rt = nullptr;
+    _cmd_list_5 = list5;
     _state_cache = state_cache;
 
     _bound.reset();
@@ -48,10 +49,6 @@ void pr::backend::d3d12::command_list_translator::translateCommandList(ID3D12Gra
 
     // close the list
     _cmd_list->Close();
-
-    // release the possibly QI'd raytracing command list
-    if (_cmd_list_rt != nullptr)
-        _cmd_list_rt->Release();
 
     // done
 }
@@ -398,7 +395,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_bottom_level& blas_update)
 {
-    ensureRaytracingCmdList();
+    CC_ASSERT(_cmd_list_5 != nullptr && "Used feature requires Windows 10 1903 or newer");
 
     auto& dest_node = _globals.pool_accel_structs->getNode(blas_update.dest);
     ID3D12Resource* const dest_as_buffer = _globals.pool_resources->getRawResource(dest_node.buffer_as);
@@ -412,15 +409,15 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     as_create_info.DestAccelerationStructureData = dest_as_buffer->GetGPUVirtualAddress();
     as_create_info.ScratchAccelerationStructureData = _globals.pool_resources->getRawResource(dest_node.buffer_scratch)->GetGPUVirtualAddress();
 
-    _cmd_list_rt->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
+    _cmd_list_5->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
 
     auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(dest_as_buffer);
-    _cmd_list_rt->ResourceBarrier(1, &uav_barrier);
+    _cmd_list_5->ResourceBarrier(1, &uav_barrier);
 }
 
 void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd::update_top_level& tlas_update)
 {
-    ensureRaytracingCmdList();
+    CC_ASSERT(_cmd_list_5 != nullptr && "Used feature requires Windows 10 1903 or newer");
 
     auto& dest_node = _globals.pool_accel_structs->getNode(tlas_update.dest);
     ID3D12Resource* const dest_as_buffer = _globals.pool_resources->getRawResource(dest_node.buffer_as);
@@ -435,7 +432,7 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
     as_create_info.DestAccelerationStructureData = dest_node.raw_as_handle;
     as_create_info.ScratchAccelerationStructureData = _globals.pool_resources->getRawResource(dest_node.buffer_scratch)->GetGPUVirtualAddress();
 
-    _cmd_list_rt->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
+    _cmd_list_5->BuildRaytracingAccelerationStructure(&as_create_info, 0, nullptr);
 
     //    auto const uav_barrier = CD3DX12_RESOURCE_BARRIER::UAV(dest_as_buffer);
     //    _cmd_list_rt->ResourceBarrier(1, &uav_barrier);
@@ -443,11 +440,11 @@ void pr::backend::d3d12::command_list_translator::execute(const pr::backend::cmd
 
 void pr::backend::d3d12::command_list_translator::execute(const cmd::dispatch_rays& dispatch_rays)
 {
-    ensureRaytracingCmdList();
+    CC_ASSERT(_cmd_list_5 != nullptr && "Used feature requires Windows 10 1903 or newer");
 
     if (_bound.update_pso(dispatch_rays.pso))
     {
-        _cmd_list_rt->SetPipelineState1(_globals.pool_pipeline_states->getRaytrace(dispatch_rays.pso).raw_state_object);
+        _cmd_list_5->SetPipelineState1(_globals.pool_pipeline_states->getRaytrace(dispatch_rays.pso).raw_state_object);
     }
 
 
@@ -483,15 +480,7 @@ void pr::backend::d3d12::command_list_translator::execute(const cmd::dispatch_ra
     desc.Height = dispatch_rays.height;
     desc.Depth = dispatch_rays.depth;
 
-    _cmd_list_rt->DispatchRays(&desc);
-}
-
-void pr::backend::d3d12::command_list_translator::ensureRaytracingCmdList()
-{
-    if (_cmd_list_rt == nullptr)
-    {
-        PR_D3D12_VERIFY_FULL(_cmd_list->QueryInterface(IID_PPV_ARGS(&_cmd_list_rt)), _globals.device);
-    }
+    _cmd_list_5->DispatchRays(&desc);
 }
 
 void pr::backend::d3d12::translator_thread_local_memory::initialize(ID3D12Device& device)

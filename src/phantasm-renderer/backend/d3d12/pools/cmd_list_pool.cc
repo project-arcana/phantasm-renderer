@@ -116,6 +116,7 @@ bool pr::backend::d3d12::cmd_allocator_node::is_submit_counter_up_to_date() cons
 }
 
 pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID3D12GraphicsCommandList*& out_cmdlist,
+                                                                              ID3D12GraphicsCommandList5** out_cmdlist5,
                                                                               CommandAllocatorBundle& thread_allocator,
                                                                               ID3D12Fence* fence_to_set)
 {
@@ -126,6 +127,11 @@ pr::backend::handle::command_list pr::backend::d3d12::CommandListPool::create(ID
     }
 
     out_cmdlist = mRawLists[res_handle];
+
+    if (out_cmdlist5)
+    {
+        *out_cmdlist5 = mRawLists5[res_handle];
+    }
 
     cmd_list_node& new_node = mPool.get(res_handle);
     new_node.responsible_allocator = thread_allocator.acquireMemory(out_cmdlist);
@@ -154,10 +160,14 @@ void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::Backend
     }
 
     // Execute all (closed) lists once to suppress warnings
+    static_assert(std::is_same_v<decltype(mRawLists[0]), ID3D12GraphicsCommandList*&>, "Elements of mRawLists not valid for cast");
     backend.getDirectQueue().ExecuteCommandLists(                     //
         UINT(mRawLists.size()),                                       //
         reinterpret_cast<ID3D12CommandList* const*>(mRawLists.data()) // This is hopefully always fine
     );
+
+    // Query GraphicsCommandList5
+    queryList5();
 
     // Flush the backend
     backend.flushGPU();
@@ -165,9 +175,38 @@ void pr::backend::d3d12::CommandListPool::initialize(pr::backend::d3d12::Backend
 
 void pr::backend::d3d12::CommandListPool::destroy()
 {
+    if (mHasLists5)
+    {
+        for (auto const list5 : mRawLists5)
+        {
+            list5->Release();
+        }
+    }
+
     for (auto const list : mRawLists)
     {
         list->Release();
+    }
+}
+
+void pr::backend::d3d12::CommandListPool::queryList5()
+{
+    mHasLists5 = true;
+    mRawLists5 = mRawLists5.uninitialized(mRawLists.size());
+    for (auto i = 0u; i < mRawLists.size(); ++i)
+    {
+        auto const success = SUCCEEDED(mRawLists[i]->QueryInterface(IID_PPV_ARGS(&mRawLists5[i])));
+
+        if (!success)
+        {
+            mHasLists5 = false;
+            break;
+        }
+    }
+
+    if (!mHasLists5)
+    {
+        cc::fill(mRawLists5, nullptr);
     }
 }
 

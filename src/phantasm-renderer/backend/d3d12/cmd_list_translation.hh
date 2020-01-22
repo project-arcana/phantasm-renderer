@@ -53,7 +53,11 @@ struct command_list_translator
 {
     void initialize(ID3D12Device* device, ShaderViewPool* sv_pool, ResourcePool* resource_pool, PipelineStateObjectPool* pso_pool, AccelStructPool* as_pool);
 
-    void translateCommandList(ID3D12GraphicsCommandList* list, pr::backend::detail::incomplete_state_cache* state_cache, std::byte* buffer, size_t buffer_size);
+    void translateCommandList(ID3D12GraphicsCommandList* list,
+                              ID3D12GraphicsCommandList5* list5,
+                              pr::backend::detail::incomplete_state_cache* state_cache,
+                              std::byte* buffer,
+                              size_t buffer_size);
 
     void execute(cmd::begin_render_pass const& begin_rp);
 
@@ -84,9 +88,6 @@ struct command_list_translator
     void execute(cmd::dispatch_rays const& dispatch_rays);
 
 private:
-    void ensureRaytracingCmdList();
-
-private:
     // non-owning constant (global)
     translator_global_memory _globals;
 
@@ -96,7 +97,7 @@ private:
     // non-owning dynamic
     pr::backend::detail::incomplete_state_cache* _state_cache = nullptr;
     ID3D12GraphicsCommandList* _cmd_list = nullptr;
-    ID3D12GraphicsCommandList5* _cmd_list_rt = nullptr;
+    ID3D12GraphicsCommandList5* _cmd_list_5 = nullptr;
 
     // dynamic state
     struct
