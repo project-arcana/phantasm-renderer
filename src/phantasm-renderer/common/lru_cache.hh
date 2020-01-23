@@ -22,6 +22,10 @@ struct lru_cache
             elem.free_vals.pop_back();
             return res;
         }
+        else if ()
+        {
+
+        }
 
         // if (has_free_val)
         //      return free
