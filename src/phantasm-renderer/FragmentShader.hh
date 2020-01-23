@@ -1,8 +1,10 @@
 #pragma once
 
+#include "format.hh"
+
 namespace pr
 {
-template <class FragmentT>
+template <format FragmentF>
 class FragmentShader
 {
 };

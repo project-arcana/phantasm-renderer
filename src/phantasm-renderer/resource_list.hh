@@ -61,12 +61,12 @@ struct remove_resource_prefix_t<resource_list<Match, R1...>, Match, R2...>
     using type = typename remove_resource_prefix_t<resource_list<R1...>, R2...>::type;
 };
 
-template <class VertexT, class FragmentT, class BoundResourceList, class UnboundResourceList>
+template <class VertexT, format FragmentF, class BoundResourceList, class UnboundResourceList>
 struct bound_pipeline_type_t;
-template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
-struct bound_pipeline_type_t<VertexT, FragmentT, BoundResourceList, resource_list<UnboundResources...>>
+template <class VertexT, format FragmentF, class BoundResourceList, class... UnboundResources>
+struct bound_pipeline_type_t<VertexT, FragmentF, BoundResourceList, resource_list<UnboundResources...>>
 {
-    using type = PrimitivePipeline<VertexT, FragmentT, BoundResourceList, UnboundResources...>;
+    using type = PrimitivePipeline<VertexT, FragmentF, BoundResourceList, UnboundResources...>;
 };
 }
 
@@ -79,6 +79,6 @@ using append_resource_list = typename detail::append_resource_list_t<A, B...>::t
 template <class A, class... B>
 using remove_resource_prefix = typename detail::remove_resource_prefix_t<A, B...>::type;
 
-template <class VertexT, class FragmentT, class BoundResourceList, class UnboundResourceList>
-using bound_pipeline_type = typename detail::bound_pipeline_type_t<VertexT, FragmentT, BoundResourceList, UnboundResourceList>::type;
+template <class VertexT, format FragmentF, class BoundResourceList, class UnboundResourceList>
+using bound_pipeline_type = typename detail::bound_pipeline_type_t<VertexT, FragmentF, BoundResourceList, UnboundResourceList>::type;
 }

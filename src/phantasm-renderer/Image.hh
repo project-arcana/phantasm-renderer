@@ -10,13 +10,13 @@ namespace pr
 /**
  * a move-only type representing an n-dimensional image
  */
-template <int D, class T, bool IsFrameLocal>
+template <int D, format F, bool IsFrameLocal>
 class Image
 {
     // getter
 public:
     tg::size<D, int> size() const { return mSize; }
-    pr::format format() const { return mFormat; }
+    pr::format format() const { return F; }
 
     // ctor
 public:
@@ -31,6 +31,5 @@ private:
 
 private:
     tg::size<D, int> mSize;
-    pr::format mFormat;
 };
 }
