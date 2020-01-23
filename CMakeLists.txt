@@ -26,8 +26,8 @@ target_link_libraries(phantasm-renderer PUBLIC
     clean-core
     typed-geometry
     rich-log
+    reflector
 )
-
 
 # =========================================
 # set up compile flags
@@ -37,14 +37,4 @@ if (MSVC)
 else()
     target_compile_options(phantasm-renderer PRIVATE -Wall -fPIC)
     target_link_libraries(phantasm-renderer PUBLIC -fuse-ld=gold)
-endif()
-
-
-# =========================================
-# optional dependencies
-
-if (TARGET reflector)
-    target_link_libraries(phantasm-renderer PUBLIC reflector)
-    target_compile_definitions(phantasm-renderer PUBLIC PR_BACKEND_HAS_REFLECTOR)
-    message(STATUS "[phantasm renderer] reflector found")
 endif()
