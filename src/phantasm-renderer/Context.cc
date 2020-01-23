@@ -1,9 +1,11 @@
 #include "Context.hh"
 
-#include <phantasm-renderer/Frame.hh>
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
+
+#include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backends.hh>
+#include <phantasm-renderer/common/lru_cache.hh>
 
 using namespace pr;
 
