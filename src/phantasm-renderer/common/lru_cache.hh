@@ -196,9 +196,10 @@ private:
 template <class KeyT, class ValT>
 struct lru_cache
 {
-public:
+private:
     struct map_element;
 
+public:
     struct lru_handle
     {
         ValT value;
