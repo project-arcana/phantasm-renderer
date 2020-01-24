@@ -5,7 +5,6 @@
 
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backends.hh>
-#include <phantasm-renderer/common/lru_cache.hh>
 
 using namespace pr;
 
@@ -31,8 +30,21 @@ Context::Context(phi::window_handle const& window_handle)
     cfg.validation = phi::validation_level::on_extended;
 #endif
     mBackend = make_vulkan_backend(window_handle, cfg);
+    initialize();
 }
 
-Context::Context(cc::poly_unique_ptr<phi::Backend> backend) : mBackend(std::move(backend)) {}
+Context::Context(cc::poly_unique_ptr<phi::Backend> backend) : mBackend(std::move(backend)) { initialize(); }
 
-Context::~Context() = default; // here because of poly_unique_ptr
+void Context::initialize()
+{
+    mGpuEpochTracker.initialize(mBackend.get(), 2048);
+    mCacheBuffers.reserve(256);
+    mCacheTextures.reserve(256);
+    mCacheRenderTargets.reserve(64);
+    mCacheShaderViews.reserve(1024);
+    mCacheUploadBuffers.reserve(256);
+    mCachePipelineStates.reserve(64);
+    mCachePipelineStatesCompute.reserve(64);
+}
+
+Context::~Context() { mGpuEpochTracker.destroy(); }

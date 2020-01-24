@@ -151,7 +151,7 @@ struct gpu_epoch_tracker
         {
             // try clearing the oldest event in the buffer
             auto const tail = _event_ring.get_tail();
-            if (_backend->tryUnsetEvent(tail.event))
+            if (_backend->clearEvent(tail.event))
             {
                 // cleared, this event was reached on GPU, advance gpu epoch
                 _current_epoch_gpu = tail.acquired_epoch_cpu;
@@ -196,8 +196,23 @@ private:
 template <class KeyT, class ValT>
 struct lru_cache
 {
+public:
+    struct map_element;
+
+    struct lru_handle
+    {
+        ValT value;
+        bool is_valid() const { return _map_elem != nullptr; }
+
+    private:
+        map_element* _map_elem;
+    };
+
+public:
+    void reserve(size_t num_elems) { _map.reserve(num_elems); }
+
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
-    [[nodiscard]] ValT acquire(KeyT const& key, uint64_t current_gpu_epoch)
+    [[nodiscard]] lru_handle acquire(KeyT const& key, uint64_t current_gpu_epoch)
     {
         map_element& elem = _map[key];
         elem.latest_gen = _current_gen;
@@ -211,20 +226,29 @@ struct lru_cache
             {
                 // event is ready, pop and return
                 elem.in_flight_buffer.pop_tail();
-                return tail.val;
+                return {tail.val, &elem};
             }
         }
 
-        // no element ready (in this case, the callsite will simply have to create a new object)
-        return {};
+        // no element ready (in this case, the callsite will have to create a new object)
+        return map_element{{}, nullptr};
     }
 
-    /// free a value (or insert it for the first time),
+    /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free_or_insert(ValT val, uint64_t current_cpu_epoch)
+    void free(lru_handle handle, uint64_t current_cpu_epoch)
+    {
+        handle._map_elem->latest_gen = _current_gen;
+        CC_ASSERT(!handle._map_elem->in_flight_buffer.full());
+        handle._map_elem->in_flight_buffer.enqueue({handle.value, current_cpu_epoch});
+    }
+
+    /// insert a new value, creating a lru_handle for it
+    [[nodiscard]] lru_handle insert(ValT val, KeyT const& key)
     {
         map_element& elem = _map[key];
         elem.latest_gen = _current_gen;
+        return {val, &elem};
     }
 
     void cull()

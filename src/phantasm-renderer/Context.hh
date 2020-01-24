@@ -6,17 +6,18 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include <phantasm-hardware-interface/types.hh>
+#include <phantasm-hardware-interface/window_handle.hh>
+
 #include <phantasm-renderer/Buffer.hh>
 #include <phantasm-renderer/FragmentShader.hh>
 #include <phantasm-renderer/Image.hh>
 #include <phantasm-renderer/PrimitivePipeline.hh>
 #include <phantasm-renderer/VertexShader.hh>
+#include <phantasm-renderer/common/lru_cache.hh>
 #include <phantasm-renderer/fragment_type.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/vertex_type.hh>
-
-#include <phantasm-hardware-interface/types.hh>
-#include <phantasm-hardware-interface/window_handle.hh>
 
 namespace pr
 {
@@ -80,9 +81,24 @@ public:
     Context& operator=(Context const&) = delete;
     Context& operator=(Context&&) = delete;
 
+private:
+    void initialize();
+
     // members
 private:
     cc::poly_unique_ptr<phi::Backend> mBackend;
+
+    // components
+    gpu_epoch_tracker mGpuEpochTracker;
+
+    // caches
+    lru_cache<int, phi::handle::resource> mCacheRenderTargets;
+    lru_cache<int, phi::handle::resource> mCacheTextures;
+    lru_cache<int, phi::handle::resource> mCacheUploadBuffers;
+    lru_cache<int, phi::handle::resource> mCacheBuffers;
+    lru_cache<int, phi::handle::pipeline_state> mCachePipelineStates;
+    lru_cache<int, phi::handle::pipeline_state> mCachePipelineStatesCompute;
+    lru_cache<int, phi::handle::shader_view> mCacheShaderViews;
 };
 
 // ============================== IMPLEMENTATION ==============================
