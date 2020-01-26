@@ -2,6 +2,7 @@
 
 #include <phantasm-renderer/Frame.hh>
 
+
 namespace pr
 {
 /**
@@ -9,19 +10,23 @@ namespace pr
  */
 class CompiledFrame
 {
+    // ctor
+public:
+    CompiledFrame(phi::handle::command_list cmdlist, phi::handle::event event) : mRecordedEvent(event), mCmdlist(cmdlist) {}
+
+    phi::handle::event getEvent() const { return mRecordedEvent; }
+    phi::handle::command_list getCmdlist() const { return mCmdlist; }
+
     // move-only type
 public:
     CompiledFrame(CompiledFrame const&) = delete;
-    CompiledFrame(CompiledFrame&&) = default;
+    CompiledFrame(CompiledFrame&&) noexcept = default;
     CompiledFrame& operator=(CompiledFrame const&) = delete;
-    CompiledFrame& operator=(CompiledFrame&&) = default;
-
-private:
-    CompiledFrame() = default;
-    friend CompiledFrame compile(Frame const&);
+    CompiledFrame& operator=(CompiledFrame&&) noexcept = default;
 
     // member
 private:
-    // TODO
+    phi::handle::event mRecordedEvent;
+    phi::handle::command_list mCmdlist;
 };
 }

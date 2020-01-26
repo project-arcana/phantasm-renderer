@@ -1,5 +1,8 @@
 #pragma once
 
+#include <atomic>
+#include <mutex>
+
 #include <clean-core/poly_unique_ptr.hh>
 #include <clean-core/span.hh>
 #include <clean-core/string_view.hh>
@@ -14,7 +17,9 @@
 #include <phantasm-renderer/Image.hh>
 #include <phantasm-renderer/PrimitivePipeline.hh>
 #include <phantasm-renderer/VertexShader.hh>
-#include <phantasm-renderer/common/lru_cache.hh>
+#include <phantasm-renderer/common/gpu_epoch_tracker.hh>
+#include <phantasm-renderer/common/multi_cache.hh>
+#include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/fragment_type.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/vertex_type.hh>
@@ -32,19 +37,24 @@ class Context
 public:
     Frame make_frame();
 
-    template <format F>
-    Image1D<F> make_image(int width);
-    template <format F>
-    Image2D<F> make_image(tg::isize2 size);
-    template <format F>
-    Image3D<F> make_image(tg::isize3 size);
 
+    template <format F>
+    Image<1, F> make_image(int width);
+    template <format F>
+    Image<2, F> make_image(tg::isize2 size);
+    template <format F>
+    Image<3, F> make_image(tg::isize3 size);
+
+    template <format F, class T>
+    Image<2, F> make_target(tg::isize2 size, T clear_val);
+
+    template <class T, cc::enable_if<std::is_trivially_copyable_v<T>> = true>
+    Buffer<T> make_upload_buffer(T const& data, bool read_only = true);
     template <class T>
-    Buffer<T[]> make_buffer(cc::span<T> data);
-    template <class T, class = std::enable_if_t<std::is_trivially_copyable_v<T>>>
-    Buffer<T> make_buffer(T const& data);
-    template <class T>
-    Buffer<T> make_uninitialized_buffer(size_t size);
+    Buffer<T[]> make_upload_buffer(cc::span<T const> data, bool read_only = true);
+
+    Buffer<untyped_tag> make_untyped_buffer(size_t size, size_t stride = 0, bool read_only = true);
+    Buffer<untyped_tag> make_untyped_upload_buffer(size_t size, size_t stride = 0, bool read_only = true);
 
     template <format FragmentF>
     FragmentShader<FragmentF> make_fragment_shader(cc::string_view code);
@@ -54,6 +64,7 @@ public:
     //        static_assert(std::is_same_v<FragmentT, void>, "empty fragment shader must be void");
     //        return {}; // TODO
     //    }
+
     template <class... VertexT>
     VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code)
     {
@@ -62,6 +73,8 @@ public:
 
     // consumption API
 public:
+    [[nodiscard]] CompiledFrame compile(Frame const& frame);
+
     void submit(Frame const& frame);
     void submit(CompiledFrame const& frame);
 
@@ -84,22 +97,78 @@ public:
 private:
     void initialize();
 
+    // multi cache acquire
+    phi::handle::resource acquireRenderTarget(render_target_info const& info);
+    phi::handle::resource acquireTexture(texture_info const& info);
+    phi::handle::resource acquireBuffer(buffer_info const& info);
+
+    // single cache acquire
+
     // members
 private:
     cc::poly_unique_ptr<phi::Backend> mBackend;
+    std::mutex mMutexSubmission;
 
     // components
     gpu_epoch_tracker mGpuEpochTracker;
+    std::atomic<uint64_t> mResourceGUID = {0};
 
     // caches
-    lru_cache<int, phi::handle::resource> mCacheRenderTargets;
-    lru_cache<int, phi::handle::resource> mCacheTextures;
-    lru_cache<int, phi::handle::resource> mCacheUploadBuffers;
-    lru_cache<int, phi::handle::resource> mCacheBuffers;
-    lru_cache<int, phi::handle::pipeline_state> mCachePipelineStates;
-    lru_cache<int, phi::handle::pipeline_state> mCachePipelineStatesCompute;
-    lru_cache<int, phi::handle::shader_view> mCacheShaderViews;
+    multi_cache<render_target_info> mCacheRenderTargets;
+    multi_cache<texture_info> mCacheTextures;
+    multi_cache<buffer_info> mCacheBuffers;
 };
+
+
+template <format F>
+Image<1, F> Context::make_image(int width)
+{
+    auto const info = texture_info{F, phi::texture_dimension::t1d, true, width, 1, 1, 0};
+    return {acquireTexture(info), info};
+}
+
+template <format F>
+Image<2, F> Context::make_image(tg::isize2 size)
+{
+    auto const info = texture_info{F, phi::texture_dimension::t2d, true, size.width, size.height, 1, 0};
+    return {acquireTexture(info), info};
+}
+
+template <format F>
+Image<3, F> Context::make_image(tg::isize3 size)
+{
+    auto const info = texture_info{F, phi::texture_dimension::t3d, true, size.width, size.height, unsigned(size.depth), 0};
+    return {acquireTexture(info), info};
+}
+
+template <format F, class T>
+Image<2, F> Context::make_target(tg::isize2 size, T /*clear_val*/) // TODO: clear value
+{
+    auto const info = render_target_info{F, size.width, size.height, 1};
+    return {acquireRenderTarget(info), info};
+}
+
+template <class T>
+Buffer<T[]> Context::make_upload_buffer(cc::span<const T> data, bool read_only)
+{
+    auto const info = buffer_info{sizeof(T) * data.size(), sizeof(T), !read_only, true};
+    auto const handle = acquireBuffer(info);
+    auto* const map = mBackend->getMappedMemory(handle);
+    std::memcpy(map, data.data(), info.size_bytes);
+
+    return {handle, info, map};
+}
+
+template <class T, cc::enable_if<std::is_trivially_copyable_v<T>>>
+Buffer<T> Context::make_upload_buffer(const T& data, bool read_only)
+{
+    auto const info = buffer_info{sizeof(T), 0, !read_only, true};
+    auto const handle = acquireBuffer(info);
+    auto* const map = mBackend->getMappedMemory(handle);
+    std::memcpy(map, &data, info.size_bytes);
+
+    return {handle, info, map};
+}
 
 // ============================== IMPLEMENTATION ==============================
 

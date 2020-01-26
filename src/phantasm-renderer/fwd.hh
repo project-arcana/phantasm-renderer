@@ -24,7 +24,7 @@ class GeometryShader;
 class TessellationControlShader;
 class TessellationEvaluationShader;
 
-template <int D, format F, bool IsFrameLocal = false>
+template <int D, format F>
 class Image;
 template <format F>
 using Image1D = Image<1, F>;
@@ -35,6 +35,10 @@ using Image3D = Image<3, F>;
 
 template <class T>
 class Buffer;
+
+struct untyped_tag
+{
+};
 
 template <view_type Type, class T>
 class View;

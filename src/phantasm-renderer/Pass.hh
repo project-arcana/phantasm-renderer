@@ -30,8 +30,8 @@ public:
         return {}; // TODO
     }
 
-    template <int D, format F, bool IsLocal, class T>
-    void clear(Image<D, F, IsLocal> const& img, T const& value) // TODO: value type should be translated once
+    template <int D, format F, class T>
+    void clear(Image<D, F> const& img, T const& value) // TODO: value type should be translated once
     {
         // TODO: only for attached images or not?
     }
