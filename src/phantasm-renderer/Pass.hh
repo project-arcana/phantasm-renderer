@@ -8,7 +8,6 @@
 
 #include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/primitive_pipeline_config.hh>
 #include <phantasm-renderer/resource_list.hh>
 
 namespace pr
