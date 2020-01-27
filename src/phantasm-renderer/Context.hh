@@ -94,6 +94,14 @@ public:
     Context& operator=(Context const&) = delete;
     Context& operator=(Context&&) = delete;
 
+    // internal
+public:
+    [[nodiscard]] uint64_t acquireGuid() { return mResourceGUID.fetch_add(1); }
+
+    void freeRenderTarget(render_target_info const& info, phi::handle::resource res, uint64_t guid);
+    void freeTexture(texture_info const& info, phi::handle::resource res, uint64_t guid);
+    void freeBuffer(buffer_info const& info, phi::handle::resource res, uint64_t guid);
+
 private:
     void initialize();
 
@@ -156,7 +164,7 @@ Buffer<T[]> Context::make_upload_buffer(cc::span<const T> data, bool read_only)
     auto* const map = mBackend->getMappedMemory(handle);
     std::memcpy(map, data.data(), info.size_bytes);
 
-    return {handle, info, map};
+    return {this, handle, acquireGuid(), info, map};
 }
 
 template <class T, cc::enable_if<std::is_trivially_copyable_v<T>>>
@@ -167,7 +175,7 @@ Buffer<T> Context::make_upload_buffer(const T& data, bool read_only)
     auto* const map = mBackend->getMappedMemory(handle);
     std::memcpy(map, &data, info.size_bytes);
 
-    return {handle, info, map};
+    return {this, handle, acquireGuid(), info, map};
 }
 
 // ============================== IMPLEMENTATION ==============================

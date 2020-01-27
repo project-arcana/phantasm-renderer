@@ -5,6 +5,9 @@
 
 namespace pr
 {
+// ugly workaround
+void on_buffer_free(Context* ctx, phi::handle::resource res, uint64_t guid, buffer_info const& info);
+
 template <class T>
 class Buffer
 { // getter
@@ -18,7 +21,12 @@ public:
 
     // ctor
 public:
-    Buffer(phi::handle::resource res, buffer_info const& info, std::byte* map = nullptr) : mResource(res), mInfo(info), mMap(map) {}
+    Buffer(Context* ctx, phi::handle::resource res, uint64_t guid, buffer_info const& info, std::byte* map = nullptr)
+      : mCtx(ctx), mGuid(guid), mResource(res), mInfo(info), mMap(map)
+    {
+    }
+
+    ~Buffer() { on_buffer_free(mCtx, mResource, mGuid, mInfo); }
 
     // internal
 public:
@@ -33,6 +41,8 @@ private:
     Buffer& operator=(Buffer&&) = default;
 
 private:
+    Context* mCtx;
+    uint64_t mGuid;
     phi::handle::resource mResource; ///< PHI resource
     std::byte* mMap;
     buffer_info mInfo;

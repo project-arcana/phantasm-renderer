@@ -101,15 +101,30 @@ phi::handle::resource Context::acquireBuffer(const buffer_info& info)
 
 Context::~Context() { mGpuEpochTracker.destroy(); }
 
+void Context::freeRenderTarget(const render_target_info& info, phi::handle::resource res, uint64_t guid)
+{
+    mCacheRenderTargets.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
+}
+
+void Context::freeTexture(const texture_info& info, phi::handle::resource res, uint64_t guid)
+{
+    mCacheTextures.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
+}
+
+void Context::freeBuffer(const buffer_info& info, phi::handle::resource res, uint64_t guid)
+{
+    mCacheBuffers.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
+}
+
 Buffer<untyped_tag> pr::Context::make_untyped_buffer(size_t size, size_t stride, bool read_only)
 {
     auto const info = buffer_info{size, stride, !read_only, false};
-    return {acquireBuffer(info), info};
+    return {this, acquireBuffer(info), acquireGuid(), info};
 }
 
 Buffer<untyped_tag> pr::Context::make_untyped_upload_buffer(size_t size, size_t stride, bool read_only)
 {
     auto const info = buffer_info{size, stride, !read_only, true};
     auto const handle = acquireBuffer(info);
-    return {handle, info, mBackend->getMappedMemory(handle)};
+    return {this, handle, acquireGuid(), info, mBackend->getMappedMemory(handle)};
 }
