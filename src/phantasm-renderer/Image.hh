@@ -8,6 +8,11 @@
 
 namespace pr
 {
+namespace detail
+{
+void on_image_free(Context* ctx, uint64_t guid, phi::handle::resource res, texture_info const& tex_info);
+void on_image_free(Context* ctx, uint64_t guid, phi::handle::resource res, render_target_info const& rt_info);
+}
 /**
  * a move-only type representing an n-dimensional image
  */
@@ -22,7 +27,8 @@ public:
 
     // ctor
 public:
-    Image(phi::handle::resource res, texture_info const& tex_info) : mResource(res), mIsRenderTarget(false)
+    Image(Context* ctx, uint64_t guid, phi::handle::resource res, texture_info const& tex_info)
+      : mContext(ctx), mGUID(guid), mResource(res), mIsRenderTarget(false)
     {
         mInfo.tex_info = tex_info;
         mSize.width = tex_info.width;
@@ -40,7 +46,8 @@ public:
         }
     }
 
-    Image(phi::handle::resource res, render_target_info const& rt_info) : mResource(res), mIsRenderTarget(true)
+    Image(Context* ctx, uint64_t guid, phi::handle::resource res, render_target_info const& rt_info)
+      : mContext(ctx), mGUID(guid), mResource(res), mIsRenderTarget(true)
     {
         static_assert(D == 2, "render targets must be 2D");
 
@@ -48,6 +55,8 @@ public:
         mSize = {rt_info.width, rt_info.height};
         mArrayLevels = 1;
     }
+
+    ~Image() { onDestroy(); }
 
     // internal
 public:
@@ -57,13 +66,76 @@ public:
     render_target_info const& getRTInfo() const { return mInfo.rt_info; }
 
     // move-only
-private:
+public:
     Image(Image const&) = delete;
-    Image(Image&&) = default;
     Image& operator=(Image const&) = delete;
-    Image& operator=(Image&&) = default;
+
+
+    Image(Image&& rhs) noexcept
+    {
+        mContext = rhs.mContext;
+        mGUID = rhs.mGUID;
+        mResource = rhs.mResource;
+        mArrayLevels = rhs.mArrayLevels;
+        mIsRenderTarget = rhs.mIsRenderTarget;
+
+        if (mIsRenderTarget)
+        {
+            mInfo.rt_info = rhs.mInfo.rt_info;
+        }
+        else
+        {
+            mInfo.tex_info = rhs.mInfo.tex_info;
+        }
+
+        rhs.mContext = nullptr;
+    }
+
+    Image& operator=(Image&& rhs) noexcept
+    {
+        if (this != &rhs)
+        {
+            onDestroy();
+            mContext = rhs.mContext;
+            mGUID = rhs.mGUID;
+            mResource = rhs.mResource;
+            mArrayLevels = rhs.mArrayLevels;
+            mIsRenderTarget = rhs.mIsRenderTarget;
+
+            if (mIsRenderTarget)
+            {
+                mInfo.rt_info = rhs.mInfo.rt_info;
+            }
+            else
+            {
+                mInfo.tex_info = rhs.mInfo.tex_info;
+            }
+
+            rhs.mContext = nullptr;
+        }
+
+        return *this;
+    }
 
 private:
+    void onDestroy()
+    {
+        if (!mContext)
+            return;
+
+        if (mIsRenderTarget)
+        {
+            detail::on_image_free(mContext, mGUID, mResource, mInfo.tex_info);
+        }
+        else
+        {
+            detail::on_image_free(mContext, mGUID, mResource, mInfo.rt_info);
+        }
+    }
+
+private:
+    Context* mContext = nullptr;     ///< parent context
+    uint64_t mGUID;                  ///< resource guide
     phi::handle::resource mResource; ///< PHI resource
     tg::size<D, int> mSize;          ///< size of this texture
     int mArrayLevels = 1;            ///< size of the array, usually 1

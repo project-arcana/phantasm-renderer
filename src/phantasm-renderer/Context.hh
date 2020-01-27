@@ -127,33 +127,34 @@ private:
     multi_cache<buffer_info> mCacheBuffers;
 };
 
+// ============================== IMPLEMENTATION ==============================
 
 template <format F>
 Image<1, F> Context::make_image(int width)
 {
     auto const info = texture_info{F, phi::texture_dimension::t1d, true, width, 1, 1, 0};
-    return {acquireTexture(info), info};
+    return {this, acquireGuid(), acquireTexture(info), info};
 }
 
 template <format F>
 Image<2, F> Context::make_image(tg::isize2 size)
 {
     auto const info = texture_info{F, phi::texture_dimension::t2d, true, size.width, size.height, 1, 0};
-    return {acquireTexture(info), info};
+    return {this, acquireGuid(), acquireTexture(info), info};
 }
 
 template <format F>
 Image<3, F> Context::make_image(tg::isize3 size)
 {
     auto const info = texture_info{F, phi::texture_dimension::t3d, true, size.width, size.height, unsigned(size.depth), 0};
-    return {acquireTexture(info), info};
+    return {this, acquireGuid(), acquireTexture(info), info};
 }
 
 template <format F, class T>
 Image<2, F> Context::make_target(tg::isize2 size, T /*clear_val*/) // TODO: clear value
 {
     auto const info = render_target_info{F, size.width, size.height, 1};
-    return {acquireRenderTarget(info), info};
+    return {this, acquireGuid(), acquireRenderTarget(info), info};
 }
 
 template <class T>
@@ -164,7 +165,7 @@ Buffer<T[]> Context::make_upload_buffer(cc::span<const T> data, bool read_only)
     auto* const map = mBackend->getMappedMemory(handle);
     std::memcpy(map, data.data(), info.size_bytes);
 
-    return {this, handle, acquireGuid(), info, map};
+    return {this, acquireGuid(), handle, info, map};
 }
 
 template <class T, cc::enable_if<std::is_trivially_copyable_v<T>>>
@@ -175,10 +176,7 @@ Buffer<T> Context::make_upload_buffer(const T& data, bool read_only)
     auto* const map = mBackend->getMappedMemory(handle);
     std::memcpy(map, &data, info.size_bytes);
 
-    return {this, handle, acquireGuid(), info, map};
+    return {this, acquireGuid(), handle, info, map};
 }
 
-// ============================== IMPLEMENTATION ==============================
-
-// TODO
 }

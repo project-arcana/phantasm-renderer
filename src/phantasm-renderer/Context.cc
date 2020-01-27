@@ -11,20 +11,31 @@ using namespace pr;
 
 Frame Context::make_frame()
 {
-    return {}; // TODO
+    // TODO: size
+    return {this, 1024u * 10};
 }
 
 CompiledFrame Context::compile(const Frame& frame)
 {
-    auto const event = mGpuEpochTracker.get_event();
-    auto const cmdlist = mBackend->recordCommandList(nullptr, 0, event);
-    return CompiledFrame(cmdlist, event);
+    if (frame.isEmpty())
+    {
+        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event);
+    }
+    else
+    {
+        auto const event = mGpuEpochTracker.get_event();
+        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event);
+        return CompiledFrame(cmdlist, event);
+    }
 }
 
 void Context::submit(const Frame& frame) { submit(compile(frame)); }
 
 void Context::submit(const CompiledFrame& frame)
 {
+    if (!frame.getCmdlist().is_valid())
+        return;
+
     {
         auto const lg = std::lock_guard(mMutexSubmission);
         auto const cmdlist = frame.getCmdlist();
@@ -43,7 +54,7 @@ Context::Context(phi::window_handle const& window_handle)
     initialize();
 }
 
-Context::Context(cc::poly_unique_ptr<phi::Backend> backend) : mBackend(std::move(backend)) { initialize(); }
+Context::Context(cc::poly_unique_ptr<phi::Backend> backend) : mBackend(cc::move(backend)) { initialize(); }
 
 void Context::initialize()
 {
@@ -99,7 +110,16 @@ phi::handle::resource Context::acquireBuffer(const buffer_info& info)
     }
 }
 
-Context::~Context() { mGpuEpochTracker.destroy(); }
+Context::~Context()
+{
+    mBackend->flushGPU();
+
+    mCacheTextures.free_all(mBackend.get());
+    mCacheRenderTargets.free_all(mBackend.get());
+    mCacheBuffers.free_all(mBackend.get());
+
+    mGpuEpochTracker.destroy();
+}
 
 void Context::freeRenderTarget(const render_target_info& info, phi::handle::resource res, uint64_t guid)
 {
@@ -119,12 +139,12 @@ void Context::freeBuffer(const buffer_info& info, phi::handle::resource res, uin
 Buffer<untyped_tag> pr::Context::make_untyped_buffer(size_t size, size_t stride, bool read_only)
 {
     auto const info = buffer_info{size, stride, !read_only, false};
-    return {this, acquireBuffer(info), acquireGuid(), info};
+    return {this, acquireGuid(), acquireBuffer(info), info};
 }
 
 Buffer<untyped_tag> pr::Context::make_untyped_upload_buffer(size_t size, size_t stride, bool read_only)
 {
     auto const info = buffer_info{size, stride, !read_only, true};
     auto const handle = acquireBuffer(info);
-    return {this, handle, acquireGuid(), info, mBackend->getMappedMemory(handle)};
+    return {this, acquireGuid(), handle, info, mBackend->getMappedMemory(handle)};
 }

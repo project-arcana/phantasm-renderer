@@ -5,8 +5,10 @@
 
 namespace pr
 {
-// ugly workaround
+namespace detail
+{
 void on_buffer_free(Context* ctx, phi::handle::resource res, uint64_t guid, buffer_info const& info);
+}
 
 template <class T>
 class Buffer
@@ -21,12 +23,12 @@ public:
 
     // ctor
 public:
-    Buffer(Context* ctx, phi::handle::resource res, uint64_t guid, buffer_info const& info, std::byte* map = nullptr)
+    Buffer(Context* ctx, uint64_t guid, phi::handle::resource res, buffer_info const& info, std::byte* map = nullptr)
       : mCtx(ctx), mGuid(guid), mResource(res), mInfo(info), mMap(map)
     {
     }
 
-    ~Buffer() { on_buffer_free(mCtx, mResource, mGuid, mInfo); }
+    ~Buffer() { onDestroy(); }
 
     // internal
 public:
@@ -34,14 +36,49 @@ public:
     buffer_info const& getInfo() const { return mInfo; }
 
     // move-only
-private:
+public:
     Buffer(Buffer const&) = delete;
-    Buffer(Buffer&&) = default;
     Buffer& operator=(Buffer const&) = delete;
-    Buffer& operator=(Buffer&&) = default;
+
+    Buffer(Buffer&& rhs) noexcept
+    {
+        mCtx = rhs.mCtx;
+        mGuid = rhs.mGuid;
+        mResource = rhs.mResource;
+        mMap = rhs.mMap;
+        mInfo = rhs.mInfo;
+
+        rhs.mCtx = nullptr;
+    }
+    Buffer& operator=(Buffer&& rhs) noexcept
+    {
+        if (this != &rhs)
+        {
+            onDestroy();
+
+            mCtx = rhs.mCtx;
+            mGuid = rhs.mGuid;
+            mResource = rhs.mResource;
+            mMap = rhs.mMap;
+            mInfo = rhs.mInfo;
+
+            rhs.mCtx = nullptr;
+        }
+
+        return *this;
+    }
 
 private:
-    Context* mCtx;
+    void onDestroy()
+    {
+        if (!mCtx)
+            return;
+
+        detail::on_buffer_free(mCtx, mResource, mGuid, mInfo);
+    }
+
+private:
+    Context* mCtx = nullptr;
     uint64_t mGuid;
     phi::handle::resource mResource; ///< PHI resource
     std::byte* mMap;

@@ -24,9 +24,7 @@ public:
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
     [[nodiscard]] phi::handle::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
     {
-        map_element& elem = _map[key];
-        elem.latest_gen = _current_gen;
-
+        map_element& elem = access_element(key);
         if (!elem.in_flight_buffer.empty())
         {
             // always per value
@@ -49,8 +47,7 @@ public:
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
     void free(phi::handle::resource val, uint64_t val_guid, KeyT const& key, uint64_t current_cpu_epoch)
     {
-        map_element& elem = _map[key];
-        elem.latest_gen = _current_gen;
+        map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
         elem.in_flight_buffer.enqueue({val, val_guid, current_cpu_epoch});
     }
@@ -59,6 +56,33 @@ public:
     {
         ++_current_gen;
         // todo: go through a subsection of the map, and if the last gen used is old, delete old entries
+    }
+
+    void free_all(phi::Backend* backend)
+    {
+        for (auto& [key, elem] : _map)
+        {
+            while (!elem.in_flight_buffer.empty())
+            {
+                backend->free(elem.in_flight_buffer.get_tail().val);
+                elem.in_flight_buffer.pop_tail();
+            }
+        }
+    }
+
+private:
+    map_element& access_element(KeyT const& key)
+    {
+        map_element& elem = _map[key];
+        elem.latest_gen = _current_gen;
+
+        if (elem.in_flight_buffer.capacity() == 0)
+        {
+            // newly created
+            elem.in_flight_buffer = circular_buffer<in_flight_val>(512);
+        }
+
+        return elem;
     }
 
 private:

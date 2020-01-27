@@ -1,11 +1,12 @@
 #pragma once
 
-#include <type_traits>
 #include <cstddef>
+#include <type_traits>
 
 #include <clean-core/utility.hh>
 
-namespace pr {
+namespace pr
+{
 template <class T>
 class circular_buffer
 {
@@ -13,7 +14,7 @@ class circular_buffer
 
 public:
     explicit circular_buffer() = default;
-    explicit circular_buffer(size_t size) : _buffer(new T[size]), _num_elements(size) {}
+    explicit circular_buffer(size_t size) : _buffer(new T[size]), _num_elements(size), _is_full(false) {}
 
     circular_buffer(circular_buffer const& rhs) = delete;
     circular_buffer& operator=(circular_buffer const& rhs) = delete;
@@ -53,6 +54,8 @@ public:
 
     void enqueue(T const& item)
     {
+        CC_ASSERT(!full());
+
         _buffer[_head] = item;
 
         if (_is_full)
@@ -118,6 +121,6 @@ private:
     size_t _num_elements = 0;
     size_t _head = 0;
     size_t _tail = 0;
-    bool _is_full = false;
+    bool _is_full = true;
 };
 }

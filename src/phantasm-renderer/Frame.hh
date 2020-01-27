@@ -1,5 +1,7 @@
 #pragma once
 
+#include <phantasm-hardware-interface/commands.hh>
+
 #include <phantasm-renderer/Buffer.hh>
 #include <phantasm-renderer/FragmentShader.hh>
 #include <phantasm-renderer/Image.hh>
@@ -63,16 +65,26 @@ public:
     // move-only type
 public:
     Frame(Frame const&) = delete;
-    Frame(Frame&&) = default;
+    Frame(Frame&&) noexcept = default;
     Frame& operator=(Frame const&) = delete;
-    Frame& operator=(Frame&&) = default;
+    Frame& operator=(Frame&&) noexcept = default;
 
 private:
-    Frame() = default;
+    Frame(Context* ctx, size_t size)
+      : mContext(ctx), mCmdlistMemory(static_cast<std::byte*>(std::malloc(size))), mCmdlistSizeBytes(size), mCmdWriter(mCmdlistMemory, mCmdlistSizeBytes)
+    {
+    }
     friend class Context;
+
+    std::byte* getMemory() const { return mCmdWriter.buffer(); }
+    size_t getSize() const { return mCmdWriter.size(); }
+    bool isEmpty() const { return mCmdWriter.empty(); }
 
     // members
 private:
-    // TODO: Context weak_ptr
+    Context* mContext;
+    std::byte* mCmdlistMemory;
+    size_t mCmdlistSizeBytes;
+    phi::command_stream_writer mCmdWriter;
 };
 }
