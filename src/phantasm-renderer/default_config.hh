@@ -1,6 +1,6 @@
 #pragma once
 
-#include <phantasm-renderer/primitive_pipeline_config.hh>
+#include <phantasm-hardware-interface/types.hh>
 
 namespace pr
 {
@@ -9,6 +9,6 @@ namespace pr
  */
 static constexpr struct default_config_t
 {
-    operator primitive_pipeline_config() const { return {}; }
+    operator phi::pipeline_config() const { return {}; }
 } default_config;
 }

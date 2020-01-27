@@ -15,7 +15,6 @@
 #include <phantasm-renderer/Buffer.hh>
 #include <phantasm-renderer/FragmentShader.hh>
 #include <phantasm-renderer/Image.hh>
-#include <phantasm-renderer/PrimitivePipeline.hh>
 #include <phantasm-renderer/VertexShader.hh>
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
@@ -35,8 +34,7 @@ class Context
 {
     // creation API
 public:
-    Frame make_frame();
-
+    Frame make_frame(size_t initial_size = 2048);
 
     template <format F>
     Image<1, F> make_image(int width);
@@ -57,18 +55,29 @@ public:
     Buffer<untyped_tag> make_untyped_upload_buffer(size_t size, size_t stride = 0, bool read_only = true);
 
     template <format FragmentF>
-    FragmentShader<FragmentF> make_fragment_shader(cc::string_view code);
-    //    template <class FragmentT> // must be set to void!
-    //    FragmentShader<void> make_fragment_shader()
-    //    {
-    //        static_assert(std::is_same_v<FragmentT, void>, "empty fragment shader must be void");
-    //        return {}; // TODO
-    //    }
+    FragmentShader<FragmentF> make_fragment_shader(cc::string_view code)
+    {
+        auto const binary = compileShader(code, phi::shader_stage::pixel);
+        return {binary};
+    }
+
+    template <format FragmentF>
+    FragmentShader<FragmentF> make_fragment_shader(std::byte* binary, size_t size)
+    {
+        return {phi::arg::shader_binary{binary, size}};
+    }
 
     template <class... VertexT>
     VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code)
     {
-        return {}; // TODO
+        auto const binary = compileShader(code, phi::shader_stage::vertex);
+        return {binary};
+    }
+
+    template <class... VertexT>
+    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(std::byte* binary, size_t size)
+    {
+        return {phi::arg::shader_binary{binary, size}};
     }
 
     // consumption API
@@ -105,12 +114,22 @@ public:
 private:
     void initialize();
 
+    // creation
+    phi::arg::shader_binary compileShader(cc::string_view code, phi::shader_stage stage);
+
     // multi cache acquire
     phi::handle::resource acquireRenderTarget(render_target_info const& info);
     phi::handle::resource acquireTexture(texture_info const& info);
     phi::handle::resource acquireBuffer(buffer_info const& info);
 
+public:
     // single cache acquire
+    phi::handle::pipeline_state acquirePSO(phi::arg::vertex_format const& vertex_fmt,
+                                           phi::arg::framebuffer_config const& fb_conf,
+                                           phi::arg::shader_arg_shapes arg_shapes,
+                                           bool has_root_consts,
+                                           phi::arg::graphics_shaders shaders,
+                                           phi::pipeline_config const& pipeline_conf);
 
     // members
 private:

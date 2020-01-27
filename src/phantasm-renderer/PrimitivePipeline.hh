@@ -1,12 +1,17 @@
 #pragma once
 
+#include <phantasm-hardware-interface/arguments.hh>
+
+#include <phantasm-renderer/Buffer.hh>
+#include <phantasm-renderer/Context.hh>
+#include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fwd.hh>
+#include <phantasm-renderer/reflection/resources.hh>
 #include <phantasm-renderer/resource_list.hh>
 
 namespace pr
 {
-// see https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkGraphicsPipelineCreateInfo.html
 template <class VertexT, format FragmentF, class BoundResourceList, class... UnboundResources>
 class PrimitivePipeline
 {
@@ -15,14 +20,24 @@ public:
     template <class BufferT>
     void draw(UnboundResources const&... resources, Buffer<BufferT> const& vertexBuffer)
     {
+        //        static_assert(sizeof...(UnboundResources) == 0, "trying to draw with unbound resources"); // isn't this right?
         static_assert(std::is_same_v<BufferT, VertexT[]>, "incompatible vertex types");
+
+        phi::cmd::draw dcmd;
+        dcmd.init(mHandlePSO, vertexBuffer.getNumElements(), vertexBuffer.getHandle());
+        mParentWriter->add_command(dcmd);
     }
 
     // TODO: more index types
     template <class BufferT>
-    void drawIndexed(UnboundResources const&... resources, Buffer<BufferT> const& vertexBuffer, Buffer<int[]> const& indexBuffer)
+    void drawIndexed(UnboundResources const&... resources, Buffer<BufferT> const& vertexBuffer, Buffer<uint32_t[]> const& indexBuffer)
     {
+        static_assert(sizeof...(UnboundResources) == 0, "trying to draw with unbound resources");
         static_assert(std::is_same_v<BufferT, VertexT[]>, "incompatible vertex types");
+
+        phi::cmd::draw dcmd;
+        dcmd.init(mHandlePSO, indexBuffer.getNumElements(), vertexBuffer.getHandle(), indexBuffer.getHandle());
+        mParentWriter->add_command(dcmd);
     }
 
     template <class... NewResources>
@@ -30,7 +45,40 @@ public:
     bind(NewResources const&... resources)
     {
         static_assert(sizeof...(NewResources) <= sizeof...(UnboundResources), "trying to bind too many resources");
-        return {}; // TODO
+        return {mCtx, mParentWriter, mShaderVertex, mShaderPixel, mConfig}; // TODO
     }
+
+public:
+    PrimitivePipeline(Context* ctx, growing_writer* writer, VertexShader<VertexT> vs, FragmentShader<FragmentF> ps, phi::pipeline_config const& config)
+      : mCtx(ctx), mParentWriter(writer), mShaderVertex(vs), mShaderPixel(ps), mConfig(config)
+    {
+        if constexpr (sizeof...(UnboundResources) == 0) // TODO: this doesn't work
+        {
+            // fully bound pipeline, lookup PSO
+            cc::capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> shader_arg_shapes;
+
+            // TODO:
+            //(shader_arg_shapes.push_back(reflect_arg_shape<BoundResourceList>()), ...); // semantically this
+
+            phi::arg::framebuffer_config fbconf;
+            fbconf.add_render_target(FragmentF);
+
+            cc::array const shaders = {phi::arg::graphics_shader{mShaderVertex.binary, phi::shader_stage::vertex},
+                                       phi::arg::graphics_shader{mShaderPixel.binary, phi::shader_stage::pixel}};
+
+            phi::arg::vertex_format const vert_fmt = {VertexShader<VertexT>::sAttributes, sizeof(VertexT)};
+
+            // TODO: existence of root constants
+            mHandlePSO = mCtx->acquirePSO(vert_fmt, fbconf, shader_arg_shapes, false, shaders, mConfig);
+        }
+    }
+
+private:
+    Context* mCtx;
+    growing_writer* mParentWriter;
+    VertexShader<VertexT> mShaderVertex;
+    FragmentShader<FragmentF> mShaderPixel;
+    phi::pipeline_config mConfig;
+    phi::handle::pipeline_state mHandlePSO = phi::handle::null_pipeline_state;
 };
 }

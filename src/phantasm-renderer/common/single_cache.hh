@@ -7,6 +7,7 @@ namespace pr
 template <class KeyT, class ValT, class HasherT>
 struct single_cache
 {
+public:
 private:
     struct map_element
     {

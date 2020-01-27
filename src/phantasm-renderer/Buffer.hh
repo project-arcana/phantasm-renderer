@@ -20,6 +20,7 @@ public:
     bool isReadOnly() const { return !mInfo.allow_uav; }
     bool isMapped() const { return mMap != nullptr; }
     std::byte* getMap() const { return mMap; }
+    unsigned getNumElements() const { return mInfo.stride_bytes == 0 ? 1 : mInfo.size_bytes / mInfo.stride_bytes; }
 
     // ctor
 public:
