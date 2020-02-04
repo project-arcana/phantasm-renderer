@@ -1,6 +1,14 @@
 #pragma once
 
+#include "format.hh"
 #include "view_type.hh"
+
+namespace phi
+{
+struct backend_config;
+struct window_handle;
+class Backend;
+}
 
 namespace pr
 {
@@ -8,35 +16,22 @@ class Device;
 class Context;
 class Queue;
 
-namespace backend
-{
-class Backend;
-namespace vk
-{
-class BackendVulkan;
-}
-namespace d3d12
-{
-class BackendD3D12;
-}
-}
-
 template <class VertexT>
 class VertexShader;
-template <class FragmentT>
+template <format FragmentF>
 class FragmentShader;
 class GeometryShader;
 class TessellationControlShader;
 class TessellationEvaluationShader;
 
-template <int D, class T, bool IsFrameLocal = false>
+template <int D, format F, bool IsFrameLocal = false>
 class Image;
-template <class T>
-using Image1D = Image<1, T>;
-template <class T>
-using Image2D = Image<2, T>;
-template <class T>
-using Image3D = Image<3, T>;
+template <format F>
+using Image1D = Image<1, F>;
+template <format F>
+using Image2D = Image<2, F>;
+template <format F>
+using Image3D = Image<3, F>;
 
 template <class T>
 class Buffer;
@@ -65,9 +60,9 @@ template <class... Resources>
 class resource_list;
 using empty_resource_list = resource_list<>;
 
-template <class FragmentT, class BoundResourceList = empty_resource_list>
+template <format FragmentF, class BoundResourceList = empty_resource_list>
 class Pass;
-template <class VertexT, class FragmentT, class BoundResourceList, class... UnboundResources>
+template <class VertexT, format FragmentF, class BoundResourceList, class... UnboundResources>
 class PrimitivePipeline;
 
 struct primitive_pipeline_config;
