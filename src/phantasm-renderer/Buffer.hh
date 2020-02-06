@@ -5,11 +5,6 @@
 
 namespace pr
 {
-namespace detail
-{
-void on_buffer_free(Context* ctx, phi::handle::resource res, uint64_t guid, buffer_info const& info);
-}
-
 template <class T>
 class Buffer
 { // getter
@@ -75,7 +70,7 @@ private:
         if (!mCtx)
             return;
 
-        detail::on_buffer_free(mCtx, mResource, mGuid, mInfo);
+//        detail::on_buffer_free(mCtx, mResource, mGuid, mInfo);
     }
 
 private:

@@ -23,6 +23,8 @@
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/vertex_type.hh>
 
+#include <phantasm-renderer/resource_types.hh>
+
 namespace pr
 {
 /**
@@ -36,49 +38,25 @@ class Context
 public:
     Frame make_frame(size_t initial_size = 2048);
 
-    template <format F>
-    Image<1, F> make_image(int width);
-    template <format F>
-    Image<2, F> make_image(tg::isize2 size);
-    template <format F>
-    Image<3, F> make_image(tg::isize3 size);
+    image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    image make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
 
-    template <format F, class T>
-    Image<2, F> make_target(tg::isize2 size, T clear_val);
+    render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    template <class T, cc::enable_if<std::is_trivially_copyable_v<T>> = true>
-    Buffer<T> make_upload_buffer(T const& data, bool read_only = true);
-    template <class T>
-    Buffer<T[]> make_upload_buffer(cc::span<T const> data, bool read_only = true);
+    buffer make_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
+    buffer make_upload_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
 
-    Buffer<untyped_tag> make_untyped_buffer(size_t size, size_t stride = 0, bool read_only = true);
-    Buffer<untyped_tag> make_untyped_upload_buffer(size_t size, size_t stride = 0, bool read_only = true);
+    shader_binary make_shader(cc::string_view code, phi::shader_stage stage);
 
-    template <format FragmentF>
-    FragmentShader<FragmentF> make_fragment_shader(cc::string_view code)
-    {
-        auto const binary = compileShader(code, phi::shader_stage::pixel);
-        return {binary};
-    }
+    // cache lookup API
+public:
+    cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    template <format FragmentF>
-    FragmentShader<FragmentF> make_fragment_shader(std::byte* binary, size_t size)
-    {
-        return {phi::arg::shader_binary{binary, size}};
-    }
+    cached_buffer get_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
+    cached_buffer get_upload_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
 
-    template <class... VertexT>
-    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(cc::string_view code)
-    {
-        auto const binary = compileShader(code, phi::shader_stage::vertex);
-        return {binary};
-    }
-
-    template <class... VertexT>
-    VertexShader<vertex_type_of<VertexT...>> make_vertex_shader(std::byte* binary, size_t size)
-    {
-        return {phi::arg::shader_binary{binary, size}};
-    }
+    cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
 
     // consumption API
 public:
@@ -92,37 +70,39 @@ public:
     /// constructs a context with a default backend (usually vulkan)
     Context(phi::window_handle const& window_handle);
     /// constructs a context with a specified backend
-    Context(cc::poly_unique_ptr<phi::Backend> backend);
+    Context(cc::poly_unique_ptr<phi::Backend>&& backend);
 
     ~Context();
 
     // ref type
-public:
+private:
     Context(Context const&) = delete;
     Context(Context&&) = delete;
     Context& operator=(Context const&) = delete;
     Context& operator=(Context&&) = delete;
 
     // internal
-public:
+private:
     [[nodiscard]] uint64_t acquireGuid() { return mResourceGUID.fetch_add(1); }
 
-    void freeRenderTarget(render_target_info const& info, phi::handle::resource res, uint64_t guid);
-    void freeTexture(texture_info const& info, phi::handle::resource res, uint64_t guid);
-    void freeBuffer(buffer_info const& info, phi::handle::resource res, uint64_t guid);
+    void freeRenderTarget(render_target_info const& info, pr::resource res);
+    void freeTexture(texture_info const& info, pr::resource res);
+    void freeBuffer(buffer_info const& info, pr::resource res);
 
 private:
     void initialize();
 
     // creation
-    phi::arg::shader_binary compileShader(cc::string_view code, phi::shader_stage stage);
+    pr::resource createRenderTarget(render_target_info const& info);
+    pr::resource createTexture(texture_info const& info);
+    pr::resource createBuffer(buffer_info const& info);
 
     // multi cache acquire
-    phi::handle::resource acquireRenderTarget(render_target_info const& info);
-    phi::handle::resource acquireTexture(texture_info const& info);
-    phi::handle::resource acquireBuffer(buffer_info const& info);
+    pr::resource acquireRenderTarget(render_target_info const& info);
+    pr::resource acquireTexture(texture_info const& info);
+    pr::resource acquireBuffer(buffer_info const& info);
 
-public:
+private:
     // single cache acquire
     phi::handle::pipeline_state acquirePSO(phi::arg::vertex_format const& vertex_fmt,
                                            phi::arg::framebuffer_config const& fb_conf,
@@ -145,57 +125,4 @@ private:
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;
 };
-
-// ============================== IMPLEMENTATION ==============================
-
-template <format F>
-Image<1, F> Context::make_image(int width)
-{
-    auto const info = texture_info{F, phi::texture_dimension::t1d, true, width, 1, 1, 0};
-    return {this, acquireGuid(), acquireTexture(info), info};
-}
-
-template <format F>
-Image<2, F> Context::make_image(tg::isize2 size)
-{
-    auto const info = texture_info{F, phi::texture_dimension::t2d, true, size.width, size.height, 1, 0};
-    return {this, acquireGuid(), acquireTexture(info), info};
-}
-
-template <format F>
-Image<3, F> Context::make_image(tg::isize3 size)
-{
-    auto const info = texture_info{F, phi::texture_dimension::t3d, true, size.width, size.height, unsigned(size.depth), 0};
-    return {this, acquireGuid(), acquireTexture(info), info};
-}
-
-template <format F, class T>
-Image<2, F> Context::make_target(tg::isize2 size, T /*clear_val*/) // TODO: clear value
-{
-    auto const info = render_target_info{F, size.width, size.height, 1};
-    return {this, acquireGuid(), acquireRenderTarget(info), info};
-}
-
-template <class T>
-Buffer<T[]> Context::make_upload_buffer(cc::span<const T> data, bool read_only)
-{
-    auto const info = buffer_info{sizeof(T) * data.size(), sizeof(T), !read_only, true};
-    auto const handle = acquireBuffer(info);
-    auto* const map = mBackend->getMappedMemory(handle);
-    std::memcpy(map, data.data(), info.size_bytes);
-
-    return {this, acquireGuid(), handle, info, map};
-}
-
-template <class T, cc::enable_if<std::is_trivially_copyable_v<T>>>
-Buffer<T> Context::make_upload_buffer(const T& data, bool read_only)
-{
-    auto const info = buffer_info{sizeof(T), 0, !read_only, true};
-    auto const handle = acquireBuffer(info);
-    auto* const map = mBackend->getMappedMemory(handle);
-    std::memcpy(map, &data, info.size_bytes);
-
-    return {this, acquireGuid(), handle, info, map};
-}
-
 }

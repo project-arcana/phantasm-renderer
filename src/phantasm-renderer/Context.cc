@@ -1,5 +1,7 @@
 #include "Context.hh"
 
+#include <rich-log/log.hh>
+
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
 
@@ -14,6 +16,56 @@ Frame Context::make_frame(size_t initial_size)
     // TODO: pool the memory blocks for frames
     return {this, initial_size};
 }
+
+image Context::make_image(int width, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, 1, num_mips};
+    auto const resource = createTexture(info);
+    return {resource, info};
+}
+
+image Context::make_image(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 1, num_mips};
+    auto const resource = createTexture(info);
+    return {resource, info};
+}
+
+image Context::make_image(tg::isize3 size, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info
+        = texture_info{format, phi::texture_dimension::t3d, allow_uav, size.width, size.height, static_cast<unsigned int>(size.depth), num_mips};
+    auto const resource = createTexture(info);
+    return {resource, info};
+}
+
+render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples)
+{
+    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    auto const resource = createRenderTarget(info);
+    return {resource, info};
+}
+
+buffer Context::make_buffer(size_t size, size_t stride, bool allow_uav)
+{
+    auto const info = buffer_info{size, stride, allow_uav, false};
+    auto const resource = createBuffer(info);
+    return {resource, info};
+}
+
+buffer Context::make_upload_buffer(size_t size, size_t stride, bool allow_uav)
+{
+    auto const info = buffer_info{size, stride, allow_uav, false};
+    auto const resource = createBuffer(info);
+    return {resource, info};
+}
+
+shader_binary Context::make_shader(cc::string_view code, phi::shader_stage stage)
+{
+    LOG(warning)("Shader compilation unimplemented");
+    return shader_binary{nullptr, 0, stage, 0};
+}
+
 
 CompiledFrame Context::compile(const Frame& frame)
 {
@@ -54,7 +106,7 @@ Context::Context(phi::window_handle const& window_handle)
     initialize();
 }
 
-Context::Context(cc::poly_unique_ptr<phi::Backend> backend) : mBackend(cc::move(backend)) { initialize(); }
+Context::Context(cc::poly_unique_ptr<phi::Backend>&& backend) : mBackend(cc::move(backend)) { initialize(); }
 
 void Context::initialize()
 {
@@ -64,55 +116,67 @@ void Context::initialize()
     mCacheRenderTargets.reserve(64);
 }
 
-phi::arg::shader_binary Context::compileShader(cc::string_view code, phi::shader_stage stage)
+resource Context::createRenderTarget(const render_target_info& info)
 {
-    CC_RUNTIME_ASSERT(false && "unimplemented");
-    return {};
+    return {mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples), acquireGuid()};
 }
 
-phi::handle::resource Context::acquireRenderTarget(const render_target_info& info)
+resource Context::createTexture(const texture_info& info)
+{
+    return {mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()};
+}
+
+resource Context::createBuffer(const buffer_info& info)
+{
+    pr::resource res;
+    if (info.is_mapped)
+    {
+        res._handle = mBackend->createMappedBuffer(info.size_bytes, info.stride_bytes);
+    }
+    else
+    {
+        res._handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
+    }
+    res._guid = acquireGuid();
+    return res;
+}
+
+pr::resource Context::acquireRenderTarget(const render_target_info& info)
 {
     auto const lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup.is_valid())
+    if (lookup._handle.is_valid())
     {
         return lookup;
     }
     else
     {
-        return mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples);
+        return createRenderTarget(info);
     }
 }
 
-phi::handle::resource Context::acquireTexture(const texture_info& info)
+pr::resource Context::acquireTexture(const texture_info& info)
 {
     auto const lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup.is_valid())
+    if (lookup._handle.is_valid())
     {
         return lookup;
     }
     else
     {
-        return mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav);
+        return createTexture(info);
     }
 }
 
-phi::handle::resource Context::acquireBuffer(const buffer_info& info)
+pr::resource Context::acquireBuffer(const buffer_info& info)
 {
     auto const lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup.is_valid())
+    if (lookup._handle.is_valid())
     {
         return lookup;
     }
     else
     {
-        if (info.is_mapped)
-        {
-            return mBackend->createMappedBuffer(info.size_bytes, info.stride_bytes);
-        }
-        else
-        {
-            return mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
-        }
+        return createBuffer(info);
     }
 }
 
@@ -139,31 +203,11 @@ Context::~Context()
     mGpuEpochTracker.destroy();
 }
 
-void Context::freeRenderTarget(const render_target_info& info, phi::handle::resource res, uint64_t guid)
+void Context::freeRenderTarget(const render_target_info& info, pr::resource res)
 {
-    mCacheRenderTargets.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
+    mCacheRenderTargets.free(res, info, mGpuEpochTracker.get_current_epoch_cpu());
 }
 
-void Context::freeTexture(const texture_info& info, phi::handle::resource res, uint64_t guid)
-{
-    mCacheTextures.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
-}
+void Context::freeTexture(const texture_info& info, pr::resource res) { mCacheTextures.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }
 
-void Context::freeBuffer(const buffer_info& info, phi::handle::resource res, uint64_t guid)
-{
-    mCacheBuffers.free(res, guid, info, mGpuEpochTracker.get_current_epoch_cpu());
-}
-
-
-Buffer<untyped_tag> pr::Context::make_untyped_buffer(size_t size, size_t stride, bool read_only)
-{
-    auto const info = buffer_info{size, stride, !read_only, false};
-    return {this, acquireGuid(), acquireBuffer(info), info};
-}
-
-Buffer<untyped_tag> pr::Context::make_untyped_upload_buffer(size_t size, size_t stride, bool read_only)
-{
-    auto const info = buffer_info{size, stride, !read_only, true};
-    auto const handle = acquireBuffer(info);
-    return {this, acquireGuid(), handle, info, mBackend->getMappedMemory(handle)};
-}
+void Context::freeBuffer(const buffer_info& info, pr::resource res) { mCacheBuffers.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }

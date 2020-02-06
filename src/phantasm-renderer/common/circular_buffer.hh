@@ -10,7 +10,7 @@ namespace pr
 template <class T>
 class circular_buffer
 {
-    static_assert(std::is_trivial_v<T>, "no lifetime management support");
+    static_assert(std::is_trivially_destructible_v<T>, "no lifetime management support");
 
 public:
     explicit circular_buffer() = default;

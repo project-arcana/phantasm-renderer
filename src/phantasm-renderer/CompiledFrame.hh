@@ -1,12 +1,11 @@
 #pragma once
 
-#include <phantasm-renderer/Frame.hh>
-
+#include <phantasm-hardware-interface/types.hh>
 
 namespace pr
 {
 /**
- * A CompiledFrame is a fully baked command buffer ready for submission
+ * A CompiledFrame is a compiled command list ready for submission
  */
 class CompiledFrame
 {

@@ -10,6 +10,8 @@
 #include <phantasm-renderer/common/circular_buffer.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 
+#include <phantasm-renderer/resource_types.hh>
+
 namespace pr
 {
 template <class KeyT>
@@ -22,7 +24,7 @@ public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
-    [[nodiscard]] phi::handle::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
+    [[nodiscard]] pr::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
     {
         map_element& elem = access_element(key);
         if (!elem.in_flight_buffer.empty())
@@ -40,16 +42,16 @@ public:
         }
 
         // no element ready (in this case, the callsite will have to create a new object)
-        return phi::handle::null_resource;
+        return {};
     }
 
     /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free(phi::handle::resource val, uint64_t val_guid, KeyT const& key, uint64_t current_cpu_epoch)
+    void free(pr::resource val, KeyT const& key, uint64_t current_cpu_epoch)
     {
         map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
-        elem.in_flight_buffer.enqueue({val, val_guid, current_cpu_epoch});
+        elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
     }
 
     void cull()
@@ -64,7 +66,7 @@ public:
         {
             while (!elem.in_flight_buffer.empty())
             {
-                backend->free(elem.in_flight_buffer.get_tail().val);
+                backend->free(elem.in_flight_buffer.get_tail().val._handle);
                 elem.in_flight_buffer.pop_tail();
             }
         }
@@ -88,8 +90,7 @@ private:
 private:
     struct in_flight_val
     {
-        phi::handle::resource val;
-        uint64_t guid;
+        pr::resource val;
         uint64_t required_gpu_epoch;
     };
 
