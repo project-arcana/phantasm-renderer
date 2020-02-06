@@ -44,8 +44,8 @@ public:
 
     render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    buffer make_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
-    buffer make_upload_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
+    buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
     shader_binary make_shader(cc::string_view code, phi::shader_stage stage);
 

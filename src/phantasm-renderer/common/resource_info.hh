@@ -40,8 +40,8 @@ struct texture_info
 
 struct buffer_info
 {
-    size_t size_bytes;
-    size_t stride_bytes;
+    unsigned size_bytes;
+    unsigned stride_bytes;
     bool allow_uav;
     bool is_mapped;
 

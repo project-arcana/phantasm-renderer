@@ -46,14 +46,14 @@ render_target Context::make_target(tg::isize2 size, phi::format format, unsigned
     return {resource, info};
 }
 
-buffer Context::make_buffer(size_t size, size_t stride, bool allow_uav)
+buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
     auto const info = buffer_info{size, stride, allow_uav, false};
     auto const resource = createBuffer(info);
     return {resource, info};
 }
 
-buffer Context::make_upload_buffer(size_t size, size_t stride, bool allow_uav)
+buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
     auto const info = buffer_info{size, stride, allow_uav, false};
     auto const resource = createBuffer(info);

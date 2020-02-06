@@ -1,23 +1,23 @@
 #pragma once
 
-#include <cstdlib>
-
 #include <phantasm-hardware-interface/commands.hh>
 
 namespace pr
 {
 struct growing_writer
 {
-    growing_writer(size_t initial_size) { _writer.initialize(static_cast<std::byte*>(std::malloc(initial_size)), initial_size); }
+    growing_writer(size_t initial_size);
+    growing_writer(growing_writer&& rhs) noexcept : _writer(rhs._writer) { rhs._writer.exchange_buffer(nullptr, 0); }
+    growing_writer& operator=(growing_writer&& rhs) noexcept;
 
-    ~growing_writer() { std::free(_writer.buffer()); }
+    ~growing_writer();
 
     void reset() { _writer.reset(); }
 
     template <class CmdT>
     void add_command(CmdT const& cmd)
     {
-        accomodate_t<CmdT>();
+        accomodate(sizeof(CmdT));
         _writer.add_command(cmd);
     }
 
@@ -26,20 +26,7 @@ struct growing_writer
     size_t max_size() const { return _writer.max_size(); }
     bool is_empty() const { return _writer.empty(); }
 
-    template <class CmdT>
-    void accomodate_t()
-    {
-        if (!_writer.can_accomodate_t<CmdT>())
-        {
-            size_t const new_size = (_writer.max_size() + sizeof(CmdT)) << 1;
-            std::byte* const new_buffer = static_cast<std::byte*>(std::malloc(new_size));
-
-            std::memcpy(new_buffer, _writer.buffer(), _writer.size());
-
-            std::free(_writer.buffer());
-            _writer.exchange_buffer(new_buffer, new_size);
-        }
-    }
+    void accomodate(size_t cmd_size);
 
     phi::command_stream_writer& raw_writer() { return _writer; }
 

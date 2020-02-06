@@ -39,7 +39,7 @@ public:
 
     // pipeline RAII API (compute only, graphics pipelines are in pr::Framebuffer
 
-    void pipeline(compute_pipeline_state const& compute_pipeline); // TODO
+    void pipeline(compute_pipeline_state const& compute_pipeline); // TODO return, implementation
     // TODO: cache-access version
 
     // commands
