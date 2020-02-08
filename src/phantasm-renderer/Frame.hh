@@ -13,6 +13,8 @@
 
 #include <phantasm-renderer/resource_types.hh>
 
+#include "Pass.hh"
+
 namespace pr
 {
 class Frame
@@ -21,7 +23,7 @@ public:
     // pass RAII API
 
     template <class... RTs>
-    void render_to(RTs const&... targets) // TODO return
+    Pass render_to(RTs const&... targets) // TODO return
     {
         phi::cmd::begin_render_pass bcmd;
         // initialize command
@@ -42,6 +44,10 @@ public:
     void pipeline(compute_pipeline_state const& compute_pipeline); // TODO return, implementation
     // TODO: cache-access version
 
+    void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(image const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+
     // commands
 
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
@@ -59,12 +65,26 @@ public:
     Frame& operator=(Frame const&) = delete;
     Frame& operator=(Frame&&) noexcept = default;
 
-    // internal
+    // private
 private:
     void addRenderTarget(phi::cmd::begin_render_pass& bcmd, render_target const& rt);
 
-    void addPendingTransition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void flushPendingTransitions();
+
+    // Pass-side API
+private:
+    friend class Pass;
+
+    void passOnJoin(Pass const& pass);
+
+    // Pipeline-side API
+private:
+    friend class PrimitivePipeline;
+
+    void pipelineOnDraw(phi::cmd::draw const& dcmd);
+    void pipelineOnDispatch(phi::cmd::dispatch const& dcmd);
+
 
     // Context-side API
 private:

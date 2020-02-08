@@ -66,6 +66,12 @@ shader_binary Context::make_shader(cc::string_view code, phi::shader_stage stage
     return shader_binary{nullptr, 0, stage, 0};
 }
 
+baked_argument Context::make_argument(const argument& arg)
+{
+    //
+    return {mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, false)};
+}
+
 
 CompiledFrame Context::compile(const Frame& frame)
 {

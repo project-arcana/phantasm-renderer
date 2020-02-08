@@ -12,18 +12,13 @@
 #include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
 
-#include <phantasm-renderer/Buffer.hh>
-#include <phantasm-renderer/FragmentShader.hh>
-#include <phantasm-renderer/Image.hh>
-#include <phantasm-renderer/VertexShader.hh>
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/resource_info.hh>
-#include <phantasm-renderer/fragment_type.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/vertex_type.hh>
 
 #include <phantasm-renderer/resource_types.hh>
+#include <phantasm-renderer/argument.hh>
 
 namespace pr
 {
@@ -48,6 +43,8 @@ public:
     buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
     shader_binary make_shader(cc::string_view code, phi::shader_stage stage);
+
+    baked_argument make_argument(argument const& arg);
 
     // cache lookup API
 public:
