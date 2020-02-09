@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <type_traits>
 
+#include <clean-core/move.hh>
 #include <clean-core/utility.hh>
 
 namespace pr
@@ -10,8 +11,6 @@ namespace pr
 template <class T>
 class circular_buffer
 {
-    static_assert(std::is_trivially_destructible_v<T>, "no lifetime management support");
-
 public:
     explicit circular_buffer() = default;
     explicit circular_buffer(size_t size) : _buffer(new T[size]), _num_elements(size), _is_full(false) {}
@@ -57,6 +56,21 @@ public:
         CC_ASSERT(!full());
 
         _buffer[_head] = item;
+
+        if (_is_full)
+        {
+            _tail = cc::wrapped_increment(_tail, _num_elements);
+        }
+
+        _head = cc::wrapped_increment(_head, _num_elements);
+        _is_full = _head == _tail;
+    }
+
+    void enqueue(T&& item)
+    {
+        CC_ASSERT(!full());
+
+        _buffer[_head] = cc::move(item);
 
         if (_is_full)
         {

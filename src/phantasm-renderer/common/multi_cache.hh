@@ -29,15 +29,14 @@ public:
         map_element& elem = access_element(key);
         if (!elem.in_flight_buffer.empty())
         {
-            // always per value
-            auto const tail = elem.in_flight_buffer.get_tail();
+            auto& tail = elem.in_flight_buffer.get_tail();
 
             if (tail.required_gpu_epoch <= current_gpu_epoch)
             {
                 // event is ready, pop and return
-                auto const res = tail.val;
+                pr::resource res = cc::move(tail.val);
                 elem.in_flight_buffer.pop_tail();
-                return res;
+                return cc::move(res);
             }
         }
 
@@ -47,11 +46,11 @@ public:
 
     /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free(pr::resource val, KeyT const& key, uint64_t current_cpu_epoch)
+    void free(pr::resource&& val, KeyT const& key, uint64_t current_cpu_epoch)
     {
         map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
-        elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
+        elem.in_flight_buffer.enqueue({cc::move(val), current_cpu_epoch});
     }
 
     void cull()

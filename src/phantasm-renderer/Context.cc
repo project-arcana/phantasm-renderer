@@ -11,6 +11,32 @@
 
 using namespace pr;
 
+namespace
+{
+phi::sc::target stage_to_sc_target(phi::shader_stage stage)
+{
+    switch (stage)
+    {
+    case phi::shader_stage::vertex:
+        return phi::sc::target::vertex;
+    case phi::shader_stage::hull:
+        return phi::sc::target::hull;
+    case phi::shader_stage::domain:
+        return phi::sc::target::domain;
+    case phi::shader_stage::geometry:
+        return phi::sc::target::geometry;
+    case phi::shader_stage::pixel:
+        return phi::sc::target::pixel;
+    case phi::shader_stage::compute:
+        return phi::sc::target::compute;
+    default:
+        LOG(warning)("Unsupported shader stage for online compilation");
+        return phi::sc::target::pixel;
+    }
+}
+
+}
+
 Frame Context::make_frame(size_t initial_size)
 {
     // TODO: pool the memory blocks for frames
@@ -20,56 +46,68 @@ Frame Context::make_frame(size_t initial_size)
 image Context::make_image(int width, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, 1, num_mips};
-    auto const resource = createTexture(info);
-    return {resource, info};
+    return {createTexture(info), info};
 }
 
 image Context::make_image(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 1, num_mips};
-    auto const resource = createTexture(info);
-    return {resource, info};
+    return {createTexture(info), info};
 }
 
 image Context::make_image(tg::isize3 size, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info
         = texture_info{format, phi::texture_dimension::t3d, allow_uav, size.width, size.height, static_cast<unsigned int>(size.depth), num_mips};
-    auto const resource = createTexture(info);
-    return {resource, info};
+    return {createTexture(info), info};
 }
 
 render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples)
 {
     auto const info = render_target_info{format, size.width, size.height, num_samples};
-    auto const resource = createRenderTarget(info);
-    return {resource, info};
+    return {createRenderTarget(info), info};
 }
 
 buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
     auto const info = buffer_info{size, stride, allow_uav, false};
-    auto const resource = createBuffer(info);
-    return {resource, info};
+    return {createBuffer(info), info};
 }
 
 buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
     auto const info = buffer_info{size, stride, allow_uav, false};
-    auto const resource = createBuffer(info);
-    return {resource, info};
+    return {createBuffer(info), info};
 }
 
-shader_binary Context::make_shader(cc::string_view code, phi::shader_stage stage)
+shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
 {
-    LOG(warning)("Shader compilation unimplemented");
-    return shader_binary{nullptr, 0, stage, 0};
+    auto const bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), stage_to_sc_target(stage),
+                                                    mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv);
+
+    shader_binary res;
+    res._parent = this;
+    res._stage = stage;
+
+    if (bin.data == nullptr)
+    {
+        LOG(warning)("Failed to compile shader");
+    }
+    else
+    {
+        res._data = bin.data;
+        res._size = bin.size;
+        res._owning_blob = bin.internal_blob;
+        res._guid = acquireGuid();
+    }
+
+    return res;
 }
 
-baked_argument Context::make_argument(const argument& arg)
+baked_argument Context::make_argument(const argument& arg, bool usage_compute)
 {
     //
-    return {mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, false)};
+    return {mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)};
 }
 
 
@@ -120,39 +158,40 @@ void Context::initialize()
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
+    mShaderCompiler.initialize();
 }
 
 resource Context::createRenderTarget(const render_target_info& info)
 {
-    return {mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples), acquireGuid()};
+    return {mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples), acquireGuid(), this};
 }
 
 resource Context::createTexture(const texture_info& info)
 {
-    return {mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()};
+    return {mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav),
+            acquireGuid(), this};
 }
 
 resource Context::createBuffer(const buffer_info& info)
 {
-    pr::resource res;
+    phi::handle::resource handle;
     if (info.is_mapped)
     {
-        res._handle = mBackend->createMappedBuffer(info.size_bytes, info.stride_bytes);
+        handle = mBackend->createMappedBuffer(info.size_bytes, info.stride_bytes);
     }
     else
     {
-        res._handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
+        handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
     }
-    res._guid = acquireGuid();
-    return res;
+    return {handle, acquireGuid(), this};
 }
 
 pr::resource Context::acquireRenderTarget(const render_target_info& info)
 {
-    auto const lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
     if (lookup._handle.is_valid())
     {
-        return lookup;
+        return cc::move(lookup);
     }
     else
     {
@@ -162,10 +201,10 @@ pr::resource Context::acquireRenderTarget(const render_target_info& info)
 
 pr::resource Context::acquireTexture(const texture_info& info)
 {
-    auto const lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
     if (lookup._handle.is_valid())
     {
-        return lookup;
+        return cc::move(lookup);
     }
     else
     {
@@ -175,16 +214,20 @@ pr::resource Context::acquireTexture(const texture_info& info)
 
 pr::resource Context::acquireBuffer(const buffer_info& info)
 {
-    auto const lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
     if (lookup._handle.is_valid())
     {
-        return lookup;
+        return cc::move(lookup);
     }
     else
     {
         return createBuffer(info);
     }
 }
+
+void Context::freeResource(phi::handle::resource res) { mBackend->free(res); }
+
+void Context::freeShaderBinary(IDxcBlob* blob) { phi::sc::destroy_blob(blob); }
 
 phi::handle::pipeline_state Context::acquirePSO(phi::arg::vertex_format const& vertex_fmt,
                                                 phi::arg::framebuffer_config const& fb_conf,
@@ -207,13 +250,20 @@ Context::~Context()
     mCacheBuffers.free_all(mBackend.get());
 
     mGpuEpochTracker.destroy();
+    mShaderCompiler.destroy();
 }
 
-void Context::freeRenderTarget(const render_target_info& info, pr::resource res)
+void Context::freeCachedTarget(const render_target_info& info, pr::resource&& res)
 {
-    mCacheRenderTargets.free(res, info, mGpuEpochTracker.get_current_epoch_cpu());
+    mCacheRenderTargets.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
 }
 
-void Context::freeTexture(const texture_info& info, pr::resource res) { mCacheTextures.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::freeCachedTexture(const texture_info& info, pr::resource&& res)
+{
+    mCacheTextures.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
+}
 
-void Context::freeBuffer(const buffer_info& info, pr::resource res) { mCacheBuffers.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::freeCachedBuffer(const buffer_info& info, resource&& res)
+{
+    mCacheBuffers.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <phantasm-hardware-interface/arguments.hh>
+#include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fwd.hh>
@@ -14,7 +15,6 @@ class Frame;
 class PrimitivePipeline
 {
 public:
-
     void draw(buffer const& vertex_buffer);
 
     void draw_indexed(buffer const& vertex_buffer, buffer const& index_buffer);
@@ -79,5 +79,7 @@ public:
 private:
     Frame* mParent;
     phi::handle::pipeline_state mPSO;
+    phi::cmd::draw mDrawCmd;
+    phi::cmd::dispatch mDispatchCmd;
 };
 }

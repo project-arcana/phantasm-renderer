@@ -27,6 +27,7 @@ target_link_libraries(phantasm-renderer PUBLIC
     typed-geometry
     rich-log
     reflector
+    dxc-wrapper
 )
 
 # =========================================

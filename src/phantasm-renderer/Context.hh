@@ -12,13 +12,15 @@
 #include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
 
+#include <dxc-wrapper/compiler.hh>
+
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/fwd.hh>
 
-#include <phantasm-renderer/resource_types.hh>
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
@@ -42,9 +44,9 @@ public:
     buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
-    shader_binary make_shader(cc::string_view code, phi::shader_stage stage);
+    shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    baked_argument make_argument(argument const& arg);
+    baked_argument make_argument(argument const& arg, bool usage_compute = false);
 
     // cache lookup API
 public:
@@ -82,10 +84,6 @@ private:
 private:
     [[nodiscard]] uint64_t acquireGuid() { return mResourceGUID.fetch_add(1); }
 
-    void freeRenderTarget(render_target_info const& info, pr::resource res);
-    void freeTexture(texture_info const& info, pr::resource res);
-    void freeBuffer(buffer_info const& info, pr::resource res);
-
 private:
     void initialize();
 
@@ -99,6 +97,21 @@ private:
     pr::resource acquireTexture(texture_info const& info);
     pr::resource acquireBuffer(buffer_info const& info);
 
+    // internal RAII dtor API
+private:
+    friend struct resource;
+    void freeResource(phi::handle::resource res);
+
+    friend struct shader_binary;
+    void freeShaderBinary(IDxcBlob* blob);
+
+    friend struct cached_buffer;
+    friend struct cached_render_target;
+    friend struct cached_shader_binary;
+    void freeCachedTarget(render_target_info const& info, resource&& res);
+    void freeCachedTexture(texture_info const& info, pr::resource&& res);
+    void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
+
 private:
     // single cache acquire
     phi::handle::pipeline_state acquirePSO(phi::arg::vertex_format const& vertex_fmt,
@@ -111,6 +124,7 @@ private:
     // members
 private:
     cc::poly_unique_ptr<phi::Backend> mBackend;
+    phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
 
     // components
