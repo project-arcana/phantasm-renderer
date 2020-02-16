@@ -12,7 +12,7 @@ project(PhantasmRenderer)
 
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.hh")
 
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
+source_group("${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
 
 add_library(phantasm-renderer STATIC ${SOURCES})
 
