@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(PhantasmRenderer)
 
+include(cmake/UnityBuild.cmake)
+include(cmake/SourceGroup.cmake)
+
 # =========================================
 # global options
 
@@ -10,12 +13,13 @@ project(PhantasmRenderer)
 # =========================================
 # define library
 
-file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.hh")
+file(GLOB_RECURSE SOURCES "src/*.cc")
+file(GLOB_RECURSE HEADERS "src/*.hh" "src/*.inl")
 
-source_group("${CMAKE_CURRENT_SOURCE_DIR}/src" FILES ${SOURCES})
+arcana_source_group(SOURCES)
+arcana_source_group(HEADERS)
 
-add_library(phantasm-renderer STATIC ${SOURCES})
-
+add_library(phantasm-renderer STATIC ${SOURCES} ${HEADERS})
 target_include_directories(phantasm-renderer
     PUBLIC
         src/
