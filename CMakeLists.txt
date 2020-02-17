@@ -16,8 +16,7 @@ include(cmake/SourceGroup.cmake)
 file(GLOB_RECURSE SOURCES "src/*.cc")
 file(GLOB_RECURSE HEADERS "src/*.hh" "src/*.inl")
 
-arcana_source_group(SOURCES)
-arcana_source_group(HEADERS)
+arcana_source_group(SOURCES HEADERS)
 
 add_library(phantasm-renderer STATIC ${SOURCES} ${HEADERS})
 target_include_directories(phantasm-renderer
