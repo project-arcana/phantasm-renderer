@@ -46,7 +46,33 @@ public:
 
     shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    baked_argument make_argument(argument const& arg, bool usage_compute = false);
+    baked_shader_view make_argument(shader_view const& arg, bool usage_compute = false);
+
+    template <class... ShaderTs>
+    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
+                                                         phi::arg::framebuffer_config const& framebuf_config,
+                                                         phi::arg::shader_arg_shapes arg_shapes,
+                                                         bool has_root_constants,
+                                                         phi::pipeline_config const& config,
+                                                         ShaderTs const&... shader_binaries)
+    {
+        cc::capped_vector<phi::arg::graphics_shader, 6> shaders;
+
+        auto const add_shader = [&](shader_binary const& binary) {
+            shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
+        };
+        (add_shader(shader_binaries), ...);
+        return make_graphics_pipeline_state(vert_format, framebuf_config, arg_shapes, has_root_constants, shaders, config);
+    }
+
+    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
+                                                         phi::arg::framebuffer_config const& framebuf_config,
+                                                         phi::arg::shader_arg_shapes arg_shapes,
+                                                         bool has_root_consts,
+                                                         phi::arg::graphics_shaders shader,
+                                                         const phi::pipeline_config& config = {});
+
+    compute_pipeline_state make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, shader_binary const& shader);
 
     // cache lookup API
 public:
@@ -99,15 +125,17 @@ private:
 
     // internal RAII dtor API
 private:
-    friend struct resource;
+    friend struct resource_data;
+    friend struct shader_binary_data;
+    friend struct baked_shader_view_data;
+    friend struct pipeline_state_abstract;
     void freeResource(phi::handle::resource res);
-
-    friend struct shader_binary;
     void freeShaderBinary(IDxcBlob* blob);
+    void freeShaderView(phi::handle::shader_view sv);
+    void freePipelineState(phi::handle::pipeline_state ps);
 
-    friend struct cached_buffer;
-    friend struct cached_render_target;
-    friend struct cached_shader_binary;
+    friend struct buffer;
+    friend struct render_target;
     void freeCachedTarget(render_target_info const& info, resource&& res);
     void freeCachedTexture(texture_info const& info, pr::resource&& res);
     void freeCachedBuffer(buffer_info const& info, pr::resource&& res);

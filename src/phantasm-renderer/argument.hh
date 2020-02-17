@@ -8,10 +8,10 @@
 
 namespace pr
 {
-struct argument
+struct shader_view
 {
 public:
-    argument()
+    shader_view()
     {
         _srvs.reserve(8);
         _uavs.reserve(8);
@@ -40,9 +40,12 @@ public:
     cc::vector<phi::sampler_config> _samplers;
 };
 
-struct baked_argument
+struct baked_shader_view_data
 {
     phi::handle::shader_view _sv;
+    void destroy(pr::Context* ctx);
 };
+
+using baked_shader_view = raii_handle<baked_shader_view_data>;
 
 }

@@ -13,6 +13,7 @@
 
 #include <phantasm-renderer/resource_types.hh>
 
+#include "ComputePipeline.hh"
 #include "Pass.hh"
 
 namespace pr
@@ -37,11 +38,14 @@ public:
 
         // write begin_render_pass
         mWriter.add_command(bcmd);
+
+        return {this};
     }
 
-    // pipeline RAII API (compute only, graphics pipelines are in pr::Framebuffer
+    // pipeline RAII API (compute only, graphics pipelines are in pr::Pass
 
-    void pipeline(compute_pipeline_state const& compute_pipeline); // TODO return, implementation
+    ComputePipeline pipeline(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
+
     // TODO: cache-access version
 
     void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
@@ -61,9 +65,24 @@ public:
     // move-only type
 public:
     Frame(Frame const&) = delete;
-    Frame(Frame&&) noexcept = default;
     Frame& operator=(Frame const&) = delete;
-    Frame& operator=(Frame&&) noexcept = default;
+    Frame(Frame&& rhs) noexcept : mCtx(rhs.mCtx), mWriter(cc::move(rhs.mWriter)), mPendingTransitionCommand(rhs.mPendingTransitionCommand)
+    {
+        rhs.mCtx = nullptr;
+    }
+
+    Frame& operator=(Frame&& rhs) noexcept
+    {
+        if (this != &rhs)
+        {
+            mCtx = rhs.mCtx;
+            mWriter = cc::move(rhs.mWriter);
+            mPendingTransitionCommand = rhs.mPendingTransitionCommand;
+            rhs.mCtx = nullptr;
+        }
+
+        return *this;
+    }
 
     // private
 private:
@@ -75,12 +94,12 @@ private:
     // Pass-side API
 private:
     friend class Pass;
-
-    void passOnJoin(Pass const& pass);
+    void passOnJoin(Pass const&);
 
     // Pipeline-side API
 private:
     friend class PrimitivePipeline;
+    friend class ComputePipeline;
 
     void pipelineOnDraw(phi::cmd::draw const& dcmd);
     void pipelineOnDispatch(phi::cmd::dispatch const& dcmd);

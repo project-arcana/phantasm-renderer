@@ -2,36 +2,24 @@
 
 #include "Context.hh"
 
-void pr::resource::_destroy()
+void pr::resource_data::destroy(pr::Context* ctx) { ctx->freeResource(handle); }
+
+void pr::shader_binary_data::destroy(pr::Context* ctx)
 {
-    if (_parent != nullptr)
+    if (_owning_blob != nullptr)
     {
-        _parent->freeResource(_handle);
+        ctx->freeShaderBinary(_owning_blob);
     }
 }
 
-pr::cached_buffer::~cached_buffer()
+void pr::buffer::unrefCache(pr::Context* ctx) { ctx->freeCachedBuffer(_info, cc::move(_resource)); }
+
+void pr::render_target::unrefCache(pr::Context* ctx) { ctx->freeCachedTarget(_info, cc::move(_resource)); }
+
+void pr::shader_binary_unreffable::unrefCache(pr::Context* ctx)
 {
-    auto* const parent = _internal._resource._parent;
-    if (parent != nullptr)
-    {
-        parent->freeCachedBuffer(_internal._info, cc::move(_internal._resource));
-    }
+    // TODO
+    CC_RUNTIME_ASSERT(false && "unimplemented");
 }
 
-pr::cached_render_target::~cached_render_target()
-{
-    auto* const parent = _internal._resource._parent;
-    if (parent != nullptr)
-    {
-        parent->freeCachedTarget(_internal._info, cc::move(_internal._resource));
-    }
-}
-
-void pr::shader_binary::_destroy()
-{
-    if (_parent != nullptr && _owning_blob != nullptr)
-    {
-        _parent->freeShaderBinary(_owning_blob);
-    }
-}
+void pr::pipeline_state_abstract::destroy(pr::Context* ctx) { ctx->freePipelineState(_handle); }

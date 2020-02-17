@@ -1,11 +1,13 @@
 #include "argument.hh"
 
-void pr::argument::add_srv(const pr::image& img)
+#include "Context.hh"
+
+void pr::shader_view::add_srv(const pr::image& img)
 {
-    _resource_guids.push_back(img._resource._guid);
+    _resource_guids.push_back(img._resource.data.guid);
 
     auto& new_rv = _srvs.emplace_back();
-    new_rv.resource = img._resource._handle;
+    new_rv.resource = img._resource.data.handle;
 
     if (img._info.dim == phi::texture_dimension::t1d)
     {
@@ -33,20 +35,20 @@ void pr::argument::add_srv(const pr::image& img)
     new_rv.texture_info.mip_size = img._info.num_mips == 0 ? unsigned(-1) : img._info.num_mips;
 }
 
-void pr::argument::add_srv(const pr::buffer& buffer)
+void pr::shader_view::add_srv(const pr::buffer& buffer)
 {
-    _resource_guids.push_back(buffer._resource._guid);
+    _resource_guids.push_back(buffer._resource.data.guid);
 
     auto& new_rv = _srvs.emplace_back();
-    new_rv.init_as_structured_buffer(buffer._resource._handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
+    new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
 }
 
-void pr::argument::add_uav(const pr::image& img)
+void pr::shader_view::add_uav(const pr::image& img)
 {
-    _resource_guids.push_back(img._resource._guid);
+    _resource_guids.push_back(img._resource.data.guid);
 
     auto& new_rv = _uavs.emplace_back();
-    new_rv.resource = img._resource._handle;
+    new_rv.resource = img._resource.data.handle;
 
     if (img._info.dim == phi::texture_dimension::t1d)
     {
@@ -74,10 +76,12 @@ void pr::argument::add_uav(const pr::image& img)
     new_rv.texture_info.mip_size = img._info.num_mips == 0 ? unsigned(-1) : img._info.num_mips;
 }
 
-void pr::argument::add_uav(const pr::buffer& buffer)
+void pr::shader_view::add_uav(const pr::buffer& buffer)
 {
-    _resource_guids.push_back(buffer._resource._guid);
+    _resource_guids.push_back(buffer._resource.data.guid);
 
     auto& new_rv = _uavs.emplace_back();
-    new_rv.init_as_structured_buffer(buffer._resource._handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
+    new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
 }
+
+void pr::baked_shader_view_data::destroy(pr::Context* ctx) { ctx->freeShaderView(_sv); }

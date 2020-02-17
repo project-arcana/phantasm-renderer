@@ -2,9 +2,9 @@
 
 #include <rich-log/log.hh>
 
+#include <phantasm-renderer/PrimitivePipeline.hh>
 #include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/PrimitivePipeline.hh>
 
 namespace pr
 {
@@ -21,10 +21,9 @@ public:
     ~Pass();
 
 public:
-    PrimitivePipeline pipeline()
-    {
+    PrimitivePipeline pipeline(graphics_pipeline_state const& graphics_pipeline) { return {mParent, graphics_pipeline.data._handle}; }
 
-    }
+    // TODO: cache-access version
 
 private:
     Frame* mParent;

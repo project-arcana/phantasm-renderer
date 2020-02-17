@@ -65,7 +65,7 @@ public:
         {
             while (!elem.in_flight_buffer.empty())
             {
-                backend->free(elem.in_flight_buffer.get_tail().val._handle);
+                backend->free(elem.in_flight_buffer.get_tail().val.data.handle);
                 elem.in_flight_buffer.pop_tail();
             }
         }

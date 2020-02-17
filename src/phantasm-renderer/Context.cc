@@ -86,8 +86,8 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
                                                     mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv);
 
     shader_binary res;
-    res._parent = this;
-    res._stage = stage;
+    res.data._parent = this;
+    res.data._stage = stage;
 
     if (bin.data == nullptr)
     {
@@ -95,19 +95,35 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     }
     else
     {
-        res._data = bin.data;
-        res._size = bin.size;
-        res._owning_blob = bin.internal_blob;
-        res._guid = acquireGuid();
+        res.data._data = bin.data;
+        res.data._size = bin.size;
+        res.data._owning_blob = bin.internal_blob;
+        res.data._guid = acquireGuid();
     }
 
     return res;
 }
 
-baked_argument Context::make_argument(const argument& arg, bool usage_compute)
+baked_shader_view Context::make_argument(const shader_view& arg, bool usage_compute)
 {
     //
-    return {mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)};
+    return {{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)}, this};
+}
+
+graphics_pipeline_state Context::make_graphics_pipeline_state(const phi::arg::vertex_format& vert_format,
+                                                              phi::arg::framebuffer_config const& framebuf_config,
+                                                              phi::arg::shader_arg_shapes arg_shapes,
+                                                              bool has_root_consts,
+                                                              phi::arg::graphics_shaders shader,
+                                                              phi::pipeline_config const& config)
+{
+    return {{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
+}
+
+compute_pipeline_state Context::make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, const shader_binary& shader)
+{
+    auto const res_handle = mBackend->createComputePipelineState(arg_shapes, {shader.data._data, shader.data._size}, has_root_constants);
+    return {{{res_handle}}, this};
 }
 
 
@@ -163,13 +179,12 @@ void Context::initialize()
 
 resource Context::createRenderTarget(const render_target_info& info)
 {
-    return {mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples), acquireGuid(), this};
+    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples), acquireGuid()}, this};
 }
 
 resource Context::createTexture(const texture_info& info)
 {
-    return {mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav),
-            acquireGuid(), this};
+    return {{mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()}, this};
 }
 
 resource Context::createBuffer(const buffer_info& info)
@@ -183,13 +198,13 @@ resource Context::createBuffer(const buffer_info& info)
     {
         handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
     }
-    return {handle, acquireGuid(), this};
+    return {{handle, acquireGuid()}, this};
 }
 
 pr::resource Context::acquireRenderTarget(const render_target_info& info)
 {
     auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup._handle.is_valid())
+    if (lookup.data.handle.is_valid())
     {
         return cc::move(lookup);
     }
@@ -202,7 +217,7 @@ pr::resource Context::acquireRenderTarget(const render_target_info& info)
 pr::resource Context::acquireTexture(const texture_info& info)
 {
     auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup._handle.is_valid())
+    if (lookup.data.handle.is_valid())
     {
         return cc::move(lookup);
     }
@@ -215,7 +230,7 @@ pr::resource Context::acquireTexture(const texture_info& info)
 pr::resource Context::acquireBuffer(const buffer_info& info)
 {
     auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
-    if (lookup._handle.is_valid())
+    if (lookup.data.handle.is_valid())
     {
         return cc::move(lookup);
     }
@@ -228,6 +243,10 @@ pr::resource Context::acquireBuffer(const buffer_info& info)
 void Context::freeResource(phi::handle::resource res) { mBackend->free(res); }
 
 void Context::freeShaderBinary(IDxcBlob* blob) { phi::sc::destroy_blob(blob); }
+
+void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }
+
+void Context::freePipelineState(phi::handle::pipeline_state ps) { mBackend->free(ps); }
 
 phi::handle::pipeline_state Context::acquirePSO(phi::arg::vertex_format const& vertex_fmt,
                                                 phi::arg::framebuffer_config const& fb_conf,
