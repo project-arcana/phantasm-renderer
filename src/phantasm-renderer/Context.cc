@@ -110,14 +110,14 @@ baked_shader_view Context::make_argument(const shader_view& arg, bool usage_comp
     return {{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)}, this};
 }
 
-graphics_pipeline_state Context::make_graphics_pipeline_state(const phi::arg::vertex_format& vert_format,
+graphics_pipeline_state Context::make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
                                                               phi::arg::framebuffer_config const& framebuf_config,
                                                               phi::arg::shader_arg_shapes arg_shapes,
                                                               bool has_root_consts,
                                                               phi::arg::graphics_shaders shader,
                                                               phi::pipeline_config const& config)
 {
-    return {{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
+    return graphics_pipeline_state{{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
 }
 
 compute_pipeline_state Context::make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, const shader_binary& shader)
