@@ -6,8 +6,6 @@
 
 #include <phantasm-hardware-interface/arguments.hh>
 
-#include <phantasm-renderer/resources.hh>
-
 namespace pr
 {
 namespace detail

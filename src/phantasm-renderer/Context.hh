@@ -20,6 +20,7 @@
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/reflection/vertex_attributes.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr
@@ -48,9 +49,8 @@ public:
 
     baked_shader_view make_argument(shader_view const& arg, bool usage_compute = false);
 
-    template <class... ShaderTs>
-    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
-                                                         phi::arg::framebuffer_config const& framebuf_config,
+    template <class VertT, class... ShaderTs>
+    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::framebuffer_config const& framebuf_config,
                                                          phi::arg::shader_arg_shapes arg_shapes,
                                                          bool has_root_constants,
                                                          phi::pipeline_config const& config,
@@ -62,7 +62,8 @@ public:
             shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
         };
         (add_shader(shader_binaries), ...);
-        return make_graphics_pipeline_state(vert_format, framebuf_config, arg_shapes, has_root_constants, shaders, config);
+        return make_graphics_pipeline_state(phi::arg::vertex_format{get_vertex_attributes<VertT>(), sizeof(VertT)}, framebuf_config, arg_shapes,
+                                            has_root_constants, shaders, config);
     }
 
     graphics_pipeline_state make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
@@ -73,6 +74,18 @@ public:
                                                          const phi::pipeline_config& config = {});
 
     compute_pipeline_state make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, shader_binary const& shader);
+
+    // map upload API
+public:
+    void write_buffer(buffer const& buffer, void const* data, size_t size);
+
+    template <class T>
+    void write_buffer_t(buffer const& buffer, T const& data)
+    {
+        static_assert(!std::is_pointer_v<T>, "[pr::Context::write_buffer_t] Pointer instead of raw data provided");
+        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::write_buffer_t] Non-trivially copyable data provided");
+        write_buffer(buffer, &data, sizeof(T));
+    }
 
     // cache lookup API
 public:
@@ -89,6 +102,9 @@ public:
 
     void submit(Frame const& frame);
     void submit(CompiledFrame const& frame);
+
+    void present();
+    void flush();
 
     // ctors
 public:

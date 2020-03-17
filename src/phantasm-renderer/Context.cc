@@ -76,7 +76,7 @@ buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
 
 buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
-    auto const info = buffer_info{size, stride, allow_uav, false};
+    auto const info = buffer_info{size, stride, allow_uav, true};
     return {createBuffer(info), info};
 }
 
@@ -126,6 +126,13 @@ compute_pipeline_state Context::make_compute_pipeline_state(phi::arg::shader_arg
     return {{{res_handle}}, this};
 }
 
+void Context::write_buffer(const buffer& buffer, void const* data, size_t size)
+{
+    CC_ASSERT(buffer._info.is_mapped && "Attempted to write to non-mapped buffer");
+    CC_ASSERT(buffer._info.size_bytes >= size && "Buffer write out of bounds");
+    std::memcpy(mBackend->getMappedMemory(buffer._resource.data.handle), data, size);
+}
+
 
 CompiledFrame Context::compile(const Frame& frame)
 {
@@ -155,6 +162,10 @@ void Context::submit(const CompiledFrame& frame)
     }
     mGpuEpochTracker.on_event_submission(frame.getEvent());
 }
+
+void Context::present() { mBackend->present(); }
+
+void Context::flush() { mBackend->flushGPU(); }
 
 Context::Context(phi::window_handle const& window_handle)
 {

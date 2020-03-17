@@ -40,8 +40,8 @@ void Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsign
     transition(dest, phi::resource_state::copy_dest);
     flushPendingTransitions();
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src._resource.data.handle, dest._resource.data.handle, dest._info.width / (1 + dest_mip_index), dest._info.height / (1 + dest_mip_index),
-              src_offset, dest_mip_index, dest_array_index);
+    ccmd.init(src._resource.data.handle, dest._resource.data.handle, dest._info.width / (1 + dest_mip_index),
+              dest._info.height / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
     mWriter.add_command(ccmd);
 }
 
@@ -71,6 +71,9 @@ void Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_targ
 {
     auto const is_depth = phi::is_depth_format(rt._info.format);
     auto const target_state = is_depth ? phi::resource_state::depth_write : phi::resource_state::render_target;
+
+    bcmd.viewport.width = cc::min(bcmd.viewport.width, rt._info.width);
+    bcmd.viewport.height = cc::min(bcmd.viewport.height, rt._info.height);
 
     transition(rt._resource.data.handle, target_state);
 

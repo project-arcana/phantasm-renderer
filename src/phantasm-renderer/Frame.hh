@@ -29,6 +29,7 @@ public:
         phi::cmd::begin_render_pass bcmd;
         // initialize command
         bcmd.set_null_depth_stencil();
+        bcmd.viewport = tg::isize2(1 << 30, 1 << 30);
 
         // add targets
         (addRenderTarget(bcmd, targets), ...);
