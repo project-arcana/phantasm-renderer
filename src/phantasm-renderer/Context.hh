@@ -77,7 +77,7 @@ public:
 
     // map upload API
 public:
-    void write_buffer(buffer const& buffer, void const* data, size_t size);
+    void write_buffer(buffer const& buffer, void const* data, size_t size, size_t offset = 0);
 
     template <class T>
     void write_buffer_t(buffer const& buffer, T const& data)
@@ -105,6 +105,13 @@ public:
 
     void present();
     void flush();
+
+    bool start_capture();
+    bool end_capture();
+
+    void on_window_resize(tg::isize2 size);
+    [[nodiscard]] bool clear_backbuffer_resize();
+    tg::isize2 get_backbuffer_size() const;
 
     // ctors
 public:

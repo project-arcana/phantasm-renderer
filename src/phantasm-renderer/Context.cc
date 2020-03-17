@@ -126,11 +126,11 @@ compute_pipeline_state Context::make_compute_pipeline_state(phi::arg::shader_arg
     return {{{res_handle}}, this};
 }
 
-void Context::write_buffer(const buffer& buffer, void const* data, size_t size)
+void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
     CC_ASSERT(buffer._info.is_mapped && "Attempted to write to non-mapped buffer");
     CC_ASSERT(buffer._info.size_bytes >= size && "Buffer write out of bounds");
-    std::memcpy(mBackend->getMappedMemory(buffer._resource.data.handle), data, size);
+    std::memcpy(mBackend->getMappedMemory(buffer._resource.data.handle) + offset, data, size);
 }
 
 
@@ -166,6 +166,15 @@ void Context::submit(const CompiledFrame& frame)
 void Context::present() { mBackend->present(); }
 
 void Context::flush() { mBackend->flushGPU(); }
+
+bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
+bool Context::end_capture() { return mBackend->endForcedDiagnosticCapture(); }
+
+void Context::on_window_resize(tg::isize2 size) { mBackend->onResize(size); }
+
+bool Context::clear_backbuffer_resize() { return mBackend->clearPendingResize(); }
+
+tg::isize2 Context::get_backbuffer_size() const { return mBackend->getBackbufferSize(); }
 
 Context::Context(phi::window_handle const& window_handle)
 {

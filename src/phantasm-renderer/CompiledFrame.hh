@@ -18,14 +18,16 @@ public:
 
     // move-only type
 public:
+    CompiledFrame() = default;
+
     CompiledFrame(CompiledFrame const&) = delete;
-    CompiledFrame(CompiledFrame&&) noexcept = default;
     CompiledFrame& operator=(CompiledFrame const&) = delete;
+    CompiledFrame(CompiledFrame&&) noexcept = default;
     CompiledFrame& operator=(CompiledFrame&&) noexcept = default;
 
     // member
 private:
-    phi::handle::event mRecordedEvent;
-    phi::handle::command_list mCmdlist;
+    phi::handle::event mRecordedEvent = phi::handle::null_event;
+    phi::handle::command_list mCmdlist = phi::handle::null_command_list;
 };
 }
