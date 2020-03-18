@@ -117,6 +117,7 @@ private:
     friend class Context;
     Frame(Context* ctx, size_t size) : mCtx(ctx), mWriter(size) {}
 
+    void finalize() { flushPendingTransitions(); }
     std::byte* getMemory() const { return mWriter.buffer(); }
     size_t getSize() const { return mWriter.size(); }
     bool isEmpty() const { return mWriter.is_empty(); }

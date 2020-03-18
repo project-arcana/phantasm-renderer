@@ -110,21 +110,6 @@ baked_shader_view Context::make_argument(const shader_view& arg, bool usage_comp
     return {{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)}, this};
 }
 
-graphics_pipeline_state Context::make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
-                                                              phi::arg::framebuffer_config const& framebuf_config,
-                                                              phi::arg::shader_arg_shapes arg_shapes,
-                                                              bool has_root_consts,
-                                                              phi::arg::graphics_shaders shader,
-                                                              phi::pipeline_config const& config)
-{
-    return graphics_pipeline_state{{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
-}
-
-compute_pipeline_state Context::make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, const shader_binary& shader)
-{
-    auto const res_handle = mBackend->createComputePipelineState(arg_shapes, {shader.data._data, shader.data._size}, has_root_constants);
-    return {{{res_handle}}, this};
-}
 
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
@@ -134,8 +119,10 @@ void Context::write_buffer(const buffer& buffer, void const* data, size_t size, 
 }
 
 
-CompiledFrame Context::compile(const Frame& frame)
+CompiledFrame Context::compile(Frame& frame)
 {
+    frame.finalize();
+
     if (frame.isEmpty())
     {
         return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event);
@@ -148,7 +135,7 @@ CompiledFrame Context::compile(const Frame& frame)
     }
 }
 
-void Context::submit(const Frame& frame) { submit(compile(frame)); }
+void Context::submit(Frame& frame) { submit(compile(frame)); }
 
 void Context::submit(const CompiledFrame& frame)
 {
@@ -315,4 +302,19 @@ void Context::freeCachedTexture(const texture_info& info, pr::resource&& res)
 void Context::freeCachedBuffer(const buffer_info& info, resource&& res)
 {
     mCacheBuffers.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
+}
+
+compute_pipeline_state Context::create_compute_pso(phi::arg::shader_arg_shapes arg_shapes, bool has_root_consts, phi::arg::shader_binary shader)
+{
+    return compute_pipeline_state{{{mBackend->createComputePipelineState(arg_shapes, shader, has_root_consts)}}, this};
+}
+
+graphics_pipeline_state Context::create_graphics_pso(phi::arg::vertex_format const& vert_format,
+                                                     phi::arg::framebuffer_config const& framebuf_config,
+                                                     phi::arg::shader_arg_shapes arg_shapes,
+                                                     bool has_root_consts,
+                                                     phi::arg::graphics_shaders shader,
+                                                     phi::pipeline_config const& config)
+{
+    return graphics_pipeline_state{{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
 }

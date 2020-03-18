@@ -20,7 +20,7 @@
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/reflection/vertex_attributes.hh>
+#include <phantasm-renderer/pipeline_builder.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr
@@ -49,31 +49,7 @@ public:
 
     baked_shader_view make_argument(shader_view const& arg, bool usage_compute = false);
 
-    template <class VertT, class... ShaderTs>
-    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::framebuffer_config const& framebuf_config,
-                                                         phi::arg::shader_arg_shapes arg_shapes,
-                                                         bool has_root_constants,
-                                                         phi::pipeline_config const& config,
-                                                         ShaderTs const&... shader_binaries)
-    {
-        cc::capped_vector<phi::arg::graphics_shader, 6> shaders;
-
-        auto const add_shader = [&](shader_binary const& binary) {
-            shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
-        };
-        (add_shader(shader_binaries), ...);
-        return make_graphics_pipeline_state(phi::arg::vertex_format{get_vertex_attributes<VertT>(), sizeof(VertT)}, framebuf_config, arg_shapes,
-                                            has_root_constants, shaders, config);
-    }
-
-    graphics_pipeline_state make_graphics_pipeline_state(phi::arg::vertex_format const& vert_format,
-                                                         phi::arg::framebuffer_config const& framebuf_config,
-                                                         phi::arg::shader_arg_shapes arg_shapes,
-                                                         bool has_root_consts,
-                                                         phi::arg::graphics_shaders shader,
-                                                         const phi::pipeline_config& config = {});
-
-    compute_pipeline_state make_compute_pipeline_state(phi::arg::shader_arg_shapes arg_shapes, bool has_root_constants, shader_binary const& shader);
+    [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
     // map upload API
 public:
@@ -98,9 +74,9 @@ public:
 
     // consumption API
 public:
-    [[nodiscard]] CompiledFrame compile(Frame const& frame);
+    [[nodiscard]] CompiledFrame compile(Frame& frame);
 
-    void submit(Frame const& frame);
+    void submit(Frame& frame);
     void submit(CompiledFrame const& frame);
 
     void present();
@@ -165,6 +141,17 @@ private:
     void freeCachedTarget(render_target_info const& info, resource&& res);
     void freeCachedTexture(texture_info const& info, pr::resource&& res);
     void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
+
+    // internal PSO builder API
+private:
+    friend struct pipeline_builder;
+    compute_pipeline_state create_compute_pso(phi::arg::shader_arg_shapes arg_shapes, bool has_root_consts, phi::arg::shader_binary shader);
+    graphics_pipeline_state create_graphics_pso(phi::arg::vertex_format const& vert_format,
+                                                phi::arg::framebuffer_config const& framebuf_config,
+                                                phi::arg::shader_arg_shapes arg_shapes,
+                                                bool has_root_consts,
+                                                phi::arg::graphics_shaders shader,
+                                                const phi::pipeline_config& config = {});
 
 private:
     // single cache acquire
