@@ -47,24 +47,32 @@ void Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsign
 
 void Frame::copy(const image& src, const image& dest)
 {
-    transition(src, phi::resource_state::copy_src);
-    transition(dest, phi::resource_state::copy_dest);
-    flushPendingTransitions();
+    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+}
 
-    phi::cmd::copy_texture ccmd;
-    ccmd.init_symmetric(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height, 0);
-    mWriter.add_command(ccmd);
+void Frame::copy(const image& src, const render_target& dest)
+{
+    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+}
+
+void Frame::copy(const render_target& src, const image& dest)
+{
+    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+}
+
+void Frame::copy(const render_target& src, const render_target& dest)
+{
+    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
 void Frame::resolve(const render_target& src, const image& dest)
 {
-    transition(src, phi::resource_state::resolve_src);
-    transition(dest, phi::resource_state::resolve_dest);
-    flushPendingTransitions();
+    resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+}
 
-    phi::cmd::resolve_texture ccmd;
-    ccmd.init_symmetric(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
-    mWriter.add_command(ccmd);
+void Frame::resolve(const render_target& src, const render_target& dest)
+{
+    resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
 void Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
@@ -103,6 +111,28 @@ void Frame::flushPendingTransitions()
         mWriter.add_command(mPendingTransitionCommand);
         mPendingTransitionCommand.transitions.clear();
     }
+}
+
+void Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+{
+    transition(src, phi::resource_state::copy_src);
+    transition(dest, phi::resource_state::copy_dest);
+    flushPendingTransitions();
+
+    phi::cmd::copy_texture ccmd;
+    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h), 0);
+    mWriter.add_command(ccmd);
+}
+
+void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+{
+    transition(src, phi::resource_state::resolve_src);
+    transition(dest, phi::resource_state::resolve_dest);
+    flushPendingTransitions();
+
+    phi::cmd::resolve_texture ccmd;
+    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h));
+    mWriter.add_command(ccmd);
 }
 
 void Frame::passOnJoin(const Pass&)

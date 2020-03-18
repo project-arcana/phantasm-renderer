@@ -176,6 +176,16 @@ bool Context::clear_backbuffer_resize() { return mBackend->clearPendingResize();
 
 tg::isize2 Context::get_backbuffer_size() const { return mBackend->getBackbufferSize(); }
 
+phi::format Context::get_backbuffer_format() const { return mBackend->getBackbufferFormat(); }
+
+render_target Context::acquire_backbuffer()
+{
+    auto const backbuffer = mBackend->acquireBackbuffer();
+    auto const size = mBackend->getBackbufferSize();
+    return {pr::resource{{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, nullptr}, // no context pointer, backbuffer is never freed
+            render_target_info{mBackend->getBackbufferFormat(), size.width, size.height, 1}};
+}
+
 Context::Context(phi::window_handle const& window_handle)
 {
     phi::backend_config cfg;

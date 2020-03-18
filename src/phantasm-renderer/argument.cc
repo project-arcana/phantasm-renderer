@@ -43,6 +43,14 @@ void pr::shader_view::add_srv(const pr::buffer& buffer)
     new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
 }
 
+void pr::shader_view::add_srv(const pr::render_target& rt)
+{
+    _resource_guids.push_back(rt._resource.data.guid);
+
+    auto& new_rv = _srvs.emplace_back();
+    new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
+}
+
 void pr::shader_view::add_uav(const pr::image& img)
 {
     _resource_guids.push_back(img._resource.data.guid);
@@ -82,6 +90,14 @@ void pr::shader_view::add_uav(const pr::buffer& buffer)
 
     auto& new_rv = _uavs.emplace_back();
     new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
+}
+
+void pr::shader_view::add_uav(const pr::render_target& rt)
+{
+    _resource_guids.push_back(rt._resource.data.guid);
+
+    auto& new_rv = _uavs.emplace_back();
+    new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
 }
 
 void pr::baked_shader_view_data::destroy(pr::Context* ctx) { ctx->freeShaderView(_sv); }

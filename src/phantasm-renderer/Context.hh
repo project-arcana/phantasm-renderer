@@ -106,12 +106,15 @@ public:
     void present();
     void flush();
 
-    bool start_capture();
-    bool end_capture();
-
     void on_window_resize(tg::isize2 size);
     [[nodiscard]] bool clear_backbuffer_resize();
     tg::isize2 get_backbuffer_size() const;
+    format get_backbuffer_format() const;
+
+    [[nodiscard]] render_target acquire_backbuffer();
+
+    bool start_capture();
+    bool end_capture();
 
     // ctors
 public:

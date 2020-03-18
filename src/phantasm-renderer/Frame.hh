@@ -56,12 +56,15 @@ public:
     // commands
 
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
-
     void copy(buffer const& src, image const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
     void copy(image const& src, image const& dest);
+    void copy(image const& src, render_target const& dest);
+    void copy(render_target const& src, image const& dest);
+    void copy(render_target const& src, render_target const& dest);
 
     void resolve(render_target const& src, image const& dest);
+    void resolve(render_target const& src, render_target const& dest);
 
     // move-only type
 public:
@@ -91,6 +94,9 @@ private:
 
     void transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void flushPendingTransitions();
+
+    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
+    void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
 
     // Pass-side API
 private:
