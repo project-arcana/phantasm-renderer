@@ -1,26 +1,21 @@
 #pragma once
 
-#include <phantasm-hardware-interface/arguments.hh>
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/reflection/resources.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
 class Frame;
 
-class PrimitivePipeline
+class ComputePass
 {
 public:
-    PrimitivePipeline(Frame* parent, phi::handle::pipeline_state pso);
+    ComputePass(Frame* parent, phi::handle::pipeline_state pso);
 
-    void draw(unsigned num_vertices);
-    void draw(buffer const& vertex_buffer);
-    void draw_indexed(buffer const& vertex_buffer, buffer const& index_buffer);
+    void dispatch(unsigned x, unsigned y = 1, unsigned z = 1);
 
     // shitty WIP API
     void add_argument(baked_argument const& sv);
@@ -33,15 +28,15 @@ public:
     template <class T>
     void write_root_constants(T const& data)
     {
-        mDrawCmd.write_root_constants<T>(data);
+        mDispatchCmd.write_root_constants<T>(data);
     }
 
-    PrimitivePipeline(PrimitivePipeline&&) noexcept = default;
-    PrimitivePipeline(PrimitivePipeline const&) = delete;
+    ComputePass(ComputePass&&) noexcept = default;
+    ComputePass(ComputePass const&) = delete;
 
 private:
     Frame* mParent;
     phi::handle::pipeline_state mPSO;
-    phi::cmd::draw mDrawCmd;
+    phi::cmd::dispatch mDispatchCmd;
 };
 }

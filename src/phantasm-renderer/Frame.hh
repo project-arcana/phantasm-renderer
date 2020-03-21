@@ -13,8 +13,8 @@
 
 #include <phantasm-renderer/resource_types.hh>
 
-#include "ComputePipeline.hh"
-#include "Pass.hh"
+#include "ComputePass.hh"
+#include "Framebuffer.hh"
 
 namespace pr
 {
@@ -24,7 +24,7 @@ public:
     // pass RAII API
 
     template <class... RTs>
-    Pass render_to(RTs const&... targets) // TODO return
+    Framebuffer render_to(RTs const&... targets) // TODO return
     {
         phi::cmd::begin_render_pass bcmd;
         // initialize command
@@ -45,7 +45,7 @@ public:
 
     // pipeline RAII API (compute only, graphics pipelines are in pr::Pass
 
-    ComputePipeline pipeline(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
+    ComputePass pipeline(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
 
     // TODO: cache-access version
 
@@ -98,15 +98,15 @@ private:
     void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
 
-    // Pass-side API
+    // Framebuffer-side API
 private:
-    friend class Pass;
-    void passOnJoin(Pass const&);
+    friend class Framebuffer;
+    void framebufferOnJoin(Framebuffer const&);
 
     // Pipeline-side API
 private:
-    friend class PrimitivePipeline;
-    friend class ComputePipeline;
+    friend class GraphicsPass;
+    friend class ComputePass;
 
     void pipelineOnDraw(phi::cmd::draw const& dcmd);
     void pipelineOnDispatch(phi::cmd::dispatch const& dcmd);

@@ -135,7 +135,7 @@ void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resou
     mWriter.add_command(ccmd);
 }
 
-void Frame::passOnJoin(const Pass&)
+void Frame::framebufferOnJoin(const Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
     mWriter.add_command(ecmd);

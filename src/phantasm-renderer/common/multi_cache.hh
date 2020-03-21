@@ -1,8 +1,10 @@
 #pragma once
 
-#include <unordered_map>
 
+#include <clean-core/map.hh>
 #include <clean-core/utility.hh>
+
+#include <rich-log/log.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/types.hh>
@@ -88,7 +90,7 @@ private:
     };
 
     uint64_t _current_gen = 0;
-    std::unordered_map<KeyT, map_element, resource_info_hasher> _map;
+    cc::map<KeyT, map_element, resource_info_hasher> _map;
 };
 
 }

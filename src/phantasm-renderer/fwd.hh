@@ -18,8 +18,8 @@ class Queue;
 class Frame;
 class CompiledFrame;
 
-class Pass;
-class PrimitivePipeline;
+class Framebuffer;
+class GraphicsPass;
 
 struct primitive_pipeline_config;
 }
