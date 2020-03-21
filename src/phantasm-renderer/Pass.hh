@@ -21,7 +21,8 @@ public:
     ~Pass();
 
 public:
-    PrimitivePipeline pipeline(graphics_pipeline_state const& graphics_pipeline) { return {mParent, graphics_pipeline.data._handle}; }
+    // lvalue-qualified as pass has to stay alive
+    PrimitivePipeline pipeline(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline.data._handle}; }
 
     // TODO: cache-access version
 

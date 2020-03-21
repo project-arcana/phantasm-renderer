@@ -104,7 +104,7 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     return res;
 }
 
-baked_shader_view Context::make_argument(const shader_view& arg, bool usage_compute)
+baked_argument Context::make_argument(const argument& arg, bool usage_compute)
 {
     //
     return {{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)}, this};
@@ -116,6 +116,24 @@ void Context::write_buffer(const buffer& buffer, void const* data, size_t size, 
     CC_ASSERT(buffer._info.is_mapped && "Attempted to write to non-mapped buffer");
     CC_ASSERT(buffer._info.size_bytes >= size && "Buffer write out of bounds");
     std::memcpy(mBackend->getMappedMemory(buffer._resource.data.handle) + offset, data, size);
+}
+
+cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples)
+{
+    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    return {{acquireRenderTarget(info), info}, this};
+}
+
+cached_buffer Context::get_buffer(unsigned size, unsigned stride, bool allow_uav)
+{
+    auto const info = buffer_info{size, stride, allow_uav, false};
+    return {{acquireBuffer(info), info}, this};
+}
+
+cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
+{
+    auto const info = buffer_info{size, stride, allow_uav, true};
+    return {{acquireBuffer(info), info}, this};
 }
 
 
@@ -280,10 +298,6 @@ phi::handle::pipeline_state Context::acquirePSO(phi::arg::vertex_format const& v
 Context::~Context()
 {
     mBackend->flushGPU();
-
-    mCacheTextures.free_all(mBackend.get());
-    mCacheRenderTargets.free_all(mBackend.get());
-    mCacheBuffers.free_all(mBackend.get());
 
     mGpuEpochTracker.destroy();
     mShaderCompiler.destroy();

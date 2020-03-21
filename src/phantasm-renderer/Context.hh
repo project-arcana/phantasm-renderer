@@ -47,7 +47,7 @@ public:
 
     shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    baked_shader_view make_argument(shader_view const& arg, bool usage_compute = false);
+    baked_argument make_argument(argument const& arg, bool usage_compute = false);
 
     [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
@@ -67,8 +67,8 @@ public:
 public:
     cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    cached_buffer get_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
-    cached_buffer get_upload_buffer(size_t size, size_t stride = 0, bool allow_uav = false);
+    cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
     cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
 
@@ -129,7 +129,7 @@ private:
 private:
     friend struct resource_data;
     friend struct shader_binary_data;
-    friend struct baked_shader_view_data;
+    friend struct baked_argument_data;
     friend struct pipeline_state_abstract;
     void freeResource(phi::handle::resource res);
     void freeShaderBinary(IDxcBlob* blob);
@@ -151,7 +151,7 @@ private:
                                                 phi::arg::shader_arg_shapes arg_shapes,
                                                 bool has_root_consts,
                                                 phi::arg::graphics_shaders shader,
-                                                const phi::pipeline_config& config = {});
+                                                const phi::pipeline_config& config);
 
 private:
     // single cache acquire
@@ -172,7 +172,7 @@ private:
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {0};
 
-    // caches
+    // caches (have dtors, members must be below backend ptr)
     multi_cache<render_target_info> mCacheRenderTargets;
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;

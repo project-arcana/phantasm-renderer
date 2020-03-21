@@ -48,6 +48,7 @@ private:
         if (parent != nullptr)
         {
             data.destroy(parent);
+            parent = nullptr;
         }
     }
 };
@@ -57,6 +58,9 @@ struct cached_handle
 {
     operator CachedT&() { return _internal; }
     operator CachedT const&() const { return _internal; }
+
+    cached_handle() = default;
+    cached_handle(CachedT&& data, Context* parent) : _internal(cc::move(data)), _parent(parent) {}
 
     cached_handle(cached_handle&& rhs) noexcept : _internal(cc::move(rhs._internal)), _parent(rhs._parent) { rhs._parent = nullptr; }
     cached_handle& operator=(cached_handle&& rhs) noexcept
@@ -82,11 +86,12 @@ private:
         if (_parent != nullptr)
         {
             _internal.unrefCache(_parent);
+            _parent = nullptr;
         }
     }
 
     CachedT _internal;
-    pr::Context* _parent;
+    pr::Context* _parent = nullptr;
 };
 
 struct resource_data

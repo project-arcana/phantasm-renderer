@@ -59,18 +59,6 @@ public:
         // todo: go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
-    void free_all(phi::Backend* backend)
-    {
-        for (auto& [key, elem] : _map)
-        {
-            while (!elem.in_flight_buffer.empty())
-            {
-                backend->free(elem.in_flight_buffer.get_tail().val.data.handle);
-                elem.in_flight_buffer.pop_tail();
-            }
-        }
-    }
-
 private:
     map_element& access_element(KeyT const& key)
     {

@@ -18,8 +18,8 @@ public:
     void dispatch(unsigned x, unsigned y = 1, unsigned z = 1);
 
     // shitty WIP API
-    void add_argument(baked_shader_view const& sv);
-    void add_argument(baked_shader_view const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
+    void add_argument(baked_argument const& sv);
+    void add_argument(baked_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
     void add_argument(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
     void pop_argument();

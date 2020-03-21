@@ -18,12 +18,12 @@ void pr::ComputePipeline::dispatch(unsigned x, unsigned y, unsigned z)
     mParent->pipelineOnDispatch(mDispatchCmd);
 }
 
-void pr::ComputePipeline::add_argument(const pr::baked_shader_view& sv)
+void pr::ComputePipeline::add_argument(const pr::baked_argument& sv)
 {
     mDispatchCmd.add_shader_arg(phi::handle::null_resource, 0, sv.data._sv);
 }
 
-void pr::ComputePipeline::add_argument(const pr::baked_shader_view& sv, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
+void pr::ComputePipeline::add_argument(const pr::baked_argument& sv, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
 {
     mDispatchCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, sv.data._sv);
 }

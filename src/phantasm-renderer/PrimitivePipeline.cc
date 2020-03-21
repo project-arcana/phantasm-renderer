@@ -55,9 +55,9 @@ void pr::PrimitivePipeline::draw_indexed(const pr::buffer& vertex_buffer, const 
     mParent->pipelineOnDraw(mDrawCmd);
 }
 
-void pr::PrimitivePipeline::add_argument(const pr::baked_shader_view& sv) { mDrawCmd.add_shader_arg(phi::handle::null_resource, 0, sv.data._sv); }
+void pr::PrimitivePipeline::add_argument(const pr::baked_argument& sv) { mDrawCmd.add_shader_arg(phi::handle::null_resource, 0, sv.data._sv); }
 
-void pr::PrimitivePipeline::add_argument(const pr::baked_shader_view& sv, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
+void pr::PrimitivePipeline::add_argument(const pr::baked_argument& sv, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
 {
     mDrawCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, sv.data._sv);
 }
