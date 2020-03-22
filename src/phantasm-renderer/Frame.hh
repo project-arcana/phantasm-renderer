@@ -23,8 +23,9 @@ class Frame
 public:
     // pass RAII API
 
+    /// create a framebuffer by supplying render targets (all cleared, viewport minimum of sizes)
     template <class... RTs>
-    Framebuffer render_to(RTs const&... targets) // TODO return
+    [[nodiscard]] Framebuffer make_framebuffer(RTs const&... targets)
     {
         phi::cmd::begin_render_pass bcmd;
         // initialize command
@@ -43,9 +44,13 @@ public:
         return {this};
     }
 
-    // pipeline RAII API (compute only, graphics pipelines are in pr::Pass
+    /// create a framebuffer using a builder with more configuration options
+    [[nodiscard]] framebuffer_builder build_framebuffer() { return {this}; }
 
-    ComputePass make_pass(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
+    // pipeline RAII API (compute only, graphics pipelines are in Framebuffer)
+
+    /// create a RAII compute pass
+    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
 
     // TODO: cache-access version
 
@@ -97,6 +102,11 @@ private:
 
     void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
+
+    // framebuffer_builder-side API
+private:
+    friend struct framebuffer_builder;
+    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd);
 
     // Framebuffer-side API
 private:

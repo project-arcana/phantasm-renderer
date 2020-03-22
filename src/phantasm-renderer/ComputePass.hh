@@ -14,7 +14,7 @@ class ComputePass
 {
 public:
     template <class... Args>
-    ComputePass bind(Args&&... args) &
+    [[nodiscard]] ComputePass bind(Args&&... args) &
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);
@@ -22,7 +22,7 @@ public:
     }
 
     template <class... Args>
-    ComputePass bind(Args&&... args) &&
+    [[nodiscard]] ComputePass bind(Args&&... args) &&
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);

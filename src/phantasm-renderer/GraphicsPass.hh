@@ -14,7 +14,7 @@ class GraphicsPass
 {
 public:
     template <class... Args>
-    GraphicsPass bind(Args&&... args) &
+    [[nodiscard]] GraphicsPass bind(Args&&... args) &
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);
@@ -22,7 +22,7 @@ public:
     }
 
     template <class... Args>
-    GraphicsPass bind(Args&&... args) &&
+    [[nodiscard]] GraphicsPass bind(Args&&... args) &&
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);

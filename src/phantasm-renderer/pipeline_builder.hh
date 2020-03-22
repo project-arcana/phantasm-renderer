@@ -12,7 +12,6 @@ namespace pr
 {
 class Context;
 
-
 struct pipeline_builder
 {
 public:

@@ -135,6 +135,23 @@ void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resou
     mWriter.add_command(ccmd);
 }
 
+Framebuffer Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
+{
+    for (auto const& rt : bcmd.render_targets)
+    {
+        transition(rt.rv.resource, phi::resource_state::render_target);
+    }
+
+    if (bcmd.depth_target.rv.resource.is_valid())
+    {
+        transition(bcmd.depth_target.rv.resource, phi::resource_state::depth_write);
+    }
+
+    flushPendingTransitions();
+    mWriter.add_command(bcmd);
+    return {this};
+}
+
 void Frame::framebufferOnJoin(const Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
