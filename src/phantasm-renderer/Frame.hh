@@ -103,7 +103,7 @@ private:
     friend class Framebuffer;
     void framebufferOnJoin(Framebuffer const&);
 
-    // Pipeline-side API
+    // Pass-side API
 private:
     friend class GraphicsPass;
     friend class ComputePass;

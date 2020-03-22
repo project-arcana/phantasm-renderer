@@ -19,13 +19,13 @@ public:
         _samplers.reserve(4);
     }
 
-    void add_srv(image const& img);
-    void add_srv(buffer const& buffer);
-    void add_srv(render_target const& rt);
+    void add(image const& img);
+    void add(buffer const& buffer);
+    void add(render_target const& rt);
 
-    void add_uav(image const& img);
-    void add_uav(buffer const& buffer);
-    void add_uav(render_target const& rt);
+    void add_mutable(image const& img);
+    void add_mutable(buffer const& buffer);
+    void add_mutable(render_target const& rt);
 
     void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u)
     {
@@ -45,6 +45,8 @@ public:
 struct baked_argument_data
 {
     phi::handle::shader_view _sv;
+    phi::handle::resource _cbv;
+    unsigned _cbv_offset;
     void destroy(pr::Context* ctx);
 };
 
