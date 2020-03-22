@@ -34,20 +34,20 @@ class Context
 {
     // creation API
 public:
-    Frame make_frame(size_t initial_size = 2048);
+    [[nodiscard]] Frame make_frame(size_t initial_size = 2048);
 
-    image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
-    image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
-    image make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] image make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
 
-    render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    [[nodiscard]] render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
-    shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
+    [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    baked_argument make_argument(argument const& arg, bool usage_compute = false);
+    [[nodiscard]] baked_argument make_argument(argument const& arg, bool usage_compute = false);
 
     [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
@@ -65,19 +65,19 @@ public:
 
     // cache lookup API
 public:
-    cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
-    cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
+    [[nodiscard]] cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
 
     // consumption API
 public:
     [[nodiscard]] CompiledFrame compile(Frame& frame);
 
     void submit(Frame& frame);
-    void submit(CompiledFrame const& frame);
+    void submit(CompiledFrame&& frame);
 
     void present();
     void flush();

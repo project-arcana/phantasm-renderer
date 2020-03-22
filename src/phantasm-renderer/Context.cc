@@ -155,17 +155,17 @@ CompiledFrame Context::compile(Frame& frame)
 
 void Context::submit(Frame& frame) { submit(compile(frame)); }
 
-void Context::submit(const CompiledFrame& frame)
+void Context::submit(CompiledFrame&& frame)
 {
-    if (!frame.getCmdlist().is_valid())
+    if (!frame.cmdlist.is_valid())
         return;
 
     {
         auto const lg = std::lock_guard(mMutexSubmission);
-        auto const cmdlist = frame.getCmdlist();
+        auto const cmdlist = frame.cmdlist;
         mBackend->submit(cc::span{cmdlist});
     }
-    mGpuEpochTracker.on_event_submission(frame.getEvent());
+    mGpuEpochTracker.on_event_submission(frame.event);
 }
 
 void Context::present() { mBackend->present(); }
