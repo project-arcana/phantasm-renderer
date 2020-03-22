@@ -52,11 +52,16 @@ void pr::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& i
 
 void pr::GraphicsPass::set_constant_buffer(const pr::buffer& constant_buffer, unsigned offset)
 {
+    CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer on a GraphicsPass without prior bind");
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer = constant_buffer._resource.data.handle;
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
 }
 
-void pr::GraphicsPass::set_constant_buffer_offset(unsigned offset) { mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset; }
+void pr::GraphicsPass::set_constant_buffer_offset(unsigned offset)
+{
+    CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer_offset on a GraphicsPass without prior bind");
+    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
+}
 
 void pr::GraphicsPass::add_argument(const pr::baked_argument& sv)
 {

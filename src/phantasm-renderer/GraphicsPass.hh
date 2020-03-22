@@ -1,12 +1,9 @@
 #pragma once
 
-#include <phantasm-hardware-interface/arguments.hh>
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/reflection/resources.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr

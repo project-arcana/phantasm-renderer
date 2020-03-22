@@ -45,7 +45,7 @@ public:
 
     // pipeline RAII API (compute only, graphics pipelines are in pr::Pass
 
-    ComputePass pipeline(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
+    ComputePass make_pass(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
 
     // TODO: cache-access version
 
