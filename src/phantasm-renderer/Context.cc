@@ -8,6 +8,7 @@
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backends.hh>
+#include <phantasm-renderer/backend/Backend.hh>
 
 using namespace pr;
 
