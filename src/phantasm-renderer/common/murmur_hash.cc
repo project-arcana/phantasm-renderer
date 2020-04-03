@@ -70,7 +70,7 @@ FORCE_INLINE uint64_t fmix64(uint64_t k)
 
 //-----------------------------------------------------------------------------
 
-void pr::murmurhash3_x64_128(const void* key, const int len, const uint32_t seed, void* out)
+void pr::murmurhash3_x64_128(const void* key, const int len, const uint32_t seed, murmur_hash& out)
 {
     const uint8_t* data = (const uint8_t*)key;
     const int nblocks = len / 16;
@@ -190,6 +190,6 @@ void pr::murmurhash3_x64_128(const void* key, const int len, const uint32_t seed
     h1 += h2;
     h2 += h1;
 
-    ((uint64_t*)out)[0] = h1;
-    ((uint64_t*)out)[1] = h2;
+    out.value[0] = h1;
+    out.value[1] = h2;
 }

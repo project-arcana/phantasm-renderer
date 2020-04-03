@@ -18,6 +18,7 @@
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/common/single_cache.hh>
+#include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
@@ -157,12 +158,16 @@ private:
 
 private:
     // single cache acquire
-    phi::handle::pipeline_state acquirePSO(phi::arg::vertex_format const& vertex_fmt,
-                                           phi::arg::framebuffer_config const& fb_conf,
-                                           phi::arg::shader_arg_shapes arg_shapes,
-                                           bool has_root_consts,
-                                           phi::arg::graphics_shaders shaders,
-                                           phi::pipeline_config const& pipeline_conf);
+    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
+    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
+
+    phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+
+    void free_graphics_pso(murmur_hash hash);
+    void free_compute_pso(murmur_hash hash);
+    void free_graphics_sv(murmur_hash hash);
+    void free_compute_sv(murmur_hash hash);
 
     // members
 private:
@@ -178,5 +183,10 @@ private:
     multi_cache<render_target_info> mCacheRenderTargets;
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;
+
+    single_cache<phi::handle::pipeline_state> mCacheGraphicsPSOs;
+    single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
+    single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
+    single_cache<phi::handle::shader_view> mCacheComputeSVs;
 };
 }

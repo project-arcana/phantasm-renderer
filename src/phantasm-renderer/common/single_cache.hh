@@ -4,13 +4,13 @@
 
 #include <phantasm-hardware-interface/types.hh>
 
-#include <phantasm-renderer/common/state_info.hh>
+#include <phantasm-renderer/common/murmur_hash.hh>
 
 namespace pr
 {
 // the single cache, key-value relation 1:1
 // used for PSOs, shader views
-template <class KeyT, class ValT>
+template <class ValT>
 struct single_cache
 {
 private:
@@ -20,7 +20,7 @@ private:
 public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
-    [[nodiscard]] ValT acquire(KeyT const& key)
+    [[nodiscard]] ValT acquire(murmur_hash key)
     {
         map_element& elem = _map[key];
         if (elem.val != invalid_val)
@@ -31,7 +31,7 @@ public:
         return elem.val;
     }
 
-    void insert(ValT val, KeyT const& key)
+    void insert(ValT val, murmur_hash key)
     {
         CC_ASSERT(val != invalid_val && "[single_cache] invalid value inserted");
         map_element& elem = _map[key];
@@ -40,7 +40,7 @@ public:
         elem.required_gpu_epoch = 0;
     }
 
-    void free(KeyT const& key, uint64_t current_cpu_epoch)
+    void free(murmur_hash key, uint64_t current_cpu_epoch)
     {
         map_element& elem = _map[key];
         CC_ASSERT(elem.val != invalid_val && "[single_cache] freed an element not previously inserted");
@@ -65,6 +65,6 @@ private:
         uint64_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
     };
 
-    cc::map<KeyT, map_element, state_info_hasher> _map;
+    cc::map<murmur_hash, map_element, murmur_collapser> _map;
 };
 }
