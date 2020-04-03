@@ -1,27 +1,26 @@
 #pragma once
 
-#include <phantasm-renderer/Frame.hh>
+#include <phantasm-hardware-interface/types.hh>
 
 namespace pr
 {
 /**
- * A CompiledFrame is a fully baked command buffer ready for submission
+ * A CompiledFrame is a compiled command list ready for submission
  */
 class CompiledFrame
 {
     // move-only type
 public:
-    CompiledFrame(CompiledFrame const&) = delete;
-    CompiledFrame(CompiledFrame&&) = default;
-    CompiledFrame& operator=(CompiledFrame const&) = delete;
-    CompiledFrame& operator=(CompiledFrame&&) = default;
-
-private:
     CompiledFrame() = default;
-    friend CompiledFrame compile(Frame const&);
+    CompiledFrame(CompiledFrame const&) = delete;
+    CompiledFrame& operator=(CompiledFrame const&) = delete;
+    CompiledFrame(CompiledFrame&&) noexcept = default;
+    CompiledFrame& operator=(CompiledFrame&&) noexcept = default;
 
-    // member
 private:
-    // TODO
+    friend class Context;
+    CompiledFrame(phi::handle::command_list cmdlist, phi::handle::event event) : event(event), cmdlist(cmdlist) {}
+    phi::handle::event event = phi::handle::null_event;
+    phi::handle::command_list cmdlist = phi::handle::null_command_list;
 };
 }
