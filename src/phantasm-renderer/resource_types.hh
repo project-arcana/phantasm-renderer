@@ -140,8 +140,7 @@ struct shader_binary_data
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    uint64_t _guid = 0;               ///< for PSO caching
-    Context* _parent = nullptr;
+    uint64_t _murmur_hash[2];         ///< murmur hash over _data, for caching
     phi::shader_stage _stage;
 
     void destroy(pr::Context* ctx);

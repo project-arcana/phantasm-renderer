@@ -44,9 +44,9 @@ public:
 
 struct baked_argument_data
 {
-    phi::handle::shader_view _sv;
-    phi::handle::resource _cbv;
-    unsigned _cbv_offset;
+    phi::handle::shader_view _sv = phi::handle::null_shader_view;
+    phi::handle::resource _cbv = phi::handle::null_resource;
+    unsigned _cbv_offset = 0;
     void destroy(pr::Context* ctx);
 };
 

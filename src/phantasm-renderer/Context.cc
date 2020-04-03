@@ -8,6 +8,7 @@
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/backends.hh>
+#include <phantasm-renderer/common/murmur_hash.hh>
 
 using namespace pr;
 
@@ -80,13 +81,26 @@ buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool allow_ua
     return {createBuffer(info), info};
 }
 
+shader_binary Context::make_shader(const std::byte* data, size_t size, phi::shader_stage stage)
+{
+    CC_ASSERT(data != nullptr);
+
+    shader_binary res;
+    res.data._stage = stage;
+    res.data._data = data;
+    res.data._size = size;
+    res.data._owning_blob = nullptr;
+    murmurhash3_x64_128(res.data._data, static_cast<int>(res.data._size), 0, &res.data._murmur_hash);
+
+    return res;
+}
+
 shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
 {
     auto const bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), stage_to_sc_target(stage),
                                                     mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv);
 
     shader_binary res;
-    res.data._parent = this;
     res.data._stage = stage;
 
     if (bin.data == nullptr)
@@ -98,7 +112,7 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
         res.data._data = bin.data;
         res.data._size = bin.size;
         res.data._owning_blob = bin.internal_blob;
-        res.data._guid = acquireGuid();
+        murmurhash3_x64_128(res.data._data, static_cast<int>(res.data._size), 0, &res.data._murmur_hash);
     }
 
     return res;
@@ -107,7 +121,7 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
 baked_argument Context::make_argument(const argument& arg, bool usage_compute)
 {
     //
-    return {{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute)}, this};
+    return {baked_argument_data{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute), phi::handle::null_resource, 0}, this};
 }
 
 

@@ -46,6 +46,7 @@ public:
     [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
+    [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
     [[nodiscard]] baked_argument make_argument(argument const& arg, bool usage_compute = false);

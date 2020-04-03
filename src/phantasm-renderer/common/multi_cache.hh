@@ -12,6 +12,8 @@
 
 namespace pr
 {
+// the multi cache, key-value relation 1:N
+// used for render targets, textures, buffers
 template <class KeyT>
 struct multi_cache
 {
