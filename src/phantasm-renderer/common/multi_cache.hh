@@ -54,7 +54,7 @@ public:
     void cull()
     {
         ++_current_gen;
-        // todo: go through a subsection of the map, and if the last gen used is old, delete old entries
+        // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
 private:

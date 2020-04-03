@@ -11,26 +11,40 @@ namespace pr
 template <class KeyT, class ValT, class HasherT>
 struct single_cache
 {
+private:
+    struct map_element;
+
 public:
+    void reserve(size_t num_elems) { _map.reserve(num_elems); }
+
+private:
+    map_element& access_element(KeyT const& key)
+    {
+        map_element& elem = _map[key];
+        elem.latest_gen = _current_gen;
+        return elem;
+    }
+
 private:
     struct map_element
     {
         ValT val;
-        uint64_t latest_gen;
-        uint64_t required_gpu_epoch;
+        uint32_t num_references = 0;     ///< the amount of CPU-side references to this element
+        uint64_t latest_gen = 0;         ///< generation when this element was last acquired
+        uint64_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
     };
 
     uint64_t _current_gen = 0;
     cc::map<KeyT, map_element, HasherT> _map;
 };
 
-//template <class KeyT>
-//struct multi_cache
+// template <class KeyT>
+// struct multi_cache
 //{
-//private:
+// private:
 //    struct map_element;
 
-//public:
+// public:
 //    void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
 //    /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
@@ -56,7 +70,7 @@ private:
 //        // todo: go through a subsection of the map, and if the last gen used is old, delete old entries
 //    }
 
-//private:
+// private:
 //    map_element& access_element(KeyT const& key)
 //    {
 //        map_element& elem = _map[key];
@@ -64,7 +78,7 @@ private:
 //        return elem;
 //    }
 
-//private:
+// private:
 //    struct map_element
 //    {
 //        int phi_handle = phi::handle::null_handle_index; /// the phi::handle value
