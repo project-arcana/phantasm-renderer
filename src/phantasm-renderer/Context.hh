@@ -17,6 +17,7 @@
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/resource_info.hh>
+#include <phantasm-renderer/common/single_cache.hh>
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>

@@ -1,12 +1,8 @@
 #pragma once
 
-
 #include <clean-core/map.hh>
 #include <clean-core/utility.hh>
 
-#include <rich-log/log.hh>
-
-#include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/common/circular_buffer.hh>
