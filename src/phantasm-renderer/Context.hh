@@ -50,8 +50,7 @@ public:
     [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    [[nodiscard]] baked_argument make_argument(persistent_argument const& arg, bool usage_compute = false);
-
+    [[nodiscard]] argument_builder build_argument() { return {this}; }
     [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
     // map upload API
@@ -146,20 +145,17 @@ private:
     void freeCachedTexture(texture_info const& info, pr::resource&& res);
     void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
 
-    // internal PSO builder API
+    // internal builder API
 private:
     friend struct pipeline_builder;
-    compute_pipeline_state create_compute_pso(phi::arg::shader_arg_shapes arg_shapes, bool has_root_consts, phi::arg::shader_binary shader);
-    graphics_pipeline_state create_graphics_pso(phi::arg::vertex_format const& vert_format,
-                                                phi::arg::framebuffer_config const& framebuf_config,
-                                                phi::arg::shader_arg_shapes arg_shapes,
-                                                bool has_root_consts,
-                                                phi::arg::graphics_shaders shader,
-                                                const phi::pipeline_config& config);
+    friend struct argument_builder;
+    phi::Backend* get_backend() const { return mBackend.get(); }
 
+    // internal argument builder API
+private:
+    // single cache access, Frame-side API
 private:
     friend class Frame;
-    // single cache acquire
     phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
     phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
 

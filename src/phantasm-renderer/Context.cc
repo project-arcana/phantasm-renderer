@@ -118,12 +118,6 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     return res;
 }
 
-baked_argument Context::make_argument(const persistent_argument& arg, bool usage_compute)
-{
-    //
-    return {baked_argument_data{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute), phi::handle::null_resource, 0}, this};
-}
-
 
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
@@ -337,21 +331,6 @@ void Context::freeCachedTexture(const texture_info& info, pr::resource&& res)
 void Context::freeCachedBuffer(const buffer_info& info, resource&& res)
 {
     mCacheBuffers.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
-}
-
-compute_pipeline_state Context::create_compute_pso(phi::arg::shader_arg_shapes arg_shapes, bool has_root_consts, phi::arg::shader_binary shader)
-{
-    return compute_pipeline_state{{{mBackend->createComputePipelineState(arg_shapes, shader, has_root_consts)}}, this};
-}
-
-graphics_pipeline_state Context::create_graphics_pso(phi::arg::vertex_format const& vert_format,
-                                                     phi::arg::framebuffer_config const& framebuf_config,
-                                                     phi::arg::shader_arg_shapes arg_shapes,
-                                                     bool has_root_consts,
-                                                     phi::arg::graphics_shaders shader,
-                                                     phi::pipeline_config const& config)
-{
-    return graphics_pipeline_state{{{mBackend->createPipelineState(vert_format, framebuf_config, arg_shapes, has_root_consts, shader, config)}}, this};
 }
 
 phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, const hashable_storage<pipeline_state_info>& info_storage, phi::arg::graphics_shaders shaders)

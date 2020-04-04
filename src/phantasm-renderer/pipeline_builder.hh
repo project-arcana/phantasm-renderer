@@ -10,14 +10,9 @@
 
 namespace pr
 {
-class Context;
-
 struct pipeline_builder
 {
 public:
-    pipeline_builder(Context* parent) : _parent(parent) {}
-
-
     pipeline_builder& add_shader(pr::shader_binary const& binary)
     {
         _shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
@@ -91,10 +86,12 @@ public:
 
     // finalize
 
-    compute_pipeline_state make_compute();
-    graphics_pipeline_state make_graphics();
+    [[nodiscard]] compute_pipeline_state make_compute();
+    [[nodiscard]] graphics_pipeline_state make_graphics();
 
 private:
+    friend class Context;
+    pipeline_builder(Context* parent) : _parent(parent) {}
     Context* const _parent;
 
     phi::pipeline_config _graphics_config = {};
