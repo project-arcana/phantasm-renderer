@@ -5,6 +5,7 @@
 
 #include <phantasm-hardware-interface/types.hh>
 
+#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 
 struct IDxcBlob;
@@ -140,8 +141,7 @@ struct shader_binary_data
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    uint64_t _guid = 0;               ///< for PSO caching
-    Context* _parent = nullptr;
+    murmur_hash _hash;                ///< murmur hash over _data, for caching
     phi::shader_stage _stage;
 
     void destroy(pr::Context* ctx);

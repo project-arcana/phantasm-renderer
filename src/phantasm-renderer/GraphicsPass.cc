@@ -15,7 +15,7 @@ void pr::GraphicsPass::draw(unsigned num_vertices)
     mCmd.index_offset = 0;
     mCmd.scissor = tg::iaabb2(-1, -1);
 
-    mParent->pipelineOnDraw(mCmd);
+    mParent->passOnDraw(mCmd);
 }
 
 void pr::GraphicsPass::draw(const pr::buffer& vertex_buffer)
@@ -31,7 +31,7 @@ void pr::GraphicsPass::draw(const pr::buffer& vertex_buffer)
     mCmd.index_offset = 0;
     mCmd.scissor = tg::iaabb2(-1, -1);
 
-    mParent->pipelineOnDraw(mCmd);
+    mParent->passOnDraw(mCmd);
 }
 
 void pr::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer)
@@ -47,7 +47,7 @@ void pr::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& i
     mCmd.index_offset = 0;
     mCmd.scissor = tg::iaabb2(-1, -1);
 
-    mParent->pipelineOnDraw(mCmd);
+    mParent->passOnDraw(mCmd);
 }
 
 void pr::GraphicsPass::set_constant_buffer(const pr::buffer& constant_buffer, unsigned offset)
@@ -61,6 +61,18 @@ void pr::GraphicsPass::set_constant_buffer_offset(unsigned offset)
 {
     CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer_offset on a GraphicsPass without prior bind");
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
+}
+
+void pr::GraphicsPass::add_argument(const pr::argument& arg)
+{
+    ++mArgNum;
+    mCmd.add_shader_arg(phi::handle::null_resource, 0, mParent->passAcquireGraphicsShaderView(arg));
+}
+
+void pr::GraphicsPass::add_argument(const pr::argument& arg, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
+{
+    ++mArgNum;
+    mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, mParent->passAcquireGraphicsShaderView(arg));
 }
 
 void pr::GraphicsPass::add_argument(const pr::baked_argument& sv)

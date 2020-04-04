@@ -3,7 +3,6 @@
 #include <atomic>
 #include <mutex>
 
-#include <clean-core/poly_unique_ptr.hh>
 #include <clean-core/span.hh>
 #include <clean-core/string_view.hh>
 
@@ -18,6 +17,7 @@
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/common/single_cache.hh>
+#include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
@@ -46,10 +46,10 @@ public:
     [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
+    [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    [[nodiscard]] baked_argument make_argument(argument const& arg, bool usage_compute = false);
-
+    [[nodiscard]] argument_builder build_argument() { return {this}; }
     [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
     // map upload API
@@ -79,6 +79,7 @@ public:
 
     void submit(Frame& frame);
     void submit(CompiledFrame&& frame);
+    void discard(CompiledFrame&& frame);
 
     void present();
     void flush();
@@ -98,7 +99,7 @@ public:
     /// constructs a context with a default backend (usually vulkan)
     Context(phi::window_handle const& window_handle);
     /// constructs a context with a specified backend
-    Context(cc::poly_unique_ptr<phi::Backend>&& backend);
+    Context(phi::Backend* backend);
 
     ~Context();
 
@@ -143,29 +144,34 @@ private:
     void freeCachedTexture(texture_info const& info, pr::resource&& res);
     void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
 
-    // internal PSO builder API
+    // internal builder API
 private:
     friend struct pipeline_builder;
-    compute_pipeline_state create_compute_pso(phi::arg::shader_arg_shapes arg_shapes, bool has_root_consts, phi::arg::shader_binary shader);
-    graphics_pipeline_state create_graphics_pso(phi::arg::vertex_format const& vert_format,
-                                                phi::arg::framebuffer_config const& framebuf_config,
-                                                phi::arg::shader_arg_shapes arg_shapes,
-                                                bool has_root_consts,
-                                                phi::arg::graphics_shaders shader,
-                                                const phi::pipeline_config& config);
+    friend struct argument_builder;
+    phi::Backend* get_backend() const { return mBackend; }
 
+    // internal argument builder API
 private:
-    // single cache acquire
-    phi::handle::pipeline_state acquirePSO(phi::arg::vertex_format const& vertex_fmt,
-                                           phi::arg::framebuffer_config const& fb_conf,
-                                           phi::arg::shader_arg_shapes arg_shapes,
-                                           bool has_root_consts,
-                                           phi::arg::graphics_shaders shaders,
-                                           phi::pipeline_config const& pipeline_conf);
+    // single cache access, Frame-side API
+private:
+    friend class Frame;
+    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
+    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
+
+    phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+
+    void free_all(cc::span<freeable_cached_obj const> freeables);
+
+    void free_graphics_pso(murmur_hash hash);
+    void free_compute_pso(murmur_hash hash);
+    void free_graphics_sv(murmur_hash hash);
+    void free_compute_sv(murmur_hash hash);
 
     // members
 private:
-    cc::poly_unique_ptr<phi::Backend> mBackend;
+    phi::Backend* mBackend;
+    bool const mOwnsBackend;
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
 
@@ -177,5 +183,11 @@ private:
     multi_cache<render_target_info> mCacheRenderTargets;
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;
+
+    // single caches (no dtors)
+    single_cache<phi::handle::pipeline_state> mCacheGraphicsPSOs;
+    single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
+    single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
+    single_cache<phi::handle::shader_view> mCacheComputeSVs;
 };
 }

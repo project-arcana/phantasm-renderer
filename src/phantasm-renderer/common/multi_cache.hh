@@ -12,6 +12,8 @@
 
 namespace pr
 {
+// the multi cache, key-value relation 1:N
+// used for render targets, textures, buffers
 template <class KeyT>
 struct multi_cache
 {
@@ -56,6 +58,8 @@ public:
         ++_current_gen;
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
+
+    void clear_all() { _map.clear(); }
 
 private:
     map_element& access_element(KeyT const& key)
