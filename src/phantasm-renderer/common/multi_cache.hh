@@ -59,6 +59,8 @@ public:
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
+    void clear_all() { _map.clear(); }
+
 private:
     map_element& access_element(KeyT const& key)
     {
