@@ -118,7 +118,7 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     return res;
 }
 
-baked_argument Context::make_argument(const argument& arg, bool usage_compute)
+baked_argument Context::make_argument(const persistent_argument& arg, bool usage_compute)
 {
     //
     return {baked_argument_data{mBackend->createShaderView(arg._srvs, arg._uavs, arg._samplers, usage_compute), phi::handle::null_resource, 0}, this};
@@ -157,13 +157,13 @@ CompiledFrame Context::compile(Frame& frame)
 
     if (frame.isEmpty())
     {
-        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event);
+        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables));
     }
     else
     {
         auto const event = mGpuEpochTracker.get_event();
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event);
-        return CompiledFrame(cmdlist, event);
+        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables));
     }
 }
 
@@ -171,15 +171,29 @@ void Context::submit(Frame& frame) { submit(compile(frame)); }
 
 void Context::submit(CompiledFrame&& frame)
 {
-    if (!frame.cmdlist.is_valid())
-        return;
-
+    if (frame.cmdlist.is_valid())
     {
-        auto const lg = std::lock_guard(mMutexSubmission);
-        auto const cmdlist = frame.cmdlist;
-        mBackend->submit(cc::span{cmdlist});
+        {
+            auto const lg = std::lock_guard(mMutexSubmission);
+            auto const cmdlist = frame.cmdlist;
+            mBackend->submit(cc::span{cmdlist});
+        }
+        mGpuEpochTracker.on_event_submission(frame.event);
     }
-    mGpuEpochTracker.on_event_submission(frame.event);
+
+    free_all(frame.freeables);
+    frame.parent = nullptr;
+}
+
+void Context::discard(CompiledFrame&& frame)
+{
+    if (frame.cmdlist.is_valid())
+        mBackend->discard(cc::span{frame.cmdlist});
+    if (frame.event.is_valid())
+        mBackend->free(cc::span{frame.event});
+
+    free_all(frame.freeables);
+    frame.parent = nullptr;
 }
 
 void Context::present() { mBackend->present(); }
@@ -301,6 +315,11 @@ Context::~Context()
 {
     mBackend->flushGPU();
 
+    mCacheGraphicsPSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
+    mCacheComputePSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
+    mCacheGraphicsSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
+    mCacheComputeSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
+
     mGpuEpochTracker.destroy();
     mShaderCompiler.destroy();
 }
@@ -382,6 +401,28 @@ phi::handle::shader_view Context::acquire_compute_sv(murmur_hash hash, const has
         mCacheComputeSVs.insert(sv, hash);
     }
     return sv;
+}
+
+void Context::free_all(cc::span<const freeable_cached_obj> freeables)
+{
+    for (auto const& freeable : freeables)
+    {
+        switch (freeable.type)
+        {
+        case freeable_cached_obj::graphics_pso:
+            free_graphics_pso(freeable.hash);
+            break;
+        case freeable_cached_obj::compute_pso:
+            free_compute_pso(freeable.hash);
+            break;
+        case freeable_cached_obj::graphics_sv:
+            free_graphics_sv(freeable.hash);
+            break;
+        case freeable_cached_obj::compute_sv:
+            free_compute_sv(freeable.hash);
+            break;
+        }
+    }
 }
 
 void Context::free_graphics_pso(murmur_hash hash) { mCacheGraphicsPSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }

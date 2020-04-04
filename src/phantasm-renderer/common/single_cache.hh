@@ -2,6 +2,8 @@
 
 #include <clean-core/map.hh>
 
+#include <rich-log/log.hh>
+
 #include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/common/murmur_hash.hh>
@@ -55,6 +57,15 @@ public:
         auto const f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
 
         // TODO: go through section of the map and destroy element based on condition above
+    }
+
+    template <class F>
+    void iterate_values(F&& func)
+    {
+        for (auto const& [key, val] : _map)
+        {
+            func(val.val);
+        }
     }
 
 private:

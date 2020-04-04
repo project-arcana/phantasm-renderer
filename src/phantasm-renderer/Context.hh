@@ -50,7 +50,7 @@ public:
     [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    [[nodiscard]] baked_argument make_argument(argument const& arg, bool usage_compute = false);
+    [[nodiscard]] baked_argument make_argument(persistent_argument const& arg, bool usage_compute = false);
 
     [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
@@ -81,6 +81,7 @@ public:
 
     void submit(Frame& frame);
     void submit(CompiledFrame&& frame);
+    void discard(CompiledFrame&& frame);
 
     void present();
     void flush();
@@ -157,12 +158,15 @@ private:
                                                 const phi::pipeline_config& config);
 
 private:
+    friend class Frame;
     // single cache acquire
     phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
     phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
 
     phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
     phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+
+    void free_all(cc::span<freeable_cached_obj const> freeables);
 
     void free_graphics_pso(murmur_hash hash);
     void free_compute_pso(murmur_hash hash);
@@ -184,6 +188,7 @@ private:
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;
 
+    // single caches (no dtors)
     single_cache<phi::handle::pipeline_state> mCacheGraphicsPSOs;
     single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
     single_cache<phi::handle::shader_view> mCacheGraphicsSVs;

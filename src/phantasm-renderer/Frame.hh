@@ -84,6 +84,7 @@ public:
     {
         if (this != &rhs)
         {
+            internalDestroy();
             mCtx = rhs.mCtx;
             mWriter = cc::move(rhs.mWriter);
             mPendingTransitionCommand = rhs.mPendingTransitionCommand;
@@ -92,6 +93,8 @@ public:
 
         return *this;
     }
+
+    ~Frame() { internalDestroy(); }
 
     // private
 private:
@@ -102,6 +105,8 @@ private:
 
     void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
+
+    void internalDestroy();
 
     // framebuffer_builder-side API
 private:
@@ -118,16 +123,18 @@ private:
     friend class GraphicsPass;
     friend class ComputePass;
 
-    void pipelineOnDraw(phi::cmd::draw const& dcmd);
-    void pipelineOnDispatch(phi::cmd::dispatch const& dcmd);
+    void passOnDraw(phi::cmd::draw const& dcmd);
+    void passOnDispatch(phi::cmd::dispatch const& dcmd);
 
+    phi::handle::shader_view passAcquireGraphicsShaderView(pr::argument const& arg);
+    phi::handle::shader_view passAcquireComputeShaderView(pr::argument const& arg);
 
     // Context-side API
 private:
     friend class Context;
     Frame(Context* ctx, size_t size) : mCtx(ctx), mWriter(size) {}
 
-    void finalize() { flushPendingTransitions(); }
+    void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }
     size_t getSize() const { return mWriter.size(); }
     bool isEmpty() const { return mWriter.is_empty(); }
@@ -137,5 +144,6 @@ private:
     Context* mCtx;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
+    cc::vector<freeable_cached_obj> mFreeables;
 };
 }

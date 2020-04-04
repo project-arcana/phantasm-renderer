@@ -135,6 +135,15 @@ void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resou
     mWriter.add_command(ccmd);
 }
 
+void Frame::internalDestroy()
+{
+    if (mCtx != nullptr)
+    {
+        mCtx->free_all(mFreeables); // usually this is empty from a move during Context::compile(Frame&)
+        mCtx = nullptr;
+    }
+}
+
 Framebuffer Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
 {
     for (auto const& rt : bcmd.render_targets)
@@ -158,6 +167,26 @@ void Frame::framebufferOnJoin(const Framebuffer&)
     mWriter.add_command(ecmd);
 }
 
-void Frame::pipelineOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
+void Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
 
-void Frame::pipelineOnDispatch(const phi::cmd::dispatch& dcmd) { mWriter.add_command(dcmd); }
+void Frame::passOnDispatch(const phi::cmd::dispatch& dcmd) { mWriter.add_command(dcmd); }
+
+phi::handle::shader_view Frame::passAcquireGraphicsShaderView(const argument& arg)
+{
+    murmur_hash hash;
+    arg._info.get_murmur(hash);
+    auto const res = mCtx->acquire_graphics_sv(hash, arg._info);
+    mFreeables.push_back({freeable_cached_obj::graphics_sv, hash});
+    return res;
+}
+
+phi::handle::shader_view Frame::passAcquireComputeShaderView(const argument& arg)
+{
+    murmur_hash hash;
+    arg._info.get_murmur(hash);
+    auto const res = mCtx->acquire_compute_sv(hash, arg._info);
+    mFreeables.push_back({freeable_cached_obj::compute_sv, hash});
+    return res;
+}
+
+void Frame::finalize() { flushPendingTransitions(); }

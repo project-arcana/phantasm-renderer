@@ -11,6 +11,20 @@
 
 namespace pr
 {
+struct freeable_cached_obj
+{
+    enum type
+    {
+        graphics_sv,
+        compute_sv,
+        graphics_pso,
+        compute_pso
+    };
+
+    type type;
+    murmur_hash hash;
+};
+
 struct pipeline_state_info
 {
     phi::pipeline_config graphics_config = {};
@@ -27,7 +41,8 @@ struct shader_view_info
 {
     phi::detail::trivial_capped_vector<phi::resource_view, 4> srvs;
     phi::detail::trivial_capped_vector<phi::resource_view, 4> uavs;
-    phi::detail::trivial_capped_vector<uint64_t, 8> guids;
+    phi::detail::trivial_capped_vector<uint64_t, 4> srv_guids;
+    phi::detail::trivial_capped_vector<uint64_t, 4> uav_guids;
     phi::detail::trivial_capped_vector<phi::sampler_config, 2> samplers;
 };
 }

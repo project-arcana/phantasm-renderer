@@ -4,14 +4,41 @@
 
 #include <phantasm-hardware-interface/arguments.hh>
 
+#include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
+// fixed size, hashable
 struct argument
 {
 public:
-    argument()
+    void add(image const& img);
+    void add(buffer const& buffer);
+    void add(render_target const& rt);
+
+    void add_mutable(image const& img);
+    void add_mutable(buffer const& buffer);
+    void add_mutable(render_target const& rt);
+
+    void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u)
+    {
+        auto& new_sampler = _info.get().samplers.emplace_back();
+        new_sampler.init_default(filter, anisotropy);
+    }
+
+    void add_sampler(phi::sampler_config const& config) { _info.get().samplers.push_back(config); }
+
+private:
+    friend class Frame;
+    hashable_storage<shader_view_info> _info;
+};
+
+// can grow indefinitely in size, not hashable
+struct persistent_argument
+{
+public:
+    persistent_argument()
     {
         _srvs.reserve(8);
         _uavs.reserve(8);
