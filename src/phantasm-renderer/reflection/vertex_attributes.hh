@@ -101,7 +101,7 @@ struct vertex_visitor
         attr.semantic_name = name;
         // This call assumes that the original VertT& in get_vertex_attributes is a dereferenced nullptr
         attr.offset = uint32_t(reinterpret_cast<size_t>(&ref));
-        attr.format = as_attribute_format<T>;
+        attr.fmt = as_attribute_format<T>;
     }
 };
 }
