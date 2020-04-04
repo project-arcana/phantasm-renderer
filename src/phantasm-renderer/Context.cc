@@ -213,7 +213,7 @@ render_target Context::acquire_backbuffer()
             render_target_info{mBackend->getBackbufferFormat(), size.width, size.height, 1}};
 }
 
-Context::Context(phi::window_handle const& window_handle)
+Context::Context(phi::window_handle const& window_handle) : mOwnsBackend(true)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
@@ -223,11 +223,11 @@ Context::Context(phi::window_handle const& window_handle)
     initialize();
 }
 
-Context::Context(cc::poly_unique_ptr<phi::Backend>&& backend) : mBackend(cc::move(backend)) { initialize(); }
+Context::Context(phi::Backend* backend) : mBackend(backend), mOwnsBackend(false) { initialize(); }
 
 void Context::initialize()
 {
-    mGpuEpochTracker.initialize(mBackend.get(), 2048);
+    mGpuEpochTracker.initialize(mBackend, 2048);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
@@ -316,6 +316,16 @@ Context::~Context()
 
     mGpuEpochTracker.destroy();
     mShaderCompiler.destroy();
+
+    mCacheBuffers.clear_all();
+    mCacheTextures.clear_all();
+    mCacheRenderTargets.clear_all();
+
+    if (mOwnsBackend)
+    {
+        mBackend->destroy();
+        delete mBackend;
+    }
 }
 
 void Context::freeCachedTarget(const render_target_info& info, pr::resource&& res)

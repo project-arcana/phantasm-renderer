@@ -3,7 +3,6 @@
 #include <atomic>
 #include <mutex>
 
-#include <clean-core/poly_unique_ptr.hh>
 #include <clean-core/span.hh>
 #include <clean-core/string_view.hh>
 
@@ -100,7 +99,7 @@ public:
     /// constructs a context with a default backend (usually vulkan)
     Context(phi::window_handle const& window_handle);
     /// constructs a context with a specified backend
-    Context(cc::poly_unique_ptr<phi::Backend>&& backend);
+    Context(phi::Backend* backend);
 
     ~Context();
 
@@ -149,7 +148,7 @@ private:
 private:
     friend struct pipeline_builder;
     friend struct argument_builder;
-    phi::Backend* get_backend() const { return mBackend.get(); }
+    phi::Backend* get_backend() const { return mBackend; }
 
     // internal argument builder API
 private:
@@ -171,7 +170,8 @@ private:
 
     // members
 private:
-    cc::poly_unique_ptr<phi::Backend> mBackend;
+    phi::Backend* mBackend;
+    bool const mOwnsBackend;
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
 
