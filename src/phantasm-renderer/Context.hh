@@ -50,7 +50,9 @@ public:
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
     [[nodiscard]] argument_builder build_argument() { return {this}; }
-    [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
+
+    [[nodiscard]] graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
+    [[nodiscard]] compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
     // map upload API
 public:
@@ -155,8 +157,8 @@ private:
     // single cache access, Frame-side API
 private:
     friend class Frame;
-    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
-    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
+    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, const graphics_pass_info& gp, const framebuffer_info& fb);
+    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp);
 
     phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
     phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);

@@ -6,13 +6,14 @@
 
 #include <phantasm-renderer/GraphicsPass.hh>
 #include <phantasm-renderer/fwd.hh>
+#include <phantasm-renderer/pipeline_builder.hh>
 
 namespace pr
 {
 class Framebuffer
 {
 public:
-    Framebuffer(Frame* parent) : mParent(parent) {}
+    Framebuffer(Frame* parent, framebuffer_info const& hashInfo) : mParent(parent), mHashInfo(hashInfo) {}
 
     Framebuffer(Framebuffer const&) = delete;
     Framebuffer(Framebuffer&& rhs) noexcept : mParent(rhs.mParent) { rhs.mParent = nullptr; }
@@ -33,14 +34,18 @@ public:
 
 public:
     // lvalue-qualified as Framebuffer has to stay alive
+
+    // from persisted PSO
     [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline.data._handle}; }
 
-    // TODO: cache-access version
+    // cache-access
+    [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
 
 private:
     void destroy();
 
     Frame* mParent;
+    framebuffer_info mHashInfo;
 };
 struct framebuffer_builder
 {

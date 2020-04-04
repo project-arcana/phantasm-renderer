@@ -5,6 +5,7 @@
 
 #include <type_traits>
 
+#include <clean-core/hash_combine.hh>
 #include <clean-core/new.hh>
 #include <clean-core/storage.hh>
 
@@ -15,11 +16,16 @@ struct murmur_hash
     uint64_t value[2];
 
     constexpr bool operator==(murmur_hash const& rhs) const noexcept { return value[0] == rhs.value[0] && value[1] == rhs.value[1]; }
+
+    [[nodiscard]] murmur_hash combine(murmur_hash rhs) const noexcept
+    {
+        return {{cc::hash_combine(value[0], rhs.value[0]), cc::hash_combine(value[1], rhs.value[1])}};
+    }
 };
 
 struct murmur_collapser
 {
-    constexpr size_t operator()(murmur_hash v) const noexcept { return v.value[0] ^ v.value[1]; }
+    constexpr size_t operator()(murmur_hash v) const noexcept { return cc::hash_combine(v.value[0], v.value[1]); }
 };
 
 /**

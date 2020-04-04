@@ -4,113 +4,228 @@
 
 #include <phantasm-hardware-interface/arguments.hh>
 
+#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/reflection/vertex_attributes.hh>
 #include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
-struct graphics_pass_info
+class Context;
+class Frame;
+
+struct graphics_pass_info_data
 {
-    phi::pipeline_config _graphics_config = {};
-    unsigned _vertex_size_bytes = 0;
-    bool _has_root_consts = false;
-    cc::capped_vector<phi::vertex_attribute_info, 8> _vertex_attributes;
-    cc::capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> _arg_shapes;
-    cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
+    phi::pipeline_config graphics_config = {};
+    unsigned vertex_size_bytes = 0;
+    bool has_root_consts = false;
+    phi::detail::trivial_capped_vector<phi::vertex_attribute_info, 8> vertex_attributes;
+    phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
+    phi::detail::trivial_capped_vector<murmur_hash, 5> shader_hashes;
 };
 
-struct pipeline_builder
+struct compute_pass_info_data
+{
+    bool has_root_consts = false;
+    phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
+    murmur_hash shader_hash;
+};
+
+struct graphics_pass_info
 {
 public:
-    pipeline_builder& add_shader(pr::shader_binary const& binary)
+    /// Add a shader argument specifiying the amount of elements
+    graphics_pass_info& arg(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
     {
+        _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
+        return *this;
+    }
+
+    /// Add root constants
+    graphics_pass_info& root_consts()
+    {
+        _storage.get().has_root_consts = true;
+        return *this;
+    }
+
+    /// Set vertex size and attributes from data
+    graphics_pass_info& vertex(unsigned size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
+    {
+        _storage.get().vertex_size_bytes = size_bytes;
+
+        auto& attrs = _storage.get().vertex_attributes;
+        attrs.clear();
+
+        for (auto const& attr : attributes)
+            attrs.push_back(attr);
+
+        return *this;
+    }
+
+    /// Set vertex size and attributes from reflection of VertT
+    template <class VertT>
+    graphics_pass_info& vertex()
+    {
+        return vertex(sizeof(VertT), get_vertex_attributes<VertT>());
+    }
+
+    /// Add a shader
+    graphics_pass_info& shader(pr::shader_binary const& binary)
+    {
+        _storage.get().shader_hashes.push_back(binary.data._hash);
         _shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
         return *this;
     }
 
-    pipeline_builder& add_root_constants()
-    {
-        _has_root_consts = true;
-        return *this;
-    }
-
-    pipeline_builder& add_argument_shape(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
-    {
-        _arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
-        return *this;
-    }
-
-    pipeline_builder& set_config(phi::pipeline_config const& config)
+    /// Set the pipeline config
+    graphics_pass_info& config(phi::pipeline_config const& config)
     {
         // this could also have finegrained setters for each option
-        _graphics_config = config;
+        _storage.get().graphics_config = config;
         return *this;
     }
 
-    // vertex
-
-    pipeline_builder& set_vertex_format(unsigned size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
+private:
+    friend class Frame;
+    [[nodiscard]] murmur_hash get_hash() const
     {
-        _vertex_size_bytes = size_bytes;
-        _vertex_attributes = attributes;
-        return *this;
+        murmur_hash res;
+        _storage.get_murmur(res);
+        return res;
     }
-
-    template <class VertT>
-    pipeline_builder& set_vertex_format()
-    {
-        _vertex_size_bytes = sizeof(VertT);
-        auto const attrs = get_vertex_attributes<VertT>();
-        _vertex_attributes.resize(attrs.size());
-        cc::copy(attrs, _vertex_attributes);
-        return *this;
-    }
-
-    // framebuffer
-
-    pipeline_builder& add_render_target(pr::format format)
-    {
-        _framebuffer_config.add_render_target(format);
-        return *this;
-    }
-
-    pipeline_builder& add_render_target(phi::render_target_config config)
-    {
-        _framebuffer_config.render_targets.push_back(config);
-        return *this;
-    }
-
-    pipeline_builder& set_framebuffer_logic_op(phi::blend_logic_op op)
-    {
-        _framebuffer_config.logic_op = op;
-        _framebuffer_config.logic_op_enable = true;
-        return *this;
-    }
-
-    pipeline_builder& add_depth_target(pr::format format)
-    {
-        _framebuffer_config.add_depth_target(format);
-        return *this;
-    }
-
-    // finalize
-
-    [[nodiscard]] compute_pipeline_state make_compute();
-    [[nodiscard]] graphics_pipeline_state make_graphics();
 
 private:
     friend class Context;
-    pipeline_builder(Context* parent) : _parent(parent) {}
-    Context* const _parent;
-
-    phi::pipeline_config _graphics_config = {};
-    unsigned _vertex_size_bytes = 0;
-    bool _has_root_consts = false;
-    cc::capped_vector<phi::vertex_attribute_info, 8> _vertex_attributes;
-    cc::capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> _arg_shapes;
+    hashable_storage<graphics_pass_info_data> _storage;
     cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
-    phi::arg::framebuffer_config _framebuffer_config;
 };
 
+struct compute_pass_info
+{
+public:
+    /// Add a shader argument specifiying the amount of elements
+    compute_pass_info& arg(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
+    {
+        _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
+        return *this;
+    }
+
+    /// Add root constants
+    compute_pass_info& root_consts()
+    {
+        _storage.get().has_root_consts = true;
+        return *this;
+    }
+
+    /// Add a shader
+    compute_pass_info& shader(pr::shader_binary const& binary)
+    {
+        _storage.get().shader_hash = binary.data._hash;
+        _shader = phi::arg::shader_binary{binary.data._data, binary.data._size};
+        return *this;
+    }
+
+private:
+    friend class Frame;
+    [[nodiscard]] murmur_hash get_hash() const
+    {
+        murmur_hash res;
+        _storage.get_murmur(res);
+        return res;
+    }
+
+private:
+    friend class Context;
+    hashable_storage<compute_pass_info_data> _storage;
+    phi::arg::shader_binary _shader;
+};
+
+template <class VertT, class... ShaderTs>
+[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+{
+    graphics_pass_info res;
+    res.config(config);
+    res.vertex<VertT>();
+    (res.shader(shaders), ...);
+    return res;
+}
+
+template <class... ShaderTs>
+[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+{
+    graphics_pass_info res;
+    res.config(config);
+    (res.shader(shaders), ...);
+    return res;
+}
+
+template <class... ShaderTs>
+[[nodiscard]] graphics_pass_info graphics_pass(ShaderTs const&... shaders)
+{
+    graphics_pass_info res;
+    (res.shader(shaders), ...);
+    return res;
+}
+
+template <class... ShaderTs>
+[[nodiscard]] compute_pass_info compute_pass(ShaderTs const&... shaders)
+{
+    compute_pass_info res;
+    (res.shader(shaders), ...);
+    return res;
+}
+
+struct framebuffer_info
+{
+public:
+    /// Add a render target based on format only
+    framebuffer_info& target(pr::format format)
+    {
+        _storage.get().add_render_target(format);
+        return *this;
+    }
+
+    /// Add a render target with blend configuration
+    framebuffer_info& target(phi::render_target_config config)
+    {
+        _storage.get().render_targets.push_back(config);
+        return *this;
+    }
+
+    /// Set and enable the blend logic operation
+    framebuffer_info& logic_op(phi::blend_logic_op op)
+    {
+        _storage.get().logic_op = op;
+        _storage.get().logic_op_enable = true;
+        return *this;
+    }
+
+    /// Add a depth render target based on format only
+    framebuffer_info& depth(pr::format format)
+    {
+        _storage.get().add_depth_target(format);
+        return *this;
+    }
+
+private:
+    friend class Frame;
+    [[nodiscard]] murmur_hash get_hash() const
+    {
+        murmur_hash res;
+        _storage.get_murmur(res);
+        return res;
+    }
+
+private:
+    friend class Context;
+    hashable_storage<phi::arg::framebuffer_config> _storage;
+};
+
+template <class... FormatTs>
+[[nodiscard]] framebuffer_info framebuffer(FormatTs... rt_formats)
+{
+    framebuffer_info res;
+    (res.target(rt_formats), ...);
+    return res;
+}
 }

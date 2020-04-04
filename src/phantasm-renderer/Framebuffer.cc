@@ -4,6 +4,11 @@
 
 pr::Framebuffer::~Framebuffer() { destroy(); }
 
+pr::GraphicsPass pr::Framebuffer::make_pass(const pr::graphics_pass_info& gp) &
+{
+    return {mParent, mParent->framebufferAcquireGraphicsPSO(gp, mHashInfo)};
+}
+
 void pr::Framebuffer::destroy()
 {
     if (mParent)

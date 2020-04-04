@@ -77,17 +77,12 @@ void Frame::resolve(const render_target& src, const render_target& dest)
 
 void Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
 {
-    auto const is_depth = phi::is_depth_format(rt._info.format);
-    auto const target_state = is_depth ? phi::resource_state::depth_write : phi::resource_state::render_target;
-
     bcmd.viewport.width = cc::min(bcmd.viewport.width, rt._info.width);
     bcmd.viewport.height = cc::min(bcmd.viewport.height, rt._info.height);
 
-    transition(rt._resource.data.handle, target_state);
-
-    if (is_depth)
+    if (phi::is_depth_format(rt._info.format))
     {
-        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to Frame::render_to");
+        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to Frame::make_framebuffer");
         bcmd.set_2d_depth_stencil(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::clear, rt._info.num_samples > 1);
     }
     else
@@ -158,13 +153,33 @@ Framebuffer Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
 
     flushPendingTransitions();
     mWriter.add_command(bcmd);
-    return {this};
+
+
+    // construct framebuffer info for future cache access inside of Framebuffer
+    framebuffer_info fb_info;
+
+    for (auto const& target : bcmd.render_targets)
+        fb_info.target(target.rv.pixel_format);
+
+    if (bcmd.depth_target.rv.resource.is_valid())
+        fb_info.depth(bcmd.depth_target.rv.pixel_format);
+
+    return {this, fb_info};
 }
 
 void Frame::framebufferOnJoin(const Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
     mWriter.add_command(ecmd);
+}
+
+phi::handle::pipeline_state Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb)
+{
+    auto const gp_hash = gp.get_hash();
+    auto const combined_hash = gp_hash.combine(fb.get_hash());
+    auto const res = mCtx->acquire_graphics_pso(combined_hash, gp, fb);
+    mFreeables.push_back({freeable_cached_obj::graphics_pso, combined_hash});
+    return res;
 }
 
 void Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }

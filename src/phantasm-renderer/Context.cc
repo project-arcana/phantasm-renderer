@@ -118,6 +118,20 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     return res;
 }
 
+graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
+{
+    auto const& gp = gp_wrap._storage.get();
+    return graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(), gp.arg_shapes,
+                                                                   gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}},
+                                   this};
+}
+
+compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
+{
+    auto const& cp = cp_wrap._storage.get();
+    return compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
+}
+
 
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
@@ -343,26 +357,26 @@ void Context::freeCachedBuffer(const buffer_info& info, resource&& res)
     mCacheBuffers.free(cc::move(res), info, mGpuEpochTracker.get_current_epoch_cpu());
 }
 
-phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, const hashable_storage<pipeline_state_info>& info_storage, phi::arg::graphics_shaders shaders)
+phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
     phi::handle::pipeline_state pso = mCacheGraphicsPSOs.acquire(hash);
     if (!pso.is_valid())
     {
-        pipeline_state_info const& info = info_storage.get();
-        pso = mBackend->createPipelineState({info.vertex_attributes, info.vertex_size_bytes}, info.framebuffer_config, info.arg_shapes,
-                                            info.has_root_consts, shaders, info.graphics_config);
+        graphics_pass_info_data const& info = gp._storage.get();
+        pso = mBackend->createPipelineState({info.vertex_attributes, info.vertex_size_bytes}, fb._storage.get(), info.arg_shapes,
+                                            info.has_root_consts, gp._shaders, info.graphics_config);
         mCacheGraphicsPSOs.insert(pso, hash);
     }
     return pso;
 }
 
-phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const hashable_storage<pipeline_state_info>& info_storage, phi::arg::shader_binary shader)
+phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp)
 {
     phi::handle::pipeline_state pso = mCacheComputePSOs.acquire(hash);
     if (!pso.is_valid())
     {
-        pipeline_state_info const& info = info_storage.get();
-        pso = mBackend->createComputePipelineState(info.arg_shapes, shader, info.has_root_consts);
+        compute_pass_info_data const& info = cp._storage.get();
+        pso = mBackend->createComputePipelineState(info.arg_shapes, cp._shader, info.has_root_consts);
         mCacheComputePSOs.insert(pso, hash);
     }
     return pso;
