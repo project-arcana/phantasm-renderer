@@ -10,6 +10,16 @@
 
 namespace pr
 {
+struct graphics_pass_info
+{
+    phi::pipeline_config _graphics_config = {};
+    unsigned _vertex_size_bytes = 0;
+    bool _has_root_consts = false;
+    cc::capped_vector<phi::vertex_attribute_info, 8> _vertex_attributes;
+    cc::capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> _arg_shapes;
+    cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
+};
+
 struct pipeline_builder
 {
 public:

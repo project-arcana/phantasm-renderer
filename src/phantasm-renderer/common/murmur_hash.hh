@@ -57,7 +57,7 @@ public:
 
     // with the established guarantees, hashing and comparison are trivial
     void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
-    bool operator==(hashable_storage<T> const& rhs) const noexcept { std::memcmp(&_storage.value, &rhs._storage.value, sizeof(T)) == 0; }
+    bool operator==(hashable_storage<T> const& rhs) const noexcept { return std::memcmp(&_storage.value, &rhs._storage.value, sizeof(T)) == 0; }
 
 private:
     cc::storage_for<T> _storage;

@@ -8,6 +8,8 @@
 
 namespace pr
 {
+class Context;
+
 /**
  * A CompiledFrame is a compiled command list ready for submission
  */
