@@ -35,7 +35,7 @@ public:
     void set_constant_buffer_offset(unsigned offset);
 
     template <class T>
-    void write_root_constants(T const& val)
+    void write_constants(T const& val)
     {
         mCmd.write_root_constants<T>(val);
     }

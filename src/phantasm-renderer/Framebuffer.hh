@@ -74,7 +74,7 @@ public:
     }
 
     /// add a depth rendertarget to the framebuffer that clears to a specified value
-    [[nodiscard]] framebuffer_builder& clear_target(render_target const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0)
+    [[nodiscard]] framebuffer_builder& clear_depth(render_target const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0)
     {
         CC_ASSERT(phi::is_depth_format(rt._info.format) && "invoked clear_target depth variant with a non-depth render target");
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};

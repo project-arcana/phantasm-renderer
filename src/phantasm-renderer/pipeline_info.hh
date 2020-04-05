@@ -27,7 +27,7 @@ public:
     }
 
     /// Add root constants
-    graphics_pass_info& root_consts()
+    graphics_pass_info& constants()
     {
         _storage.get().has_root_consts = true;
         return *this;
@@ -96,7 +96,7 @@ public:
     }
 
     /// Add root constants
-    compute_pass_info& root_consts()
+    compute_pass_info& constants()
     {
         _storage.get().has_root_consts = true;
         return *this;
