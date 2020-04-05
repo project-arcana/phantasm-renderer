@@ -8,22 +8,22 @@
 
 using namespace pr;
 
-void Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res._resource.data.handle, target, dependency);
 }
 
-void Frame::transition(const image& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const image& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res._resource.data.handle, target, dependency);
 }
 
-void Frame::transition(const render_target& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const render_target& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res._resource.data.handle, target, dependency);
 }
 
-void Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset)
+void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset)
 {
     transition(src, phi::resource_state::copy_src);
     transition(dest, phi::resource_state::copy_dest);
@@ -34,7 +34,7 @@ void Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_
     mWriter.add_command(ccmd);
 }
 
-void Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
+void raii::Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
 {
     transition(src, phi::resource_state::copy_src);
     transition(dest, phi::resource_state::copy_dest);
@@ -45,44 +45,44 @@ void Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsign
     mWriter.add_command(ccmd);
 }
 
-void Frame::copy(const image& src, const image& dest)
+void raii::Frame::copy(const image& src, const image& dest)
 {
     copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::copy(const image& src, const render_target& dest)
+void raii::Frame::copy(const image& src, const render_target& dest)
 {
     copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::copy(const render_target& src, const image& dest)
+void raii::Frame::copy(const render_target& src, const image& dest)
 {
     copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::copy(const render_target& src, const render_target& dest)
+void raii::Frame::copy(const render_target& src, const render_target& dest)
 {
     copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::resolve(const render_target& src, const image& dest)
+void raii::Frame::resolve(const render_target& src, const image& dest)
 {
     resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::resolve(const render_target& src, const render_target& dest)
+void raii::Frame::resolve(const render_target& src, const render_target& dest)
 {
     resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
 }
 
-void Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
+void raii::Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
 {
     bcmd.viewport.width = cc::min(bcmd.viewport.width, rt._info.width);
     bcmd.viewport.height = cc::min(bcmd.viewport.height, rt._info.height);
 
     if (phi::is_depth_format(rt._info.format))
     {
-        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to Frame::make_framebuffer");
+        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to raii::Frame::make_framebuffer");
         bcmd.set_2d_depth_stencil(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::clear, rt._info.num_samples > 1);
     }
     else
@@ -91,7 +91,7 @@ void Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_targ
     }
 }
 
-void Frame::transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
         flushPendingTransitions();
@@ -99,7 +99,7 @@ void Frame::transition(phi::handle::resource res, phi::resource_state target, ph
     mPendingTransitionCommand.add(res, target, dependency);
 }
 
-void Frame::flushPendingTransitions()
+void raii::Frame::flushPendingTransitions()
 {
     if (!mPendingTransitionCommand.transitions.empty())
     {
@@ -108,7 +108,7 @@ void Frame::flushPendingTransitions()
     }
 }
 
-void Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
 {
     transition(src, phi::resource_state::copy_src);
     transition(dest, phi::resource_state::copy_dest);
@@ -119,7 +119,7 @@ void Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource
     mWriter.add_command(ccmd);
 }
 
-void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
 {
     transition(src, phi::resource_state::resolve_src);
     transition(dest, phi::resource_state::resolve_dest);
@@ -130,7 +130,7 @@ void Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resou
     mWriter.add_command(ccmd);
 }
 
-void Frame::internalDestroy()
+void raii::Frame::internalDestroy()
 {
     if (mCtx != nullptr)
     {
@@ -139,7 +139,7 @@ void Frame::internalDestroy()
     }
 }
 
-Framebuffer Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
+raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
 {
     for (auto const& rt : bcmd.render_targets)
     {
@@ -167,13 +167,13 @@ Framebuffer Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
     return {this, fb_info};
 }
 
-void Frame::framebufferOnJoin(const Framebuffer&)
+void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
     mWriter.add_command(ecmd);
 }
 
-phi::handle::pipeline_state Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb)
+phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb)
 {
     auto const gp_hash = gp.get_hash();
     auto const combined_hash = gp_hash.combine(fb.get_hash());
@@ -182,11 +182,11 @@ phi::handle::pipeline_state Frame::framebufferAcquireGraphicsPSO(const graphics_
     return res;
 }
 
-void Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
+void raii::Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
 
-void Frame::passOnDispatch(const phi::cmd::dispatch& dcmd) { mWriter.add_command(dcmd); }
+void raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd) { mWriter.add_command(dcmd); }
 
-phi::handle::shader_view Frame::passAcquireGraphicsShaderView(const argument& arg)
+phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(const argument& arg)
 {
     murmur_hash hash;
     arg._info.get_murmur(hash);
@@ -195,7 +195,7 @@ phi::handle::shader_view Frame::passAcquireGraphicsShaderView(const argument& ar
     return res;
 }
 
-phi::handle::shader_view Frame::passAcquireComputeShaderView(const argument& arg)
+phi::handle::shader_view raii::Frame::passAcquireComputeShaderView(const argument& arg)
 {
     murmur_hash hash;
     arg._info.get_murmur(hash);
@@ -204,4 +204,4 @@ phi::handle::shader_view Frame::passAcquireComputeShaderView(const argument& arg
     return res;
 }
 
-void Frame::finalize() { flushPendingTransitions(); }
+void raii::Frame::finalize() { flushPendingTransitions(); }

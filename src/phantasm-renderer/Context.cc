@@ -38,7 +38,7 @@ phi::sc::target stage_to_sc_target(phi::shader_stage stage)
 
 }
 
-Frame Context::make_frame(size_t initial_size)
+raii::Frame Context::make_frame(size_t initial_size)
 {
     // TODO: pool the memory blocks for frames
     return {this, initial_size};
@@ -167,7 +167,7 @@ cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride, bool al
 }
 
 
-CompiledFrame Context::compile(Frame& frame)
+CompiledFrame Context::compile(raii::Frame& frame)
 {
     frame.finalize();
 
@@ -183,7 +183,7 @@ CompiledFrame Context::compile(Frame& frame)
     }
 }
 
-void Context::submit(Frame& frame) { submit(compile(frame)); }
+void Context::submit(raii::Frame& frame) { submit(compile(frame)); }
 
 void Context::submit(CompiledFrame&& frame)
 {

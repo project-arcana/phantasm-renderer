@@ -8,6 +8,7 @@
 
 #include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/reflection/vertex_attributes.hh>
 #include <phantasm-renderer/resource_types.hh>
 
@@ -71,7 +72,7 @@ public:
     }
 
 private:
-    friend class Frame;
+    friend class raii::Frame;
     [[nodiscard]] murmur_hash get_hash() const
     {
         murmur_hash res;
@@ -193,7 +194,7 @@ public:
     }
 
 private:
-    friend class Frame;
+    friend class raii::Frame;
     [[nodiscard]] murmur_hash get_hash() const
     {
         murmur_hash res;

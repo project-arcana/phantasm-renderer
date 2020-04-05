@@ -33,7 +33,7 @@ class Context
 {
     // creation API
 public:
-    [[nodiscard]] Frame make_frame(size_t initial_size = 2048);
+    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
 
     [[nodiscard]] image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
     [[nodiscard]] image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
@@ -77,9 +77,9 @@ public:
 
     // consumption API
 public:
-    [[nodiscard]] CompiledFrame compile(Frame& frame);
+    [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
 
-    void submit(Frame& frame);
+    void submit(raii::Frame& frame);
     void submit(CompiledFrame&& frame);
     void discard(CompiledFrame&& frame);
 
@@ -133,7 +133,7 @@ private:
 private:
     friend struct resource_data;
     friend struct shader_binary_data;
-    friend struct baked_argument_data;
+    friend struct prebuilt_argument_data;
     friend struct pipeline_state_abstract;
     void freeResource(phi::handle::resource res);
     void freeShaderBinary(IDxcBlob* blob);
@@ -156,7 +156,7 @@ private:
 private:
     // single cache access, Frame-side API
 private:
-    friend class Frame;
+    friend class raii::Frame;
     phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, const graphics_pass_info& gp, const framebuffer_info& fb);
     phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp);
 

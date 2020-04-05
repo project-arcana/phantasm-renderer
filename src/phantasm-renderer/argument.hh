@@ -8,6 +8,7 @@
 #include <phantasm-renderer/common/state_info.hh>
 
 #include <phantasm-renderer/resource_types.hh>
+#include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
@@ -39,11 +40,11 @@ private:
     static void populate_uav(phi::resource_view& new_rv, pr::image const& img);
 
 private:
-    friend class Frame;
+    friend class raii::Frame;
     hashable_storage<shader_view_info> _info;
 };
 
-struct baked_argument_data
+struct prebuilt_argument_data
 {
     phi::handle::shader_view _sv = phi::handle::null_shader_view;
     phi::handle::resource _cbv = phi::handle::null_resource;
@@ -51,7 +52,7 @@ struct baked_argument_data
     void destroy(pr::Context* ctx);
 };
 
-using baked_argument = raii_handle<baked_argument_data>;
+using prebuilt_argument = raii_handle<prebuilt_argument_data>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
 struct argument_builder
@@ -121,8 +122,8 @@ public:
     }
 
     // finalize
-    [[nodiscard]] baked_argument make_graphics();
-    [[nodiscard]] baked_argument make_compute();
+    [[nodiscard]] prebuilt_argument make_graphics();
+    [[nodiscard]] prebuilt_argument make_compute();
 
 public:
     friend class Context;

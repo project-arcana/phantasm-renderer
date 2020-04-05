@@ -43,13 +43,17 @@ using compute_pipeline_state = raii_handle<compute_pipeline_state_data>;
 
 // shader arguments
 struct argument;
-struct baked_argument_data;
-using baked_argument = raii_handle<baked_argument_data>;
+struct prebuilt_argument_data;
+using prebuilt_argument = raii_handle<prebuilt_argument_data>;
 
 // RAII frame chain
+namespace raii
+{
 class Frame;
-class CompiledFrame;
 class Framebuffer;
 class GraphicsPass;
 class ComputePass;
+}
+
+class CompiledFrame;
 }

@@ -8,7 +8,7 @@
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/pipeline_info.hh>
 
-namespace pr
+namespace pr::raii
 {
 class Framebuffer
 {
@@ -61,6 +61,7 @@ public:
         {
             _cmd.add_2d_rt(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::load, rt._info.num_samples > 1);
         }
+        adjust_viewport(rt);
         return *this;
     }
 
@@ -70,6 +71,7 @@ public:
         CC_ASSERT(!phi::is_depth_format(rt._info.format) && "invoked clear_target color variant with a depth render target");
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
         _cmd.render_targets.back().rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
+        adjust_viewport(rt);
         return *this;
     }
 
@@ -79,6 +81,7 @@ public:
         CC_ASSERT(phi::is_depth_format(rt._info.format) && "invoked clear_target depth variant with a non-depth render target");
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};
         _cmd.depth_target.rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
+        adjust_viewport(rt);
         return *this;
     }
 
@@ -98,7 +101,7 @@ public:
 
 private:
     friend class Frame;
-    framebuffer_builder(Frame* parent) : _parent(parent) {}
+    framebuffer_builder(Frame* parent) : _parent(parent) { _cmd.viewport = {1 << 30, 1 << 30}; }
 
     void adjust_viewport(render_target const& rt)
     {

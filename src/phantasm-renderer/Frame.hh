@@ -16,7 +16,7 @@
 #include "ComputePass.hh"
 #include "Framebuffer.hh"
 
-namespace pr
+namespace pr::raii
 {
 class Frame
 {

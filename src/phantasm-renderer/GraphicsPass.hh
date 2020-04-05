@@ -6,7 +6,7 @@
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/resource_types.hh>
 
-namespace pr
+namespace pr::raii
 {
 class Frame;
 
@@ -67,8 +67,8 @@ private:
     void add_argument(argument const& arg);
     void add_argument(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
-    void add_argument(baked_argument const& sv);
-    void add_argument(baked_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
+    void add_argument(prebuilt_argument const& sv);
+    void add_argument(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
     void add_argument(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
