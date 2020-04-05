@@ -49,6 +49,8 @@ public:
     /// create a shader by compiling it live from text
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
+    [[nodiscard]] prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    [[nodiscard]] prebuilt_argument make_compute_argument(pr::argument const& arg);
     [[nodiscard]] argument_builder build_argument() { return {this}; }
 
     /// create a graphics pipeline state
@@ -77,14 +79,30 @@ public:
 
     // consumption API
 public:
+    /// compiles a frame (records the command list)
+    /// heavy operation, try to thread this if possible
     [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
 
-    void submit(raii::Frame& frame);
-    void submit(CompiledFrame&& frame);
+    /// submits a previously compiled frame to the GPU
+    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    gpu_epoch_t submit(CompiledFrame&& frame);
+
+    /// convenience to compile and submit a frame in a single call
+    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    gpu_epoch_t submit(raii::Frame& frame);
+
+    /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
 
+    /// flips backbuffers
     void present();
+
+    /// blocks on the CPU until all pending GPU operations are done
     void flush();
+
+    /// conditional flush
+    /// returns false if the epoch was reached already, or flushes and returns true
+    bool flush(gpu_epoch_t epoch);
 
     void on_window_resize(tg::isize2 size);
     [[nodiscard]] bool clear_backbuffer_resize();

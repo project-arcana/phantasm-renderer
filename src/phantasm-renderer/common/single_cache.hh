@@ -9,6 +9,7 @@
 #include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/common/murmur_hash.hh>
+#include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
@@ -47,7 +48,7 @@ public:
         elem.required_gpu_epoch = 0;
     }
 
-    void free(murmur_hash key, uint64_t current_cpu_epoch)
+    void free(murmur_hash key, gpu_epoch_t current_cpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
@@ -58,7 +59,7 @@ public:
     }
 
     template <class F>
-    void cull(uint64_t current_gpu_epoch, F&& destroy_func)
+    void cull(gpu_epoch_t current_gpu_epoch, F&& destroy_func)
     {
         auto lg = std::lock_guard(_mutex);
         auto const f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
@@ -80,8 +81,8 @@ private:
     struct map_element
     {
         ValT val = invalid_val;
-        uint32_t num_references = 0;     ///< the amount of CPU-side references to this element
-        uint64_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
+        uint32_t num_references = 0;        ///< the amount of CPU-side references to this element
+        gpu_epoch_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
     };
 
     cc::map<murmur_hash, map_element, murmur_collapser> _map;

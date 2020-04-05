@@ -45,10 +45,11 @@ phi::handle::event pr::gpu_epoch_tracker::get_event()
     return _backend->createEvent();
 }
 
-void pr::gpu_epoch_tracker::on_event_submission(phi::handle::event event)
+pr::gpu_epoch_t pr::gpu_epoch_tracker::on_event_submission(phi::handle::event event)
 {
     auto const lg = std::lock_guard(mMutex);
     CC_ASSERT(!_event_ring.full() && "event ring full");
     ++_current_epoch_cpu;
     _event_ring.enqueue({event, _current_epoch_cpu});
+    return _current_epoch_cpu;
 }

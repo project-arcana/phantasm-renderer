@@ -126,6 +126,18 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     return res;
 }
 
+prebuilt_argument Context::make_graphics_argument(const argument& arg)
+{
+    auto const& info = arg._info.get();
+    return {prebuilt_argument_data{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false), phi::handle::null_resource, 0}, this};
+}
+
+prebuilt_argument Context::make_compute_argument(const argument& arg)
+{
+    auto const& info = arg._info.get();
+    return {prebuilt_argument_data{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true), phi::handle::null_resource, 0}, this};
+}
+
 graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
 {
     auto const& gp = gp_wrap._storage.get();
@@ -183,21 +195,24 @@ CompiledFrame Context::compile(raii::Frame& frame)
     }
 }
 
-void Context::submit(raii::Frame& frame) { submit(compile(frame)); }
+gpu_epoch_t Context::submit(raii::Frame& frame) { return submit(compile(frame)); }
 
-void Context::submit(CompiledFrame&& frame)
+gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
+    gpu_epoch_t res = 0;
+
     if (frame.cmdlist.is_valid())
     {
         {
             auto const lg = std::lock_guard(mMutexSubmission);
             mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
         }
-        mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
+        res = mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
     }
 
     free_all(frame.freeables);
     frame.parent = nullptr;
+    return res;
 }
 
 void Context::discard(CompiledFrame&& frame)
@@ -214,6 +229,15 @@ void Context::discard(CompiledFrame&& frame)
 void Context::present() { mBackend->present(); }
 
 void Context::flush() { mBackend->flushGPU(); }
+
+bool Context::flush(gpu_epoch_t epoch)
+{
+    if (mGpuEpochTracker.get_current_epoch_gpu() >= epoch)
+        return false;
+
+    flush();
+    return true;
+}
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::end_capture() { return mBackend->endForcedDiagnosticCapture(); }
@@ -240,7 +264,7 @@ Context::Context(phi::window_handle const& window_handle) : mOwnsBackend(true)
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
-    mBackend = make_vulkan_backend(window_handle, cfg);
+    mBackend = make_d3d12_backend(window_handle, cfg);
     initialize();
 }
 

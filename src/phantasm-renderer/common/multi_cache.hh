@@ -6,6 +6,7 @@
 
 #include <phantasm-renderer/common/circular_buffer.hh>
 #include <phantasm-renderer/common/resource_info.hh>
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/resource_types.hh>
 
@@ -24,7 +25,7 @@ public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
-    [[nodiscard]] pr::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
+    [[nodiscard]] pr::resource acquire(KeyT const& key, gpu_epoch_t current_gpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
@@ -47,7 +48,7 @@ public:
 
     /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free(pr::resource&& val, KeyT const& key, uint64_t current_cpu_epoch)
+    void free(pr::resource&& val, KeyT const& key, gpu_epoch_t current_cpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
@@ -87,7 +88,7 @@ private:
     struct in_flight_val
     {
         pr::resource val;
-        uint64_t required_gpu_epoch;
+        gpu_epoch_t required_gpu_epoch;
     };
 
     struct map_element

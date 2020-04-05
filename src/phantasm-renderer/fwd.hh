@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace phi
 {
 struct backend_config;
@@ -10,6 +12,7 @@ class Backend;
 namespace pr
 {
 class Context;
+using gpu_epoch_t = uint64_t;
 
 // handle wrappers
 template <class T>

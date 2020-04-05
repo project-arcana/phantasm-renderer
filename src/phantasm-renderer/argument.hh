@@ -41,6 +41,7 @@ private:
 
 private:
     friend class raii::Frame;
+    friend class Context;
     hashable_storage<shader_view_info> _info;
 };
 
