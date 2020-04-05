@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include <clean-core/map.hh>
 
 #include <rich-log/log.hh>
@@ -12,6 +14,7 @@ namespace pr
 {
 // the single cache, key-value relation 1:1
 // used for PSOs, shader views
+// internally synchronized
 template <class ValT>
 struct single_cache
 {
@@ -24,6 +27,7 @@ public:
 
     [[nodiscard]] ValT acquire(murmur_hash key)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
         if (elem.val != invalid_val)
         {
@@ -35,6 +39,7 @@ public:
 
     void insert(ValT val, murmur_hash key)
     {
+        auto lg = std::lock_guard(_mutex);
         CC_ASSERT(val != invalid_val && "[single_cache] invalid value inserted");
         map_element& elem = _map[key];
         elem.val = val;
@@ -44,6 +49,7 @@ public:
 
     void free(murmur_hash key, uint64_t current_cpu_epoch)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
         CC_ASSERT(elem.val != invalid_val && "[single_cache] freed an element not previously inserted");
         CC_ASSERT(elem.num_references > 0 && "[single_cache] freed an element not previously acquired");
@@ -54,6 +60,7 @@ public:
     template <class F>
     void cull(uint64_t current_gpu_epoch, F&& destroy_func)
     {
+        auto lg = std::lock_guard(_mutex);
         auto const f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
 
         // TODO: go through section of the map and destroy element based on condition above
@@ -62,6 +69,7 @@ public:
     template <class F>
     void iterate_values(F&& func)
     {
+        auto lg = std::lock_guard(_mutex);
         for (auto const& [key, val] : _map)
         {
             func(val.val);
@@ -77,5 +85,6 @@ private:
     };
 
     cc::map<murmur_hash, map_element, murmur_collapser> _map;
+    std::mutex _mutex;
 };
 }

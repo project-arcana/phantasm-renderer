@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include <clean-core/map.hh>
 
 #include <phantasm-renderer/common/circular_buffer.hh>
@@ -11,6 +13,7 @@ namespace pr
 {
 // the multi cache, key-value relation 1:N
 // used for render targets, textures, buffers
+// internally synchronized
 template <class KeyT>
 struct multi_cache
 {
@@ -23,6 +26,7 @@ public:
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
     [[nodiscard]] pr::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
         if (!elem.in_flight_buffer.empty())
         {
@@ -45,6 +49,7 @@ public:
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
     void free(pr::resource&& val, KeyT const& key, uint64_t current_cpu_epoch)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
         elem.in_flight_buffer.enqueue({cc::move(val), current_cpu_epoch});
@@ -52,11 +57,16 @@ public:
 
     void cull()
     {
+        auto lg = std::lock_guard(_mutex);
         ++_current_gen;
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
-    void clear_all() { _map.clear(); }
+    void clear_all()
+    {
+        auto lg = std::lock_guard(_mutex);
+        _map.clear();
+    }
 
 private:
     map_element& access_element(KeyT const& key)
@@ -88,6 +98,7 @@ private:
 
     uint64_t _current_gen = 0;
     cc::map<KeyT, map_element, resource_info_hasher> _map;
+    std::mutex _mutex;
 };
 
 }

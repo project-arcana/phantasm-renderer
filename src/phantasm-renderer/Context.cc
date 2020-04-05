@@ -97,8 +97,16 @@ shader_binary Context::make_shader(const std::byte* data, size_t size, phi::shad
 
 shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
 {
-    auto const bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), stage_to_sc_target(stage),
-                                                    mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv);
+    phi::sc::binary bin;
+
+    auto const sc_target = stage_to_sc_target(stage);
+    auto const sc_output = mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv;
+
+    {
+        auto lg = std::lock_guard(mMutexShaderCompilation);
+        bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), sc_target, sc_output); // unsynced, mutex: compilation
+    }
+
 
     shader_binary res;
     res.data._stage = stage;
@@ -169,8 +177,8 @@ CompiledFrame Context::compile(Frame& frame)
     }
     else
     {
-        auto const event = mGpuEpochTracker.get_event();
-        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event);
+        auto const event = mGpuEpochTracker.get_event();                                             // intern. synced
+        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event); // intern. synced
         return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables));
     }
 }
@@ -183,10 +191,9 @@ void Context::submit(CompiledFrame&& frame)
     {
         {
             auto const lg = std::lock_guard(mMutexSubmission);
-            auto const cmdlist = frame.cmdlist;
-            mBackend->submit(cc::span{cmdlist});
+            mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
         }
-        mGpuEpochTracker.on_event_submission(frame.event);
+        mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
     }
 
     free_all(frame.freeables);
@@ -313,7 +320,10 @@ pr::resource Context::acquireBuffer(const buffer_info& info)
 
 void Context::freeResource(phi::handle::resource res) { mBackend->free(res); }
 
-void Context::freeShaderBinary(IDxcBlob* blob) { phi::sc::destroy_blob(blob); }
+void Context::freeShaderBinary(IDxcBlob* blob)
+{
+    phi::sc::destroy_blob(blob); // intern. synced
+}
 
 void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }
 
@@ -321,26 +331,36 @@ void Context::freePipelineState(phi::handle::pipeline_state ps) { mBackend->free
 
 Context::~Context()
 {
+    // grab all locks (dining philosophers does not apply, nothing else is allowed to contend here)
+    auto lg_sub = std::lock_guard(mMutexSubmission);
+    auto lg_comp = std::lock_guard(mMutexShaderCompilation);
+
+    // flush GPU
     mBackend->flushGPU();
 
+    // empty all caches
     mCacheGraphicsPSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
     mCacheComputePSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
     mCacheGraphicsSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
     mCacheComputeSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
 
-    mGpuEpochTracker.destroy();
-    mShaderCompiler.destroy();
-
     mCacheBuffers.clear_all();
     mCacheTextures.clear_all();
     mCacheRenderTargets.clear_all();
 
+    // destroy other components
+    mGpuEpochTracker.destroy();
+    mShaderCompiler.destroy();
+
+    // if onwing mBackend, destroy and free it
     if (mOwnsBackend)
     {
         mBackend->destroy();
         delete mBackend;
     }
 }
+
+uint64_t Context::acquireGuid() { return mResourceGUID.fetch_add(1); }
 
 void Context::freeCachedTarget(const render_target_info& info, pr::resource&& res)
 {
@@ -360,11 +380,14 @@ void Context::freeCachedBuffer(const buffer_info& info, resource&& res)
 phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
     phi::handle::pipeline_state pso = mCacheGraphicsPSOs.acquire(hash);
+
+
     if (!pso.is_valid())
     {
         graphics_pass_info_data const& info = gp._storage.get();
         pso = mBackend->createPipelineState({info.vertex_attributes, info.vertex_size_bytes}, fb._storage.get(), info.arg_shapes,
                                             info.has_root_consts, gp._shaders, info.graphics_config);
+
         mCacheGraphicsPSOs.insert(pso, hash);
     }
     return pso;

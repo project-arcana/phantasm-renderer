@@ -44,12 +44,16 @@ public:
     [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
+    /// create a shader from binary data
     [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
+    /// create a shader by compiling it live from text
     [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
     [[nodiscard]] argument_builder build_argument() { return {this}; }
 
+    /// create a graphics pipeline state
     [[nodiscard]] graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
+    /// create a compute pipeline state
     [[nodiscard]] compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
     // map upload API
@@ -110,7 +114,7 @@ private:
 
     // internal
 private:
-    [[nodiscard]] uint64_t acquireGuid() { return mResourceGUID.fetch_add(1); }
+    [[nodiscard]] uint64_t acquireGuid();
 
 private:
     void initialize();
@@ -172,6 +176,7 @@ private:
     bool const mOwnsBackend;
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
+    std::mutex mMutexShaderCompilation;
 
     // components
     gpu_epoch_tracker mGpuEpochTracker;
