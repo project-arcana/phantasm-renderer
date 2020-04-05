@@ -6,7 +6,7 @@
 
 #include <phantasm-renderer/GraphicsPass.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/pipeline_builder.hh>
+#include <phantasm-renderer/pipeline_info.hh>
 
 namespace pr
 {

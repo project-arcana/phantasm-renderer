@@ -4,7 +4,9 @@
 
 #include <phantasm-hardware-interface/arguments.hh>
 
-#include <phantasm-renderer/common/murmur_hash.hh>
+#include <phantasm-renderer/common/hashable_storage.hh>
+
+#include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/format.hh>
 #include <phantasm-renderer/reflection/vertex_attributes.hh>
 #include <phantasm-renderer/resource_types.hh>
@@ -13,23 +15,6 @@ namespace pr
 {
 class Context;
 class Frame;
-
-struct graphics_pass_info_data
-{
-    phi::pipeline_config graphics_config = {};
-    unsigned vertex_size_bytes = 0;
-    bool has_root_consts = false;
-    phi::detail::trivial_capped_vector<phi::vertex_attribute_info, 8> vertex_attributes;
-    phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
-    phi::detail::trivial_capped_vector<murmur_hash, 5> shader_hashes;
-};
-
-struct compute_pass_info_data
-{
-    bool has_root_consts = false;
-    phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
-    murmur_hash shader_hash;
-};
 
 struct graphics_pass_info
 {

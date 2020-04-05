@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <type_traits>
 
 #include <clean-core/move.hh>
 #include <clean-core/new.hh>

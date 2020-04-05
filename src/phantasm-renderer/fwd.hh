@@ -1,7 +1,5 @@
 #pragma once
 
-#include "format.hh"
-
 namespace phi
 {
 struct backend_config;
@@ -11,15 +9,47 @@ class Backend;
 
 namespace pr
 {
-class Device;
 class Context;
-class Queue;
 
+// handle wrappers
+template <class T>
+struct raii_handle;
+template <class T>
+struct cached_handle;
+
+// resources
+struct resource_data;
+using resource = raii_handle<resource_data>;
+
+struct buffer;
+struct image;
+struct render_target;
+
+using cached_buffer = cached_handle<buffer>;
+using cached_target = cached_handle<render_target>;
+
+// info argument objects
+struct graphics_pass_info;
+struct compute_pass_info;
+struct framebuffer_info;
+
+// shaders and pipeline states
+struct shader_binary_data;
+struct graphics_pipeline_state_data;
+struct compute_pipeline_state_data;
+using shader_binary = raii_handle<shader_binary_data>;
+using graphics_pipeline_state = raii_handle<graphics_pipeline_state_data>;
+using compute_pipeline_state = raii_handle<compute_pipeline_state_data>;
+
+// shader arguments
+struct argument;
+struct baked_argument_data;
+using baked_argument = raii_handle<baked_argument_data>;
+
+// RAII frame chain
 class Frame;
 class CompiledFrame;
-
 class Framebuffer;
 class GraphicsPass;
-
-struct primitive_pipeline_config;
+class ComputePass;
 }

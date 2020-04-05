@@ -1,5 +1,7 @@
 #include "argument.hh"
 
+#include <phantasm-hardware-interface/Backend.hh>
+
 #include "Context.hh"
 
 void pr::baked_argument_data::destroy(pr::Context* ctx) { ctx->freeShaderView(_sv); }

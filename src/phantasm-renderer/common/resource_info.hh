@@ -4,8 +4,6 @@
 
 #include <phantasm-hardware-interface/types.hh>
 
-#include <typed-geometry/types/size.hh>
-
 namespace pr
 {
 struct render_target_info

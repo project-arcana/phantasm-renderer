@@ -8,6 +8,7 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include <phantasm-hardware-interface/fwd.hh>
 #include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
 
@@ -15,14 +16,11 @@
 
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
-#include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/common/single_cache.hh>
-#include <phantasm-renderer/common/state_info.hh>
-#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/pipeline_builder.hh>
-#include <phantasm-renderer/resource_types.hh>
+#include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
@@ -72,8 +70,6 @@ public:
 
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-
-    [[nodiscard]] cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
 
     // consumption API
 public:

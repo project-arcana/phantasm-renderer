@@ -1,9 +1,6 @@
 #pragma once
 
 #include <clean-core/map.hh>
-#include <clean-core/utility.hh>
-
-#include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/common/circular_buffer.hh>
 #include <phantasm-renderer/common/resource_info.hh>

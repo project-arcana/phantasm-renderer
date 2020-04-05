@@ -40,8 +40,8 @@ void Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsign
     transition(dest, phi::resource_state::copy_dest);
     flushPendingTransitions();
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src._resource.data.handle, dest._resource.data.handle, dest._info.width / (1 + dest_mip_index),
-              dest._info.height / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
+    ccmd.init(src._resource.data.handle, dest._resource.data.handle, unsigned(dest._info.width) / (1 + dest_mip_index),
+              unsigned(dest._info.height) / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
     mWriter.add_command(ccmd);
 }
 
