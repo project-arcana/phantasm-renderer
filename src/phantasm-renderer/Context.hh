@@ -31,18 +31,21 @@ namespace pr
  */
 class Context
 {
-    // creation API
 public:
+    //
+    // creation API
+    //
+
     [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
 
-    [[nodiscard]] image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] image make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
 
-    [[nodiscard]] render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
-    [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
     /// create a shader from binary data
     [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
@@ -58,8 +61,19 @@ public:
     /// create a compute pipeline state
     [[nodiscard]] compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
+    //
+    // cache lookup API
+    //
+
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+
+    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+
+    //
     // map upload API
-public:
+    //
+
     void write_buffer(buffer const& buffer, void const* data, size_t size, size_t offset = 0);
 
     template <class T>
@@ -70,15 +84,10 @@ public:
         write_buffer(buffer, &data, sizeof(T));
     }
 
-    // cache lookup API
-public:
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
-
-    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-
+    //
     // consumption API
-public:
+    //
+
     /// compiles a frame (records the command list)
     /// heavy operation, try to thread this if possible
     [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
@@ -116,8 +125,11 @@ public:
 
     phi::Backend& get_backend() { return *mBackend; }
 
-    // ctors
 public:
+    //
+    // ctors, init and destroy
+    //
+
     Context() = default;
     /// constructs a context with a default backend (usually vulkan)
     Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
@@ -146,19 +158,19 @@ private:
     void internalInitialize();
 
     // creation
-    pr::resource createRenderTarget(render_target_info const& info);
-    pr::resource createTexture(texture_info const& info);
-    pr::resource createBuffer(buffer_info const& info);
+    render_target createRenderTarget(render_target_info const& info);
+    texture createTexture(texture_info const& info);
+    buffer createBuffer(buffer_info const& info);
 
     // multi cache acquire
-    pr::resource acquireRenderTarget(render_target_info const& info);
-    pr::resource acquireTexture(texture_info const& info);
-    pr::resource acquireBuffer(buffer_info const& info);
+    render_target acquireRenderTarget(render_target_info const& info);
+    texture acquireTexture(texture_info const& info);
+    buffer acquireBuffer(buffer_info const& info);
 
     // internal RAII dtor API
 private:
     friend struct resource_data;
-    friend struct shader_binary_data;
+    friend struct shader_binary_pod;
     friend struct prebuilt_argument_data;
     friend struct pipeline_state_abstract;
     void freeResource(phi::handle::resource res);
@@ -168,9 +180,10 @@ private:
 
     friend struct buffer;
     friend struct render_target;
-    void freeCachedTarget(render_target_info const& info, resource&& res);
-    void freeCachedTexture(texture_info const& info, pr::resource&& res);
-    void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
+    friend struct texture;
+    void freeCachedTarget(render_target_info const& info, raw_resource res);
+    void freeCachedTexture(texture_info const& info, raw_resource res);
+    void freeCachedBuffer(buffer_info const& info, raw_resource res);
 
     // internal builder API
 private:

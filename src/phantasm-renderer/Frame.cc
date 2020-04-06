@@ -14,17 +14,17 @@ raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return
 
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    transition(res._resource.data.handle, target, dependency);
+    transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const image& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const texture &res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    transition(res._resource.data.handle, target, dependency);
+    transition(res.res.handle, target, dependency);
 }
 
 void raii::Frame::transition(const render_target& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    transition(res._resource.data.handle, target, dependency);
+    transition(res.res.handle, target, dependency);
 }
 
 void raii::Frame::transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency)
@@ -42,64 +42,64 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
     flushPendingTransitions();
 
     phi::cmd::copy_buffer ccmd;
-    ccmd.init(src._resource.data.handle, dest._resource.data.handle, cc::min(src._info.size_bytes, dest._info.size_bytes), src_offset, dest_offset);
+    ccmd.init(src.res.handle, dest.res.handle, cc::min(src.info.size_bytes, dest.info.size_bytes), src_offset, dest_offset);
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const buffer& src, const image& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
+void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
 {
     transition(src, phi::resource_state::copy_src);
     transition(dest, phi::resource_state::copy_dest);
     flushPendingTransitions();
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src._resource.data.handle, dest._resource.data.handle, unsigned(dest._info.width) / (1 + dest_mip_index),
-              unsigned(dest._info.height) / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
+    ccmd.init(src.res.handle, dest.res.handle, unsigned(dest.info.width) / (1 + dest_mip_index),
+              unsigned(dest.info.height) / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const image& src, const image& dest)
+void raii::Frame::copy(const texture& src, const texture& dest)
 {
-    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
-void raii::Frame::copy(const image& src, const render_target& dest)
+void raii::Frame::copy(const texture& src, const render_target& dest)
 {
-    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
-void raii::Frame::copy(const render_target& src, const image& dest)
+void raii::Frame::copy(const render_target& src, const texture& dest)
 {
-    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
 void raii::Frame::copy(const render_target& src, const render_target& dest)
 {
-    copyTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
-void raii::Frame::resolve(const render_target& src, const image& dest)
+void raii::Frame::resolve(const render_target& src, const texture &dest)
 {
-    resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
 void raii::Frame::resolve(const render_target& src, const render_target& dest)
 {
-    resolveTextureInternal(src._resource.data.handle, dest._resource.data.handle, dest._info.width, dest._info.height);
+    resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
 void raii::Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
 {
-    bcmd.viewport.width = cc::min(bcmd.viewport.width, rt._info.width);
-    bcmd.viewport.height = cc::min(bcmd.viewport.height, rt._info.height);
+    bcmd.viewport.width = cc::min(bcmd.viewport.width, rt.info.width);
+    bcmd.viewport.height = cc::min(bcmd.viewport.height, rt.info.height);
 
-    if (phi::is_depth_format(rt._info.format))
+    if (phi::is_depth_format(rt.info.format))
     {
         CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to raii::Frame::make_framebuffer");
-        bcmd.set_2d_depth_stencil(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::clear, rt._info.num_samples > 1);
+        bcmd.set_2d_depth_stencil(rt.res.handle, rt.info.format, phi::rt_clear_type::clear, rt.info.num_samples > 1);
     }
     else
     {
-        bcmd.add_2d_rt(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::clear, rt._info.num_samples > 1);
+        bcmd.add_2d_rt(rt.res.handle, rt.info.format, phi::rt_clear_type::clear, rt.info.num_samples > 1);
     }
 }
 

@@ -16,17 +16,16 @@ class Context;
 
 // ---- resource types ----
 
-template <class HandleT>
-struct raii_handle
+template <class T, bool Cache>
+struct auto_destroyer
 {
-    HandleT data;
-    pr::Context* parent = nullptr;
+    T data;
 
-    raii_handle() = default;
-    raii_handle(HandleT const& data, Context* parent) : data(data), parent(parent) {}
+    auto_destroyer() = default;
+    auto_destroyer(T const& data, pr::Context* parent) : data(data), parent(parent) {}
 
-    raii_handle(raii_handle&& rhs) noexcept : data(rhs.data), parent(rhs.parent) { rhs.parent = nullptr; }
-    raii_handle& operator=(raii_handle&& rhs) noexcept
+    auto_destroyer(auto_destroyer&& rhs) noexcept : data(rhs.data), parent(rhs.parent) { rhs.parent = nullptr; }
+    auto_destroyer& operator=(auto_destroyer&& rhs) noexcept
     {
         if (this != &rhs)
         {
@@ -38,110 +37,100 @@ struct raii_handle
         return *this;
     }
 
-    raii_handle(raii_handle const&) = delete;
-    raii_handle& operator=(raii_handle const&) = delete;
+    auto_destroyer(auto_destroyer const&) = delete;
+    auto_destroyer& operator=(auto_destroyer const&) = delete;
 
-    ~raii_handle() { _destroy(); }
+    ~auto_destroyer() { _destroy(); }
+
+    /// disable RAII management and receive the POD contents, which must now be manually freed
+    T const& unlock()
+    {
+        parent = nullptr;
+        return data;
+    }
+
+    operator T&() & { return data; }
+    operator T const&() const& { return data; }
+
+    // force unlock from rvalue
+    operator T&() && = delete;
+    operator T const&() const&& = delete;
 
 private:
+    pr::Context* parent = nullptr;
+
     void _destroy()
     {
         if (parent != nullptr)
         {
-            data.destroy(parent);
+            if constexpr (Cache)
+            {
+                data.cache_deref(parent);
+            }
+            else
+            {
+                data.destroy(parent);
+            }
+
             parent = nullptr;
         }
     }
 };
 
-template <class CachedT>
-struct cached_handle
+struct raw_resource
 {
-    operator CachedT&() { return _internal; }
-    operator CachedT const&() const { return _internal; }
-
-    cached_handle() = default;
-    cached_handle(CachedT&& data, Context* parent) : _internal(cc::move(data)), _parent(parent) {}
-
-    cached_handle(cached_handle&& rhs) noexcept : _internal(cc::move(rhs._internal)), _parent(rhs._parent) { rhs._parent = nullptr; }
-    cached_handle& operator=(cached_handle&& rhs) noexcept
-    {
-        if (this != &rhs)
-        {
-            _destroy();
-            _internal = cc::move(rhs._internal);
-            _parent = rhs._parent;
-            rhs.parent = nullptr;
-        }
-        return *this;
-    }
-
-    cached_handle(cached_handle const&) = delete;
-    cached_handle& operator=(cached_handle const&) = delete;
-
-    ~cached_handle() { _destroy(); }
-
-private:
-    void _destroy()
-    {
-        if (_parent != nullptr)
-        {
-            _internal.unrefCache(_parent);
-            _parent = nullptr;
-        }
-    }
-
-    CachedT _internal;
-    pr::Context* _parent = nullptr;
+    phi::handle::resource handle;
+    uint64_t guid;
 };
-
-struct resource_data
-{
-    phi::handle::resource handle = phi::handle::null_resource;
-    uint64_t guid = 0; // for shader_view caching
-
-    void destroy(pr::Context* ctx);
-};
-
-using resource = raii_handle<resource_data>;
-
-// buffers
 
 struct buffer
 {
-    resource _resource;
-    buffer_info _info;
+    raw_resource res;
+    buffer_info info;
 
 private:
-    friend struct cached_handle<buffer>;
-    void unrefCache(pr::Context* ctx);
-};
-
-using cached_buffer = cached_handle<buffer>;
-
-// textures
-
-struct image
-{
-    resource _resource;
-    texture_info _info;
+    friend auto_destroyer<buffer, true>;
+    friend auto_destroyer<buffer, false>;
+    void cache_deref(pr::Context* parent);
+    void destroy(pr::Context* parent);
 };
 
 struct render_target
 {
-    resource _resource;
-    render_target_info _info;
+    raw_resource res;
+    render_target_info info;
 
 private:
-    friend struct cached_handle<render_target>;
-    void unrefCache(pr::Context* ctx);
+    friend auto_destroyer<render_target, true>;
+    friend auto_destroyer<render_target, false>;
+    void cache_deref(pr::Context* parent);
+    void destroy(pr::Context* parent);
 };
 
-using cached_render_target = cached_handle<render_target>;
+struct texture
+{
+    raw_resource res;
+    texture_info info;
+
+private:
+    friend auto_destroyer<texture, true>;
+    friend auto_destroyer<texture, false>;
+    void cache_deref(pr::Context* parent);
+    void destroy(pr::Context* parent);
+};
+
+// move-only lifetime management
+using auto_buffer = auto_destroyer<buffer, false>;
+using auto_render_target = auto_destroyer<render_target, false>;
+using auto_texture = auto_destroyer<texture, false>;
+
+using cached_buffer = auto_destroyer<buffer, true>;
+using cached_render_target = auto_destroyer<render_target, true>;
+using cached_texture = auto_destroyer<texture, true>;
 
 // shaders
 
-struct shader_binary_data
+struct shader_binary_pod
 {
     std::byte const* _data = nullptr;
     size_t _size = 0;
@@ -150,18 +139,11 @@ struct shader_binary_data
     phi::shader_stage _stage;
 
 private:
-    friend struct raii_handle<shader_binary_data>;
+    friend struct auto_destroyer<shader_binary_pod, false>;
     void destroy(pr::Context* ctx);
 };
 
-using shader_binary = raii_handle<shader_binary_data>;
-
-struct shader_binary_unreffable : public shader_binary
-{
-    void unrefCache(pr::Context* ctx);
-};
-
-using cached_shader_binary = cached_handle<shader_binary_unreffable>;
+using shader_binary = auto_destroyer<shader_binary_pod, false>;
 
 // PSOs
 
@@ -178,7 +160,7 @@ struct compute_pipeline_state_data : public pipeline_state_abstract
 {
 };
 
-using graphics_pipeline_state = raii_handle<graphics_pipeline_state_data>;
-using compute_pipeline_state = raii_handle<compute_pipeline_state_data>;
+using graphics_pipeline_state = auto_destroyer<graphics_pipeline_state_data, false>;
+using compute_pipeline_state = auto_destroyer<compute_pipeline_state_data, false>;
 
 };

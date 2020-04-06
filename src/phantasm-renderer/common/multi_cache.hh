@@ -25,7 +25,7 @@ public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
-    [[nodiscard]] pr::resource acquire(KeyT const& key, gpu_epoch_t current_gpu_epoch)
+    [[nodiscard]] raw_resource acquire(KeyT const& key, gpu_epoch_t current_gpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
@@ -36,24 +36,24 @@ public:
             if (tail.required_gpu_epoch <= current_gpu_epoch)
             {
                 // event is ready, pop and return
-                pr::resource res = cc::move(tail.val);
+                raw_resource res = tail.val;
                 elem.in_flight_buffer.pop_tail();
-                return cc::move(res);
+                return res;
             }
         }
 
         // no element ready (in this case, the callsite will have to create a new object)
-        return {};
+        return {phi::handle::null_resource, 0};
     }
 
     /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free(pr::resource&& val, KeyT const& key, gpu_epoch_t current_cpu_epoch)
+    void free(raw_resource val, KeyT const& key, gpu_epoch_t current_cpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
-        elem.in_flight_buffer.enqueue({cc::move(val), current_cpu_epoch});
+        elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
     }
 
     void cull()
@@ -87,7 +87,7 @@ private:
 private:
     struct in_flight_val
     {
-        pr::resource val;
+        raw_resource val;
         gpu_epoch_t required_gpu_epoch;
     };
 

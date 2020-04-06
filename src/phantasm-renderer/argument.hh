@@ -18,11 +18,11 @@ class Context;
 struct argument
 {
 public:
-    void add(image const& img);
+    void add(texture const& img);
     void add(buffer const& buffer);
     void add(render_target const& rt);
 
-    void add_mutable(image const& img);
+    void add_mutable(texture const& img);
     void add_mutable(buffer const& buffer);
     void add_mutable(render_target const& rt);
 
@@ -36,8 +36,8 @@ public:
 
 private:
     friend struct argument_builder;
-    static void populate_srv(phi::resource_view& new_rv, pr::image const& img);
-    static void populate_uav(phi::resource_view& new_rv, pr::image const& img);
+    static void populate_srv(phi::resource_view& new_rv, pr::texture const& img);
+    static void populate_uav(phi::resource_view& new_rv, pr::texture const& img);
 
 private:
     friend class raii::Frame;
@@ -53,7 +53,7 @@ struct prebuilt_argument_data
     void destroy(pr::Context* ctx);
 };
 
-using prebuilt_argument = raii_handle<prebuilt_argument_data>;
+using prebuilt_argument = auto_destroyer<prebuilt_argument_data, false>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
 struct argument_builder
@@ -61,7 +61,7 @@ struct argument_builder
 public:
     // add SRVs
 
-    argument_builder& add(image const& img)
+    argument_builder& add(texture const& img)
     {
         auto& new_rv = _srvs.emplace_back();
         argument::populate_srv(new_rv, img);
@@ -70,13 +70,13 @@ public:
     argument_builder& add(buffer const& buffer)
     {
         auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
+        new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
         return *this;
     }
     argument_builder& add(render_target const& rt)
     {
         auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
+        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
         return *this;
     }
     argument_builder& add(phi::resource_view const& raw_rv)
@@ -87,7 +87,7 @@ public:
 
     // add UAVs
 
-    argument_builder& add_mutable(image const& img)
+    argument_builder& add_mutable(texture const& img)
     {
         auto& new_rv = _uavs.emplace_back();
         argument::populate_uav(new_rv, img);
@@ -96,13 +96,13 @@ public:
     argument_builder& add_mutable(buffer const& buffer)
     {
         auto& new_rv = _uavs.emplace_back();
-        new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
+        new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
         return *this;
     }
     argument_builder& add_mutable(render_target const& rt)
     {
         auto& new_rv = _uavs.emplace_back();
-        new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
+        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
         return *this;
     }
     argument_builder& add_mutable(phi::resource_view const& raw_rv)

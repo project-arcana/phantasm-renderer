@@ -54,21 +54,21 @@ public:
     [[nodiscard]] ComputePass make_pass(compute_pass_info const& cp) &;
 
     void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(image const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(texture const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
 
     // commands
 
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
-    void copy(buffer const& src, image const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
+    void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
-    void copy(image const& src, image const& dest);
-    void copy(image const& src, render_target const& dest);
-    void copy(render_target const& src, image const& dest);
+    void copy(texture const& src, texture const& dest);
+    void copy(texture const& src, render_target const& dest);
+    void copy(render_target const& src, texture const& dest);
     void copy(render_target const& src, render_target const& dest);
 
-    void resolve(render_target const& src, image const& dest);
+    void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
 
     // raw command
