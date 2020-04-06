@@ -7,8 +7,8 @@
 
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
-#include <phantasm-renderer/backends.hh>
 #include <phantasm-renderer/common/murmur_hash.hh>
+#include <phantasm-renderer/detail/backends.hh>
 
 using namespace pr;
 
@@ -265,7 +265,7 @@ Context::Context(phi::window_handle const& window_handle, backend_type type) : m
     cfg.validation = phi::validation_level::on_extended;
 #endif
 
-    mBackend = make_backend(type, window_handle, cfg);
+    mBackend = detail::make_backend(type, window_handle, cfg);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
     initialize();
 }

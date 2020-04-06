@@ -6,7 +6,7 @@
 
 #include <phantasm-renderer/GraphicsPass.hh>
 #include <phantasm-renderer/fwd.hh>
-#include <phantasm-renderer/pipeline_info.hh>
+#include <phantasm-renderer/pass_info.hh>
 
 namespace pr::raii
 {
@@ -35,10 +35,11 @@ public:
 public:
     // lvalue-qualified as Framebuffer has to stay alive
 
-    // from persisted PSO
+    /// start a graphics pass from persisted PSO
     [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline.data._handle}; }
 
-    // cache-access
+    /// fetch a PSO from cache
+    /// this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
 
 private:

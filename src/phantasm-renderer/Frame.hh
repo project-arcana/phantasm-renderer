@@ -25,7 +25,7 @@ public:
 
     /// create a framebuffer by supplying render targets (all cleared, viewport minimum of sizes)
     template <class... RTs>
-    [[nodiscard]] Framebuffer make_framebuffer(RTs const&... targets)
+    [[nodiscard]] Framebuffer make_framebuffer(RTs const&... targets) &
     {
         phi::cmd::begin_render_pass bcmd;
         // initialize command
@@ -38,14 +38,16 @@ public:
     }
 
     /// create a framebuffer using a builder with more configuration options
-    [[nodiscard]] framebuffer_builder build_framebuffer() { return {this}; }
+    [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
 
     // pipeline RAII API (compute only, graphics pipelines are in Framebuffer)
 
-    /// create a RAII compute pass
-    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) { return {this, compute_pipeline.data._handle}; }
+    /// start a compute pass from persisted PSO
+    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline.data._handle}; }
 
-    // TODO: cache-access version
+    /// fetch a PSO from cache
+    /// this hits a OS mutex and might have to build a PSO (expensive)
+    [[nodiscard]] ComputePass make_pass(compute_pass_info const& cp) &;
 
     void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(image const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
@@ -98,6 +100,8 @@ private:
 
     void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
+
+    phi::handle::pipeline_state acquireComputePSO(compute_pass_info const& cp);
 
     void internalDestroy();
 

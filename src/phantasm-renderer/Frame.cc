@@ -8,6 +8,8 @@
 
 using namespace pr;
 
+raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
+
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res._resource.data.handle, target, dependency);
@@ -128,6 +130,14 @@ void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle:
     phi::cmd::resolve_texture ccmd;
     ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h));
     mWriter.add_command(ccmd);
+}
+
+phi::handle::pipeline_state raii::Frame::acquireComputePSO(const compute_pass_info& cp)
+{
+    auto const cp_hash = cp.get_hash();
+    auto const res = mCtx->acquire_compute_pso(cp_hash, cp);
+    mFreeables.push_back({freeable_cached_obj::compute_pso, cp_hash});
+    return res;
 }
 
 void raii::Frame::internalDestroy()

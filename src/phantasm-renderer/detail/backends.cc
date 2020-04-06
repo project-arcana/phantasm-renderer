@@ -12,7 +12,7 @@
 #include <phantasm-hardware-interface/d3d12/BackendD3D12.hh>
 #endif
 
-phi::Backend* pr::make_backend(backend_type type, phi::window_handle const& window_handle, const phi::backend_config& cfg)
+phi::Backend* pr::detail::make_backend(backend_type type, phi::window_handle const& window_handle, const phi::backend_config& cfg)
 {
     phi::Backend* res = nullptr;
     if (type == backend_type::d3d12)

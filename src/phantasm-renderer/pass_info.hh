@@ -66,8 +66,37 @@ public:
     /// Set the pipeline config
     graphics_pass_info& config(phi::pipeline_config const& config)
     {
-        // this could also have finegrained setters for each option
         _storage.get().graphics_config = config;
+        return *this;
+    }
+
+    graphics_pass_info& depth_func(phi::depth_function func)
+    {
+        _storage.get().graphics_config.depth = func;
+        return *this;
+    }
+
+    graphics_pass_info& depth_readonly(bool readonly = true)
+    {
+        _storage.get().graphics_config.depth_readonly = readonly;
+        return *this;
+    }
+
+    graphics_pass_info& cull_mode(phi::cull_mode mode)
+    {
+        _storage.get().graphics_config.cull = mode;
+        return *this;
+    }
+
+    graphics_pass_info& multisamples(int samples)
+    {
+        _storage.get().graphics_config.samples = samples;
+        return *this;
+    }
+
+    graphics_pass_info& topology(phi::primitive_topology topology)
+    {
+        _storage.get().graphics_config.topology = topology;
         return *this;
     }
 
@@ -112,7 +141,7 @@ public:
     }
 
 private:
-    friend class Frame;
+    friend class raii::Frame;
     [[nodiscard]] murmur_hash get_hash() const
     {
         murmur_hash res;
