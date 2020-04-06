@@ -7,14 +7,14 @@
 #include <phantasm-renderer/common/hashable_storage.hh>
 #include <phantasm-renderer/common/state_info.hh>
 
-#include <phantasm-renderer/resource_types.hh>
 #include <phantasm-renderer/fwd.hh>
+#include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
 class Context;
 
-// fixed size, hashable
+// fixed size, hashable, no raw resources allowed
 struct argument
 {
 public:
@@ -59,55 +59,59 @@ using prebuilt_argument = raii_handle<prebuilt_argument_data>;
 struct argument_builder
 {
 public:
+    // add SRVs
+
     argument_builder& add(image const& img)
     {
-        _resource_guids.push_back(img._resource.data.guid);
-
         auto& new_rv = _srvs.emplace_back();
         argument::populate_srv(new_rv, img);
         return *this;
     }
     argument_builder& add(buffer const& buffer)
     {
-        _resource_guids.push_back(buffer._resource.data.guid);
-
         auto& new_rv = _srvs.emplace_back();
         new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
         return *this;
     }
     argument_builder& add(render_target const& rt)
     {
-        _resource_guids.push_back(rt._resource.data.guid);
-
         auto& new_rv = _srvs.emplace_back();
         new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
         return *this;
     }
+    argument_builder& add(phi::resource_view const& raw_rv)
+    {
+        _srvs.push_back(raw_rv);
+        return *this;
+    }
+
+    // add UAVs
 
     argument_builder& add_mutable(image const& img)
     {
-        _resource_guids.push_back(img._resource.data.guid);
-
         auto& new_rv = _uavs.emplace_back();
         argument::populate_uav(new_rv, img);
         return *this;
     }
     argument_builder& add_mutable(buffer const& buffer)
     {
-        _resource_guids.push_back(buffer._resource.data.guid);
-
         auto& new_rv = _uavs.emplace_back();
         new_rv.init_as_structured_buffer(buffer._resource.data.handle, buffer._info.size_bytes / buffer._info.stride_bytes, buffer._info.stride_bytes);
         return *this;
     }
     argument_builder& add_mutable(render_target const& rt)
     {
-        _resource_guids.push_back(rt._resource.data.guid);
-
         auto& new_rv = _uavs.emplace_back();
         new_rv.init_as_tex2d(rt._resource.data.handle, rt._info.format, rt._info.num_samples > 1);
         return *this;
     }
+    argument_builder& add_mutable(phi::resource_view const& raw_rv)
+    {
+        _uavs.push_back(raw_rv);
+        return *this;
+    }
+
+    // add samplers
 
     argument_builder& add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u)
     {
@@ -123,6 +127,7 @@ public:
     }
 
     // finalize
+
     [[nodiscard]] prebuilt_argument make_graphics();
     [[nodiscard]] prebuilt_argument make_compute();
 
@@ -132,14 +137,12 @@ public:
     {
         _srvs.reserve(8);
         _uavs.reserve(8);
-        _resource_guids.reserve(_srvs.size() + _uavs.size());
         _samplers.reserve(4);
     }
     Context* const _parent;
 
     cc::vector<phi::resource_view> _srvs;
     cc::vector<phi::resource_view> _uavs;
-    cc::vector<uint64_t> _resource_guids;
     cc::vector<phi::sampler_config> _samplers;
 };
 

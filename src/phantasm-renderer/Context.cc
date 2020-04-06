@@ -258,8 +258,15 @@ render_target Context::acquire_backbuffer()
             render_target_info{mBackend->getBackbufferFormat(), size.width, size.height, 1}};
 }
 
-Context::Context(phi::window_handle const& window_handle, backend_type type) : mOwnsBackend(true)
+Context::Context(phi::window_handle const& window_handle, backend_type type) { initialize(window_handle, type); }
+
+Context::Context(phi::Backend* backend) { initialize(backend); }
+
+void Context::initialize(const phi::window_handle& window_handle, backend_type type)
 {
+    CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
+
+    mOwnsBackend = true;
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
@@ -267,16 +274,56 @@ Context::Context(phi::window_handle const& window_handle, backend_type type) : m
 
     mBackend = detail::make_backend(type, window_handle, cfg);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
-    initialize();
+    internalInitialize();
 }
 
-Context::Context(phi::Backend* backend) : mBackend(backend), mOwnsBackend(false)
+void Context::initialize(phi::Backend* backend)
 {
+    CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
+
+    mBackend = backend;
+    mOwnsBackend = false;
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Invalid backend received");
-    initialize();
+    internalInitialize();
 }
 
-void Context::initialize()
+void Context::destroy()
+{
+    if (mBackend != nullptr)
+    {
+        // grab all locks (dining philosophers does not apply, nothing else is allowed to contend here)
+        auto lg_sub = std::lock_guard(mMutexSubmission);
+        auto lg_comp = std::lock_guard(mMutexShaderCompilation);
+
+        // flush GPU
+        mBackend->flushGPU();
+
+        // empty all caches
+        mCacheGraphicsPSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
+        mCacheComputePSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
+        mCacheGraphicsSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
+        mCacheComputeSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
+
+        mCacheBuffers.clear_all();
+        mCacheTextures.clear_all();
+        mCacheRenderTargets.clear_all();
+
+        // destroy other components
+        mGpuEpochTracker.destroy();
+        mShaderCompiler.destroy();
+
+        // if onwing mBackend, destroy and free it
+        if (mOwnsBackend)
+        {
+            mBackend->destroy();
+            delete mBackend;
+        }
+
+        mBackend = nullptr;
+    }
+}
+
+void Context::internalInitialize()
 {
     mGpuEpochTracker.initialize(mBackend, 2048);
     mCacheBuffers.reserve(256);
@@ -358,37 +405,6 @@ void Context::freeShaderBinary(IDxcBlob* blob)
 void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }
 
 void Context::freePipelineState(phi::handle::pipeline_state ps) { mBackend->free(ps); }
-
-Context::~Context()
-{
-    // grab all locks (dining philosophers does not apply, nothing else is allowed to contend here)
-    auto lg_sub = std::lock_guard(mMutexSubmission);
-    auto lg_comp = std::lock_guard(mMutexShaderCompilation);
-
-    // flush GPU
-    mBackend->flushGPU();
-
-    // empty all caches
-    mCacheGraphicsPSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
-    mCacheComputePSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
-    mCacheGraphicsSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
-    mCacheComputeSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
-
-    mCacheBuffers.clear_all();
-    mCacheTextures.clear_all();
-    mCacheRenderTargets.clear_all();
-
-    // destroy other components
-    mGpuEpochTracker.destroy();
-    mShaderCompiler.destroy();
-
-    // if onwing mBackend, destroy and free it
-    if (mOwnsBackend)
-    {
-        mBackend->destroy();
-        delete mBackend;
-    }
-}
 
 uint64_t Context::acquireGuid() { return mResourceGUID.fetch_add(1); }
 

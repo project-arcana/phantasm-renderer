@@ -107,6 +107,36 @@ using resource = raii_handle<resource_data>;
 
 // buffers
 
+
+//struct smart_resource
+//{
+//    phi::handle::resource real_resource;
+//    unsigned num_refs;
+//    Context* parent;
+
+//    smart_resource(smart_resource&& rhs) noexcept { /* whole lot of bullshit */ }
+//    // ...
+//};
+
+//struct buffer_view
+//{
+//    smart_resource res;
+//    unsigned offset;
+//    unsigned size;
+//    unsigned stride;
+//};
+
+//struct render_target_view
+//{
+//    smart_resource res;
+//    phi::format fmt;
+//    unsigned width;
+//    unsigned height;
+//};
+
+//// ...
+
+
 struct buffer
 {
     resource _resource;

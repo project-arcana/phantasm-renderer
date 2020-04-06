@@ -11,10 +11,6 @@ void pr::raii::GraphicsPass::draw(unsigned num_vertices)
 
     mCmd.num_indices = num_vertices;
 
-    mCmd.vertex_offset = 0;
-    mCmd.index_offset = 0;
-    mCmd.scissor = tg::iaabb2(-1, -1);
-
     mParent->passOnDraw(mCmd);
 }
 
@@ -26,10 +22,6 @@ void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer)
     mCmd.index_buffer = phi::handle::null_resource;
 
     mCmd.num_indices = vertex_buffer._info.size_bytes / vertex_buffer._info.stride_bytes;
-
-    mCmd.vertex_offset = 0;
-    mCmd.index_offset = 0;
-    mCmd.scissor = tg::iaabb2(-1, -1);
 
     mParent->passOnDraw(mCmd);
 }
@@ -43,17 +35,28 @@ void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buf
 
     mCmd.num_indices = index_buffer._info.size_bytes / index_buffer._info.stride_bytes;
 
-    mCmd.vertex_offset = 0;
-    mCmd.index_offset = 0;
-    mCmd.scissor = tg::iaabb2(-1, -1);
+    mParent->passOnDraw(mCmd);
+}
+
+void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices)
+{
+    mCmd.vertex_buffer = vertex_buffer;
+    mCmd.index_buffer = index_buffer;
+
+    mCmd.num_indices = num_indices;
 
     mParent->passOnDraw(mCmd);
 }
 
 void pr::raii::GraphicsPass::set_constant_buffer(const pr::buffer& constant_buffer, unsigned offset)
 {
+    set_constant_buffer(constant_buffer._resource.data.handle, offset);
+}
+
+void pr::raii::GraphicsPass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)
+{
     CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer on a GraphicsPass without prior bind");
-    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer = constant_buffer._resource.data.handle;
+    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer = raw_cbv;
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
 }
 
@@ -85,6 +88,12 @@ void pr::raii::GraphicsPass::add_argument(const pr::prebuilt_argument& sv, const
 {
     ++mArgNum;
     mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, sv.data._sv);
+}
+
+void pr::raii::GraphicsPass::add_argument(phi::handle::shader_view sv, phi::handle::resource cbv, uint32_t cbv_offset)
+{
+    ++mArgNum;
+    mCmd.add_shader_arg(cbv, cbv_offset, sv);
 }
 
 void pr::raii::GraphicsPass::add_argument(const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)

@@ -8,6 +8,8 @@
 
 using namespace pr;
 
+raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) & { return buildFramebuffer(raw_command); }
+
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
@@ -23,6 +25,14 @@ void raii::Frame::transition(const image& res, phi::resource_state target, phi::
 void raii::Frame::transition(const render_target& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res._resource.data.handle, target, dependency);
+}
+
+void raii::Frame::transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency)
+{
+    if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
+        flushPendingTransitions();
+
+    mPendingTransitionCommand.add(raw_resource, target, dependency);
 }
 
 void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset)
@@ -91,14 +101,6 @@ void raii::Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const rende
     {
         bcmd.add_2d_rt(rt._resource.data.handle, rt._info.format, phi::rt_clear_type::clear, rt._info.num_samples > 1);
     }
-}
-
-void raii::Frame::transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency)
-{
-    if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
-        flushPendingTransitions();
-
-    mPendingTransitionCommand.add(res, target, dependency);
 }
 
 void raii::Frame::flushPendingTransitions()

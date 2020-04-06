@@ -116,10 +116,10 @@ void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::image& img
 
 pr::prebuilt_argument pr::argument_builder::make_graphics()
 {
-    return {prebuilt_argument_data{_parent->get_backend()->createShaderView(_srvs, _uavs, _samplers, false), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument_data{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false), phi::handle::null_resource, 0}, _parent};
 }
 
 pr::prebuilt_argument pr::argument_builder::make_compute()
 {
-    return {prebuilt_argument_data{_parent->get_backend()->createShaderView(_srvs, _uavs, _samplers, true), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument_data{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true), phi::handle::null_resource, 0}, _parent};
 }

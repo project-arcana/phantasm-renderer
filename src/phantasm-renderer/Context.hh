@@ -114,14 +114,22 @@ public:
     bool start_capture();
     bool end_capture();
 
+    phi::Backend& get_backend() { return *mBackend; }
+
     // ctors
 public:
+    Context() = default;
     /// constructs a context with a default backend (usually vulkan)
     Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
     /// constructs a context with a specified backend
     Context(phi::Backend* backend);
 
-    ~Context();
+    ~Context() { destroy(); }
+
+    void initialize(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
+    void initialize(phi::Backend* backend);
+
+    void destroy();
 
     // ref type
 private:
@@ -135,7 +143,7 @@ private:
     [[nodiscard]] uint64_t acquireGuid();
 
 private:
-    void initialize();
+    void internalInitialize();
 
     // creation
     pr::resource createRenderTarget(render_target_info const& info);
@@ -168,7 +176,6 @@ private:
 private:
     friend struct pipeline_builder;
     friend struct argument_builder;
-    phi::Backend* get_backend() const { return mBackend; }
 
     // internal argument builder API
 private:
@@ -190,8 +197,8 @@ private:
 
     // members
 private:
-    phi::Backend* mBackend;
-    bool const mOwnsBackend;
+    phi::Backend* mBackend = nullptr;
+    bool mOwnsBackend = false;
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;

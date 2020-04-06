@@ -37,6 +37,9 @@ public:
         return buildFramebuffer(bcmd);
     }
 
+    /// create a framebuffer from a raw phi command
+    [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command) &;
+
     /// create a framebuffer using a builder with more configuration options
     [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
 
@@ -44,14 +47,16 @@ public:
 
     /// start a compute pass from persisted PSO
     [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline.data._handle}; }
+    /// starta compute pass from a raw phi PSO
+    [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 
-    /// fetch a PSO from cache
-    /// this hits a OS mutex and might have to build a PSO (expensive)
+    /// fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] ComputePass make_pass(compute_pass_info const& cp) &;
 
     void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(image const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
 
     // commands
 
@@ -65,6 +70,14 @@ public:
 
     void resolve(render_target const& src, image const& dest);
     void resolve(render_target const& src, render_target const& dest);
+
+    // raw command
+
+    template <class CmdT>
+    void write_raw_cmd(CmdT const& cmd)
+    {
+        mWriter.add_command(cmd);
+    }
 
     // move-only type
 public:
@@ -95,7 +108,6 @@ public:
 private:
     static void addRenderTarget(phi::cmd::begin_render_pass& bcmd, render_target const& rt);
 
-    void transition(phi::handle::resource res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void flushPendingTransitions();
 
     void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);

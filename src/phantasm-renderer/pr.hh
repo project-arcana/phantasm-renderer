@@ -11,6 +11,6 @@
 #include "Frame.hh"
 #include "GraphicsPass.hh"
 #include "argument.hh"
-#include "pipeline_info.hh"
+#include "pass_info.hh"
 
 #include "default_config.hh"

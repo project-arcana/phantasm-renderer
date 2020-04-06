@@ -14,15 +14,7 @@ class ComputePass
 {
 public:
     template <class... Args>
-    [[nodiscard]] ComputePass bind(Args&&... args) &
-    {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(cc::forward<Args>(args)...);
-        return p;
-    }
-
-    template <class... Args>
-    [[nodiscard]] ComputePass bind(Args&&... args) &&
+    [[nodiscard]] ComputePass bind(Args&&... args)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);
@@ -32,6 +24,7 @@ public:
     void dispatch(unsigned x, unsigned y = 1, unsigned z = 1);
 
     void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
+    void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);
     void set_constant_buffer_offset(unsigned offset);
 
     template <class T>
@@ -58,6 +51,9 @@ private:
     void add_argument(prebuilt_argument const& sv);
     void add_argument(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
     void add_argument(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
+
+    // raw phi
+    void add_argument(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0);
 
     Frame* mParent = nullptr;
     phi::cmd::dispatch mCmd;

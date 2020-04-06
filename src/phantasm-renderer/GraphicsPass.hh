@@ -14,15 +14,7 @@ class GraphicsPass
 {
 public:
     template <class... Args>
-    [[nodiscard]] GraphicsPass bind(Args&&... args) &
-    {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(cc::forward<Args>(args)...);
-        return p;
-    }
-
-    template <class... Args>
-    [[nodiscard]] GraphicsPass bind(Args&&... args) &&
+    [[nodiscard]] GraphicsPass bind(Args&&... args)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_argument(cc::forward<Args>(args)...);
@@ -32,6 +24,7 @@ public:
     void draw(unsigned num_vertices);
     void draw(buffer const& vertex_buffer);
     void draw(buffer const& vertex_buffer, buffer const& index_buffer);
+    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices);
 
     void set_offset(unsigned vertex_offset, unsigned index_offset = 0)
     {
@@ -44,6 +37,8 @@ public:
     void unset_scissor() { mCmd.scissor = tg::iaabb2(-1, -1); }
 
     void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
+    void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);
+
     void set_constant_buffer_offset(unsigned offset);
 
     template <class T>
@@ -72,6 +67,9 @@ private:
     // persisted variants
     void add_argument(prebuilt_argument const& sv);
     void add_argument(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
+
+    // raw phi
+    void add_argument(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0);
 
     void add_argument(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
