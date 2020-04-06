@@ -258,17 +258,23 @@ render_target Context::acquire_backbuffer()
             render_target_info{mBackend->getBackbufferFormat(), size.width, size.height, 1}};
 }
 
-Context::Context(phi::window_handle const& window_handle) : mOwnsBackend(true)
+Context::Context(phi::window_handle const& window_handle, backend_type type) : mOwnsBackend(true)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
-    mBackend = make_d3d12_backend(window_handle, cfg);
+
+    mBackend = make_backend(type, window_handle, cfg);
+    CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
     initialize();
 }
 
-Context::Context(phi::Backend* backend) : mBackend(backend), mOwnsBackend(false) { initialize(); }
+Context::Context(phi::Backend* backend) : mBackend(backend), mOwnsBackend(false)
+{
+    CC_RUNTIME_ASSERT(mBackend != nullptr && "Invalid backend received");
+    initialize();
+}
 
 void Context::initialize()
 {

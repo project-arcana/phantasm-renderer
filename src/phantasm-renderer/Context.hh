@@ -117,7 +117,7 @@ public:
     // ctors
 public:
     /// constructs a context with a default backend (usually vulkan)
-    Context(phi::window_handle const& window_handle);
+    Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
     /// constructs a context with a specified backend
     Context(phi::Backend* backend);
 
