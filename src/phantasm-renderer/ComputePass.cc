@@ -13,23 +13,6 @@ void pr::raii::ComputePass::dispatch(unsigned x, unsigned y, unsigned z)
     mParent->passOnDispatch(mCmd);
 }
 
-void pr::raii::ComputePass::set_constant_buffer(const pr::buffer& constant_buffer, unsigned offset)
-{
-    set_constant_buffer(constant_buffer._resource.data.handle, offset);
-}
-
-void pr::raii::ComputePass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)
-{
-    CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer on a ComputePass without prior bind");
-    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer = raw_cbv;
-    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
-}
-
-void pr::raii::ComputePass::set_constant_buffer_offset(unsigned offset)
-{
-    CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer_offset on a ComputePass without prior bind");
-    mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
-}
 
 void pr::raii::ComputePass::add_argument(const pr::argument& arg)
 {
@@ -41,28 +24,4 @@ void pr::raii::ComputePass::add_argument(const pr::argument& arg, const pr::buff
 {
     ++mArgNum;
     mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, mParent->passAcquireComputeShaderView(arg));
-}
-
-void pr::raii::ComputePass::add_argument(const pr::prebuilt_argument& sv)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(phi::handle::null_resource, 0, sv.data._sv);
-}
-
-void pr::raii::ComputePass::add_argument(const pr::prebuilt_argument& sv, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, sv.data._sv);
-}
-
-void pr::raii::ComputePass::add_argument(const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset);
-}
-
-void pr::raii::ComputePass::add_argument(phi::handle::shader_view sv, phi::handle::resource cbv, uint32_t cbv_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(cbv, cbv_offset, sv);
 }

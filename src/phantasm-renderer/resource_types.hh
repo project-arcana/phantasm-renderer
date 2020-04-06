@@ -108,40 +108,13 @@ using resource = raii_handle<resource_data>;
 // buffers
 
 
-//struct smart_resource
-//{
-//    phi::handle::resource real_resource;
-//    unsigned num_refs;
-//    Context* parent;
-
-//    smart_resource(smart_resource&& rhs) noexcept { /* whole lot of bullshit */ }
-//    // ...
-//};
-
-//struct buffer_view
-//{
-//    smart_resource res;
-//    unsigned offset;
-//    unsigned size;
-//    unsigned stride;
-//};
-
-//struct render_target_view
-//{
-//    smart_resource res;
-//    phi::format fmt;
-//    unsigned width;
-//    unsigned height;
-//};
-
-//// ...
-
-
 struct buffer
 {
     resource _resource;
     buffer_info _info;
 
+private:
+    friend struct cached_handle<buffer>;
     void unrefCache(pr::Context* ctx);
 };
 
@@ -159,6 +132,8 @@ struct render_target
     resource _resource;
     render_target_info _info;
 
+private:
+    friend struct cached_handle<render_target>;
     void unrefCache(pr::Context* ctx);
 };
 
@@ -174,6 +149,8 @@ struct shader_binary_data
     murmur_hash _hash;                ///< murmur hash over _data, for caching
     phi::shader_stage _stage;
 
+private:
+    friend struct raii_handle<shader_binary_data>;
     void destroy(pr::Context* ctx);
 };
 
