@@ -64,9 +64,12 @@ private:
     GraphicsPass(Frame* parent, phi::cmd::draw const& cmd, unsigned arg_i) : mParent(parent), mCmd(cmd), mArgNum(arg_i) {}
 
 private:
+    // cache-access variants
+    // hits a OS mutex
     void add_argument(argument const& arg);
     void add_argument(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
+    // persisted variants
     void add_argument(prebuilt_argument const& sv);
     void add_argument(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
 
