@@ -107,7 +107,6 @@ using resource = raii_handle<resource_data>;
 
 // buffers
 
-
 struct buffer
 {
     resource _resource;
@@ -119,6 +118,7 @@ private:
 };
 
 using cached_buffer = cached_handle<buffer>;
+
 // textures
 
 struct image
@@ -146,7 +146,7 @@ struct shader_binary_data
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    murmur_hash _hash;                ///< murmur hash over _data, for caching
+    murmur_hash _hash;                ///< murmur hash over _data, for caching of PSOs using this shader
     phi::shader_stage _stage;
 
 private:
@@ -165,7 +165,7 @@ using cached_shader_binary = cached_handle<shader_binary_unreffable>;
 
 // PSOs
 
-struct pipeline_state_abstract // cached internally, 1:1, based on all arguments to a pso creation + shader data hash
+struct pipeline_state_abstract
 {
     phi::handle::pipeline_state _handle = phi::handle::null_pipeline_state;
     void destroy(pr::Context* ctx);

@@ -4,38 +4,18 @@
 
 #include "Frame.hh"
 
-void pr::raii::GraphicsPass::draw(unsigned num_vertices)
-{
-    mCmd.vertex_buffer = phi::handle::null_resource;
-    mCmd.index_buffer = phi::handle::null_resource;
-
-    mCmd.num_indices = num_vertices;
-
-    mParent->passOnDraw(mCmd);
-}
+void pr::raii::GraphicsPass::draw(unsigned num_vertices) { draw(phi::handle::null_resource, phi::handle::null_resource, num_vertices); }
 
 void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer)
 {
     CC_ASSERT(vertex_buffer._info.stride_bytes > 0 && "vertex buffer not strided");
-
-    mCmd.vertex_buffer = vertex_buffer._resource.data.handle;
-    mCmd.index_buffer = phi::handle::null_resource;
-
-    mCmd.num_indices = vertex_buffer._info.size_bytes / vertex_buffer._info.stride_bytes;
-
-    mParent->passOnDraw(mCmd);
+    draw(vertex_buffer._resource.data.handle, phi::handle::null_resource, vertex_buffer._info.size_bytes / vertex_buffer._info.stride_bytes);
 }
 
 void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer)
 {
     CC_ASSERT(index_buffer._info.stride_bytes > 0 && "index buffer not strided");
-
-    mCmd.vertex_buffer = vertex_buffer._resource.data.handle;
-    mCmd.index_buffer = index_buffer._resource.data.handle;
-
-    mCmd.num_indices = index_buffer._info.size_bytes / index_buffer._info.stride_bytes;
-
-    mParent->passOnDraw(mCmd);
+    draw(vertex_buffer._resource.data.handle, index_buffer._resource.data.handle, index_buffer._info.size_bytes / index_buffer._info.stride_bytes);
 }
 
 void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices)
@@ -60,11 +40,3 @@ void pr::raii::GraphicsPass::add_argument(const pr::argument& arg, const pr::buf
     ++mArgNum;
     mCmd.add_shader_arg(constant_buffer._resource.data.handle, constant_buffer_offset, mParent->passAcquireGraphicsShaderView(arg));
 }
-
-
-
-
-
-
-
-

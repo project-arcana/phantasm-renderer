@@ -33,7 +33,6 @@ public:
     void unset_scissor() { mCmd.scissor = tg::iaabb2(-1, -1); }
 
     void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
-
     void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);
 
     void set_constant_buffer_offset(unsigned offset);
