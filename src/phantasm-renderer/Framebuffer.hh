@@ -36,7 +36,7 @@ public:
     // lvalue-qualified as Framebuffer has to stay alive
 
     /// start a graphics pass from persisted PSO
-    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline.data._handle}; }
+    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline._handle}; }
 
     /// fetch a PSO from cache
     /// this hits a OS mutex and might have to build a PSO (expensive)

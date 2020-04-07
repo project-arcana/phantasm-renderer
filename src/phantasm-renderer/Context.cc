@@ -81,21 +81,21 @@ auto_buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool all
     return {createBuffer(info), this};
 }
 
-shader_binary Context::make_shader(const std::byte* data, size_t size, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(const std::byte* data, size_t size, phi::shader_stage stage)
 {
     CC_ASSERT(data != nullptr);
 
     shader_binary res;
-    res.data._stage = stage;
-    res.data._data = data;
-    res.data._size = size;
-    res.data._owning_blob = nullptr;
-    murmurhash3_x64_128(res.data._data, static_cast<int>(res.data._size), 0, res.data._hash);
+    res._stage = stage;
+    res._data = data;
+    res._size = size;
+    res._owning_blob = nullptr;
+    murmurhash3_x64_128(res._data, static_cast<int>(res._size), 0, res._hash);
 
-    return res;
+    return {res, this};
 }
 
-shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
 {
     phi::sc::binary bin;
 
@@ -109,7 +109,7 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
 
 
     shader_binary res;
-    res.data._stage = stage;
+    res._stage = stage;
 
     if (bin.data == nullptr)
     {
@@ -117,40 +117,48 @@ shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypo
     }
     else
     {
-        res.data._data = bin.data;
-        res.data._size = bin.size;
-        res.data._owning_blob = bin.internal_blob;
-        murmurhash3_x64_128(res.data._data, static_cast<int>(res.data._size), 0, res.data._hash);
+        res._data = bin.data;
+        res._size = bin.size;
+        res._owning_blob = bin.internal_blob;
+        murmurhash3_x64_128(res._data, static_cast<int>(res._size), 0, res._hash);
     }
 
-    return res;
+    return {res, this};
 }
 
-prebuilt_argument Context::make_graphics_argument(const argument& arg)
+auto_prebuilt_argument Context::make_graphics_argument(const argument& arg)
 {
     auto const& info = arg._info.get();
-    return {prebuilt_argument_data{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false), phi::handle::null_resource, 0}, this};
+    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false), phi::handle::null_resource, 0}, this};
 }
 
-prebuilt_argument Context::make_compute_argument(const argument& arg)
+auto_prebuilt_argument Context::make_compute_argument(const argument& arg)
 {
     auto const& info = arg._info.get();
-    return {prebuilt_argument_data{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true), phi::handle::null_resource, 0}, this};
+    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true), phi::handle::null_resource, 0}, this};
 }
 
-graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
+auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
 {
     auto const& gp = gp_wrap._storage.get();
-    return graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(), gp.arg_shapes,
+    return auto_graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(), gp.arg_shapes,
                                                                    gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}},
                                    this};
 }
 
-compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
+auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
 {
     auto const& cp = cp_wrap._storage.get();
-    return compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
+    return auto_compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
 }
+
+void Context::free(const raw_resource& resource) { mBackend->free(resource.handle); }
+
+void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(buffer.info, buffer.res); }
+
+void Context::free_to_cache(const texture& texture) { freeCachedTexture(texture.info, texture.res); }
+
+void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info, rt.res); }
 
 
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
@@ -393,8 +401,6 @@ buffer Context::acquireBuffer(const buffer_info& info)
         return createBuffer(info);
     }
 }
-
-void Context::freeResource(phi::handle::resource res) { mBackend->free(res); }
 
 void Context::freeShaderBinary(IDxcBlob* blob)
 {

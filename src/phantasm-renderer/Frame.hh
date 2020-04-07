@@ -46,7 +46,7 @@ public:
     // pipeline RAII API (compute only, graphics pipelines are in Framebuffer)
 
     /// start a compute pass from persisted PSO
-    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline.data._handle}; }
+    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
     /// starta compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 

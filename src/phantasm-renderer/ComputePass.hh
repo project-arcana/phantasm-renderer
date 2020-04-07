@@ -81,16 +81,16 @@ inline void ComputePass::set_constant_buffer_offset(unsigned offset)
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
 }
 
-inline void ComputePass::add_argument(const prebuilt_argument& sv)
+inline void ComputePass::add_argument(prebuilt_argument const& sv)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(phi::handle::null_resource, 0, sv.data._sv);
+    mCmd.add_shader_arg(phi::handle::null_resource, 0, sv._sv);
 }
 
-inline void ComputePass::add_argument(const prebuilt_argument& sv, const buffer& constant_buffer, uint32_t constant_buffer_offset)
+inline void ComputePass::add_argument(prebuilt_argument const& sv, const buffer& constant_buffer, uint32_t constant_buffer_offset)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset, sv.data._sv);
+    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset, sv._sv);
 }
 
 inline void ComputePass::add_argument(const buffer& constant_buffer, uint32_t constant_buffer_offset)

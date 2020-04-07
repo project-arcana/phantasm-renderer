@@ -48,18 +48,18 @@ public:
     [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
 
     /// create a shader from binary data
-    [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
+    [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     /// create a shader by compiling it live from text
-    [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
+    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
-    [[nodiscard]] prebuilt_argument make_graphics_argument(pr::argument const& arg);
-    [[nodiscard]] prebuilt_argument make_compute_argument(pr::argument const& arg);
+    [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument const& arg);
     [[nodiscard]] argument_builder build_argument() { return {this}; }
 
     /// create a graphics pipeline state
-    [[nodiscard]] graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
+    [[nodiscard]] auto_graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
     /// create a compute pipeline state
-    [[nodiscard]] compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
+    [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
     //
     // cache lookup API
@@ -69,6 +69,37 @@ public:
 
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+
+
+    //
+    // freeing API
+    //
+
+    /// free a resource that was unlocked from automatic management
+    void free(raw_resource const& resource);
+
+    /// free a buffer
+    void free(buffer const& buffer) { free(buffer.res); }
+    /// free a texture
+    void free(texture const& texture) { free(texture.res); }
+    /// free a render_target
+    void free(render_target const& rt) { free(rt.res); }
+
+    void free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
+    void free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
+    void free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
+    void free(shader_binary const& shader)
+    {
+        if (shader._owning_blob != nullptr)
+            freeShaderBinary(shader._owning_blob);
+    }
+
+    /// free a buffer by placing it in the cache for reuse
+    void free_to_cache(buffer const& buffer);
+    /// free a texture by placing it in the cache for reuse
+    void free_to_cache(texture const& texture);
+    /// free a render target by placing it in the cache for reuse
+    void free_to_cache(render_target const& rt);
 
     //
     // map upload API
@@ -143,6 +174,17 @@ public:
 
     void destroy();
 
+public:
+    // deleted overrides
+
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    void free(auto_destroyer<T, Cached> const&) = delete;
+
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
+
     // ref type
 private:
     Context(Context const&) = delete;
@@ -167,20 +209,14 @@ private:
     texture acquireTexture(texture_info const& info);
     buffer acquireBuffer(buffer_info const& info);
 
-    // internal RAII dtor API
+    // internal RAII auto_destroyer API
 private:
-    friend struct resource_data;
-    friend struct shader_binary_pod;
-    friend struct prebuilt_argument_data;
-    friend struct pipeline_state_abstract;
-    void freeResource(phi::handle::resource res);
+    friend struct detail::auto_destroy_proxy;
+
     void freeShaderBinary(IDxcBlob* blob);
     void freeShaderView(phi::handle::shader_view sv);
     void freePipelineState(phi::handle::pipeline_state ps);
 
-    friend struct buffer;
-    friend struct render_target;
-    friend struct texture;
     void freeCachedTarget(render_target_info const& info, raw_resource res);
     void freeCachedTexture(texture_info const& info, raw_resource res);
     void freeCachedBuffer(buffer_info const& info, raw_resource res);

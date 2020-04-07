@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+struct IDxcBlob;
+
 namespace phi
 {
 struct backend_config;
@@ -44,17 +46,18 @@ struct compute_pass_info;
 struct framebuffer_info;
 
 // shaders and pipeline states
-struct shader_binary_pod;
-struct graphics_pipeline_state_data;
-struct compute_pipeline_state_data;
-using shader_binary = auto_destroyer<shader_binary_pod, false>;
-using graphics_pipeline_state = auto_destroyer<graphics_pipeline_state_data, false>;
-using compute_pipeline_state = auto_destroyer<compute_pipeline_state_data, false>;
+struct shader_binary;
+struct pipeline_state_abstract;
+struct graphics_pipeline_state;
+struct compute_pipeline_state;
+using auto_shader_binary = auto_destroyer<shader_binary, false>;
+using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
+using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
 
 // shader arguments
 struct argument;
-struct prebuilt_argument_data;
-using prebuilt_argument = auto_destroyer<prebuilt_argument_data, false>;
+struct prebuilt_argument;
+using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, false>;
 
 // RAII frame chain
 namespace raii
@@ -66,4 +69,9 @@ class ComputePass;
 }
 
 class CompiledFrame;
+
+namespace detail
+{
+struct auto_destroy_proxy;
+}
 }

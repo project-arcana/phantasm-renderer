@@ -4,8 +4,6 @@
 
 #include "Context.hh"
 
-void pr::prebuilt_argument_data::destroy(pr::Context* ctx) { ctx->freeShaderView(_sv); }
-
 void pr::argument::add(const texture &img)
 {
     _info.get().srv_guids.push_back(img.res.guid);
@@ -114,12 +112,12 @@ void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::texture& i
     new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
 }
 
-pr::prebuilt_argument pr::argument_builder::make_graphics()
+pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
 {
-    return {prebuilt_argument_data{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false), phi::handle::null_resource, 0}, _parent};
 }
 
-pr::prebuilt_argument pr::argument_builder::make_compute()
+pr::auto_prebuilt_argument pr::argument_builder::make_compute()
 {
-    return {prebuilt_argument_data{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true), phi::handle::null_resource, 0}, _parent};
 }

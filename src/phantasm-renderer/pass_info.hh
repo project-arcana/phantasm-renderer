@@ -58,8 +58,8 @@ public:
     /// Add a shader
     graphics_pass_info& shader(pr::shader_binary const& binary)
     {
-        _storage.get().shader_hashes.push_back(binary.data._hash);
-        _shaders.push_back(phi::arg::graphics_shader{{binary.data._data, binary.data._size}, binary.data._stage});
+        _storage.get().shader_hashes.push_back(binary._hash);
+        _shaders.push_back(phi::arg::graphics_shader{{binary._data, binary._size}, binary._stage});
         return *this;
     }
 
@@ -135,8 +135,8 @@ public:
     /// Add a shader
     compute_pass_info& shader(pr::shader_binary const& binary)
     {
-        _storage.get().shader_hash = binary.data._hash;
-        _shader = phi::arg::shader_binary{binary.data._data, binary.data._size};
+        _storage.get().shader_hash = binary._hash;
+        _shader = phi::arg::shader_binary{binary._data, binary._size};
         return *this;
     }
 

@@ -45,15 +45,14 @@ private:
     hashable_storage<shader_view_info> _info;
 };
 
-struct prebuilt_argument_data
+struct prebuilt_argument
 {
     phi::handle::shader_view _sv = phi::handle::null_shader_view;
     phi::handle::resource _cbv = phi::handle::null_resource;
     unsigned _cbv_offset = 0;
-    void destroy(pr::Context* ctx);
 };
 
-using prebuilt_argument = auto_destroyer<prebuilt_argument_data, false>;
+using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, false>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
 struct argument_builder
@@ -128,8 +127,8 @@ public:
 
     // finalize
 
-    [[nodiscard]] prebuilt_argument make_graphics();
-    [[nodiscard]] prebuilt_argument make_compute();
+    [[nodiscard]] auto_prebuilt_argument make_graphics();
+    [[nodiscard]] auto_prebuilt_argument make_compute();
 
 public:
     friend class Context;

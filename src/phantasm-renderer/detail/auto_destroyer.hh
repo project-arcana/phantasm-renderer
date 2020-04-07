@@ -1,0 +1,83 @@
+#pragma once
+
+#include <phantasm-renderer/fwd.hh>
+
+namespace pr
+{
+namespace detail
+{
+struct auto_destroy_proxy
+{
+    static void cache_deref(pr::Context* ctx, buffer const& v);
+    static void cache_deref(pr::Context* ctx, render_target const& v);
+    static void cache_deref(pr::Context* ctx, texture const& v);
+    static void destroy(pr::Context* ctx, buffer const& v);
+    static void destroy(pr::Context* ctx, render_target const& v);
+    static void destroy(pr::Context* ctx, texture const& v);
+    static void destroy(pr::Context* ctx, pipeline_state_abstract const& v);
+    static void destroy(pr::Context* ctx, shader_binary const& v);
+    static void destroy(pr::Context* ctx, prebuilt_argument const& v);
+};
+}
+
+template <class T, bool Cache>
+struct auto_destroyer
+{
+    T data;
+
+    auto_destroyer() = default;
+    auto_destroyer(T const& data, pr::Context* parent) : data(data), parent(parent) {}
+
+    auto_destroyer(auto_destroyer&& rhs) noexcept : data(rhs.data), parent(rhs.parent) { rhs.parent = nullptr; }
+    auto_destroyer& operator=(auto_destroyer&& rhs) noexcept
+    {
+        if (this != &rhs)
+        {
+            _destroy();
+            data = rhs.data;
+            parent = rhs.parent;
+            rhs.parent = nullptr;
+        }
+        return *this;
+    }
+
+    auto_destroyer(auto_destroyer const&) = delete;
+    auto_destroyer& operator=(auto_destroyer const&) = delete;
+
+    ~auto_destroyer() { _destroy(); }
+
+    /// disable RAII management and receive the POD contents, which must now be manually freed
+    T const& unlock()
+    {
+        parent = nullptr;
+        return data;
+    }
+
+    operator T&() & { return data; }
+    operator T const&() const& { return data; }
+
+    // force unlock from rvalue
+    operator T&() && = delete;
+    operator T const&() const&& = delete;
+
+private:
+    pr::Context* parent = nullptr;
+
+    void _destroy()
+    {
+        if (parent != nullptr)
+        {
+            if constexpr (Cache)
+            {
+                detail::auto_destroy_proxy::cache_deref(parent, data);
+            }
+            else
+            {
+                detail::auto_destroy_proxy::destroy(parent, data);
+            }
+
+            parent = nullptr;
+        }
+    }
+};
+}
