@@ -115,8 +115,8 @@ public:
 
 private:
     friend struct argument_builder;
-    static void populate_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
-    static void populate_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
+    static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
+    static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
 
 private:
     friend class raii::Frame;
@@ -143,7 +143,7 @@ public:
     argument_builder& add(texture const& img)
     {
         auto& new_rv = _srvs.emplace_back();
-        argument::populate_srv(new_rv, img, 0, unsigned(-1));
+        argument::fill_default_srv(new_rv, img, 0, unsigned(-1));
         return *this;
     }
     argument_builder& add(buffer const& buffer)
@@ -175,7 +175,7 @@ public:
     argument_builder& add_mutable(texture const& img)
     {
         auto& new_rv = _uavs.emplace_back();
-        argument::populate_uav(new_rv, img, 0, unsigned(-1));
+        argument::fill_default_uav(new_rv, img, 0, unsigned(-1));
         return *this;
     }
     argument_builder& add_mutable(buffer const& buffer)

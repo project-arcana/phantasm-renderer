@@ -356,15 +356,15 @@ void Context::destroy()
         // flush GPU
         mBackend->flushGPU();
 
-        // empty all caches
+        // empty all caches, this could be way optimized
         mCacheGraphicsPSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
         mCacheComputePSOs.iterate_values([&](phi::handle::pipeline_state pso) { mBackend->free(pso); });
         mCacheGraphicsSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
         mCacheComputeSVs.iterate_values([&](phi::handle::shader_view sv) { mBackend->free(sv); });
 
-        mCacheBuffers.clear_all();
-        mCacheTextures.clear_all();
-        mCacheRenderTargets.clear_all();
+        mCacheBuffers.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
+        mCacheTextures.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
+        mCacheRenderTargets.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
 
         // destroy other components
         mGpuEpochTracker.destroy();

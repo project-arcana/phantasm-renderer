@@ -9,7 +9,7 @@ void pr::argument::add(const texture& img)
     _info.get().srv_guids.push_back(img.res.guid);
 
     auto& new_rv = _info.get().srvs.emplace_back();
-    populate_srv(new_rv, img, 0, unsigned(-1));
+    fill_default_srv(new_rv, img, 0, unsigned(-1));
 }
 
 void pr::argument::add(const pr::buffer& buffer)
@@ -33,7 +33,7 @@ void pr::argument::add_mutable(const pr::texture& img)
     _info.get().uav_guids.push_back(img.res.guid);
 
     auto& new_rv = _info.get().uavs.emplace_back();
-    populate_uav(new_rv, img, 0, unsigned(-1));
+    fill_default_uav(new_rv, img, 0, unsigned(-1));
 }
 
 void pr::argument::add_mutable(const pr::buffer& buffer)
@@ -52,7 +52,7 @@ void pr::argument::add_mutable(const pr::render_target& rt)
     new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
 }
 
-void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
+void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     new_rv.resource = img.res.handle;
     new_rv.pixel_format = img.info.fmt;
@@ -93,10 +93,10 @@ void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& i
     }
 }
 
-void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
+void pr::argument::fill_default_uav(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     // no difference in handling right now
-    populate_srv(new_rv, img, mip_start, mip_size);
+    fill_default_srv(new_rv, img, mip_start, mip_size);
 }
 
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()

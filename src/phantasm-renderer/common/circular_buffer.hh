@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include <rich-log/log.hh>
+
 #include <clean-core/move.hh>
 #include <clean-core/new.hh>
 #include <clean-core/utility.hh>
@@ -96,8 +98,8 @@ public:
 
     void reset()
     {
-        _head = _tail;
-        _is_full = false;
+        while (!empty())
+            pop_tail();
     }
 
     bool empty() const
@@ -131,6 +133,16 @@ public:
         }
 
         return size;
+    }
+
+    template <class F>
+    void iterate_reset(F&& func)
+    {
+        while (!empty())
+        {
+            func(get_tail());
+            pop_tail();
+        }
     }
 
 private:

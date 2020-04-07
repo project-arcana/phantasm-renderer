@@ -63,10 +63,14 @@ public:
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
-    void clear_all()
+    template <class F>
+    void iterate_values(F&& func)
     {
         auto lg = std::lock_guard(_mutex);
-        _map.clear();
+        for (auto& [key, val] : _map)
+        {
+            val.in_flight_buffer.iterate_reset([&](in_flight_val const& if_val) { func(if_val.val.handle); });
+        }
     }
 
 private:
