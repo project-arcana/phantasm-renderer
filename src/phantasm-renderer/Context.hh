@@ -38,9 +38,9 @@ public:
 
     [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
 
-    [[nodiscard]] auto_texture make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] auto_texture make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] auto_texture make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
 
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
@@ -115,6 +115,10 @@ public:
         write_buffer(buffer, &data, sizeof(T));
     }
 
+    void flush_buffer_writes(buffer const& buffer);
+
+    [[nodiscard]] std::byte* get_buffer_map(buffer const& buffer);
+
     //
     // consumption API
     //
@@ -146,8 +150,10 @@ public:
 
     void on_window_resize(tg::isize2 size);
     [[nodiscard]] bool clear_backbuffer_resize();
+
     tg::isize2 get_backbuffer_size() const;
     format get_backbuffer_format() const;
+    unsigned get_num_backbuffers() const;
 
     [[nodiscard]] render_target acquire_backbuffer();
 

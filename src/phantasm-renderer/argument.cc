@@ -4,7 +4,7 @@
 
 #include "Context.hh"
 
-void pr::argument::add(const texture &img)
+void pr::argument::add(const texture& img)
 {
     _info.get().srv_guids.push_back(img.res.guid);
 
@@ -55,61 +55,39 @@ void pr::argument::add_mutable(const pr::render_target& rt)
 void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& img)
 {
     new_rv.resource = img.res.handle;
+    new_rv.pixel_format = img.info.fmt;
+    new_rv.texture_info.mip_start = 0;
+    new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
 
     if (img.info.dim == phi::texture_dimension::t1d)
     {
         new_rv.dimension = phi::resource_view_dimension::texture1d;
+
         new_rv.texture_info.array_size = 1;
         new_rv.texture_info.array_start = 0;
     }
     else if (img.info.dim == phi::texture_dimension::t2d)
     {
-        new_rv.texture_info.array_size = img.info.depth_or_array_size;
-        new_rv.texture_info.array_start = 0;
-        new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
-
         if (img.info.depth_or_array_size == 6)
             new_rv.dimension = phi::resource_view_dimension::texturecube;
-    }
-    else
-    {
+        else
+            new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
+
         new_rv.texture_info.array_size = img.info.depth_or_array_size;
         new_rv.texture_info.array_start = 0;
-        new_rv.dimension = phi::resource_view_dimension::texture3d;
     }
-
-    new_rv.texture_info.mip_start = 0;
-    new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
+    else /* (== phi::texture_dimension::t3d) */
+    {
+        new_rv.dimension = phi::resource_view_dimension::texture3d;
+        new_rv.texture_info.array_size = img.info.depth_or_array_size;
+        new_rv.texture_info.array_start = 0;
+    }
 }
 
 void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::texture& img)
 {
-    new_rv.resource = img.res.handle;
-
-    if (img.info.dim == phi::texture_dimension::t1d)
-    {
-        new_rv.dimension = phi::resource_view_dimension::texture1d;
-        new_rv.texture_info.array_size = 1;
-        new_rv.texture_info.array_start = 0;
-    }
-    else if (img.info.dim == phi::texture_dimension::t2d)
-    {
-        new_rv.texture_info.array_size = img.info.depth_or_array_size;
-        new_rv.texture_info.array_start = 0;
-        new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
-
-        if (img.info.depth_or_array_size == 6)
-            new_rv.dimension = phi::resource_view_dimension::texturecube;
-    }
-    else
-    {
-        new_rv.texture_info.array_size = img.info.depth_or_array_size;
-        new_rv.texture_info.array_start = 0;
-        new_rv.dimension = phi::resource_view_dimension::texture3d;
-    }
-
-    new_rv.texture_info.mip_start = 0;
-    new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
+    // no difference in handling right now
+    populate_srv(new_rv, img);
 }
 
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()

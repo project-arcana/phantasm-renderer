@@ -44,19 +44,19 @@ raii::Frame Context::make_frame(size_t initial_size)
     return {this, initial_size};
 }
 
-auto_texture Context::make_image(int width, phi::format format, unsigned num_mips, bool allow_uav)
+auto_texture Context::make_texture(int width, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, 1, num_mips};
     return {createTexture(info), this};
 }
 
-auto_texture Context::make_image(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav)
+auto_texture Context::make_texture(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 1, num_mips};
     return {createTexture(info), this};
 }
 
-auto_texture Context::make_image(tg::isize3 size, phi::format format, unsigned num_mips, bool allow_uav)
+auto_texture Context::make_texture(tg::isize3 size, phi::format format, unsigned num_mips, bool allow_uav)
 {
     auto const info
         = texture_info{format, phi::texture_dimension::t3d, allow_uav, size.width, size.height, static_cast<unsigned int>(size.depth), num_mips};
@@ -81,7 +81,7 @@ auto_buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool all
     return {createBuffer(info), this};
 }
 
-auto_shader_binary Context::make_shader(const std::byte* data, size_t size, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi::shader_stage stage)
 {
     CC_ASSERT(data != nullptr);
 
@@ -103,27 +103,21 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
     auto const sc_output = mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv;
 
     {
-        auto lg = std::lock_guard(mMutexShaderCompilation);
-        bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), sc_target, sc_output); // unsynced, mutex: compilation
+        auto lg = std::lock_guard(mMutexShaderCompilation); // unsynced, mutex: compilation
+        bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), sc_target, sc_output);
     }
-
-
-    shader_binary res;
-    res._stage = stage;
 
     if (bin.data == nullptr)
     {
         LOG(warning)("Failed to compile shader");
+        return {};
     }
     else
     {
-        res._data = bin.data;
-        res._size = bin.size;
-        res._owning_blob = bin.internal_blob;
-        murmurhash3_x64_128(res._data, static_cast<int>(res._size), 0, res._hash);
+        auto res = make_shader(bin.data, bin.size, stage);
+        res.data._owning_blob = bin.internal_blob;
+        return res;
     }
-
-    return {res, this};
 }
 
 auto_prebuilt_argument Context::make_graphics_argument(const argument& arg)
@@ -141,9 +135,9 @@ auto_prebuilt_argument Context::make_compute_argument(const argument& arg)
 auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
 {
     auto const& gp = gp_wrap._storage.get();
-    return auto_graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(), gp.arg_shapes,
-                                                                   gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}},
-                                   this};
+    return auto_graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(),
+                                                                        gp.arg_shapes, gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}},
+                                        this};
 }
 
 auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
@@ -166,6 +160,18 @@ void Context::write_buffer(const buffer& buffer, void const* data, size_t size, 
     CC_ASSERT(buffer.info.is_mapped && "Attempted to write to non-mapped buffer");
     CC_ASSERT(buffer.info.size_bytes >= size && "Buffer write out of bounds");
     std::memcpy(mBackend->getMappedMemory(buffer.res.handle) + offset, data, size);
+}
+
+void Context::flush_buffer_writes(const buffer& buffer)
+{
+    CC_ASSERT(buffer.info.is_mapped && "Attempted to flush writes to non-mapped buffer");
+    mBackend->flushMappedMemory(buffer.res.handle);
+}
+
+std::byte* Context::get_buffer_map(const buffer& buffer)
+{
+    CC_ASSERT(buffer.info.is_mapped && "Attempted to get map from non-mapped buffer");
+    return mBackend->getMappedMemory(buffer.res.handle);
 }
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples)
@@ -258,6 +264,8 @@ tg::isize2 Context::get_backbuffer_size() const { return mBackend->getBackbuffer
 
 phi::format Context::get_backbuffer_format() const { return mBackend->getBackbufferFormat(); }
 
+unsigned Context::get_num_backbuffers() const { return mBackend->getNumBackbuffers(); }
+
 render_target Context::acquire_backbuffer()
 {
     auto const backbuffer = mBackend->acquireBackbuffer();
@@ -346,7 +354,7 @@ render_target Context::createRenderTarget(const render_target_info& info)
 
 texture Context::createTexture(const texture_info& info)
 {
-    return {{mBackend->createTexture(info.format, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()}, info};
+    return {{mBackend->createTexture(info.fmt, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()}, info};
 }
 
 buffer Context::createBuffer(const buffer_info& info)
