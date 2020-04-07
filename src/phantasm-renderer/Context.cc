@@ -4,6 +4,8 @@
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
+#include <phantasm-hardware-interface/detail/byte_util.hh>
+#include <phantasm-hardware-interface/detail/format_size.hh>
 
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
@@ -60,6 +62,24 @@ auto_texture Context::make_texture(tg::isize3 size, phi::format format, unsigned
 {
     auto const info
         = texture_info{format, phi::texture_dimension::t3d, allow_uav, size.width, size.height, static_cast<unsigned int>(size.depth), num_mips};
+    return {createTexture(info), this};
+}
+
+auto_texture Context::make_texture_cube(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 6, num_mips};
+    return {createTexture(info), this};
+}
+
+auto_texture Context::make_texture_array(int width, unsigned num_elems, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, num_elems, num_mips};
+    return {createTexture(info), this};
+}
+
+auto_texture Context::make_texture_array(tg::isize2 size, unsigned num_elems, phi::format format, unsigned num_mips, bool allow_uav)
+{
+    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, num_elems, num_mips};
     return {createTexture(info), this};
 }
 
@@ -265,6 +285,29 @@ tg::isize2 Context::get_backbuffer_size() const { return mBackend->getBackbuffer
 phi::format Context::get_backbuffer_format() const { return mBackend->getBackbufferFormat(); }
 
 unsigned Context::get_num_backbuffers() const { return mBackend->getNumBackbuffers(); }
+
+unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, unsigned num_mips) const
+{
+    // calculate number of mips if zero is given
+    num_mips = num_mips > 0 ? num_mips : calculate_num_mip_levels({size.width, size.height});
+    auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
+    auto res_bytes = 0u;
+
+    for (auto a = 0; a < size.depth; ++a)
+    {
+        for (auto mip = 0u; mip < num_mips; ++mip)
+        {
+            auto const mip_width = cc::max(unsigned(tg::floor(size.width / tg::pow(2.f, float(mip)))), 1u);
+            auto const mip_height = cc::max(unsigned(tg::floor(size.height / tg::pow(2.f, float(mip)))), 1u);
+
+            auto const row_pitch = phi::mem::align_up(bytes_per_pixel * mip_width, 256);
+            auto const custom_offset = row_pitch * mip_height;
+            res_bytes += custom_offset;
+        }
+    }
+
+    return res_bytes;
+}
 
 render_target Context::acquire_backbuffer()
 {

@@ -2,9 +2,25 @@
 
 #include <clean-core/utility.hh>
 
+#include <phantasm-hardware-interface/Backend.hh>
+#include <phantasm-hardware-interface/detail/byte_util.hh>
+#include <phantasm-hardware-interface/detail/format_size.hh>
+
 #include <phantasm-renderer/Context.hh>
 
 #include "CompiledFrame.hh"
+
+
+namespace
+{
+void rowwise_copy(std::byte const* src, std::byte* dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned height_pixels)
+{
+    for (auto y = 0u; y < height_pixels; ++y)
+    {
+        std::memcpy(dest + y * dest_row_stride_bytes, src + y * row_size_bytes, row_size_bytes);
+    }
+}
+}
 
 using namespace pr;
 
@@ -17,7 +33,7 @@ void raii::Frame::transition(const buffer& res, phi::resource_state target, phi:
     transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const texture &res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const texture& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
     transition(res.res.handle, target, dependency);
 }
@@ -52,8 +68,8 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     transition(dest, phi::resource_state::copy_dest);
     flushPendingTransitions();
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src.res.handle, dest.res.handle, unsigned(dest.info.width) / (1 + dest_mip_index),
-              unsigned(dest.info.height) / (1 + dest_mip_index), src_offset, dest_mip_index, dest_array_index);
+    ccmd.init(src.res.handle, dest.res.handle, unsigned(dest.info.width) / (1 + dest_mip_index), unsigned(dest.info.height) / (1 + dest_mip_index),
+              src_offset, dest_mip_index, dest_array_index);
     mWriter.add_command(ccmd);
 }
 
@@ -77,7 +93,7 @@ void raii::Frame::copy(const render_target& src, const render_target& dest)
     copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
-void raii::Frame::resolve(const render_target& src, const texture &dest)
+void raii::Frame::resolve(const render_target& src, const texture& dest)
 {
     resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
@@ -85,6 +101,68 @@ void raii::Frame::resolve(const render_target& src, const texture &dest)
 void raii::Frame::resolve(const render_target& src, const render_target& dest)
 {
     resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
+}
+
+void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffer& upload_buffer, const texture& dest_texture)
+{
+    transition(dest_texture, phi::resource_state::copy_dest);
+    flushPendingTransitions();
+    CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
+
+    auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
+    auto const use_d3d12_per_row_alingment = mCtx->get_backend().getBackendType() == phi::backend_type::d3d12;
+    auto* const upload_buffer_map = mCtx->get_buffer_map(upload_buffer);
+
+    phi::cmd::copy_buffer_to_texture command;
+    command.source = upload_buffer.res.handle;
+    command.destination = dest_texture.res.handle;
+    command.dest_width = unsigned(dest_texture.info.width);
+    command.dest_height = unsigned(dest_texture.info.height);
+    command.dest_mip_index = 0;
+
+    auto accumulated_offset_bytes = 0u;
+
+    // for (auto a = 0u; a < img_size.array_size; ++a)
+    {
+        command.dest_array_index = 0u; // a;
+        command.source_offset = accumulated_offset_bytes;
+
+        mWriter.add_command(command);
+
+        auto const mip_row_size_bytes = bytes_per_pixel * command.dest_width;
+        auto mip_row_stride_bytes = mip_row_size_bytes;
+
+        // MIP maps are 256-byte aligned per row in d3d12
+        if (use_d3d12_per_row_alingment)
+            mip_row_stride_bytes = phi::mem::align_up(mip_row_stride_bytes, 256);
+
+        auto const mip_offset_bytes = mip_row_stride_bytes * command.dest_height;
+        accumulated_offset_bytes += mip_offset_bytes;
+
+        rowwise_copy(texture_data, upload_buffer_map + command.source_offset, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
+    }
+
+    mCtx->flush_buffer_writes(upload_buffer);
+}
+
+void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)
+{
+    flushPendingTransitions();
+
+    phi::cmd::transition_image_slices tcmd;
+    for (auto const& ti : slices)
+    {
+        if (tcmd.transitions.size() == phi::limits::max_resource_transitions)
+        {
+            mWriter.add_command(tcmd);
+            tcmd.transitions.clear();
+        }
+
+        tcmd.transitions.push_back(ti);
+    }
+
+    if (!tcmd.transitions.empty())
+        mWriter.add_command(tcmd);
 }
 
 void raii::Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
@@ -107,6 +185,7 @@ void raii::Frame::flushPendingTransitions()
 {
     if (!mPendingTransitionCommand.transitions.empty())
     {
+        CC_ASSERT(!mFramebufferActive && "No transitions allowed during active raii::Framebuffers");
         mWriter.add_command(mPendingTransitionCommand);
         mPendingTransitionCommand.transitions.clear();
     }
@@ -164,6 +243,7 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     }
 
     flushPendingTransitions();
+    mFramebufferActive = true;
     mWriter.add_command(bcmd);
 
 
@@ -183,6 +263,7 @@ void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
     mWriter.add_command(ecmd);
+    mFramebufferActive = false;
 }
 
 phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb)
@@ -196,7 +277,11 @@ phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const gra
 
 void raii::Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
 
-void raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd) { mWriter.add_command(dcmd); }
+void raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
+{
+    flushPendingTransitions();
+    mWriter.add_command(dcmd);
+}
 
 phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(const argument& arg)
 {

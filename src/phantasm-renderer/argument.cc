@@ -9,7 +9,7 @@ void pr::argument::add(const texture& img)
     _info.get().srv_guids.push_back(img.res.guid);
 
     auto& new_rv = _info.get().srvs.emplace_back();
-    populate_srv(new_rv, img);
+    populate_srv(new_rv, img, 0, unsigned(-1));
 }
 
 void pr::argument::add(const pr::buffer& buffer)
@@ -33,7 +33,7 @@ void pr::argument::add_mutable(const pr::texture& img)
     _info.get().uav_guids.push_back(img.res.guid);
 
     auto& new_rv = _info.get().uavs.emplace_back();
-    populate_uav(new_rv, img);
+    populate_uav(new_rv, img, 0, unsigned(-1));
 }
 
 void pr::argument::add_mutable(const pr::buffer& buffer)
@@ -52,12 +52,21 @@ void pr::argument::add_mutable(const pr::render_target& rt)
     new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
 }
 
-void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& img)
+void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     new_rv.resource = img.res.handle;
     new_rv.pixel_format = img.info.fmt;
-    new_rv.texture_info.mip_start = 0;
-    new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
+    new_rv.texture_info.mip_start = mip_start;
+
+    if (mip_size != unsigned(-1))
+    {
+        new_rv.texture_info.mip_size = mip_size;
+    }
+    else
+    {
+        // automatic, but attempt to derive from info
+        new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
+    }
 
     if (img.info.dim == phi::texture_dimension::t1d)
     {
@@ -84,10 +93,10 @@ void pr::argument::populate_srv(phi::resource_view& new_rv, const pr::texture& i
     }
 }
 
-void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::texture& img)
+void pr::argument::populate_uav(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     // no difference in handling right now
-    populate_srv(new_rv, img);
+    populate_srv(new_rv, img, mip_start, mip_size);
 }
 
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()

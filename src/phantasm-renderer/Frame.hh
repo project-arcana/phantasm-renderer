@@ -21,7 +21,8 @@ namespace pr::raii
 class Frame
 {
 public:
-    // pass RAII API
+    //
+    // framebuffer RAII API
 
     /// create a framebuffer by supplying render targets (all cleared, viewport minimum of sizes)
     template <class... RTs>
@@ -43,7 +44,8 @@ public:
     /// create a framebuffer using a builder with more configuration options
     [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
 
-    // pipeline RAII API (compute only, graphics pipelines are in Framebuffer)
+    //
+    // pass RAII API (compute only, graphics passes are in Framebuffer)
 
     /// start a compute pass from persisted PSO
     [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
@@ -58,6 +60,7 @@ public:
     void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
 
+    //
     // commands
 
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
@@ -71,15 +74,28 @@ public:
     void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
 
-    // raw command
+    //
+    // specials
 
+    /// uploads texture data correctly to a destination texture respecting rowwise alignment
+    /// expects an appropriately sized upload buffer (see Context::calculate_texture_upload_size)
+    void upload_texture_data(std::byte const* texture_data, buffer const& upload_buffer, texture const& dest_texture);
+
+    //
+    // raw phi commands
+
+    /// write a raw phi command
     template <class CmdT>
     void write_raw_cmd(CmdT const& cmd)
     {
         mWriter.add_command(cmd);
     }
 
-    // move-only type
+    /// write multiple resource slice transitions - no state tracking
+    void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
+
+    pr::Context& context() { return *mCtx; }
+
 public:
     Frame(Frame const&) = delete;
     Frame& operator=(Frame const&) = delete;
@@ -156,5 +172,6 @@ private:
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::vector<freeable_cached_obj> mFreeables;
+    bool mFramebufferActive = false;
 };
 }

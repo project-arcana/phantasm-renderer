@@ -36,24 +36,42 @@ public:
     // creation API
     //
 
+    /// start a frame, allowing command recording
     [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
 
+    /// create a 1D texture
     [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 2D texture
     [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 3D texture
     [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a texture cube
+    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 1D texture array
+    [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 2D texture array
+    [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
 
+    /// create a render target
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
 
+    /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    /// create a mapped upload buffer which can be directly written to from CPU
     [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    /// create a mapped upload buffer, with a size based on accomodating a given texture's contents
+    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
 
     /// create a shader from binary data
     [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
     /// create a shader by compiling it live from text
     [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
 
+    /// create a persisted shader argument for graphics passes
     [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    /// create a persisted shader argument for compute passes
     [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument const& arg);
+    /// create a persisted shader argument, builder pattern
     [[nodiscard]] argument_builder build_argument() { return {this}; }
 
     /// create a graphics pipeline state
@@ -151,11 +169,28 @@ public:
     void on_window_resize(tg::isize2 size);
     [[nodiscard]] bool clear_backbuffer_resize();
 
+    [[nodiscard]] render_target acquire_backbuffer();
+
+    //
+    // info
+    //
+
     tg::isize2 get_backbuffer_size() const;
     format get_backbuffer_format() const;
     unsigned get_num_backbuffers() const;
 
-    [[nodiscard]] render_target acquire_backbuffer();
+    /// returns the amount of mip levels in a full mipchain for the given size (sizes assumed positive)
+    unsigned calculate_num_mip_levels(tg::isize2 size) const;
+
+    /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
+    unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+
+    //
+    // miscellaneous
+    //
 
     bool start_capture();
     bool end_capture();
@@ -273,4 +308,29 @@ private:
     single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
     single_cache<phi::handle::shader_view> mCacheComputeSVs;
 };
+
+inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
+{
+    return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
+}
+
+inline unsigned Context::calculate_num_mip_levels(tg::isize2 size) const
+{
+    return unsigned(std::floor(std::log2(float(cc::max(size.width, size.height))))) + 1u;
+}
+
+inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, phi::format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
+}
+
+inline unsigned Context::calculate_texture_upload_size(int width, phi::format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
+}
+
+inline unsigned Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
+}
 }

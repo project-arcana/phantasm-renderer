@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clean-core/assert.hh>
+
 #include <phantasm-renderer/fwd.hh>
 
 namespace pr
@@ -49,9 +51,13 @@ struct auto_destroyer
     /// disable RAII management and receive the POD contents, which must now be manually freed
     T const& unlock()
     {
+        CC_ASSERT(parent != nullptr && "Attempted to unlock an invalid auto_ type");
         parent = nullptr;
         return data;
     }
+
+    /// free prematurely (to cache or not), invalid afterwards
+    void free() { _destroy(); }
 
     operator T&() & { return data; }
     operator T const&() const& { return data; }
