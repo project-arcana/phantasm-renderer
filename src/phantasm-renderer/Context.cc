@@ -522,7 +522,7 @@ phi::handle::shader_view Context::acquire_compute_sv(murmur_hash hash, const has
     if (!sv.is_valid())
     {
         shader_view_info const& info = info_storage.get();
-        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false);
+        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true);
         mCacheComputeSVs.insert(sv, hash);
     }
     return sv;
