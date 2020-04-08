@@ -54,6 +54,10 @@ public:
 
     /// create a render target
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    /// create a render target with an optimized clear color
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, tg::color4 optimized_clear_color, unsigned num_samples = 1);
+    /// create a render target with an optimized clear depth / stencil
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, float optimized_clear_depth, uint8_t optimized_clear_stencil = 0, unsigned num_samples = 1);
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -241,7 +245,7 @@ private:
     void internalInitialize();
 
     // creation
-    render_target createRenderTarget(render_target_info const& info);
+    render_target createRenderTarget(render_target_info const& info, phi::rt_clear_value const* optimized_clear = nullptr);
     texture createTexture(texture_info const& info);
     buffer createBuffer(buffer_info const& info);
 
