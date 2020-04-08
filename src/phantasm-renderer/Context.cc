@@ -344,19 +344,28 @@ render_target Context::acquire_backbuffer()
 
 Context::Context(phi::window_handle const& window_handle, backend_type type) { initialize(window_handle, type); }
 
+Context::Context(const phi::window_handle& window_handle, backend_type type, const phi::backend_config& config)
+{
+    initialize(window_handle, type, config);
+}
+
 Context::Context(phi::Backend* backend) { initialize(backend); }
 
 void Context::initialize(const phi::window_handle& window_handle, backend_type type)
 {
-    CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
-
-    mOwnsBackend = true;
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
+    initialize(window_handle, type, cfg);
+}
 
-    mBackend = detail::make_backend(type, window_handle, cfg);
+void Context::initialize(const phi::window_handle& window_handle, backend_type type, const phi::backend_config& config)
+{
+    CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
+
+    mOwnsBackend = true;
+    mBackend = detail::make_backend(type, window_handle, config);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
     internalInitialize();
 }

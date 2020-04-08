@@ -207,14 +207,17 @@ public:
     //
 
     Context() = default;
-    /// constructs a context with a default backend (usually vulkan)
+    /// internally create a backend with default config
     Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
-    /// constructs a context with a specified backend
+    /// internally create a backend with specified config
+    Context(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
+    /// attach to an existing backend
     Context(phi::Backend* backend);
 
     ~Context() { destroy(); }
 
     void initialize(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
+    void initialize(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
     void initialize(phi::Backend* backend);
 
     void destroy();
