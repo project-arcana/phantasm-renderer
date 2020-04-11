@@ -34,5 +34,4 @@ struct murmur_collapser
 void murmurhash3_x64_128(const void* key, int len, uint32_t seed, murmur_hash& out);
 
 
-
 }
