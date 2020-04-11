@@ -10,6 +10,7 @@
 #include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/default_config.hh>
 #include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/resource_types.hh>
 
@@ -158,7 +159,7 @@ private:
 
     // Context-side API
 private:
-    friend class Context;
+    friend Context;
     Frame(Context* ctx, size_t size) : mCtx(ctx), mWriter(size) {}
 
     void finalize();

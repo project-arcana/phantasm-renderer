@@ -67,7 +67,7 @@ public:
     void iterate_values(F&& func)
     {
         auto lg = std::lock_guard(_mutex);
-        for (auto& [key, val] : _map)
+        for (auto&& [key, val] : _map)
         {
             val.in_flight_buffer.iterate_reset([&](in_flight_val const& if_val) { func(if_val.val.handle); });
         }
