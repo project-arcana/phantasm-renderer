@@ -1,6 +1,8 @@
 #pragma once
 
-#include "format.hh"
+#include <cstdint>
+
+struct IDxcBlob;
 
 namespace phi
 {
@@ -11,15 +13,65 @@ class Backend;
 
 namespace pr
 {
-class Device;
+enum class backend_type
+{
+    d3d12,
+    vulkan
+};
+
 class Context;
-class Queue;
+using gpu_epoch_t = uint64_t;
 
+template <class T, bool Cache>
+struct auto_destroyer;
+
+// resources
+struct raw_resource;
+struct buffer;
+struct render_target;
+struct texture;
+
+using auto_buffer = auto_destroyer<buffer, false>;
+using auto_render_target = auto_destroyer<render_target, false>;
+using auto_texture = auto_destroyer<texture, false>;
+
+using cached_buffer = auto_destroyer<buffer, true>;
+using cached_render_target = auto_destroyer<render_target, true>;
+using cached_texture = auto_destroyer<texture, true>;
+
+
+// info argument objects
+struct graphics_pass_info;
+struct compute_pass_info;
+struct framebuffer_info;
+
+// shaders and pipeline states
+struct shader_binary;
+struct pipeline_state_abstract;
+struct graphics_pipeline_state;
+struct compute_pipeline_state;
+using auto_shader_binary = auto_destroyer<shader_binary, false>;
+using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
+using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
+
+// shader arguments
+struct argument;
+struct prebuilt_argument;
+using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, false>;
+
+// RAII frame chain
+namespace raii
+{
 class Frame;
-class CompiledFrame;
-
 class Framebuffer;
 class GraphicsPass;
+class ComputePass;
+}
 
-struct primitive_pipeline_config;
+class CompiledFrame;
+
+namespace detail
+{
+struct auto_destroy_proxy;
+}
 }

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <clean-core/map.hh>
-#include <clean-core/utility.hh>
+#include <mutex>
 
-#include <phantasm-hardware-interface/types.hh>
+#include <clean-core/map.hh>
 
 #include <phantasm-renderer/common/circular_buffer.hh>
 #include <phantasm-renderer/common/resource_info.hh>
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/resource_types.hh>
 
@@ -14,6 +14,7 @@ namespace pr
 {
 // the multi cache, key-value relation 1:N
 // used for render targets, textures, buffers
+// internally synchronized
 template <class KeyT>
 struct multi_cache
 {
@@ -24,8 +25,9 @@ public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
     /// acquire a value, given the current GPU epoch (which determines resources that are no longer in flight)
-    [[nodiscard]] pr::resource acquire(KeyT const& key, uint64_t current_gpu_epoch)
+    [[nodiscard]] raw_resource acquire(KeyT const& key, gpu_epoch_t current_gpu_epoch)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
         if (!elem.in_flight_buffer.empty())
         {
@@ -34,32 +36,42 @@ public:
             if (tail.required_gpu_epoch <= current_gpu_epoch)
             {
                 // event is ready, pop and return
-                pr::resource res = cc::move(tail.val);
+                raw_resource res = tail.val;
                 elem.in_flight_buffer.pop_tail();
-                return cc::move(res);
+                return res;
             }
         }
 
         // no element ready (in this case, the callsite will have to create a new object)
-        return {};
+        return {phi::handle::null_resource, 0};
     }
 
     /// free a value,
     /// given the current CPU epoch (that must be GPU-reached for the value to no longer be in flight)
-    void free(pr::resource&& val, KeyT const& key, uint64_t current_cpu_epoch)
+    void free(raw_resource val, KeyT const& key, gpu_epoch_t current_cpu_epoch)
     {
+        auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
         CC_ASSERT(!elem.in_flight_buffer.full());
-        elem.in_flight_buffer.enqueue({cc::move(val), current_cpu_epoch});
+        elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
     }
 
     void cull()
     {
+        auto lg = std::lock_guard(_mutex);
         ++_current_gen;
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
     }
 
-    void clear_all() { _map.clear(); }
+    template <class F>
+    void iterate_values(F&& func)
+    {
+        auto lg = std::lock_guard(_mutex);
+        for (auto& [key, val] : _map)
+        {
+            val.in_flight_buffer.iterate_reset([&](in_flight_val const& if_val) { func(if_val.val.handle); });
+        }
+    }
 
 private:
     map_element& access_element(KeyT const& key)
@@ -79,8 +91,8 @@ private:
 private:
     struct in_flight_val
     {
-        pr::resource val;
-        uint64_t required_gpu_epoch;
+        raw_resource val;
+        gpu_epoch_t required_gpu_epoch;
     };
 
     struct map_element
@@ -91,6 +103,7 @@ private:
 
     uint64_t _current_gen = 0;
     cc::map<KeyT, map_element, resource_info_hasher> _map;
+    std::mutex _mutex;
 };
 
 }

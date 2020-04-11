@@ -4,6 +4,7 @@
 
 namespace pr
 {
+// naive growing writer, TODO: pool and reuse buffers
 struct growing_writer
 {
     growing_writer(size_t initial_size);

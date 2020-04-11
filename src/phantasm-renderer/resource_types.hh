@@ -1,177 +1,86 @@
 #pragma once
 
-#include <clean-core/move.hh>
-#include <clean-core/typedefs.hh>
-
 #include <phantasm-hardware-interface/types.hh>
+
+#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 
-struct IDxcBlob;
+#include <phantasm-renderer/detail/auto_destroyer.hh>
 
 namespace pr
 {
-class Context;
+//
+// resource types
 
-// ---- resource types ----
-
-template <class HandleT>
-struct raii_handle
+struct raw_resource
 {
-    HandleT data;
-    pr::Context* parent = nullptr;
-
-    raii_handle() = default;
-    raii_handle(HandleT const& data, Context* parent) : data(data), parent(parent) {}
-
-    raii_handle(raii_handle&& rhs) noexcept : data(rhs.data), parent(rhs.parent) { rhs.parent = nullptr; }
-    raii_handle& operator=(raii_handle&& rhs) noexcept
-    {
-        if (this != &rhs)
-        {
-            _destroy();
-            data = rhs.data;
-            parent = rhs.parent;
-            rhs.parent = nullptr;
-        }
-        return *this;
-    }
-
-    raii_handle(raii_handle const&) = delete;
-    raii_handle& operator=(raii_handle const&) = delete;
-
-    ~raii_handle() { _destroy(); }
-
-private:
-    void _destroy()
-    {
-        if (parent != nullptr)
-        {
-            data.destroy(parent);
-            parent = nullptr;
-        }
-    }
+    phi::handle::resource handle;
+    uint64_t guid;
 };
-
-template <class CachedT>
-struct cached_handle
-{
-    operator CachedT&() { return _internal; }
-    operator CachedT const&() const { return _internal; }
-
-    cached_handle() = default;
-    cached_handle(CachedT&& data, Context* parent) : _internal(cc::move(data)), _parent(parent) {}
-
-    cached_handle(cached_handle&& rhs) noexcept : _internal(cc::move(rhs._internal)), _parent(rhs._parent) { rhs._parent = nullptr; }
-    cached_handle& operator=(cached_handle&& rhs) noexcept
-    {
-        if (this != &rhs)
-        {
-            _destroy();
-            _internal = cc::move(rhs._internal);
-            _parent = rhs._parent;
-            rhs.parent = nullptr;
-        }
-        return *this;
-    }
-
-    cached_handle(cached_handle const&) = delete;
-    cached_handle& operator=(cached_handle const&) = delete;
-
-    ~cached_handle() { _destroy(); }
-
-private:
-    void _destroy()
-    {
-        if (_parent != nullptr)
-        {
-            _internal.unrefCache(_parent);
-            _parent = nullptr;
-        }
-    }
-
-    CachedT _internal;
-    pr::Context* _parent = nullptr;
-};
-
-struct resource_data
-{
-    phi::handle::resource handle = phi::handle::null_resource;
-    uint64_t guid = 0; // for shader_view caching
-
-    void destroy(pr::Context* ctx);
-};
-
-using resource = raii_handle<resource_data>;
-
-// buffers
 
 struct buffer
 {
-    resource _resource;
-    buffer_info _info;
-
-    void unrefCache(pr::Context* ctx);
-};
-
-using cached_buffer = cached_handle<buffer>;
-// textures
-
-struct image
-{
-    resource _resource;
-    texture_info _info;
+    raw_resource res;
+    buffer_info info;
 };
 
 struct render_target
 {
-    resource _resource;
-    render_target_info _info;
-
-    void unrefCache(pr::Context* ctx);
+    raw_resource res;
+    render_target_info info;
 };
 
-using cached_render_target = cached_handle<render_target>;
+struct texture
+{
+    raw_resource res;
+    texture_info info;
+};
 
+//
 // shaders
 
-struct shader_binary_data
+struct shader_binary
 {
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    murmur_hash _hash;                ///< murmur hash over _data, for caching
+    murmur_hash _hash;                ///< murmur hash over _data, for caching of PSOs using this shader
     phi::shader_stage _stage;
-
-    void destroy(pr::Context* ctx);
 };
 
-using shader_binary = raii_handle<shader_binary_data>;
-
-struct shader_binary_unreffable : public shader_binary
-{
-    void unrefCache(pr::Context* ctx);
-};
-
-using cached_shader_binary = cached_handle<shader_binary_unreffable>;
-
+//
 // PSOs
 
-struct pipeline_state_abstract // cached internally, 1:1, based on all arguments to a pso creation + shader data hash
+struct pipeline_state_abstract
 {
     phi::handle::pipeline_state _handle = phi::handle::null_pipeline_state;
-    void destroy(pr::Context* ctx);
 };
 
-struct graphics_pipeline_state_data : public pipeline_state_abstract
+struct graphics_pipeline_state : public pipeline_state_abstract
 {
 };
-struct compute_pipeline_state_data : public pipeline_state_abstract
+struct compute_pipeline_state : public pipeline_state_abstract
 {
 };
 
-using graphics_pipeline_state = raii_handle<graphics_pipeline_state_data>;
-using compute_pipeline_state = raii_handle<compute_pipeline_state_data>;
+//
+// auto_ and cached_ aliases
+
+// move-only, self-destructing versions
+using auto_buffer = auto_destroyer<buffer, false>;
+using auto_render_target = auto_destroyer<render_target, false>;
+using auto_texture = auto_destroyer<texture, false>;
+
+using auto_shader_binary = auto_destroyer<shader_binary, false>;
+using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
+using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
+
+// move-only, self-cachefreeing versions
+using cached_buffer = auto_destroyer<buffer, true>;
+using cached_render_target = auto_destroyer<render_target, true>;
+using cached_texture = auto_destroyer<texture, true>;
+
 
 };

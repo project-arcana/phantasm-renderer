@@ -8,6 +8,7 @@
 
 #include <typed-geometry/tg-lean.hh>
 
+#include <phantasm-hardware-interface/fwd.hh>
 #include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
 
@@ -15,14 +16,11 @@
 
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
-#include <phantasm-renderer/common/resource_info.hh>
 #include <phantasm-renderer/common/single_cache.hh>
-#include <phantasm-renderer/common/state_info.hh>
-#include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/pipeline_builder.hh>
-#include <phantasm-renderer/resource_types.hh>
+#include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
@@ -33,27 +31,102 @@ namespace pr
  */
 class Context
 {
+public:
+    //
     // creation API
-public:
-    [[nodiscard]] Frame make_frame(size_t initial_size = 2048);
+    //
 
-    [[nodiscard]] image make_image(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] image make_image(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
-    [[nodiscard]] image make_image(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// start a frame, allowing command recording
+    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
 
-    [[nodiscard]] render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    /// create a 1D texture
+    [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 2D texture
+    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 3D texture
+    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a texture cube
+    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 1D texture array
+    [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a 2D texture array
+    [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
 
-    [[nodiscard]] buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    /// create a render target
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    /// create a render target with an optimized clear color
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, tg::color4 optimized_clear_color, unsigned num_samples = 1);
+    /// create a render target with an optimized clear depth / stencil
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, float optimized_clear_depth, uint8_t optimized_clear_stencil = 0, unsigned num_samples = 1);
 
-    [[nodiscard]] shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
-    [[nodiscard]] shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
+    /// create a buffer
+    [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    /// create a mapped upload buffer which can be directly written to from CPU
+    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    /// create a mapped upload buffer, with a size based on accomodating a given texture's contents
+    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
 
+    /// create a shader from binary data
+    [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
+    /// create a shader by compiling it live from text
+    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
+
+    /// create a persisted shader argument for graphics passes
+    [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    /// create a persisted shader argument for compute passes
+    [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument const& arg);
+    /// create a persisted shader argument, builder pattern
     [[nodiscard]] argument_builder build_argument() { return {this}; }
-    [[nodiscard]] pipeline_builder build_pipeline_state() { return {this}; }
 
+    /// create a graphics pipeline state
+    [[nodiscard]] auto_graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
+    /// create a compute pipeline state
+    [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
+
+    //
+    // cache lookup API
+    //
+
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+
+    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+
+
+    //
+    // freeing API
+    //
+
+    /// free a resource that was unlocked from automatic management
+    void free(raw_resource const& resource);
+
+    /// free a buffer
+    void free(buffer const& buffer) { free(buffer.res); }
+    /// free a texture
+    void free(texture const& texture) { free(texture.res); }
+    /// free a render_target
+    void free(render_target const& rt) { free(rt.res); }
+
+    void free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
+    void free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
+    void free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
+    void free(shader_binary const& shader)
+    {
+        if (shader._owning_blob != nullptr)
+            freeShaderBinary(shader._owning_blob);
+    }
+
+    /// free a buffer by placing it in the cache for reuse
+    void free_to_cache(buffer const& buffer);
+    /// free a texture by placing it in the cache for reuse
+    void free_to_cache(texture const& texture);
+    /// free a render target by placing it in the cache for reuse
+    void free_to_cache(render_target const& rt);
+
+    //
     // map upload API
-public:
+    //
+
     void write_buffer(buffer const& buffer, void const* data, size_t size, size_t offset = 0);
 
     template <class T>
@@ -64,44 +137,101 @@ public:
         write_buffer(buffer, &data, sizeof(T));
     }
 
-    // cache lookup API
-public:
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    void flush_buffer_writes(buffer const& buffer);
 
-    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] std::byte* get_buffer_map(buffer const& buffer);
 
-    [[nodiscard]] cached_shader_binary get_shader(cc::string_view code, phi::shader_stage stage);
-
+    //
     // consumption API
-public:
-    [[nodiscard]] CompiledFrame compile(Frame& frame);
+    //
 
-    void submit(Frame& frame);
-    void submit(CompiledFrame&& frame);
+    /// compiles a frame (records the command list)
+    /// heavy operation, try to thread this if possible
+    [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
+
+    /// submits a previously compiled frame to the GPU
+    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    gpu_epoch_t submit(CompiledFrame&& frame);
+
+    /// convenience to compile and submit a frame in a single call
+    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    gpu_epoch_t submit(raii::Frame& frame);
+
+    /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
 
+    /// flips backbuffers
     void present();
+
+    /// blocks on the CPU until all pending GPU operations are done
     void flush();
+
+    /// conditional flush
+    /// returns false if the epoch was reached already, or flushes and returns true
+    bool flush(gpu_epoch_t epoch);
 
     void on_window_resize(tg::isize2 size);
     [[nodiscard]] bool clear_backbuffer_resize();
-    tg::isize2 get_backbuffer_size() const;
-    format get_backbuffer_format() const;
 
     [[nodiscard]] render_target acquire_backbuffer();
+
+    //
+    // info
+    //
+
+    tg::isize2 get_backbuffer_size() const;
+    format get_backbuffer_format() const;
+    unsigned get_num_backbuffers() const;
+
+    /// returns the amount of mip levels in a full mipchain for the given size (sizes assumed positive)
+    unsigned calculate_num_mip_levels(tg::isize2 size) const;
+
+    /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
+    unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+
+    //
+    // miscellaneous
+    //
 
     bool start_capture();
     bool end_capture();
 
-    // ctors
+    phi::Backend& get_backend() { return *mBackend; }
+
 public:
-    /// constructs a context with a default backend (usually vulkan)
-    Context(phi::window_handle const& window_handle);
-    /// constructs a context with a specified backend
+    //
+    // ctors, init and destroy
+    //
+
+    Context() = default;
+    /// internally create a backend with default config
+    Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
+    /// internally create a backend with specified config
+    Context(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
+    /// attach to an existing backend
     Context(phi::Backend* backend);
 
-    ~Context();
+    ~Context() { destroy(); }
+
+    void initialize(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
+    void initialize(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
+    void initialize(phi::Backend* backend);
+
+    void destroy();
+
+public:
+    // deleted overrides
+
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    void free(auto_destroyer<T, Cached> const&) = delete;
+
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
 
     // ref type
 private:
@@ -112,51 +242,45 @@ private:
 
     // internal
 private:
-    [[nodiscard]] uint64_t acquireGuid() { return mResourceGUID.fetch_add(1); }
+    [[nodiscard]] uint64_t acquireGuid();
 
 private:
-    void initialize();
+    void internalInitialize();
 
     // creation
-    pr::resource createRenderTarget(render_target_info const& info);
-    pr::resource createTexture(texture_info const& info);
-    pr::resource createBuffer(buffer_info const& info);
+    render_target createRenderTarget(render_target_info const& info, phi::rt_clear_value const* optimized_clear = nullptr);
+    texture createTexture(texture_info const& info);
+    buffer createBuffer(buffer_info const& info);
 
     // multi cache acquire
-    pr::resource acquireRenderTarget(render_target_info const& info);
-    pr::resource acquireTexture(texture_info const& info);
-    pr::resource acquireBuffer(buffer_info const& info);
+    render_target acquireRenderTarget(render_target_info const& info);
+    texture acquireTexture(texture_info const& info);
+    buffer acquireBuffer(buffer_info const& info);
 
-    // internal RAII dtor API
+    // internal RAII auto_destroyer API
 private:
-    friend struct resource_data;
-    friend struct shader_binary_data;
-    friend struct baked_argument_data;
-    friend struct pipeline_state_abstract;
-    void freeResource(phi::handle::resource res);
+    friend struct detail::auto_destroy_proxy;
+
     void freeShaderBinary(IDxcBlob* blob);
     void freeShaderView(phi::handle::shader_view sv);
     void freePipelineState(phi::handle::pipeline_state ps);
 
-    friend struct buffer;
-    friend struct render_target;
-    void freeCachedTarget(render_target_info const& info, resource&& res);
-    void freeCachedTexture(texture_info const& info, pr::resource&& res);
-    void freeCachedBuffer(buffer_info const& info, pr::resource&& res);
+    void freeCachedTarget(render_target_info const& info, raw_resource res);
+    void freeCachedTexture(texture_info const& info, raw_resource res);
+    void freeCachedBuffer(buffer_info const& info, raw_resource res);
 
     // internal builder API
 private:
     friend struct pipeline_builder;
     friend struct argument_builder;
-    phi::Backend* get_backend() const { return mBackend; }
 
     // internal argument builder API
 private:
     // single cache access, Frame-side API
 private:
-    friend class Frame;
-    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::graphics_shaders shaders);
-    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, hashable_storage<pipeline_state_info> const& info, phi::arg::shader_binary shader);
+    friend class raii::Frame;
+    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, const graphics_pass_info& gp, const framebuffer_info& fb);
+    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp);
 
     phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
     phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
@@ -170,10 +294,11 @@ private:
 
     // members
 private:
-    phi::Backend* mBackend;
-    bool const mOwnsBackend;
+    phi::Backend* mBackend = nullptr;
+    bool mOwnsBackend = false;
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
+    std::mutex mMutexShaderCompilation;
 
     // components
     gpu_epoch_tracker mGpuEpochTracker;
@@ -190,4 +315,29 @@ private:
     single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
     single_cache<phi::handle::shader_view> mCacheComputeSVs;
 };
+
+inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
+{
+    return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
+}
+
+inline unsigned Context::calculate_num_mip_levels(tg::isize2 size) const
+{
+    return unsigned(std::floor(std::log2(float(cc::max(size.width, size.height))))) + 1u;
+}
+
+inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, phi::format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
+}
+
+inline unsigned Context::calculate_texture_upload_size(int width, phi::format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
+}
+
+inline unsigned Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
+}
 }

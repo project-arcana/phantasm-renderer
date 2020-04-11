@@ -4,8 +4,6 @@
 
 #include <phantasm-hardware-interface/types.hh>
 
-#include <typed-geometry/types/size.hh>
-
 namespace pr
 {
 struct render_target_info
@@ -23,7 +21,7 @@ struct render_target_info
 
 struct texture_info
 {
-    phi::format format;
+    phi::format fmt;
     phi::texture_dimension dim;
     bool allow_uav;
     int width;
@@ -33,7 +31,7 @@ struct texture_info
 
     constexpr bool operator==(texture_info const& rhs) const noexcept
     {
-        return format == rhs.format && dim == rhs.dim && allow_uav == rhs.allow_uav && width == rhs.width && height == rhs.height
+        return fmt == rhs.fmt && dim == rhs.dim && allow_uav == rhs.allow_uav && width == rhs.width && height == rhs.height
                && depth_or_array_size == rhs.depth_or_array_size && num_mips == rhs.num_mips;
     }
 };
@@ -57,7 +55,7 @@ struct resource_info_hasher
 
     constexpr size_t operator()(texture_info const& t) const noexcept
     {
-        return cc::make_hash(t.format, t.dim, t.allow_uav, t.width, t.height, t.depth_or_array_size, t.num_mips);
+        return cc::make_hash(t.fmt, t.dim, t.allow_uav, t.width, t.height, t.depth_or_array_size, t.num_mips);
     }
 
     constexpr size_t operator()(buffer_info const& b) const noexcept { return cc::make_hash(b.size_bytes, b.stride_bytes, b.allow_uav, b.is_mapped); }
