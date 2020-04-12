@@ -52,7 +52,8 @@ public:
     template <class VertT>
     graphics_pass_info& vertex()
     {
-        return vertex(sizeof(VertT), get_vertex_attributes<VertT>());
+        auto const attr = get_vertex_attributes<VertT>();
+        return vertex(sizeof(VertT), attr);
     }
 
     /// Add a shader
