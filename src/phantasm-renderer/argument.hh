@@ -65,6 +65,14 @@ struct resource_view_info
     return res;
 }
 
+[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+{
+    resource_view_info res;
+    res.guid = tex.res.guid;
+    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_start, mip_size);
+    return res;
+}
+
 [[nodiscard]] inline resource_view_info resource_view_cube(texture const& tex)
 {
     resource_view_info res;
