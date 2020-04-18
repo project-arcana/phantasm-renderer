@@ -89,6 +89,7 @@ public:
     template <class CmdT>
     void write_raw_cmd(CmdT const& cmd)
     {
+        flushPendingTransitions();
         mWriter.add_command(cmd);
     }
 
