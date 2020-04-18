@@ -53,11 +53,9 @@ public:
     [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
 
     /// create a render target
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
-    /// create a render target with an optimized clear color
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, tg::color4 optimized_clear_color, unsigned num_samples = 1);
-    /// create a render target with an optimized clear depth / stencil
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, float optimized_clear_depth, uint8_t optimized_clear_stencil = 0, unsigned num_samples = 1);
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    /// create a render target with an optimized clear value
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value const& optimized_clear);
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -87,7 +85,7 @@ public:
     // cache lookup API
     //
 
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
 
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);

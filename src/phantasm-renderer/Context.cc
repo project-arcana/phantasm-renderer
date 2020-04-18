@@ -83,36 +83,16 @@ auto_texture Context::make_texture_array(tg::isize2 size, unsigned num_elems, ph
     return {createTexture(info), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples)
+auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
     return {createRenderTarget(info), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, tg::color4 optimized_clear_color, unsigned num_samples)
+auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, const phi::rt_clear_value& optimized_clear)
 {
-    CC_ASSERT(!phi::is_depth_format(format) && "using optimized clear color overload for depth render target");
-
-    phi::rt_clear_value clear_val;
-    clear_val.color[0] = optimized_clear_color.r;
-    clear_val.color[1] = optimized_clear_color.g;
-    clear_val.color[2] = optimized_clear_color.b;
-    clear_val.color[3] = optimized_clear_color.a;
-
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
-    return {createRenderTarget(info, &clear_val), this};
-}
-
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, float optimized_clear_depth, uint8_t optimized_clear_stencil, unsigned num_samples)
-{
-    CC_ASSERT(phi::is_depth_format(format) && "using optimized clear depth overload for color render target");
-
-    phi::rt_clear_value clear_val;
-    clear_val.depth_stencil.depth = optimized_clear_depth;
-    clear_val.depth_stencil.stencil = optimized_clear_stencil;
-
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
-    return {createRenderTarget(info, &clear_val), this};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
+    return {createRenderTarget(info, &optimized_clear), this};
 }
 
 auto_buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
@@ -220,9 +200,9 @@ std::byte* Context::get_buffer_map(const buffer& buffer)
     return mBackend->getMappedMemory(buffer.res.handle);
 }
 
-cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples)
+cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
     return {acquireRenderTarget(info), this};
 }
 
@@ -427,7 +407,7 @@ void Context::internalInitialize()
 
 render_target Context::createRenderTarget(const render_target_info& info, phi::rt_clear_value const* optimized_clear)
 {
-    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples, optimized_clear), acquireGuid()}, info};
+    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples, info.array_size, optimized_clear), acquireGuid()}, info};
 }
 
 texture Context::createTexture(const texture_info& info)
