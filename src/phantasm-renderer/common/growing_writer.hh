@@ -22,8 +22,17 @@ struct growing_writer
         _writer.add_command(cmd);
     }
 
+    [[nodiscard]] std::byte* write_raw_bytes(size_t amount)
+    {
+        accomodate(amount);
+        auto* const res = _writer.buffer_head();
+        _writer.advance_cursor(amount);
+        return res;
+    }
+
     size_t size() const { return _writer.size(); }
     std::byte* buffer() const { return _writer.buffer(); }
+    std::byte* buffer_head() const { return _writer.buffer_head(); }
     size_t max_size() const { return _writer.max_size(); }
     bool is_empty() const { return _writer.empty(); }
 

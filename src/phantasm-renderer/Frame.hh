@@ -93,6 +93,13 @@ public:
         mWriter.add_command(cmd);
     }
 
+    /// get a pointer to a buffer in order to write raw commands
+    [[nodiscard]] std::byte* write_raw_bytes(size_t num_bytes)
+    {
+        flushPendingTransitions();
+        return mWriter.write_raw_bytes(num_bytes);
+    }
+
     /// write multiple resource slice transitions - no state tracking
     void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
 
