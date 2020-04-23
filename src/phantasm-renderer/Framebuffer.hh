@@ -38,10 +38,17 @@ public:
     /// start a graphics pass from persisted PSO
     [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline._handle}; }
 
+    /// starta graphics pass from a raw phi PSO
+    [[nodiscard]] GraphicsPass make_pass(phi::handle::pipeline_state raw_pso) & { return {mParent, raw_pso}; }
+
     /// fetch a PSO from cache
     /// this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
 
+    // redirect intuitive misuses
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(phi::handle::pipeline_state) && = delete;
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pass_info const&) && = delete;
 private:
     void destroy();
 
