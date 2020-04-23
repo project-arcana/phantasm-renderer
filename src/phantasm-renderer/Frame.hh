@@ -50,6 +50,10 @@ public:
 
     /// start a compute pass from persisted PSO
     [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
+
+    /// redirect intuitive misuse (graphics passes can only be created from framebuffers)
+    [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
+
     /// starta compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 
