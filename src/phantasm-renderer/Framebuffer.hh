@@ -49,6 +49,7 @@ public:
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(phi::handle::pipeline_state) && = delete;
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pass_info const&) && = delete;
+
 private:
     void destroy();
 
