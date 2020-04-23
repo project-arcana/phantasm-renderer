@@ -266,7 +266,14 @@ void Context::discard(CompiledFrame&& frame)
     frame.parent = nullptr;
 }
 
-void Context::present() { mBackend->present(); }
+void Context::present()
+{
+    CC_ASSERT(mSafetyState.did_acquire_before_present && "Context::present without prior acquire_backbuffer");
+    mBackend->present();
+#ifdef CC_ENABLE_ASSERTIONS
+    mSafetyState.did_acquire_before_present = false;
+#endif
+}
 
 void Context::flush() { mBackend->flushGPU(); }
 
@@ -319,7 +326,10 @@ render_target Context::acquire_backbuffer()
 {
     auto const backbuffer = mBackend->acquireBackbuffer();
     auto const size = mBackend->getBackbufferSize();
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1}};
+#ifdef CC_ENABLE_ASSERTIONS
+    mSafetyState.did_acquire_before_present = true;
+#endif
+    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1}};
 }
 
 Context::Context(phi::window_handle const& window_handle, backend_type type) { initialize(window_handle, type); }

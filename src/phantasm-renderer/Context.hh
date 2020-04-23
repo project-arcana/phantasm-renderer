@@ -300,7 +300,7 @@ private:
 
     // components
     gpu_epoch_tracker mGpuEpochTracker;
-    std::atomic<uint64_t> mResourceGUID = {0};
+    std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
 
     // caches (have dtors, members must be below backend ptr)
     multi_cache<render_target_info> mCacheRenderTargets;
@@ -312,6 +312,14 @@ private:
     single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
     single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
     single_cache<phi::handle::shader_view> mCacheComputeSVs;
+
+    // safety/assert state
+#ifdef CC_ENABLE_ASSERTIONS
+    struct
+    {
+        bool did_acquire_before_present = false;
+    } mSafetyState;
+#endif
 };
 
 inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
