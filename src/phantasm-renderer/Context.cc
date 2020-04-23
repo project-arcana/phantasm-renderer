@@ -219,7 +219,7 @@ cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride, bool al
 }
 
 
-CompiledFrame Context::compile(raii::Frame& frame)
+CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
@@ -235,7 +235,7 @@ CompiledFrame Context::compile(raii::Frame& frame)
     }
 }
 
-gpu_epoch_t Context::submit(raii::Frame& frame) { return submit(compile(frame)); }
+gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(cc::move(compile(cc::move(frame)))); }
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {

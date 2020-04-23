@@ -145,7 +145,7 @@ public:
 
     /// compiles a frame (records the command list)
     /// heavy operation, try to thread this if possible
-    [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
+    [[nodiscard]] CompiledFrame compile(raii::Frame&& frame);
 
     /// submits a previously compiled frame to the GPU
     /// returns an epoch that can be waited on using Context::wait_for_epoch()
@@ -153,7 +153,7 @@ public:
 
     /// convenience to compile and submit a frame in a single call
     /// returns an epoch that can be waited on using Context::wait_for_epoch()
-    gpu_epoch_t submit(raii::Frame& frame);
+    gpu_epoch_t submit(raii::Frame&& frame);
 
     /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
