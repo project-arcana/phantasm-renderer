@@ -235,7 +235,7 @@ CompiledFrame Context::compile(raii::Frame&& frame)
     }
 }
 
-gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(cc::move(compile(cc::move(frame)))); }
+gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::move(frame))); }
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
