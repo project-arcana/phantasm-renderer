@@ -13,8 +13,26 @@ namespace pr::raii
 class Framebuffer
 {
 public:
-    Framebuffer(Frame* parent, framebuffer_info const& hashInfo) : mParent(parent), mHashInfo(hashInfo) {}
+    // lvalue-qualified as Framebuffer has to stay alive
 
+    /// start a graphics pass from persisted PSO
+    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline._handle}; }
+
+    /// starta graphics pass from a raw phi PSO
+    [[nodiscard]] GraphicsPass make_pass(phi::handle::pipeline_state raw_pso) & { return {mParent, raw_pso}; }
+
+    /// fetch a PSO from cache
+    /// this hits a OS mutex and might have to build a PSO (expensive)
+    [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
+
+public:
+    // redirect intuitive misuses
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(phi::handle::pipeline_state) && = delete;
+    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pass_info const&) && = delete;
+
+
+public:
     Framebuffer(Framebuffer const&) = delete;
     Framebuffer(Framebuffer&& rhs) noexcept : mParent(rhs.mParent) { rhs.mParent = nullptr; }
     Framebuffer& operator=(Framebuffer const&) = delete;
@@ -29,28 +47,11 @@ public:
 
         return *this;
     }
-
     ~Framebuffer();
 
-public:
-    // lvalue-qualified as Framebuffer has to stay alive
-
-    /// start a graphics pass from persisted PSO
-    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline._handle}; }
-
-    /// starta graphics pass from a raw phi PSO
-    [[nodiscard]] GraphicsPass make_pass(phi::handle::pipeline_state raw_pso) & { return {mParent, raw_pso}; }
-
-    /// fetch a PSO from cache
-    /// this hits a OS mutex and might have to build a PSO (expensive)
-    [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
-
-    // redirect intuitive misuses
-    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;
-    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(phi::handle::pipeline_state) && = delete;
-    [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pass_info const&) && = delete;
-
 private:
+    friend class Frame;
+    Framebuffer(Frame* parent, framebuffer_info const& hashInfo) : mParent(parent), mHashInfo(hashInfo) {}
     void destroy();
 
     Frame* mParent;

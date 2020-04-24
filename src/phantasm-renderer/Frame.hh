@@ -57,22 +57,21 @@ public:
     /// fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] ComputePass make_pass(compute_pass_info const& cp) &;
 
+    //
+    // transitions and present
+
     void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(texture const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
     void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
 
-    // redirect intuitive misuses
-    /// (graphics passes can only be created from framebuffers)
-    [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
-    /// frame must not be discarded while framebuffers/passes are alive
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
-    template <class... RTs>
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
+    /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
+    void present_after_submit(render_target const& backbuffer)
+    {
+        CC_ASSERT(!mPresentAfterSubmitRequested && "only one present_after_submit per pr::raii::Frame allowed");
+        transition(backbuffer, phi::resource_state::present);
+        mPresentAfterSubmitRequested = true;
+    }
 
     //
     // commands
@@ -117,6 +116,19 @@ public:
     void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
 
     pr::Context& context() { return *mCtx; }
+
+public:
+    // redirect intuitive misuses
+    /// (graphics passes can only be created from framebuffers)
+    [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
+    /// frame must not be discarded while framebuffers/passes are alive
+    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
+    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
+    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
+    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
+    template <class... RTs>
+    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
+    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
 public:
     Frame(Frame const&) = delete;
@@ -195,5 +207,6 @@ private:
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::vector<freeable_cached_obj> mFreeables;
     bool mFramebufferActive = false;
+    bool mPresentAfterSubmitRequested = false;
 };
 }

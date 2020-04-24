@@ -225,13 +225,13 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.isEmpty())
     {
-        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables));
+        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables), false);
     }
     else
     {
         auto const event = mGpuEpochTracker.get_event();                                             // intern. synced
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event); // intern. synced
-        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables));
+        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequested);
     }
 }
 
@@ -248,6 +248,11 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
             mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
         }
         res = mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
+
+        if (frame.should_present_after_submit)
+        {
+            present();
+        }
     }
 
     free_all(frame.freeables);
