@@ -7,7 +7,7 @@
 #include <phantasm-renderer/common/hashable_storage.hh>
 
 #include <phantasm-renderer/common/state_info.hh>
-#include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/reflection/vertex_attributes.hh>
 #include <phantasm-renderer/resource_types.hh>

@@ -9,7 +9,7 @@
 
 #include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/default_config.hh>
-#include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/resource_types.hh>

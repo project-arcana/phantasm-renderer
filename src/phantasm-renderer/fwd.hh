@@ -13,12 +13,6 @@ class Backend;
 
 namespace pr
 {
-enum class backend_type
-{
-    d3d12,
-    vulkan
-};
-
 class Context;
 using gpu_epoch_t = uint64_t;
 
