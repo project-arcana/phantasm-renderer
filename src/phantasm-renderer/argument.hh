@@ -65,6 +65,14 @@ struct resource_view_info
     return res;
 }
 
+[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+{
+    resource_view_info res;
+    res.guid = tex.res.guid;
+    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_start, mip_size);
+    return res;
+}
+
 [[nodiscard]] inline resource_view_info resource_view_cube(texture const& tex)
 {
     resource_view_info res;
@@ -105,10 +113,10 @@ public:
         _info.get().uav_guids.push_back(rvi.guid);
     }
 
-    void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u)
+    void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u, phi::sampler_address_mode address_mode = phi::sampler_address_mode::wrap)
     {
         auto& new_sampler = _info.get().samplers.emplace_back();
-        new_sampler.init_default(filter, anisotropy);
+        new_sampler.init_default(filter, anisotropy, address_mode);
     }
 
     void add_sampler(phi::sampler_config const& config) { _info.get().samplers.push_back(config); }
@@ -203,10 +211,10 @@ public:
 
     // add samplers
 
-    argument_builder& add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u)
+    argument_builder& add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u, phi::sampler_address_mode address_mode = phi::sampler_address_mode::wrap)
     {
         auto& new_sampler = _samplers.emplace_back();
-        new_sampler.init_default(filter, anisotropy);
+        new_sampler.init_default(filter, anisotropy, address_mode);
         return *this;
     }
 

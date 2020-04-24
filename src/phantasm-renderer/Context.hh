@@ -53,11 +53,9 @@ public:
     [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
 
     /// create a render target
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1);
-    /// create a render target with an optimized clear color
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, tg::color4 optimized_clear_color, unsigned num_samples = 1);
-    /// create a render target with an optimized clear depth / stencil
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, float optimized_clear_depth, uint8_t optimized_clear_stencil = 0, unsigned num_samples = 1);
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    /// create a render target with an optimized clear value
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value const& optimized_clear);
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -87,7 +85,7 @@ public:
     // cache lookup API
     //
 
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1);
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
 
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -147,7 +145,7 @@ public:
 
     /// compiles a frame (records the command list)
     /// heavy operation, try to thread this if possible
-    [[nodiscard]] CompiledFrame compile(raii::Frame& frame);
+    [[nodiscard]] CompiledFrame compile(raii::Frame&& frame);
 
     /// submits a previously compiled frame to the GPU
     /// returns an epoch that can be waited on using Context::wait_for_epoch()
@@ -155,7 +153,7 @@ public:
 
     /// convenience to compile and submit a frame in a single call
     /// returns an epoch that can be waited on using Context::wait_for_epoch()
-    gpu_epoch_t submit(raii::Frame& frame);
+    gpu_epoch_t submit(raii::Frame&& frame);
 
     /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
@@ -302,7 +300,7 @@ private:
 
     // components
     gpu_epoch_tracker mGpuEpochTracker;
-    std::atomic<uint64_t> mResourceGUID = {0};
+    std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
 
     // caches (have dtors, members must be below backend ptr)
     multi_cache<render_target_info> mCacheRenderTargets;
@@ -314,6 +312,14 @@ private:
     single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
     single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
     single_cache<phi::handle::shader_view> mCacheComputeSVs;
+
+    // safety/assert state
+#ifdef CC_ENABLE_ASSERTIONS
+    struct
+    {
+        bool did_acquire_before_present = false;
+    } mSafetyState;
+#endif
 };
 
 inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)

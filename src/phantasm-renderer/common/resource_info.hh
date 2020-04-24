@@ -12,10 +12,11 @@ struct render_target_info
     int width;
     int height;
     unsigned num_samples;
+    unsigned array_size;
 
     constexpr bool operator==(render_target_info const& rhs) const noexcept
     {
-        return format == rhs.format && width == rhs.width && height == rhs.height && num_samples == rhs.num_samples;
+        return format == rhs.format && width == rhs.width && height == rhs.height && num_samples == rhs.num_samples && array_size == rhs.array_size;
     }
 };
 
@@ -51,7 +52,10 @@ struct buffer_info
 
 struct resource_info_hasher
 {
-    constexpr size_t operator()(render_target_info const& rt) const noexcept { return cc::make_hash(rt.format, rt.width, rt.height, rt.num_samples); }
+    constexpr size_t operator()(render_target_info const& rt) const noexcept
+    {
+        return cc::make_hash(rt.format, rt.width, rt.height, rt.num_samples, rt.array_size);
+    }
 
     constexpr size_t operator()(texture_info const& t) const noexcept
     {

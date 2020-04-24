@@ -83,36 +83,16 @@ auto_texture Context::make_texture_array(tg::isize2 size, unsigned num_elems, ph
     return {createTexture(info), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples)
+auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
     return {createRenderTarget(info), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, tg::color4 optimized_clear_color, unsigned num_samples)
+auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, const phi::rt_clear_value& optimized_clear)
 {
-    CC_ASSERT(!phi::is_depth_format(format) && "using optimized clear color overload for depth render target");
-
-    phi::rt_clear_value clear_val;
-    clear_val.color[0] = optimized_clear_color.r;
-    clear_val.color[1] = optimized_clear_color.g;
-    clear_val.color[2] = optimized_clear_color.b;
-    clear_val.color[3] = optimized_clear_color.a;
-
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
-    return {createRenderTarget(info, &clear_val), this};
-}
-
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, float optimized_clear_depth, uint8_t optimized_clear_stencil, unsigned num_samples)
-{
-    CC_ASSERT(phi::is_depth_format(format) && "using optimized clear depth overload for color render target");
-
-    phi::rt_clear_value clear_val;
-    clear_val.depth_stencil.depth = optimized_clear_depth;
-    clear_val.depth_stencil.stencil = optimized_clear_stencil;
-
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
-    return {createRenderTarget(info, &clear_val), this};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
+    return {createRenderTarget(info, &optimized_clear), this};
 }
 
 auto_buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
@@ -220,9 +200,9 @@ std::byte* Context::get_buffer_map(const buffer& buffer)
     return mBackend->getMappedMemory(buffer.res.handle);
 }
 
-cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples)
+cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples};
+    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
     return {acquireRenderTarget(info), this};
 }
 
@@ -239,23 +219,23 @@ cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride, bool al
 }
 
 
-CompiledFrame Context::compile(raii::Frame& frame)
+CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
     if (frame.isEmpty())
     {
-        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables));
+        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables), false);
     }
     else
     {
         auto const event = mGpuEpochTracker.get_event();                                             // intern. synced
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event); // intern. synced
-        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables));
+        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequested);
     }
 }
 
-gpu_epoch_t Context::submit(raii::Frame& frame) { return submit(compile(frame)); }
+gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::move(frame))); }
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
@@ -268,6 +248,11 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
             mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
         }
         res = mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
+
+        if (frame.should_present_after_submit)
+        {
+            present();
+        }
     }
 
     free_all(frame.freeables);
@@ -286,7 +271,14 @@ void Context::discard(CompiledFrame&& frame)
     frame.parent = nullptr;
 }
 
-void Context::present() { mBackend->present(); }
+void Context::present()
+{
+    CC_ASSERT(mSafetyState.did_acquire_before_present && "Context::present without prior acquire_backbuffer");
+    mBackend->present();
+#ifdef CC_ENABLE_ASSERTIONS
+    mSafetyState.did_acquire_before_present = false;
+#endif
+}
 
 void Context::flush() { mBackend->flushGPU(); }
 
@@ -339,7 +331,10 @@ render_target Context::acquire_backbuffer()
 {
     auto const backbuffer = mBackend->acquireBackbuffer();
     auto const size = mBackend->getBackbufferSize();
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1}};
+#ifdef CC_ENABLE_ASSERTIONS
+    mSafetyState.did_acquire_before_present = true;
+#endif
+    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1}};
 }
 
 Context::Context(phi::window_handle const& window_handle, backend_type type) { initialize(window_handle, type); }
@@ -427,7 +422,7 @@ void Context::internalInitialize()
 
 render_target Context::createRenderTarget(const render_target_info& info, phi::rt_clear_value const* optimized_clear)
 {
-    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples, optimized_clear), acquireGuid()}, info};
+    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples, info.array_size, optimized_clear), acquireGuid()}, info};
 }
 
 texture Context::createTexture(const texture_info& info)
