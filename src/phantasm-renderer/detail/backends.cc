@@ -12,10 +12,10 @@
 #include <phantasm-hardware-interface/d3d12/BackendD3D12.hh>
 #endif
 
-phi::Backend* pr::detail::make_backend(backend_type type, phi::window_handle const& window_handle, const phi::backend_config& cfg)
+phi::Backend* pr::detail::make_backend(backend type, phi::window_handle const& window_handle, const phi::backend_config& cfg)
 {
     phi::Backend* res = nullptr;
-    if (type == backend_type::d3d12)
+    if (type == backend::d3d12)
     {
 #ifdef PHI_BACKEND_D3D12
         res = new phi::d3d12::BackendD3D12();
@@ -23,7 +23,7 @@ phi::Backend* pr::detail::make_backend(backend_type type, phi::window_handle con
         CC_RUNTIME_ASSERT(false && "d3d12 backend disabled");
 #endif
     }
-    else if (type == backend_type::vulkan)
+    else if (type == backend::vulkan)
     {
 #ifdef PHI_BACKEND_VULKAN
         res = new phi::vk::BackendVulkan();

@@ -3,7 +3,7 @@
 // This header includes the most important parts of the phantasm renderer used for typical usage
 
 #include "Context.hh"
-#include "format.hh"
+#include "enums.hh"
 #include "fwd.hh"
 
 #include "CompiledFrame.hh"

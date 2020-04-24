@@ -337,16 +337,16 @@ render_target Context::acquire_backbuffer()
     return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1}};
 }
 
-Context::Context(phi::window_handle const& window_handle, backend_type type) { initialize(window_handle, type); }
+Context::Context(phi::window_handle const& window_handle, backend type) { initialize(window_handle, type); }
 
-Context::Context(const phi::window_handle& window_handle, backend_type type, const phi::backend_config& config)
+Context::Context(const phi::window_handle& window_handle, backend type, const phi::backend_config& config)
 {
     initialize(window_handle, type, config);
 }
 
 Context::Context(phi::Backend* backend) { initialize(backend); }
 
-void Context::initialize(const phi::window_handle& window_handle, backend_type type)
+void Context::initialize(const phi::window_handle& window_handle, backend type)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
@@ -355,7 +355,7 @@ void Context::initialize(const phi::window_handle& window_handle, backend_type t
     initialize(window_handle, type, cfg);
 }
 
-void Context::initialize(const phi::window_handle& window_handle, backend_type type, const phi::backend_config& config)
+void Context::initialize(const phi::window_handle& window_handle, backend type, const phi::backend_config& config)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 

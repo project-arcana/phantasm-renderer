@@ -19,7 +19,7 @@
 #include <phantasm-renderer/common/single_cache.hh>
 
 #include <phantasm-renderer/argument.hh>
-#include <phantasm-renderer/format.hh>
+#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
 namespace pr
@@ -65,9 +65,9 @@ public:
     [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
 
     /// create a shader from binary data
-    [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, phi::shader_stage stage);
+    [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, pr::shader stage);
     /// create a shader by compiling it live from text
-    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage);
+    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader stage);
 
     /// create a persisted shader argument for graphics passes
     [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
@@ -206,16 +206,16 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    Context(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
+    Context(phi::window_handle const& window_handle, backend type = backend::vulkan);
     /// internally create a backend with specified config
-    Context(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
+    Context(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
     /// attach to an existing backend
     Context(phi::Backend* backend);
 
     ~Context() { destroy(); }
 
-    void initialize(phi::window_handle const& window_handle, backend_type type = backend_type::vulkan);
-    void initialize(phi::window_handle const& window_handle, backend_type type, phi::backend_config const& config);
+    void initialize(phi::window_handle const& window_handle, backend type = backend::vulkan);
+    void initialize(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
     void initialize(phi::Backend* backend);
 
     void destroy();
