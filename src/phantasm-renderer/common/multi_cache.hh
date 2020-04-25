@@ -35,7 +35,7 @@ public:
 
             if (tail.required_gpu_epoch <= current_gpu_epoch)
             {
-                // event is ready, pop and return
+                // epoch has advanced sufficiently, pop and return
                 raw_resource res = tail.val;
                 elem.in_flight_buffer.pop_tail();
                 return res;

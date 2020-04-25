@@ -7,20 +7,12 @@ namespace pr
 {
 using gpu_epoch_t = uint64_t;
 
-// ringbuffer for events, keeps track of GPU progress relative to CPU submissions
+// keeps track of GPU progress relative to CPU submissions
 // CPU and GPU "epoch": steadily increasing, GPU always behind CPU
-// based on acquiring events and returning them on commandlist submits
 //
 // internally synchronized
 struct gpu_epoch_tracker
 {
-private:
-    struct event_elem
-    {
-        phi::handle::fence event;
-        gpu_epoch_t acquired_epoch_cpu;
-    };
-
 public:
     void initialize(phi::Backend* backend);
     void destroy();
