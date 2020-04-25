@@ -64,6 +64,7 @@ public:
         auto lg = std::lock_guard(_mutex);
         auto const f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
 
+        (void)destroy_func;
         // TODO: go through section of the map and destroy element based on condition above
     }
 
