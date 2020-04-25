@@ -156,6 +156,7 @@ public:
     }
     argument_builder& add(buffer const& buffer)
     {
+        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV argument has no stride, pass a stride during creation");
         auto& new_rv = _srvs.emplace_back();
         new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
         return *this;
@@ -188,6 +189,7 @@ public:
     }
     argument_builder& add_mutable(buffer const& buffer)
     {
+        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV argument has no stride, pass a stride during creation");
         auto& new_rv = _uavs.emplace_back();
         new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
         return *this;
