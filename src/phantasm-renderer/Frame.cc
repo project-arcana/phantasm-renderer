@@ -24,7 +24,10 @@ void rowwise_copy(std::byte const* src, std::byte* dest, unsigned dest_row_strid
 
 using namespace pr;
 
-raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) & { return buildFramebuffer(raw_command, -1); }
+raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) &
+{
+    return buildFramebuffer(raw_command, -1, nullptr);
+}
 
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
@@ -235,7 +238,7 @@ void raii::Frame::internalDestroy()
     }
 }
 
-raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples)
+raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override)
 {
     for (auto const& rt : bcmd.render_targets)
     {
@@ -251,7 +254,7 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     mFramebufferActive = true;
     mWriter.add_command(bcmd);
 
-
+    bool const has_blendstate_overrides = blendstate_override != nullptr;
     // construct framebuffer info for future cache access inside of Framebuffer
     framebuffer_info fb_info;
 
@@ -261,7 +264,27 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     if (bcmd.depth_target.rv.resource.is_valid())
         fb_info.depth(bcmd.depth_target.rv.pixel_format);
 
-    return {this, fb_info, num_samples};
+    if (has_blendstate_overrides)
+    {
+        // framebuffer_info was provided with additional blendstate information, override into fb_info
+        fb_info._storage.get().logic_op_enable = blendstate_override->logic_op_enable;
+        fb_info._storage.get().logic_op = blendstate_override->logic_op;
+
+        CC_ASSERT(fb_info._storage.get().render_targets.size() == blendstate_override->render_targets.size() && "inconsistent blendstate override");
+
+        for (uint8_t i = 0u; i < blendstate_override->render_targets.size(); ++i)
+        {
+            if (blendstate_override->render_targets[i].blend_enable)
+            {
+                auto& target_rt = fb_info._storage.get().render_targets[i];
+
+                target_rt.blend_enable = true;
+                target_rt.state = blendstate_override->render_targets[i].state;
+            }
+        }
+    }
+
+    return {this, fb_info, num_samples, has_blendstate_overrides};
 }
 
 void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)

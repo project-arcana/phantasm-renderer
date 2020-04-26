@@ -15,4 +15,7 @@ void pr::raii::Framebuffer::destroy()
         mParent->framebufferOnJoin(*this);
 }
 
-pr::raii::Framebuffer pr::raii::framebuffer_builder::make() { return _parent->buildFramebuffer(_cmd, _num_samples); }
+pr::raii::Framebuffer pr::raii::framebuffer_builder::make()
+{
+    return _parent->buildFramebuffer(_cmd, _num_samples, _has_custom_blendstate ? &_blendstate_overrides : nullptr);
+}

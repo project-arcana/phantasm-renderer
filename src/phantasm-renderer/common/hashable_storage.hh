@@ -30,8 +30,13 @@ public:
     hashable_storage(hashable_storage const& rhs) { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
     hashable_storage& operator=(hashable_storage const& rhs) { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
 
-    hashable_storage(hashable_storage&&) = delete;
-    hashable_storage& operator=(hashable_storage&&) = delete;
+    hashable_storage(hashable_storage&& rhs) noexcept { std::memcpy(&_storage, &rhs._storage, sizeof(_storage)); }
+    hashable_storage& operator=(hashable_storage&& rhs) noexcept
+    {
+        if (this != &rhs)
+            std::memcpy(&_storage, &rhs._storage, sizeof(_storage));
+        return *this;
+    }
 
     // with the established guarantees, hashing and comparison are trivial
     void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
