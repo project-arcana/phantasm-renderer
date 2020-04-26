@@ -6,7 +6,7 @@ pr::raii::Framebuffer::~Framebuffer() { destroy(); }
 
 pr::raii::GraphicsPass pr::raii::Framebuffer::make_pass(const pr::graphics_pass_info& gp) &
 {
-    return {mParent, mParent->framebufferAcquireGraphicsPSO(gp, mHashInfo)};
+    return {mParent, mParent->framebufferAcquireGraphicsPSO(gp, mHashInfo, mNumSamples)};
 }
 
 void pr::raii::Framebuffer::destroy()
@@ -15,4 +15,4 @@ void pr::raii::Framebuffer::destroy()
         mParent->framebufferOnJoin(*this);
 }
 
-pr::raii::Framebuffer pr::raii::framebuffer_builder::make() { return _parent->buildFramebuffer(_cmd); }
+pr::raii::Framebuffer pr::raii::framebuffer_builder::make() { return _parent->buildFramebuffer(_cmd, _num_samples); }

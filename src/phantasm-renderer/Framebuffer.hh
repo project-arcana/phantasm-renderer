@@ -1,5 +1,6 @@
 #pragma once
 
+#include <clean-core/assert.hh>
 #include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
@@ -51,11 +52,12 @@ public:
 
 private:
     friend class Frame;
-    Framebuffer(Frame* parent, framebuffer_info const& hashInfo) : mParent(parent), mHashInfo(hashInfo) {}
+    Framebuffer(Frame* parent, framebuffer_info const& hashInfo, int num_samples) : mParent(parent), mHashInfo(hashInfo), mNumSamples(num_samples) {}
     void destroy();
 
     Frame* mParent;
     framebuffer_info mHashInfo;
+    int mNumSamples; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
 };
 struct framebuffer_builder
 {
@@ -71,7 +73,7 @@ public:
         {
             _cmd.add_2d_rt(rt.res.handle, rt.info.format, phi::rt_clear_type::load, rt.info.num_samples > 1);
         }
-        adjust_viewport(rt);
+        adjust_config(rt);
         return *this;
     }
 
@@ -81,7 +83,7 @@ public:
         CC_ASSERT(!phi::is_depth_format(rt.info.format) && "invoked clear_target color variant with a depth render target");
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
         _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_viewport(rt);
+        adjust_config(rt);
         return *this;
     }
 
@@ -91,7 +93,7 @@ public:
         CC_ASSERT(phi::is_depth_format(rt.info.format) && "invoked clear_target depth variant with a non-depth render target");
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};
         _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_viewport(rt);
+        adjust_config(rt);
         return *this;
     }
 
@@ -113,17 +115,24 @@ private:
     friend class Frame;
     framebuffer_builder(Frame* parent) : _parent(parent) { _cmd.viewport = {1 << 30, 1 << 30}; }
 
-    void adjust_viewport(render_target const& rt)
+    void adjust_config(render_target const& rt)
     {
-        if (_has_custom_viewport)
-            return;
-        _cmd.viewport.width = cc::min(_cmd.viewport.width, rt.info.width);
-        _cmd.viewport.height = cc::min(_cmd.viewport.height, rt.info.height);
+        CC_ASSERT(_num_samples == -1 || _num_samples == int(rt.info.num_samples) && "render targets in framebuffer have inconsistent sample amounts");
+        _num_samples = int(rt.info.num_samples);
+
+        if (!_has_custom_viewport)
+        {
+            _cmd.viewport.width = cc::min(_cmd.viewport.width, rt.info.width);
+            _cmd.viewport.height = cc::min(_cmd.viewport.height, rt.info.height);
+        }
     }
+
+    void adjust_samples(render_target const& rt) {}
 
 private:
     Frame* _parent;
     phi::cmd::begin_render_pass _cmd;
     bool _has_custom_viewport = false;
+    int _num_samples = -1; ///< amount of samples of the most recently added RT (-1 initially)
 };
 }

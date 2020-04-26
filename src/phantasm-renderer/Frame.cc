@@ -24,7 +24,7 @@ void rowwise_copy(std::byte const* src, std::byte* dest, unsigned dest_row_strid
 
 using namespace pr;
 
-raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) & { return buildFramebuffer(raw_command); }
+raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) & { return buildFramebuffer(raw_command, -1); }
 
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
@@ -165,10 +165,15 @@ void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_sl
         mWriter.add_command(tcmd);
 }
 
-void raii::Frame::addRenderTarget(phi::cmd::begin_render_pass& bcmd, const render_target& rt)
+void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, const render_target& rt)
 {
     bcmd.viewport.width = cc::min(bcmd.viewport.width, rt.info.width);
     bcmd.viewport.height = cc::min(bcmd.viewport.height, rt.info.height);
+
+    if (num_samples != -1)
+    {
+        CC_ASSERT(num_samples == int(rt.info.num_samples) && "make_framebuffer: inconsistent amount of samples in render targets");
+    }
 
     if (phi::is_depth_format(rt.info.format))
     {
@@ -230,7 +235,7 @@ void raii::Frame::internalDestroy()
     }
 }
 
-raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd)
+raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples)
 {
     for (auto const& rt : bcmd.render_targets)
     {
@@ -256,7 +261,7 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     if (bcmd.depth_target.rv.resource.is_valid())
         fb_info.depth(bcmd.depth_target.rv.pixel_format);
 
-    return {this, fb_info};
+    return {this, fb_info, num_samples};
 }
 
 void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
@@ -266,8 +271,10 @@ void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
     mFramebufferActive = false;
 }
 
-phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb)
+phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
 {
+    CC_ASSERT(fb_inferred_num_samples == -1
+              || fb_inferred_num_samples == gp._storage.get().graphics_config.samples && "graphics_pass_info has incorrect amount of samples configured");
     auto const gp_hash = gp.get_hash();
     auto const combined_hash = gp_hash.combine(fb.get_hash());
     auto const res = mCtx->acquire_graphics_pso(combined_hash, gp, fb);
