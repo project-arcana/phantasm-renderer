@@ -61,7 +61,7 @@ struct framebuffer_builder
 {
 public:
     /// add a rendertarget to the framebuffer that loads is contents (ie. is not cleared)
-    [[nodiscard]] framebuffer_builder& load_target(render_target const& rt)
+    [[nodiscard]] framebuffer_builder& loaded_target(render_target const& rt)
     {
         if (phi::is_depth_format(rt.info.format))
         {
@@ -76,7 +76,7 @@ public:
     }
 
     /// add a rendertarget to the framebuffer that clears to a specified value
-    [[nodiscard]] framebuffer_builder& clear_target(render_target const& rt, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f)
+    [[nodiscard]] framebuffer_builder& cleared_target(render_target const& rt, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f)
     {
         CC_ASSERT(!phi::is_depth_format(rt.info.format) && "invoked clear_target color variant with a depth render target");
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
@@ -86,7 +86,7 @@ public:
     }
 
     /// add a depth rendertarget to the framebuffer that clears to a specified value
-    [[nodiscard]] framebuffer_builder& clear_depth(render_target const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0)
+    [[nodiscard]] framebuffer_builder& cleared_depth(render_target const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0)
     {
         CC_ASSERT(phi::is_depth_format(rt.info.format) && "invoked clear_target depth variant with a non-depth render target");
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};

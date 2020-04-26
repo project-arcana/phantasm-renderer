@@ -14,6 +14,7 @@ void pr::argument::add(const texture& img)
 
 void pr::argument::add(const pr::buffer& buffer)
 {
+    CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV argument has no stride, pass a stride during creation");
     _info.get().srv_guids.push_back(buffer.res.guid);
 
     auto& new_rv = _info.get().srvs.emplace_back();
@@ -38,6 +39,7 @@ void pr::argument::add_mutable(const pr::texture& img)
 
 void pr::argument::add_mutable(const pr::buffer& buffer)
 {
+    CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV argument has no stride, pass a stride during creation");
     _info.get().uav_guids.push_back(buffer.res.guid);
 
     auto& new_rv = _info.get().uavs.emplace_back();
