@@ -180,7 +180,6 @@ void Context::free_to_cache(const texture& texture) { freeCachedTexture(texture.
 
 void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info, rt.res); }
 
-
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
     CC_ASSERT(buffer.info.is_mapped && "Attempted to write to non-mapped buffer");
@@ -225,13 +224,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.isEmpty())
     {
-        return CompiledFrame(phi::handle::null_command_list, phi::handle::null_event, cc::move(frame.mFreeables), false);
+        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), false);
     }
     else
     {
-        auto const event = mGpuEpochTracker.get_event();                                             // intern. synced
-        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize(), event); // intern. synced
-        return CompiledFrame(cmdlist, event, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequested);
+        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
+        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequested);
     }
 }
 
@@ -247,7 +245,8 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
             auto const lg = std::lock_guard(mMutexSubmission);
             mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
         }
-        res = mGpuEpochTracker.on_event_submission(frame.event); // intern. synced
+        mGpuEpochTracker.increment_epoch();
+        res = mGpuEpochTracker.get_current_epoch_cpu();
 
         if (frame.should_present_after_submit)
         {
@@ -264,16 +263,15 @@ void Context::discard(CompiledFrame&& frame)
 {
     if (frame.cmdlist.is_valid())
         mBackend->discard(cc::span{frame.cmdlist});
-    if (frame.event.is_valid())
-        mBackend->free(cc::span{frame.event});
-
     free_all(frame.freeables);
     frame.parent = nullptr;
 }
 
 void Context::present()
 {
+#ifdef CC_ENABLE_ASSERTIONS
     CC_ASSERT(mSafetyState.did_acquire_before_present && "Context::present without prior acquire_backbuffer");
+#endif
     mBackend->present();
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = false;
@@ -413,7 +411,7 @@ void Context::destroy()
 
 void Context::internalInitialize()
 {
-    mGpuEpochTracker.initialize(mBackend, 2048);
+    mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
