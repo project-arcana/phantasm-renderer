@@ -174,7 +174,7 @@ private:
     // framebuffer_builder-side API
 private:
     friend struct framebuffer_builder;
-    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config *blendstate_override);
+    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override);
 
     // Framebuffer-side API
 private:
