@@ -29,14 +29,18 @@ public:
     template <class... RTs>
     [[nodiscard]] Framebuffer make_framebuffer(RTs const&... targets) &
     {
+        static_assert(sizeof...(RTs) > 0, "at least one render target required");
+
         phi::cmd::begin_render_pass bcmd;
         // initialize command
         bcmd.set_null_depth_stencil();
         bcmd.viewport = tg::isize2(1 << 30, 1 << 30);
 
+        int num_samples = -1;
+
         // add targets
-        (addRenderTarget(bcmd, targets), ...);
-        return buildFramebuffer(bcmd);
+        (addRenderTargetToFramebuffer(bcmd, num_samples, targets), ...);
+        return buildFramebuffer(bcmd, num_samples, nullptr);
     }
 
     /// create a framebuffer from a raw phi command
@@ -156,7 +160,7 @@ public:
 
     // private
 private:
-    static void addRenderTarget(phi::cmd::begin_render_pass& bcmd, render_target const& rt);
+    static void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, render_target const& rt);
 
     void flushPendingTransitions();
 
@@ -170,14 +174,14 @@ private:
     // framebuffer_builder-side API
 private:
     friend struct framebuffer_builder;
-    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd);
+    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override);
 
     // Framebuffer-side API
 private:
     friend class Framebuffer;
     void framebufferOnJoin(Framebuffer const&);
 
-    phi::handle::pipeline_state framebufferAcquireGraphicsPSO(pr::graphics_pass_info const& gp, pr::framebuffer_info const& fb);
+    phi::handle::pipeline_state framebufferAcquireGraphicsPSO(pr::graphics_pass_info const& gp, pr::framebuffer_info const& fb, int fb_inferred_num_samples);
 
     // Pass-side API
 private:
