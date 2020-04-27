@@ -26,9 +26,9 @@ public:
         new (&_storage.value) T();                  // call default ctor
     }
 
-    // copy ctor/assign is memcpy to preserve the memset padding
-    hashable_storage(hashable_storage const& rhs) { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
-    hashable_storage& operator=(hashable_storage const& rhs)
+    // copy ctor/assign is memcpy to preserve the memset padding - noexcept to allow noexcept default move in outer types
+    hashable_storage(hashable_storage const& rhs) noexcept { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
+    hashable_storage& operator=(hashable_storage const& rhs) noexcept
     {
         if (this != &rhs)
             std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T));
