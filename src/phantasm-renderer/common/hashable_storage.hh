@@ -28,15 +28,15 @@ public:
 
     // copy ctor/assign is memcpy to preserve the memset padding
     hashable_storage(hashable_storage const& rhs) { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
-    hashable_storage& operator=(hashable_storage const& rhs) { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
-
-    hashable_storage(hashable_storage&& rhs) noexcept { std::memcpy(&_storage, &rhs._storage, sizeof(_storage)); }
-    hashable_storage& operator=(hashable_storage&& rhs) noexcept
+    hashable_storage& operator=(hashable_storage const& rhs)
     {
         if (this != &rhs)
-            std::memcpy(&_storage, &rhs._storage, sizeof(_storage));
+            std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T));
         return *this;
     }
+
+    hashable_storage(hashable_storage&& rhs) noexcept = delete;
+    hashable_storage& operator=(hashable_storage&& rhs) noexcept = delete;
 
     // with the established guarantees, hashing and comparison are trivial
     void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
