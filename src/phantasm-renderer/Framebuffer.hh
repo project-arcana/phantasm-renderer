@@ -1,10 +1,12 @@
 #pragma once
 
+#include <clean-core/assert.hh>
 #include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/GraphicsPass.hh>
+#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/pass_info.hh>
 
@@ -16,10 +18,18 @@ public:
     // lvalue-qualified as Framebuffer has to stay alive
 
     /// start a graphics pass from persisted PSO
-    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) & { return {mParent, graphics_pipeline._handle}; }
+    [[nodiscard]] GraphicsPass make_pass(graphics_pipeline_state const& graphics_pipeline) &
+    {
+        CC_ASSERT(!mHasBlendstateOverrides && "blendstate settings are part of a PSO, not dynamic state. making blendstate settings in a Framebuffer has no effect on persistent PSOs");
+        return {mParent, graphics_pipeline._handle};
+    }
 
     /// starta graphics pass from a raw phi PSO
-    [[nodiscard]] GraphicsPass make_pass(phi::handle::pipeline_state raw_pso) & { return {mParent, raw_pso}; }
+    [[nodiscard]] GraphicsPass make_pass(phi::handle::pipeline_state raw_pso) &
+    {
+        CC_ASSERT(!mHasBlendstateOverrides && "blendstate settings are part of a PSO, not dynamic state. making blendstate settings in a Framebuffer has no effect on persistent PSOs");
+        return {mParent, raw_pso};
+    }
 
     /// fetch a PSO from cache
     /// this hits a OS mutex and might have to build a PSO (expensive)
@@ -51,12 +61,18 @@ public:
 
 private:
     friend class Frame;
-    Framebuffer(Frame* parent, framebuffer_info const& hashInfo) : mParent(parent), mHashInfo(hashInfo) {}
+    Framebuffer(Frame* parent, framebuffer_info const& hashInfo, int num_samples, bool has_blendstate_overrides)
+      : mParent(parent), mHashInfo(hashInfo), mNumSamples(num_samples), mHasBlendstateOverrides(has_blendstate_overrides)
+    {
+    }
     void destroy();
 
     Frame* mParent;
     framebuffer_info mHashInfo;
+    int mNumSamples; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
+    bool mHasBlendstateOverrides; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
 };
+
 struct framebuffer_builder
 {
 public:
@@ -71,7 +87,7 @@ public:
         {
             _cmd.add_2d_rt(rt.res.handle, rt.info.format, phi::rt_clear_type::load, rt.info.num_samples > 1);
         }
-        adjust_viewport(rt);
+        adjust_config(rt);
         return *this;
     }
 
@@ -81,7 +97,7 @@ public:
         CC_ASSERT(!phi::is_depth_format(rt.info.format) && "invoked clear_target color variant with a depth render target");
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
         _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_viewport(rt);
+        adjust_config(rt);
         return *this;
     }
 
@@ -91,7 +107,44 @@ public:
         CC_ASSERT(phi::is_depth_format(rt.info.format) && "invoked clear_target depth variant with a non-depth render target");
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};
         _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_viewport(rt);
+        adjust_config(rt);
+        return *this;
+    }
+
+    /// add a rendertarget to the framebuffer that loads is contents (ie. is not cleared), including a blend state override
+    /// NOTE: blend state only applies to cached PSOs created from the framebuffer
+    [[nodiscard]] framebuffer_builder& loaded_target(render_target const& rt, pr::blend_state const& blend)
+    {
+        CC_ASSERT(!phi::is_depth_format(rt.info.format) && "cannot specify blend state for depth targets");
+        (void)loaded_target(rt);
+        _has_custom_blendstate = true;
+        auto& state = _blendstate_overrides.render_targets.back();
+        state.blend_enable = true;
+        state.state = blend; // the words sing to me
+        return *this;
+    }
+
+    /// add a rendertarget to the framebuffer that clears to a specified value, including a blend state override
+    /// NOTE: blend state only applies to cached PSOs created from the framebuffer
+    [[nodiscard]] framebuffer_builder& cleared_target(
+        render_target const& rt, pr::blend_state const& blend, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f)
+    {
+        CC_ASSERT(!phi::is_depth_format(rt.info.format) && "cannot specify blend state for depth targets");
+        (void)cleared_target(rt, clear_r, clear_g, clear_b, clear_a);
+        _has_custom_blendstate = true;
+        auto& state = _blendstate_overrides.render_targets.back();
+        state.blend_enable = true;
+        state.state = blend;
+        return *this;
+    }
+
+    /// Set and enable the blend logic operation
+    /// NOTE: only applies to cached PSOs created from the framebuffer
+    [[nodiscard]] framebuffer_builder& logic_op(phi::blend_logic_op op)
+    {
+        _has_custom_blendstate = true;
+        _blendstate_overrides.logic_op = op;
+        _blendstate_overrides.logic_op_enable = true;
         return *this;
     }
 
@@ -113,17 +166,31 @@ private:
     friend class Frame;
     framebuffer_builder(Frame* parent) : _parent(parent) { _cmd.viewport = {1 << 30, 1 << 30}; }
 
-    void adjust_viewport(render_target const& rt)
+    void adjust_config(render_target const& rt)
     {
-        if (_has_custom_viewport)
-            return;
-        _cmd.viewport.width = cc::min(_cmd.viewport.width, rt.info.width);
-        _cmd.viewport.height = cc::min(_cmd.viewport.height, rt.info.height);
+        CC_ASSERT(_num_samples == -1 || _num_samples == int(rt.info.num_samples) && "render targets in framebuffer have inconsistent sample amounts");
+        _num_samples = int(rt.info.num_samples);
+
+        if (!_has_custom_viewport)
+        {
+            _cmd.viewport.width = cc::min(_cmd.viewport.width, rt.info.width);
+            _cmd.viewport.height = cc::min(_cmd.viewport.height, rt.info.height);
+        }
+
+        // keep blenstate override RTs consistent in size
+        if (!phi::is_depth_format(rt.info.format))
+            _blendstate_overrides.add_render_target(rt.info.format);
     }
 
 private:
     Frame* _parent;
     phi::cmd::begin_render_pass _cmd;
+    phi::arg::framebuffer_config _blendstate_overrides;
+
+    // if true, the viewport is no longer being inferred from additionally added render targets
     bool _has_custom_viewport = false;
+    // if true, custom blendstate was specified
+    bool _has_custom_blendstate = false;
+    int _num_samples = -1; ///< amount of samples of the most recently added RT (-1 initially)
 };
 }
