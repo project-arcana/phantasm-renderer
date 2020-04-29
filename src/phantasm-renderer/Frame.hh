@@ -91,6 +91,8 @@ public:
     void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
 
+    void debug_marker(char const* label) { write_raw_cmd(phi::cmd::debug_marker{label}); }
+
     //
     // specials
 
