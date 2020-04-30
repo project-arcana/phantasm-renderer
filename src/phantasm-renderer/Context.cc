@@ -6,6 +6,7 @@
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
 #include <phantasm-hardware-interface/detail/format_size.hh>
+#include <phantasm-hardware-interface/util.hh>
 
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
@@ -305,7 +306,7 @@ unsigned Context::get_num_backbuffers() const { return mBackend->getNumBackbuffe
 unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, unsigned num_mips) const
 {
     // calculate number of mips if zero is given
-    num_mips = num_mips > 0 ? num_mips : calculate_num_mip_levels({size.width, size.height});
+    num_mips = num_mips > 0 ? num_mips : phi::util::get_num_mips(size.width, size.height);
     auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
     auto res_bytes = 0u;
 
