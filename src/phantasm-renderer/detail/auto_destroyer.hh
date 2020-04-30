@@ -43,13 +43,10 @@ struct auto_destroyer
         return *this;
     }
 
-    auto_destroyer(auto_destroyer const&) = delete;
-    auto_destroyer& operator=(auto_destroyer const&) = delete;
-
     ~auto_destroyer() { _destroy(); }
 
     /// disable RAII management and receive the POD contents, which must now be manually freed
-    T const& unlock()
+    [[nodiscard]] T const& unlock()
     {
         CC_ASSERT(parent != nullptr && "Attempted to unlock an invalid auto_ type");
         parent = nullptr;
@@ -62,9 +59,12 @@ struct auto_destroyer
     operator T&() & { return data; }
     operator T const&() const& { return data; }
 
+    [[deprecated("auto_ types are move-only")]] auto_destroyer(auto_destroyer const&) = delete;
+    [[deprecated("auto_ types are move-only")]] auto_destroyer& operator=(auto_destroyer const&) = delete;
+
     // force unlock from rvalue
-    operator T&() && = delete;
-    operator T const&() const&& = delete;
+    [[deprecated("discarding auto_ type here would destroy contents, use .unlock()")]] operator T&() && = delete;
+    [[deprecated("discarding auto_ type here would destroy contents, use .unlock()")]] operator T const&() const&& = delete;
 
 private:
     pr::Context* parent = nullptr;
