@@ -181,9 +181,6 @@ public:
     format get_backbuffer_format() const;
     unsigned get_num_backbuffers() const;
 
-    /// returns the amount of mip levels in a full mipchain for the given size (sizes assumed positive)
-    unsigned calculate_num_mip_levels(tg::isize2 size) const;
-
     /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
@@ -325,11 +322,6 @@ private:
 inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
 {
     return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
-}
-
-inline unsigned Context::calculate_num_mip_levels(tg::isize2 size) const
-{
-    return unsigned(std::floor(std::log2(float(cc::max(size.width, size.height))))) + 1u;
 }
 
 inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, phi::format fmt, unsigned num_mips) const
