@@ -174,6 +174,22 @@ public:
     [[nodiscard]] render_target acquire_backbuffer();
 
     //
+    // cache management
+    //
+
+    /// frees all resources (textures, rendertargets, buffers) from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_resource_caches();
+
+    /// frees all shader_views from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_shader_view_cache();
+
+    /// frees all pipeline_states from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_pipeline_state_cache();
+
+    //
     // info
     //
 

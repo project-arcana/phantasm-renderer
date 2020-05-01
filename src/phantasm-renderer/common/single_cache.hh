@@ -59,12 +59,19 @@ public:
     }
 
     template <class F>
-    void cull(gpu_epoch_t current_gpu_epoch, F&& destroy_func)
+    void cull_all(gpu_epoch_t current_gpu_epoch, F&& destroy_func)
     {
         auto lg = std::lock_guard(_mutex);
-        auto const f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
+        auto f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
 
-        // TODO: go through section of the map and destroy element based on condition above
+        for (auto&& [key, elem] : _map)
+        {
+            if (f_can_cull(elem))
+            {
+                destroy_func(elem.val);
+                CC_RUNTIME_ASSERT(false && "cc::map remove unimplemented and required here");
+            }
+        }
     }
 
     template <class F>

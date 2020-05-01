@@ -56,11 +56,30 @@ public:
         elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
     }
 
-    void cull()
+    /// conservatively frees elements that are not in flight and deemed unused
+    template <class F>
+    void cull(gpu_epoch_t current_gpu_epoch, F&& free_func)
     {
         auto lg = std::lock_guard(_mutex);
         ++_current_gen;
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
+    }
+
+    /// frees all elements that are not in flight
+    template <class F>
+    void cull_all(gpu_epoch_t current_gpu_epoch, F&& free_func)
+    {
+        auto lg = std::lock_guard(_mutex);
+        for (auto&& [key, val] : _map)
+        {
+            circular_buffer<in_flight_val>& buffer = val.in_flight_buffer;
+
+            while (!buffer.empty() && buffer.get_tail().required_gpu_epoch <= current_gpu_epoch)
+            {
+                free_func(buffer.get_tail().val.handle);
+                buffer.pop_tail();
+            }
+        }
     }
 
     template <class F>

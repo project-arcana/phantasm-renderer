@@ -336,6 +336,52 @@ render_target Context::acquire_backbuffer()
     return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1}};
 }
 
+unsigned Context::clear_resource_caches()
+{
+    cc::vector<phi::handle::resource> freeable;
+    freeable.reserve(100);
+
+    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+
+    mCacheRenderTargets.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
+    mCacheTextures.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
+    mCacheBuffers.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
+
+    mBackend->freeRange(freeable);
+    return unsigned(freeable.size());
+}
+
+unsigned Context::clear_shader_view_cache()
+{
+    cc::vector<phi::handle::shader_view> freeable;
+    freeable.reserve(100);
+
+    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+
+    mCacheGraphicsSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
+    mCacheComputeSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
+
+    mBackend->freeRange(freeable);
+    return unsigned(freeable.size());
+}
+
+unsigned Context::clear_pipeline_state_cache()
+{
+    unsigned num_frees = 0;
+    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+
+    mCacheGraphicsPSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
+        ++num_frees;
+        mBackend->free(pso);
+    });
+    mCacheComputePSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
+        ++num_frees;
+        mBackend->free(pso);
+    });
+
+    return num_frees;
+}
+
 Context::Context(phi::window_handle const& window_handle, backend type) { initialize(window_handle, type); }
 
 Context::Context(const phi::window_handle& window_handle, backend type, const phi::backend_config& config)
