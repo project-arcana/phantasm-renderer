@@ -434,7 +434,7 @@ buffer Context::createBuffer(const buffer_info& info)
     phi::handle::resource handle;
     if (info.is_mapped)
     {
-        handle = mBackend->createMappedBuffer(info.size_bytes, info.stride_bytes);
+        handle = mBackend->createUploadBuffer(info.size_bytes, info.stride_bytes);
     }
     else
     {
