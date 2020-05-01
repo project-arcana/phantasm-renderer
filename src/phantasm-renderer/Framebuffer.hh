@@ -164,7 +164,11 @@ public:
 
 private:
     friend class Frame;
-    framebuffer_builder(Frame* parent) : _parent(parent) { _cmd.viewport = {1 << 30, 1 << 30}; }
+    framebuffer_builder(Frame* parent) : _parent(parent)
+    {
+        _cmd.viewport = {1 << 30, 1 << 30};
+        _cmd.set_null_depth_stencil();
+    }
 
     void adjust_config(render_target const& rt)
     {
