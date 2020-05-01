@@ -39,14 +39,21 @@ struct texture_info
 
 struct buffer_info
 {
+    enum map_type : uint8_t
+    {
+        unmapped = 0,
+        mapped_upload,
+        mapped_readback
+    };
+
     unsigned size_bytes;
     unsigned stride_bytes;
     bool allow_uav;
-    bool is_mapped;
+    map_type map;
 
     constexpr bool operator==(buffer_info const& rhs) const noexcept
     {
-        return size_bytes == rhs.size_bytes && stride_bytes == rhs.stride_bytes && allow_uav == rhs.allow_uav && is_mapped == rhs.is_mapped;
+        return size_bytes == rhs.size_bytes && stride_bytes == rhs.stride_bytes && allow_uav == rhs.allow_uav && map == rhs.map;
     }
 };
 
@@ -62,6 +69,6 @@ struct resource_info_hasher
         return cc::make_hash(t.fmt, t.dim, t.allow_uav, t.width, t.height, t.depth_or_array_size, t.num_mips);
     }
 
-    constexpr size_t operator()(buffer_info const& b) const noexcept { return cc::make_hash(b.size_bytes, b.stride_bytes, b.allow_uav, b.is_mapped); }
+    constexpr size_t operator()(buffer_info const& b) const noexcept { return cc::make_hash(b.size_bytes, b.stride_bytes, b.allow_uav, b.map); }
 };
 }
