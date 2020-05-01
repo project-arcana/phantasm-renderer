@@ -84,46 +84,83 @@ struct argument
 {
 public:
     /// add a default-configured texture SRV
-    void add(texture const& img);
-    /// add a default-configured buffer SRV
-    void add(buffer const& buffer);
-    /// add a default-configured 2D texture SRV
-    void add(render_target const& rt);
-
-    /// add a configured SRV
-    void add(resource_view_info const& rvi)
+    void add(texture const& img)
     {
-        _info.get().srvs.push_back(rvi.rv);
-        _info.get().srv_guids.push_back(rvi.guid);
+        phi::resource_view new_rv;
+        fill_default_srv(new_rv, img, 0, unsigned(-1));
+        _add_srv(new_rv, img.res.guid);
     }
+    /// add a default-configured structured buffer SRV
+    void add(buffer const& buffer)
+    {
+        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
+        _add_srv(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
+                 buffer.res.guid);
+    }
+    /// add a default-configured 2D texture SRV
+    void add(render_target const& rt) { _add_srv(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid); }
+    /// add a configured SRV
+    void add(resource_view_info const& rvi) { _add_srv(rvi.rv, rvi.guid); }
 
     /// add a default-configured texture UAV
-    void add_mutable(texture const& img);
+    void add_mutable(texture const& img)
+    {
+        phi::resource_view new_rv;
+        fill_default_uav(new_rv, img, 0, unsigned(-1));
+        _add_uav(new_rv, img.res.guid);
+    }
     /// add a default-configured buffer UAV
-    void add_mutable(buffer const& buffer);
+    void add_mutable(buffer const& buffer)
+    {
+        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV has no stride, pass a stride during creation");
+        _add_uav(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
+                 buffer.res.guid);
+    }
     /// add a default-configured 2D texture UAV
-    void add_mutable(render_target const& rt);
+    void add_mutable(render_target const& rt)
+    {
+        _add_uav(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid);
+    }
 
     /// add a configured UAV
-    void add_mutable(resource_view_info const& rvi)
-    {
-        _info.get().uavs.push_back(rvi.rv);
-        _info.get().uav_guids.push_back(rvi.guid);
-    }
+    void add_mutable(resource_view_info const& rvi) { _add_uav(rvi.rv, rvi.guid); }
 
     void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u, phi::sampler_address_mode address_mode = phi::sampler_address_mode::wrap)
     {
-        auto& new_sampler = _info.get().samplers.emplace_back();
-        new_sampler.init_default(filter, anisotropy, address_mode);
+        add_sampler(phi::sampler_config(filter, anisotropy, address_mode));
     }
 
-    void add_sampler(phi::sampler_config const& config) { _info.get().samplers.push_back(config); }
+    void add_sampler(phi::sampler_config const& config)
+    {
+        CC_ASSERT_MSG(!_info.get().uavs.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
+                                                "use persistent prebuilt_arguments from Context::build_argument() instead");
+
+        _info.get().samplers.push_back(config);
+    }
 
     unsigned get_num_srvs() const { return unsigned(_info.get().srvs.size()); }
     unsigned get_num_uavs() const { return unsigned(_info.get().uavs.size()); }
     unsigned get_num_samplers() const { return unsigned(_info.get().samplers.size()); }
 
 private:
+    void _add_srv(phi::resource_view rv, uint64_t guid)
+    {
+        CC_ASSERT_MSG(!_info.get().srvs.full(), "pr::argument SRVs full\ncache-access arguments are fixed size,\n"
+                                                "use persistent prebuilt_arguments from Context::build_argument() instead");
+
+        _info.get().srvs.push_back(rv);
+        _info.get().srv_guids.push_back(guid);
+    }
+
+    void _add_uav(phi::resource_view rv, uint64_t guid)
+    {
+        CC_ASSERT_MSG(!_info.get().uavs.full(), "pr::argument UAVs full\ncache-access arguments are fixed size,\n"
+                                                "use persistent prebuilt_arguments from Context::build_argument() instead");
+
+        _info.get().uavs.push_back(rv);
+        _info.get().uav_guids.push_back(guid);
+    }
+
     friend struct argument_builder;
     static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
     static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
@@ -237,9 +274,9 @@ public:
     friend class Context;
     argument_builder(Context* parent) : _parent(parent)
     {
-        _srvs.reserve(8);
-        _uavs.reserve(8);
-        _samplers.reserve(4);
+        _srvs.reserve(16);
+        _uavs.reserve(16);
+        _samplers.reserve(8);
     }
     Context* const _parent;
 
