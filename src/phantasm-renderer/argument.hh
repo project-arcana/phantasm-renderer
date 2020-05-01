@@ -13,8 +13,6 @@
 
 namespace pr
 {
-class Context;
-
 struct resource_view_info
 {
     resource_view_info& format(pr::format fmt)
@@ -120,6 +118,10 @@ public:
     }
 
     void add_sampler(phi::sampler_config const& config) { _info.get().samplers.push_back(config); }
+
+    unsigned get_num_srvs() const { return unsigned(_info.get().srvs.size()); }
+    unsigned get_num_uavs() const { return unsigned(_info.get().uavs.size()); }
+    unsigned get_num_samplers() const { return unsigned(_info.get().samplers.size()); }
 
 private:
     friend struct argument_builder;

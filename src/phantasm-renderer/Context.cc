@@ -98,13 +98,19 @@ auto_render_target Context::make_target(tg::isize2 size, phi::format format, uns
 
 auto_buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
-    auto const info = buffer_info{size, stride, allow_uav, false};
+    auto const info = buffer_info{size, stride, allow_uav, buffer_info::unmapped};
     return {createBuffer(info), this};
 }
 
-auto_buffer Context::make_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
+auto_buffer Context::make_upload_buffer(unsigned size, unsigned stride)
 {
-    auto const info = buffer_info{size, stride, allow_uav, true};
+    auto const info = buffer_info{size, stride, false, buffer_info::mapped_upload};
+    return {createBuffer(info), this};
+}
+
+auto_buffer Context::make_readback_buffer(unsigned size, unsigned stride)
+{
+    auto const info = buffer_info{size, stride, false, buffer_info::mapped_readback};
     return {createBuffer(info), this};
 }
 
@@ -183,20 +189,20 @@ void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info,
 
 void Context::write_buffer(const buffer& buffer, void const* data, size_t size, size_t offset)
 {
-    CC_ASSERT(buffer.info.is_mapped && "Attempted to write to non-mapped buffer");
+    CC_ASSERT(buffer.info.map == buffer_info::mapped_upload && "Attempted to write to non-upload buffer");
     CC_ASSERT(buffer.info.size_bytes >= size && "Buffer write out of bounds");
     std::memcpy(mBackend->getMappedMemory(buffer.res.handle) + offset, data, size);
 }
 
 void Context::flush_buffer_writes(const buffer& buffer)
 {
-    CC_ASSERT(buffer.info.is_mapped && "Attempted to flush writes to non-mapped buffer");
+    CC_ASSERT(buffer.info.map == buffer_info::mapped_upload && "Attempted to flush writes to non-upload buffer");
     mBackend->flushMappedMemory(buffer.res.handle);
 }
 
 std::byte* Context::get_buffer_map(const buffer& buffer)
 {
-    CC_ASSERT(buffer.info.is_mapped && "Attempted to get map from non-mapped buffer");
+    CC_ASSERT(buffer.info.map != buffer_info::unmapped && "Attempted to get map from non-mapped buffer");
     return mBackend->getMappedMemory(buffer.res.handle);
 }
 
@@ -208,13 +214,19 @@ cached_render_target Context::get_target(tg::isize2 size, phi::format format, un
 
 cached_buffer Context::get_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
-    auto const info = buffer_info{size, stride, allow_uav, false};
+    auto const info = buffer_info{size, stride, allow_uav, buffer_info::unmapped};
     return {acquireBuffer(info), this};
 }
 
-cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride, bool allow_uav)
+cached_buffer Context::get_upload_buffer(unsigned size, unsigned stride)
 {
-    auto const info = buffer_info{size, stride, allow_uav, true};
+    auto const info = buffer_info{size, stride, false, buffer_info::mapped_upload};
+    return {acquireBuffer(info), this};
+}
+
+cached_buffer Context::get_readback_buffer(unsigned size, unsigned stride)
+{
+    auto const info = buffer_info{size, stride, false, buffer_info::mapped_readback};
     return {acquireBuffer(info), this};
 }
 
@@ -477,15 +489,23 @@ texture Context::createTexture(const texture_info& info)
 
 buffer Context::createBuffer(const buffer_info& info)
 {
+    CC_ASSERT((info.allow_uav ? info.map == buffer_info::unmapped : true) && "mapped buffers cannot be created with UAV support");
+
     phi::handle::resource handle;
-    if (info.is_mapped)
+
+    switch (info.map)
     {
-        handle = mBackend->createUploadBuffer(info.size_bytes, info.stride_bytes);
-    }
-    else
-    {
+    case buffer_info::unmapped:
         handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.allow_uav);
+        break;
+    case buffer_info::mapped_upload:
+        handle = mBackend->createUploadBuffer(info.size_bytes, info.stride_bytes);
+        break;
+    case buffer_info::mapped_readback:
+        handle = mBackend->createReadbackBuffer(info.size_bytes, info.stride_bytes);
+        break;
     }
+
     return {{handle, acquireGuid()}, info};
 }
 
