@@ -26,4 +26,5 @@ using phi::sampler_filter;
 
 // struct passthroughs
 using phi::blend_state;
+using phi::sampler_config;
 }

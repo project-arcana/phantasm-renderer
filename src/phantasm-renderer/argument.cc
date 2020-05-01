@@ -4,56 +4,6 @@
 
 #include "Context.hh"
 
-void pr::argument::add(const texture& img)
-{
-    _info.get().srv_guids.push_back(img.res.guid);
-
-    auto& new_rv = _info.get().srvs.emplace_back();
-    fill_default_srv(new_rv, img, 0, unsigned(-1));
-}
-
-void pr::argument::add(const pr::buffer& buffer)
-{
-    CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV argument has no stride, pass a stride during creation");
-    _info.get().srv_guids.push_back(buffer.res.guid);
-
-    auto& new_rv = _info.get().srvs.emplace_back();
-    new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
-}
-
-void pr::argument::add(const pr::render_target& rt)
-{
-    _info.get().srv_guids.push_back(rt.res.guid);
-
-    auto& new_rv = _info.get().srvs.emplace_back();
-    new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-}
-
-void pr::argument::add_mutable(const pr::texture& img)
-{
-    _info.get().uav_guids.push_back(img.res.guid);
-
-    auto& new_rv = _info.get().uavs.emplace_back();
-    fill_default_uav(new_rv, img, 0, unsigned(-1));
-}
-
-void pr::argument::add_mutable(const pr::buffer& buffer)
-{
-    CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV argument has no stride, pass a stride during creation");
-    _info.get().uav_guids.push_back(buffer.res.guid);
-
-    auto& new_rv = _info.get().uavs.emplace_back();
-    new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
-}
-
-void pr::argument::add_mutable(const pr::render_target& rt)
-{
-    _info.get().uav_guids.push_back(rt.res.guid);
-
-    auto& new_rv = _info.get().uavs.emplace_back();
-    new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-}
-
 void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     new_rv.resource = img.res.handle;
