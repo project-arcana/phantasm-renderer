@@ -60,9 +60,11 @@ public:
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     /// create a mapped upload buffer which can be directly written to from CPU
-    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0);
     /// create a mapped upload buffer, with a size based on accomodating a given texture's contents
     [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
+    /// create a mapped readback buffer which can be directly read from CPU
+    [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0);
 
     /// create a shader from binary data
     [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, pr::shader stage);
@@ -88,7 +90,8 @@ public:
     [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
 
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0);
+    [[nodiscard]] cached_buffer get_readback_buffer(unsigned size, unsigned stride = 0);
 
 
     //
@@ -174,15 +177,28 @@ public:
     [[nodiscard]] render_target acquire_backbuffer();
 
     //
+    // cache management
+    //
+
+    /// frees all resources (textures, rendertargets, buffers) from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_resource_caches();
+
+    /// frees all shader_views from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_shader_view_cache();
+
+    /// frees all pipeline_states from pr caches that are not acquired or in flight
+    /// returns amount of freed elements
+    unsigned clear_pipeline_state_cache();
+
+    //
     // info
     //
 
     tg::isize2 get_backbuffer_size() const;
     format get_backbuffer_format() const;
     unsigned get_num_backbuffers() const;
-
-    /// returns the amount of mip levels in a full mipchain for the given size (sizes assumed positive)
-    unsigned calculate_num_mip_levels(tg::isize2 size) const;
 
     /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
@@ -325,11 +341,6 @@ private:
 inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
 {
     return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
-}
-
-inline unsigned Context::calculate_num_mip_levels(tg::isize2 size) const
-{
-    return unsigned(std::floor(std::log2(float(cc::max(size.width, size.height))))) + 1u;
 }
 
 inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, phi::format fmt, unsigned num_mips) const

@@ -33,7 +33,7 @@ raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return
 
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    if (res.info.is_mapped) // mapped buffers are never transitioned
+    if (res.info.map != buffer_info::unmapped) // mapped buffers are never transitioned
         return;
 
     transition(res.res.handle, target, dependency);

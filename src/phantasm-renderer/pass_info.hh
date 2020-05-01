@@ -6,6 +6,7 @@
 
 #include <phantasm-renderer/common/hashable_storage.hh>
 
+#include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
@@ -14,9 +15,6 @@
 
 namespace pr
 {
-class Context;
-class Frame;
-
 struct graphics_pass_info
 {
 public:
@@ -25,6 +23,12 @@ public:
     {
         _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
         return *this;
+    }
+
+    /// add a shader argument matching the shape of a given pr::argument
+    graphics_pass_info& arg(argument const& argument, bool has_cbv = false)
+    {
+        return arg(argument.get_num_srvs(), argument.get_num_uavs(), argument.get_num_samplers(), has_cbv);
     }
 
     /// Add root constants
@@ -124,6 +128,12 @@ public:
     {
         _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
         return *this;
+    }
+
+    /// add a shader argument matching the shape of a given pr::argument
+    compute_pass_info& arg(argument const& argument, bool has_cbv = false)
+    {
+        return arg(argument.get_num_srvs(), argument.get_num_uavs(), argument.get_num_samplers(), has_cbv);
     }
 
     /// Add root constants
