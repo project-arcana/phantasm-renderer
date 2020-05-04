@@ -138,9 +138,9 @@ public:
         write_buffer(buffer, &data, sizeof(T));
     }
 
-    void flush_buffer_writes(buffer const& buffer);
+    [[nodiscard]] std::byte* map_buffer(buffer const& buffer);
 
-    [[nodiscard]] std::byte* get_buffer_map(buffer const& buffer);
+    void unmap_buffer(buffer const& buffer);
 
     //
     // consumption API
