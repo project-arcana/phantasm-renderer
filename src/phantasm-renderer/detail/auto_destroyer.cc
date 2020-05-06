@@ -8,11 +8,11 @@ void pr::detail::auto_destroy_proxy::cache_deref(pr::Context* ctx, const pr::ren
 
 void pr::detail::auto_destroy_proxy::cache_deref(pr::Context* ctx, const pr::texture& v) { ctx->free_to_cache(v); }
 
-void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::buffer& v) { ctx->free(v.res); }
+void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::buffer& v) { ctx->free_untyped(v.res); }
 
-void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::render_target& v) { ctx->free(v.res); }
+void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::render_target& v) { ctx->free_untyped(v.res); }
 
-void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::texture& v) { ctx->free(v.res); }
+void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::texture& v) { ctx->free_untyped(v.res); }
 
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pipeline_state_abstract& v) { ctx->freePipelineState(v._handle); }
 

@@ -2,19 +2,24 @@
 
 #include <clean-core/hash.hh>
 
+#include <typed-geometry/types/size.hh>
+
 #include <phantasm-hardware-interface/arguments.hh>
+
+#include <phantasm-renderer/enums.hh>
 
 namespace pr
 {
 using render_target_info = phi::arg::create_render_target_info;
 using texture_info = phi::arg::create_texture_info;
 using buffer_info = phi::arg::create_buffer_info;
+using generic_resource_info = phi::arg::create_resource_info;
 
 struct resource_info_hasher
 {
     constexpr size_t operator()(render_target_info const& rt) const noexcept
     {
-        return cc::make_hash(rt.format, rt.width, rt.height, rt.num_samples, rt.array_size);
+        return cc::make_hash(rt.format, rt.width, rt.height, rt.num_samples, rt.array_size, rt.clear_value);
     }
 
     constexpr size_t operator()(texture_info const& t) const noexcept

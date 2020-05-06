@@ -84,17 +84,21 @@ auto_texture Context::make_texture_array(tg::isize2 size, unsigned num_elems, ph
     return {createTexture(info), this};
 }
 
+auto_texture Context::make_texture(const texture_info& info) { return {createTexture(info), this}; }
+
 auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
+    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size);
     return {createRenderTarget(info), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, const phi::rt_clear_value& optimized_clear)
+auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
-    return {createRenderTarget(info, &optimized_clear), this};
+    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size, optimized_clear);
+    return {createRenderTarget(info), this};
 }
+
+auto_render_target Context::make_target(const render_target_info& info) { return {createRenderTarget(info), this}; }
 
 auto_buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
@@ -114,6 +118,8 @@ auto_buffer Context::make_readback_buffer(unsigned size, unsigned stride)
     return {createBuffer(info), this};
 }
 
+auto_buffer Context::make_buffer(const buffer_info& info) { return {createBuffer(info), this}; }
+
 auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi::shader_stage stage)
 {
     CC_ASSERT(data != nullptr);
@@ -123,7 +129,7 @@ auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi:
     res._data = data;
     res._size = size;
     res._owning_blob = nullptr;
-    murmurhash3_x64_128(res._data, static_cast<int>(res._size), 0, res._hash);
+    murmurhash3_x64_128(res._data, int(res._size), 0, res._hash);
 
     return {res, this};
 }
@@ -179,7 +185,21 @@ auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info
     return auto_compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
 }
 
-void Context::free(const raw_resource& resource) { mBackend->free(resource.handle); }
+void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
+
+void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
+{
+    switch (info.type)
+    {
+    case phi::arg::create_resource_info::e_resource_render_target:
+        return freeCachedTarget(info.info_render_target, resource);
+    case phi::arg::create_resource_info::e_resource_texture:
+        return freeCachedTexture(info.info_texture, resource);
+    case phi::arg::create_resource_info::e_resource_buffer:
+        return freeCachedBuffer(info.info_buffer, resource);
+    }
+    CC_UNREACHABLE("invalid type");
+}
 
 void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(buffer.info, buffer.res); }
 
@@ -207,6 +227,8 @@ cached_render_target Context::get_target(tg::isize2 size, phi::format format, un
     return {acquireRenderTarget(info), this};
 }
 
+cached_render_target Context::get_target(const render_target_info& info) { return {acquireRenderTarget(info), this}; }
+
 cached_buffer Context::get_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
     auto const info = buffer_info{size, stride, allow_uav, phi::resource_heap::gpu};
@@ -223,6 +245,38 @@ cached_buffer Context::get_readback_buffer(unsigned size, unsigned stride)
 {
     auto const info = buffer_info{size, stride, false, phi::resource_heap::readback};
     return {acquireBuffer(info), this};
+}
+
+cached_buffer Context::get_buffer(const buffer_info& info) { return {acquireBuffer(info), this}; }
+
+cached_texture Context::get_texture(const texture_info& info) { return {acquireTexture(info), this}; }
+
+raw_resource Context::make_untyped_unlocked(const generic_resource_info& info)
+{
+    switch (info.type)
+    {
+    case phi::arg::create_resource_info::e_resource_render_target:
+        return createRenderTarget(info.info_render_target).res;
+    case phi::arg::create_resource_info::e_resource_texture:
+        return createTexture(info.info_texture).res;
+    case phi::arg::create_resource_info::e_resource_buffer:
+        return createBuffer(info.info_buffer).res;
+    }
+    CC_UNREACHABLE("invalid type");
+}
+
+raw_resource Context::get_untyped_unlocked(const generic_resource_info& info)
+{
+    switch (info.type)
+    {
+    case phi::arg::create_resource_info::e_resource_render_target:
+        return acquireRenderTarget(info.info_render_target).res;
+    case phi::arg::create_resource_info::e_resource_texture:
+        return acquireTexture(info.info_texture).res;
+    case phi::arg::create_resource_info::e_resource_buffer:
+        return acquireBuffer(info.info_buffer).res;
+    }
+    CC_UNREACHABLE("invalid type");
 }
 
 
@@ -472,21 +526,18 @@ void Context::internalInitialize()
     mShaderCompiler.initialize();
 }
 
-render_target Context::createRenderTarget(const render_target_info& info, phi::rt_clear_value const* optimized_clear)
+render_target Context::createRenderTarget(const render_target_info& info)
 {
-    return {{mBackend->createRenderTarget(info.format, {info.width, info.height}, info.num_samples, info.array_size, optimized_clear), acquireGuid()}, info};
+    return {{mBackend->createRenderTargetFromInfo(info), acquireGuid()}, info};
 }
 
-texture Context::createTexture(const texture_info& info)
-{
-    return {{mBackend->createTexture(info.fmt, {info.width, info.height}, info.num_mips, info.dim, info.depth_or_array_size, info.allow_uav), acquireGuid()}, info};
-}
+texture Context::createTexture(const texture_info& info) { return {{mBackend->createTextureFromInfo(info), acquireGuid()}, info}; }
 
 buffer Context::createBuffer(const buffer_info& info)
 {
     CC_ASSERT((info.allow_uav ? info.heap == phi::resource_heap::gpu : true) && "mapped buffers cannot be created with UAV support");
 
-    phi::handle::resource handle = mBackend->createBuffer(info.size_bytes, info.stride_bytes, info.heap, info.allow_uav);
+    phi::handle::resource handle = mBackend->createBufferFromInfo(info);
     return {{handle, acquireGuid()}, info};
 }
 
