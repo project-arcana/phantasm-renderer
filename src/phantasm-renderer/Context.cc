@@ -1,7 +1,5 @@
 #include "Context.hh"
 
-#include <rich-log/log.hh>
-
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
@@ -10,6 +8,7 @@
 
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
+#include <phantasm-renderer/common/log.hh>
 #include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/detail/backends.hh>
 
@@ -34,7 +33,7 @@ phi::sc::target stage_to_sc_target(phi::shader_stage stage)
     case phi::shader_stage::compute:
         return phi::sc::target::compute;
     default:
-        LOG(warning)("Unsupported shader stage for online compilation");
+        LOG_WARN(pr::pr_log, "Unsupported shader stage for online compilation");
         return phi::sc::target::pixel;
     }
 }
@@ -148,7 +147,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     if (bin.data == nullptr)
     {
-        LOG(warning)("Failed to compile shader");
+        LOG_WARN(pr::pr_log, "Failed to compile shader");
         return {};
     }
     else
