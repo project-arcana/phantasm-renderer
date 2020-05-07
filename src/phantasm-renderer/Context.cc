@@ -196,6 +196,8 @@ void Context::free_to_cache_untyped(const raw_resource& resource, const generic_
         return freeCachedTexture(info.info_texture, resource);
     case phi::arg::create_resource_info::e_resource_buffer:
         return freeCachedBuffer(info.info_buffer, resource);
+    default:
+        CC_ASSERT(false && "invalid type");
     }
     CC_UNREACHABLE("invalid type");
 }
@@ -260,6 +262,8 @@ raw_resource Context::make_untyped_unlocked(const generic_resource_info& info)
         return createTexture(info.info_texture).res;
     case phi::arg::create_resource_info::e_resource_buffer:
         return createBuffer(info.info_buffer).res;
+    default:
+        CC_ASSERT(false && "invalid type");
     }
     CC_UNREACHABLE("invalid type");
 }
@@ -274,6 +278,8 @@ raw_resource Context::get_untyped_unlocked(const generic_resource_info& info)
         return acquireTexture(info.info_texture).res;
     case phi::arg::create_resource_info::e_resource_buffer:
         return acquireBuffer(info.info_buffer).res;
+    default:
+        CC_ASSERT(false && "invalid type");
     }
     CC_UNREACHABLE("invalid type");
 }
