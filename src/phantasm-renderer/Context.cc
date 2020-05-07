@@ -264,6 +264,7 @@ raw_resource Context::make_untyped_unlocked(const generic_resource_info& info)
         return createBuffer(info.info_buffer).res;
     default:
         CC_ASSERT(false && "invalid type");
+        return {};
     }
     CC_UNREACHABLE("invalid type");
 }
@@ -280,6 +281,7 @@ raw_resource Context::get_untyped_unlocked(const generic_resource_info& info)
         return acquireBuffer(info.info_buffer).res;
     default:
         CC_ASSERT(false && "invalid type");
+        return {};
     }
     CC_UNREACHABLE("invalid type");
 }
