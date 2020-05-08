@@ -23,6 +23,7 @@ using phi::sampler_address_mode;
 using phi::sampler_border_color;
 using phi::sampler_compare_func;
 using phi::sampler_filter;
+using phi::resource_heap;
 
 // struct passthroughs
 using phi::blend_state;

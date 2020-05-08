@@ -315,18 +315,20 @@ public:
     template <class T, bool Cached>
     void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
 
-    // ref type
+private:
+    //
+    // internal from here on out
+    //
+
 private:
     Context(Context const&) = delete;
     Context(Context&&) = delete;
     Context& operator=(Context const&) = delete;
     Context& operator=(Context&&) = delete;
 
-    // internal
 private:
     [[nodiscard]] uint64_t acquireGuid();
 
-private:
     void internalInitialize();
 
     // creation
@@ -351,13 +353,6 @@ private:
     void freeCachedTexture(texture_info const& info, raw_resource res);
     void freeCachedBuffer(buffer_info const& info, raw_resource res);
 
-    // internal builder API
-private:
-    friend struct pipeline_builder;
-    friend struct argument_builder;
-
-    // internal argument builder API
-private:
     // single cache access, Frame-side API
 private:
     friend class raii::Frame;

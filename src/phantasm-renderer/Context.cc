@@ -33,7 +33,7 @@ phi::sc::target stage_to_sc_target(phi::shader_stage stage)
     case phi::shader_stage::compute:
         return phi::sc::target::compute;
     default:
-        LOG_WARN(pr::pr_log, "Unsupported shader stage for online compilation");
+        LOG_WARN(pr::logger, "Unsupported shader stage for online compilation");
         return phi::sc::target::pixel;
     }
 }
@@ -147,7 +147,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     if (bin.data == nullptr)
     {
-        LOG_WARN(pr::pr_log, "Failed to compile shader");
+        LOG_WARN(pr::logger, "Failed to compile shader");
         return {};
     }
     else
@@ -411,7 +411,7 @@ render_target Context::acquire_backbuffer()
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = true;
 #endif
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1}};
+    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1, {0, 0, 0, 1}}};
 }
 
 unsigned Context::clear_resource_caches()

@@ -33,7 +33,7 @@ raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return
 
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    if (res.info.heap != phi::resource_heap::gpu) // mapped buffers are never transitioned
+    if (res.info.heap != resource_heap::gpu) // mapped buffers are never transitioned
         return;
 
     transition(res.res.handle, target, dependency);
@@ -114,6 +114,7 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
     transition(dest_texture, phi::resource_state::copy_dest);
     flushPendingTransitions();
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
+    CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
 
     auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
     auto const use_d3d12_per_row_alingment = mCtx->get_backend().getBackendType() == phi::backend_type::d3d12;

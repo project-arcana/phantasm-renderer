@@ -4,5 +4,5 @@
 
 namespace pr
 {
-constexpr void pr_log(rlog::MessageBuilder& builder) { builder.set_domain(rlog::domain("PR")); }
+constexpr void logger(rlog::MessageBuilder& builder) { builder.set_domain(rlog::domain("PR")); }
 }
