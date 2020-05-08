@@ -155,18 +155,36 @@ public:
     // buffer map API
     //
 
+    /// map a buffer created on the upload or readback heap in order to access it on CPU
+    /// a buffer can be mapped multiple times at once
     [[nodiscard]] std::byte* map_buffer(buffer const& buffer);
 
+    /// unmap a buffer previously mapped using map_buffer
+    /// a buffer can be destroyed while mapped
     void unmap_buffer(buffer const& buffer);
 
-    void write_buffer(buffer const& buffer, void const* data, size_t size, size_t offset = 0);
+    /// map an upload buffer, memcpy the provided data into it, and unmap it
+    void write_to_buffer(buffer const& buffer, void const* data, size_t size, size_t offset_in_buffer = 0);
 
+    /// map a readback buffer, memcpy its contents to the provided location, and unmap it
+    void read_from_buffer(buffer const& buffer, void* out_data, size_t size, size_t offset_in_buffer = 0);
+
+    /// map an upload buffer, memcpy the provided data into it, and unmap it
     template <class T>
-    void write_buffer_t(buffer const& buffer, T const& data)
+    void write_to_buffer_t(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
     {
-        static_assert(!std::is_pointer_v<T>, "[pr::Context::write_buffer_t] Pointer instead of raw data provided");
-        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::write_buffer_t] Non-trivially copyable data provided");
-        write_buffer(buffer, &data, sizeof(T));
+        static_assert(!std::is_pointer_v<T>, "[pr::Context::write_to_buffer_t] Pointer instead of raw data provided");
+        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::write_to_buffer_t] Non-trivially copyable data provided");
+        write_to_buffer(buffer, &data, sizeof(T), offset_in_buffer);
+    }
+
+    /// map a readback buffer, memcpy its contents to the provided location, and unmap it
+    template <class T>
+    void read_from_buffer_t(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
+    {
+        static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
+        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::read_from_buffer_t] Non-trivially copyable data provided");
+        read_from_buffer(buffer, &out_data, sizeof(T), offset_in_buffer);
     }
 
     //
