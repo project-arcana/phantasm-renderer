@@ -33,7 +33,7 @@ phi::sc::target stage_to_sc_target(phi::shader_stage stage)
     case phi::shader_stage::compute:
         return phi::sc::target::compute;
     default:
-        LOG_WARN(pr::logger, "Unsupported shader stage for online compilation");
+        PR_LOG_WARN("Unsupported shader stage for online compilation");
         return phi::sc::target::pixel;
     }
 }
@@ -147,7 +147,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     if (bin.data == nullptr)
     {
-        LOG_WARN(pr::logger, "Failed to compile shader");
+        PR_LOG_WARN("Failed to compile shader");
         return {};
     }
     else
