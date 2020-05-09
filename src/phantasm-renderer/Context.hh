@@ -178,21 +178,21 @@ public:
     }
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
+    /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
     template <class T>
     void write_to_buffer_t(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::write_to_buffer_t] Pointer instead of raw data provided");
-        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::write_to_buffer_t] Non-trivially copyable data provided");
-        write_to_buffer(buffer, &data, sizeof(T), offset_in_buffer);
+        write_to_buffer(buffer, cc::as_byte_span<T const>(data), offset_in_buffer);
     }
 
     /// map a readback buffer, memcpy its contents to the provided location, and unmap it
+    /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
     template <class T>
     void read_from_buffer_t(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
-        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::read_from_buffer_t] Non-trivially copyable data provided");
-        read_from_buffer(buffer, &out_data, sizeof(T), offset_in_buffer);
+        read_from_buffer(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
     }
 
     //
