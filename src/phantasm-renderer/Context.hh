@@ -165,9 +165,17 @@ public:
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     void write_to_buffer(buffer const& buffer, void const* data, size_t size, size_t offset_in_buffer = 0);
+    void write_to_buffer(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0)
+    {
+        write_to_buffer(buffer, data.data(), data.size(), offset_in_buffer);
+    }
 
     /// map a readback buffer, memcpy its contents to the provided location, and unmap it
     void read_from_buffer(buffer const& buffer, void* out_data, size_t size, size_t offset_in_buffer = 0);
+    void read_from_buffer(buffer const& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer = 0)
+    {
+        read_from_buffer(buffer, out_data.data(), out_data.size(), offset_in_buffer);
+    }
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     template <class T>
