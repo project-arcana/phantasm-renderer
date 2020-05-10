@@ -33,7 +33,7 @@ raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return
 
 void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
 {
-    if (res.info.map != buffer_info::unmapped) // mapped buffers are never transitioned
+    if (res.info.heap != resource_heap::gpu) // mapped buffers are never transitioned
         return;
 
     transition(res.res.handle, target, dependency);
@@ -114,10 +114,11 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
     transition(dest_texture, phi::resource_state::copy_dest);
     flushPendingTransitions();
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
+    CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
 
     auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
     auto const use_d3d12_per_row_alingment = mCtx->get_backend().getBackendType() == phi::backend_type::d3d12;
-    auto* const upload_buffer_map = mCtx->get_buffer_map(upload_buffer);
+    auto* const upload_buffer_map = mCtx->map_buffer(upload_buffer);
 
     phi::cmd::copy_buffer_to_texture command;
     command.source = upload_buffer.res.handle;
@@ -148,7 +149,7 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
         rowwise_copy(texture_data, upload_buffer_map + command.source_offset, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
     }
 
-    mCtx->flush_buffer_writes(upload_buffer);
+    mCtx->unmap_buffer(upload_buffer);
 }
 
 void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)

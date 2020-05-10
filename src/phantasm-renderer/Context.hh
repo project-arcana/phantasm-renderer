@@ -51,11 +51,15 @@ public:
     [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
     /// create a 2D texture array
     [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
+    /// create a texture from an info struct
+    [[nodiscard]] auto_texture make_texture(texture_info const& info);
 
     /// create a render target
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
     /// create a render target with an optimized clear value
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value const& optimized_clear);
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
+    /// create a render target from an info struct
+    [[nodiscard]] auto_render_target make_target(render_target_info const& info);
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -65,6 +69,9 @@ public:
     [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
     /// create a mapped readback buffer which can be directly read from CPU
     [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0);
+    /// create a buffer from an info struct
+    [[nodiscard]] auto_buffer make_buffer(buffer_info const& info);
+
 
     /// create a shader from binary data
     [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, pr::shader stage);
@@ -87,26 +94,44 @@ public:
     // cache lookup API
     //
 
+    /// create or retrieve a render target from the cache
     [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    [[nodiscard]] cached_render_target get_target(render_target_info const& info);
 
+    /// create or retrieve a buffer from the cache
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
     [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0);
     [[nodiscard]] cached_buffer get_readback_buffer(unsigned size, unsigned stride = 0);
+    [[nodiscard]] cached_buffer get_buffer(buffer_info const& info);
 
+    /// create or retrieve a texture from the cache
+    [[nodiscard]] cached_texture get_texture(texture_info const& info);
+
+
+    //
+    // untyped creation and cache lookup API
+    //
+
+    /// create a resource of undetermined type, without RAII management (use free_untyped)
+    [[nodiscard]] raw_resource make_untyped_unlocked(generic_resource_info const& info);
+
+    /// create or retrieve a resource of undetermined type from cache, without RAII management (use free_to_cache_untyped)
+    [[nodiscard]] raw_resource get_untyped_unlocked(generic_resource_info const& info);
 
     //
     // freeing API
     //
 
     /// free a resource that was unlocked from automatic management
-    void free(raw_resource const& resource);
+    void free_untyped(phi::handle::resource resource);
+    void free_untyped(raw_resource const& resource) { free_untyped(resource.handle); }
 
     /// free a buffer
-    void free(buffer const& buffer) { free(buffer.res); }
+    void free(buffer const& buffer) { free_untyped(buffer.res); }
     /// free a texture
-    void free(texture const& texture) { free(texture.res); }
+    void free(texture const& texture) { free_untyped(texture.res); }
     /// free a render_target
-    void free(render_target const& rt) { free(rt.res); }
+    void free(render_target const& rt) { free_untyped(rt.res); }
 
     void free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
     void free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
@@ -117,6 +142,8 @@ public:
             freeShaderBinary(shader._owning_blob);
     }
 
+    /// free a resource of undetermined type by placing it in the cache for reuse
+    void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
     /// free a buffer by placing it in the cache for reuse
     void free_to_cache(buffer const& buffer);
     /// free a texture by placing it in the cache for reuse
@@ -125,22 +152,48 @@ public:
     void free_to_cache(render_target const& rt);
 
     //
-    // map upload API
+    // buffer map API
     //
 
-    void write_buffer(buffer const& buffer, void const* data, size_t size, size_t offset = 0);
+    /// map a buffer created on the upload or readback heap in order to access it on CPU
+    /// a buffer can be mapped multiple times at once
+    [[nodiscard]] std::byte* map_buffer(buffer const& buffer);
 
-    template <class T>
-    void write_buffer_t(buffer const& buffer, T const& data)
+    /// unmap a buffer previously mapped using map_buffer
+    /// a buffer can be destroyed while mapped
+    void unmap_buffer(buffer const& buffer);
+
+    /// map an upload buffer, memcpy the provided data into it, and unmap it
+    void write_to_buffer(buffer const& buffer, void const* data, size_t size, size_t offset_in_buffer = 0);
+    void write_to_buffer(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0)
     {
-        static_assert(!std::is_pointer_v<T>, "[pr::Context::write_buffer_t] Pointer instead of raw data provided");
-        static_assert(std::is_trivially_copyable_v<T>, "[pr::Context::write_buffer_t] Non-trivially copyable data provided");
-        write_buffer(buffer, &data, sizeof(T));
+        write_to_buffer(buffer, data.data(), data.size(), offset_in_buffer);
     }
 
-    void flush_buffer_writes(buffer const& buffer);
+    /// map a readback buffer, memcpy its contents to the provided location, and unmap it
+    void read_from_buffer(buffer const& buffer, void* out_data, size_t size, size_t offset_in_buffer = 0);
+    void read_from_buffer(buffer const& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer = 0)
+    {
+        read_from_buffer(buffer, out_data.data(), out_data.size(), offset_in_buffer);
+    }
 
-    [[nodiscard]] std::byte* get_buffer_map(buffer const& buffer);
+    /// map an upload buffer, memcpy the provided data into it, and unmap it
+    /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
+    template <class T>
+    void write_to_buffer_t(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
+    {
+        static_assert(!std::is_pointer_v<T>, "[pr::Context::write_to_buffer_t] Pointer instead of raw data provided");
+        write_to_buffer(buffer, cc::as_byte_span<T const>(data), offset_in_buffer);
+    }
+
+    /// map a readback buffer, memcpy its contents to the provided location, and unmap it
+    /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
+    template <class T>
+    void read_from_buffer_t(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
+    {
+        static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
+        read_from_buffer(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
+    }
 
     //
     // consumption API
@@ -186,11 +239,34 @@ public:
 
     /// frees all shader_views from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    unsigned clear_shader_view_cache();
+    [[deprecated("unimplemented")]] unsigned clear_shader_view_cache();
 
     /// frees all pipeline_states from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    unsigned clear_pipeline_state_cache();
+    [[deprecated("unimplemented")]] unsigned clear_pipeline_state_cache();
+
+    //
+    // phi interop
+    //
+
+    /// resource must have an assigned GUID if they are meant to interoperate with pr's caching mechanisms
+    /// use this method to "import" a raw phi resource
+    [[nodiscard]] raw_resource import_phi_resource(phi::handle::resource raw_resource) { return {raw_resource, acquireGuid()}; }
+
+    [[nodiscard]] buffer import_phi_buffer(phi::handle::resource raw_resource, buffer_info const& info)
+    {
+        return {import_phi_resource(raw_resource), info};
+    }
+
+    [[nodiscard]] render_target import_phi_target(phi::handle::resource raw_resource, render_target_info const& info)
+    {
+        return {import_phi_resource(raw_resource), info};
+    }
+
+    [[nodiscard]] texture import_phi_texture(phi::handle::resource raw_resource, texture_info const& info)
+    {
+        return {import_phi_resource(raw_resource), info};
+    }
 
     //
     // info
@@ -247,22 +323,24 @@ public:
     template <class T, bool Cached>
     void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
 
-    // ref type
+private:
+    //
+    // internal from here on out
+    //
+
 private:
     Context(Context const&) = delete;
     Context(Context&&) = delete;
     Context& operator=(Context const&) = delete;
     Context& operator=(Context&&) = delete;
 
-    // internal
 private:
     [[nodiscard]] uint64_t acquireGuid();
 
-private:
     void internalInitialize();
 
     // creation
-    render_target createRenderTarget(render_target_info const& info, phi::rt_clear_value const* optimized_clear = nullptr);
+    render_target createRenderTarget(render_target_info const& info);
     texture createTexture(texture_info const& info);
     buffer createBuffer(buffer_info const& info);
 
@@ -283,13 +361,6 @@ private:
     void freeCachedTexture(texture_info const& info, raw_resource res);
     void freeCachedBuffer(buffer_info const& info, raw_resource res);
 
-    // internal builder API
-private:
-    friend struct pipeline_builder;
-    friend struct argument_builder;
-
-    // internal argument builder API
-private:
     // single cache access, Frame-side API
 private:
     friend class raii::Frame;
