@@ -208,23 +208,23 @@ void Context::free_to_cache(const texture& texture) { freeCachedTexture(texture.
 
 void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info, rt.res); }
 
-void Context::write_to_buffer(const buffer& buffer, void const* data, size_t size, size_t offset_in_buffer)
+void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const> data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to write to non-upload buffer");
-    CC_ASSERT(buffer.info.size_bytes >= size + offset_in_buffer && "Buffer write out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= data.size() + offset_in_buffer && "Buffer write out of bounds");
 
     auto* const map = map_buffer(buffer);
-    std::memcpy(map + offset_in_buffer, data, size);
+    std::memcpy(map + offset_in_buffer, data.data(), data.size());
     unmap_buffer(buffer);
 }
 
-void Context::read_from_buffer(const buffer& buffer, void* out_data, size_t size, size_t offset_in_buffer)
+void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to read from non-readback buffer");
-    CC_ASSERT(buffer.info.size_bytes >= size + offset_in_buffer && "Buffer read out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= out_data.size() + offset_in_buffer && "Buffer read out of bounds");
 
     auto* const map = map_buffer(buffer);
-    std::memcpy(out_data, map + offset_in_buffer, size);
+    std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size());
     unmap_buffer(buffer);
 }
 
