@@ -164,35 +164,27 @@ public:
     void unmap_buffer(buffer const& buffer);
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
-    void write_to_buffer(buffer const& buffer, void const* data, size_t size, size_t offset_in_buffer = 0);
-    void write_to_buffer(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0)
-    {
-        write_to_buffer(buffer, data.data(), data.size(), offset_in_buffer);
-    }
+    void write_to_buffer_raw(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0);
 
     /// map a readback buffer, memcpy its contents to the provided location, and unmap it
-    void read_from_buffer(buffer const& buffer, void* out_data, size_t size, size_t offset_in_buffer = 0);
-    void read_from_buffer(buffer const& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer = 0)
-    {
-        read_from_buffer(buffer, out_data.data(), out_data.size(), offset_in_buffer);
-    }
+    void read_from_buffer_raw(buffer const& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer = 0);
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
     template <class T>
-    void write_to_buffer_t(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
+    void write_to_buffer(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::write_to_buffer_t] Pointer instead of raw data provided");
-        write_to_buffer(buffer, cc::as_byte_span<T const>(data), offset_in_buffer);
+        write_to_buffer_raw(buffer, cc::as_byte_span<T const>(data), offset_in_buffer);
     }
 
     /// map a readback buffer, memcpy its contents to the provided location, and unmap it
     /// data can be POD, or a container with POD elements (ie. cc::vector<int>)
     template <class T>
-    void read_from_buffer_t(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
+    void read_from_buffer(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
-        read_from_buffer(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
+        read_from_buffer_raw(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
     }
 
     //

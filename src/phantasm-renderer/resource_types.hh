@@ -2,12 +2,15 @@
 
 #include <phantasm-hardware-interface/types.hh>
 
+#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
 #include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 
 #include <phantasm-renderer/detail/auto_destroyer.hh>
+
+#include <typed-geometry/tg-lean.hh>
 
 namespace pr
 {
@@ -30,6 +33,10 @@ struct render_target
 {
     raw_resource res;
     render_target_info info;
+
+    int samples() const { return info.num_samples; }
+    tg::isize2 size() const { return {info.width, info.height}; }
+    pr::format format() const { return info.format; }
 };
 
 struct texture
