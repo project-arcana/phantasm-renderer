@@ -1,5 +1,6 @@
 #pragma once
 
+#include <clean-core/defer.hh>
 #include <clean-core/span.hh>
 #include <clean-core/string_view.hh>
 
@@ -88,10 +89,20 @@ public:
     void copy(render_target const& src, texture const& dest);
     void copy(render_target const& src, render_target const& dest);
 
+    /// resolve a multisampled render target to a texture or different RT
     void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
 
-    void debug_marker(char const* label) { write_raw_cmd(phi::cmd::debug_marker{label}); }
+    /// begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
+    void begin_debug_label(char const* label) { write_raw_cmd(phi::cmd::begin_debug_label{label}); }
+    void end_debug_label() { write_raw_cmd(phi::cmd::end_debug_label{}); }
+
+    /// begin a debug label region and end it automatically with a RAII helper
+    [[nodiscard]] auto scoped_debug_label(char const* label)
+    {
+        begin_debug_label(label);
+        CC_RETURN_DEFER { this->end_debug_label(); };
+    }
 
     //
     // specials
