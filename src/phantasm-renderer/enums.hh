@@ -19,6 +19,9 @@ using state = phi::resource_state;
 using phi::blend_factor;
 using phi::blend_logic_op;
 using phi::blend_op;
+using phi::cull_mode;
+using phi::depth_function;
+using phi::primitive_topology;
 using phi::resource_heap;
 using phi::sampler_address_mode;
 using phi::sampler_border_color;
@@ -27,5 +30,6 @@ using phi::sampler_filter;
 
 // struct passthroughs
 using phi::blend_state;
+using phi::pipeline_config;
 using phi::sampler_config;
 }
