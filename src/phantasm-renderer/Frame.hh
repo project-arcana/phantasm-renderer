@@ -122,7 +122,7 @@ public:
         mWriter.add_command(cmd);
     }
 
-    /// get a pointer to a buffer in order to write raw commands
+    /// get a pointer to a buffer in order to write raw commands, must be written to immediately (before other writes)
     [[nodiscard]] std::byte* write_raw_bytes(size_t num_bytes)
     {
         flushPendingTransitions();
