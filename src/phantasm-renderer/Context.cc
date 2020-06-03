@@ -1,5 +1,7 @@
 #include "Context.hh"
 
+#include <clean-core/xxHash.hh>
+
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
@@ -9,7 +11,6 @@
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/common/log.hh>
-#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/detail/backends.hh>
 
 using namespace pr;
@@ -128,7 +129,7 @@ auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi:
     res._data = data;
     res._size = size;
     res._owning_blob = nullptr;
-    murmurhash3_x64_128(res._data, int(res._size), 0, res._hash);
+    res._hash = cc::hash_xxh3({res._data, res._size}, 0);
 
     return {res, this};
 }
@@ -620,7 +621,7 @@ void Context::freeCachedTexture(const texture_info& info, raw_resource res)
 
 void Context::freeCachedBuffer(const buffer_info& info, raw_resource res) { mCacheBuffers.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }
 
-phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, graphics_pass_info const& gp, framebuffer_info const& fb)
+phi::handle::pipeline_state Context::acquire_graphics_pso(cc::hash_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
     phi::handle::pipeline_state pso = mCacheGraphicsPSOs.acquire(hash);
 
@@ -636,7 +637,7 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, grap
     return pso;
 }
 
-phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp)
+phi::handle::pipeline_state Context::acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp)
 {
     phi::handle::pipeline_state pso = mCacheComputePSOs.acquire(hash);
     if (!pso.is_valid())
@@ -648,7 +649,7 @@ phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const
     return pso;
 }
 
-phi::handle::shader_view Context::acquire_graphics_sv(murmur_hash hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_graphics_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mCacheGraphicsSVs.acquire(hash);
     if (!sv.is_valid())
@@ -660,7 +661,7 @@ phi::handle::shader_view Context::acquire_graphics_sv(murmur_hash hash, const ha
     return sv;
 }
 
-phi::handle::shader_view Context::acquire_compute_sv(murmur_hash hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_compute_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mCacheComputeSVs.acquire(hash);
     if (!sv.is_valid())
@@ -694,8 +695,8 @@ void Context::free_all(cc::span<const freeable_cached_obj> freeables)
     }
 }
 
-void Context::free_graphics_pso(murmur_hash hash) { mCacheGraphicsPSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_pso(murmur_hash hash) { mCacheComputePSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_pso(cc::hash_t hash) { mCacheGraphicsPSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_pso(cc::hash_t hash) { mCacheComputePSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
 
-void Context::free_graphics_sv(murmur_hash hash) { mCacheGraphicsSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_sv(murmur_hash hash) { mCacheComputeSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_sv(cc::hash_t hash) { mCacheGraphicsSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_sv(cc::hash_t hash) { mCacheComputeSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }

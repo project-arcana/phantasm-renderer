@@ -3,12 +3,12 @@
 #include <mutex>
 
 #include <clean-core/map.hh>
+#include <clean-core/typedefs.hh>
 
 #include <rich-log/log.hh>
 
 #include <phantasm-hardware-interface/types.hh>
 
-#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/fwd.hh>
 
 namespace pr
@@ -26,7 +26,7 @@ private:
 public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
-    [[nodiscard]] ValT acquire(murmur_hash key)
+    [[nodiscard]] ValT acquire(cc::hash_t key)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
@@ -38,7 +38,7 @@ public:
         return elem.val;
     }
 
-    void insert(ValT val, murmur_hash key)
+    void insert(ValT val, cc::hash_t key)
     {
         auto lg = std::lock_guard(_mutex);
         CC_ASSERT(val != invalid_val && "[single_cache] invalid value inserted");
@@ -48,7 +48,7 @@ public:
         elem.required_gpu_epoch = 0;
     }
 
-    void free(murmur_hash key, gpu_epoch_t current_cpu_epoch)
+    void free(cc::hash_t key, gpu_epoch_t current_cpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
@@ -92,7 +92,7 @@ private:
         gpu_epoch_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
     };
 
-    cc::map<murmur_hash, map_element, murmur_collapser> _map;
+    cc::map<cc::hash_t, map_element> _map;
     std::mutex _mutex;
 };
 }

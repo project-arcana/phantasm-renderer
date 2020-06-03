@@ -5,7 +5,6 @@
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
-#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/common/resource_info.hh>
 
 #include <phantasm-renderer/detail/auto_destroyer.hh>
@@ -53,7 +52,7 @@ struct shader_binary
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    murmur_hash _hash;                ///< murmur hash over _data, for caching of PSOs using this shader
+    cc::hash_t _hash;                 ///< xxhash64 over _data, for caching of PSOs using this shader
     phi::shader_stage _stage;
 };
 

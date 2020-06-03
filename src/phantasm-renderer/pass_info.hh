@@ -107,12 +107,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;
@@ -153,12 +148,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    [[nodiscard]] cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;
@@ -235,12 +225,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;

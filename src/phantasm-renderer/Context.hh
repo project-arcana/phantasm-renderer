@@ -356,18 +356,18 @@ private:
     // single cache access, Frame-side API
 private:
     friend class raii::Frame;
-    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, const graphics_pass_info& gp, const framebuffer_info& fb);
-    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp);
+    phi::handle::pipeline_state acquire_graphics_pso(cc::hash_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
+    phi::handle::pipeline_state acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp);
 
-    phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
-    phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_graphics_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_compute_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 
-    void free_graphics_pso(murmur_hash hash);
-    void free_compute_pso(murmur_hash hash);
-    void free_graphics_sv(murmur_hash hash);
-    void free_compute_sv(murmur_hash hash);
+    void free_graphics_pso(cc::hash_t hash);
+    void free_compute_pso(cc::hash_t hash);
+    void free_graphics_sv(cc::hash_t hash);
+    void free_compute_sv(cc::hash_t hash);
 
     // members
 private:

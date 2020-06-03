@@ -1,6 +1,7 @@
 #include "Frame.hh"
 
 #include <clean-core/utility.hh>
+#include <clean-core/hash_combine.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
@@ -302,8 +303,7 @@ phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const gra
 {
     CC_ASSERT(fb_inferred_num_samples == -1
               || fb_inferred_num_samples == gp._storage.get().graphics_config.samples && "graphics_pass_info has incorrect amount of samples configured");
-    auto const gp_hash = gp.get_hash();
-    auto const combined_hash = gp_hash.combine(fb.get_hash());
+    auto const combined_hash = cc::hash_combine(gp.get_hash(), fb.get_hash());
     auto const res = mCtx->acquire_graphics_pso(combined_hash, gp, fb);
     mFreeables.push_back({freeable_cached_obj::graphics_pso, combined_hash});
     return res;
@@ -319,8 +319,7 @@ void raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
 
 phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(const argument& arg)
 {
-    murmur_hash hash;
-    arg._info.get_murmur(hash);
+    auto const hash = arg._info.get_xxhash();
     auto const res = mCtx->acquire_graphics_sv(hash, arg._info);
     mFreeables.push_back({freeable_cached_obj::graphics_sv, hash});
     return res;
@@ -328,8 +327,7 @@ phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(const argume
 
 phi::handle::shader_view raii::Frame::passAcquireComputeShaderView(const argument& arg)
 {
-    murmur_hash hash;
-    arg._info.get_murmur(hash);
+    auto const hash = arg._info.get_xxhash();
     auto const res = mCtx->acquire_compute_sv(hash, arg._info);
     mFreeables.push_back({freeable_cached_obj::compute_sv, hash});
     return res;
