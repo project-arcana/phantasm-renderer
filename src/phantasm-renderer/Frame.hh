@@ -65,16 +65,16 @@ public:
     //
     // transitions and present
 
-    void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(texture const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(buffer const& res, state target, shader_flags dependency = {});
+    void transition(texture const& res, state target, shader_flags dependency = {});
+    void transition(render_target const& res, state target, shader_flags dependency = {});
+    void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
     void present_after_submit(render_target const& backbuffer)
     {
         CC_ASSERT(!mPresentAfterSubmitRequested && "only one present_after_submit per pr::raii::Frame allowed");
-        transition(backbuffer, phi::resource_state::present);
+        transition(backbuffer, state::present);
         mPresentAfterSubmitRequested = true;
     }
 
@@ -132,7 +132,7 @@ public:
     /// write multiple resource slice transitions - no state tracking
     void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
 
-    pr::Context& context() { return *mCtx; }
+    Context& context() { return *mCtx; }
 
 public:
     // redirect intuitive misuses

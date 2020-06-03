@@ -28,7 +28,10 @@ using phi::sampler_border_color;
 using phi::sampler_compare_func;
 using phi::sampler_filter;
 
-// struct passthroughs
+// type renames
+using shader_flags = phi::shader_stage_flags_t;
+
+// type passthroughs
 using phi::blend_state;
 using phi::pipeline_config;
 using phi::sampler_config;

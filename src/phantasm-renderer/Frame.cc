@@ -31,7 +31,7 @@ raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pas
 
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
-void raii::Frame::transition(const buffer& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const buffer& res, pr::state target, shader_flags dependency)
 {
     if (res.info.heap != resource_heap::gpu) // mapped buffers are never transitioned
         return;
@@ -39,17 +39,17 @@ void raii::Frame::transition(const buffer& res, phi::resource_state target, phi:
     transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const texture& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency)
 {
     transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const render_target& res, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(const render_target& res, pr::state target, shader_flags dependency)
 {
     transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency)
+void raii::Frame::transition(phi::handle::resource raw_resource, pr::state target, shader_flags dependency)
 {
     if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
         flushPendingTransitions();
@@ -59,8 +59,8 @@ void raii::Frame::transition(phi::handle::resource raw_resource, phi::resource_s
 
 void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset)
 {
-    transition(src, phi::resource_state::copy_src);
-    transition(dest, phi::resource_state::copy_dest);
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
     phi::cmd::copy_buffer ccmd;
@@ -70,8 +70,8 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
 
 void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
 {
-    transition(src, phi::resource_state::copy_src);
-    transition(dest, phi::resource_state::copy_dest);
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
     phi::cmd::copy_buffer_to_texture ccmd;
     ccmd.init(src.res.handle, dest.res.handle, unsigned(dest.info.width) / (1 + dest_mip_index), unsigned(dest.info.height) / (1 + dest_mip_index),
@@ -111,7 +111,7 @@ void raii::Frame::resolve(const render_target& src, const render_target& dest)
 
 void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffer& upload_buffer, const texture& dest_texture)
 {
-    transition(dest_texture, phi::resource_state::copy_dest);
+    transition(dest_texture, pr::state::copy_dest);
     flushPendingTransitions();
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
     CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
@@ -205,8 +205,8 @@ void raii::Frame::flushPendingTransitions()
 
 void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
 {
-    transition(src, phi::resource_state::copy_src);
-    transition(dest, phi::resource_state::copy_dest);
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
     phi::cmd::copy_texture ccmd;
@@ -216,8 +216,8 @@ void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::re
 
 void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
 {
-    transition(src, phi::resource_state::resolve_src);
-    transition(dest, phi::resource_state::resolve_dest);
+    transition(src, pr::state::resolve_src);
+    transition(dest, pr::state::resolve_dest);
     flushPendingTransitions();
 
     phi::cmd::resolve_texture ccmd;
@@ -246,12 +246,12 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
 {
     for (auto const& rt : bcmd.render_targets)
     {
-        transition(rt.rv.resource, phi::resource_state::render_target);
+        transition(rt.rv.resource, pr::state::render_target);
     }
 
     if (bcmd.depth_target.rv.resource.is_valid())
     {
-        transition(bcmd.depth_target.rv.resource, phi::resource_state::depth_write);
+        transition(bcmd.depth_target.rv.resource, pr::state::depth_write);
     }
 
     flushPendingTransitions();
