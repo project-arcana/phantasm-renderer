@@ -53,6 +53,8 @@ public:
     [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
     /// create a texture from an info struct
     [[nodiscard]] auto_texture make_texture(texture_info const& info);
+    /// create a texture from the info of a different texture. NOTE: does not concern contents or state
+    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source) { return make_texture(clone_source.info); }
 
     /// create a render target
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
@@ -60,6 +62,8 @@ public:
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
     /// create a render target from an info struct
     [[nodiscard]] auto_render_target make_target(render_target_info const& info);
+    /// create a render target from the info of a different one. NOTE: does not concern contents or state
+    [[nodiscard]] auto_render_target make_target_clone(render_target const& clone_source) { return make_target(clone_source.info); }
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -71,6 +75,8 @@ public:
     [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0);
     /// create a buffer from an info struct
     [[nodiscard]] auto_buffer make_buffer(buffer_info const& info);
+    /// create a buffer from the info of a different buffer. NOTE: does not concern contents or state
+    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source) { return make_buffer(clone_source.info); }
 
 
     /// create a shader from binary data
