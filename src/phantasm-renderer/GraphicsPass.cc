@@ -15,6 +15,7 @@ void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer)
 void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer)
 {
     CC_ASSERT(index_buffer.info.stride_bytes > 0 && "index buffer not strided");
+    CC_ASSERT(index_buffer.info.stride_bytes <= 4 && "index buffer stride unusually large - switched up vertex and index buffer?");
     draw(vertex_buffer.res.handle, index_buffer.res.handle, index_buffer.info.size_bytes / index_buffer.info.stride_bytes);
 }
 

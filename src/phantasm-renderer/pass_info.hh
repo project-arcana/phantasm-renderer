@@ -201,8 +201,15 @@ public:
         return *this;
     }
 
+    /// Add a render target with blend state
+    framebuffer_info& target(pr::format format, pr::blend_state blend_state)
+    {
+        _storage.get().render_targets.push_back(phi::render_target_config{format, true, blend_state});
+        return *this;
+    }
+
     /// Add a render target with blend configuration
-    framebuffer_info& target(phi::render_target_config config)
+    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::render_target_config config)
     {
         _storage.get().render_targets.push_back(config);
         return *this;
