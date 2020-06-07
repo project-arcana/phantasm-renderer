@@ -1,7 +1,7 @@
 #include "Frame.hh"
 
-#include <clean-core/utility.hh>
 #include <clean-core/hash_combine.hh>
+#include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
@@ -40,15 +40,9 @@ void raii::Frame::transition(const buffer& res, pr::state target, shader_flags d
     transition(res.res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency)
-{
-    transition(res.res.handle, target, dependency);
-}
+void raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency) { transition(res.res.handle, target, dependency); }
 
-void raii::Frame::transition(const render_target& res, pr::state target, shader_flags dependency)
-{
-    transition(res.res.handle, target, dependency);
-}
+void raii::Frame::transition(const render_target& res, pr::state target, shader_flags dependency) { transition(res.res.handle, target, dependency); }
 
 void raii::Frame::transition(phi::handle::resource raw_resource, pr::state target, shader_flags dependency)
 {
@@ -58,14 +52,14 @@ void raii::Frame::transition(phi::handle::resource raw_resource, pr::state targe
     mPendingTransitionCommand.add(raw_resource, target, dependency);
 }
 
-void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset)
+void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset, size_t num_bytes)
 {
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
     phi::cmd::copy_buffer ccmd;
-    ccmd.init(src.res.handle, dest.res.handle, cc::min(src.info.size_bytes, dest.info.size_bytes), src_offset, dest_offset);
+    ccmd.init(src.res.handle, dest.res.handle, num_bytes > 0 ? num_bytes : cc::min(src.info.size_bytes, dest.info.size_bytes), src_offset, dest_offset);
     mWriter.add_command(ccmd);
 }
 

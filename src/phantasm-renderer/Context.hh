@@ -102,6 +102,9 @@ public:
 
     /// create or retrieve a render target from the cache
     [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    /// create or retrieve a render target with an optimized clear value from the cache
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
+    /// create or retrieve a render target from an info struct from the cache
     [[nodiscard]] cached_render_target get_target(render_target_info const& info);
 
     /// create or retrieve a buffer from the cache

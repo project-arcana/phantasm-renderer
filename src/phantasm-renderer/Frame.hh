@@ -81,7 +81,7 @@ public:
     //
     // commands
 
-    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
+    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
     void copy(texture const& src, texture const& dest);
