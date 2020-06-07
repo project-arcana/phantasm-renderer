@@ -185,7 +185,18 @@ auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info
     return auto_compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
 }
 
+auto_fence Context::make_fence() { return auto_fence{{mBackend->createFence()}, this}; }
+
+auto_query_range Context::make_query_range(phi::query_type type, unsigned num_queries)
+{
+    auto const handle = mBackend->createQueryRange(type, num_queries);
+    return auto_query_range{{handle, type, num_queries}, this};
+}
+
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
+
+void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
+void Context::free(const query_range& q) { mBackend->free(q.handle); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
@@ -228,6 +239,22 @@ void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out
     std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size());
     unmap_buffer(buffer);
 }
+
+void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }
+
+void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend->waitFenceCPU(fence.handle, wait_value); }
+
+void Context::signal_fence_gpu(const fence& fence, uint64_t new_value, phi::queue_type queue)
+{
+    mBackend->signalFenceGPU(fence.handle, new_value, queue);
+}
+
+void Context::wait_fence_gpu(const fence& fence, uint64_t wait_value, phi::queue_type queue)
+{
+    mBackend->waitFenceGPU(fence.handle, wait_value, queue);
+}
+
+uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
 
 std::byte* Context::map_buffer(const buffer& buffer) { return mBackend->mapBuffer(buffer.res.handle); }
 
@@ -548,6 +575,8 @@ void Context::internalInitialize()
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
     mShaderCompiler.initialize();
+
+    mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
 }
 
 render_target Context::createRenderTarget(const render_target_info& info)

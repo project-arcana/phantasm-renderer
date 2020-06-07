@@ -13,12 +13,15 @@ struct auto_destroy_proxy
     static void cache_deref(pr::Context* ctx, buffer const& v);
     static void cache_deref(pr::Context* ctx, render_target const& v);
     static void cache_deref(pr::Context* ctx, texture const& v);
+
     static void destroy(pr::Context* ctx, buffer const& v);
     static void destroy(pr::Context* ctx, render_target const& v);
     static void destroy(pr::Context* ctx, texture const& v);
     static void destroy(pr::Context* ctx, pipeline_state_abstract const& v);
     static void destroy(pr::Context* ctx, shader_binary const& v);
     static void destroy(pr::Context* ctx, prebuilt_argument const& v);
+    static void destroy(pr::Context* ctx, fence const& v);
+    static void destroy(pr::Context* ctx, query_range const& v);
 };
 }
 

@@ -96,6 +96,11 @@ public:
     /// create a compute pipeline state
     [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
+    /// create a fence for synchronisation, initial value 0
+    [[nodiscard]] auto_fence make_fence();
+    /// create a contiguous range of queries
+    [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
+
     //
     // cache lookup API
     //
@@ -150,6 +155,8 @@ public:
         if (shader._owning_blob != nullptr)
             freeShaderBinary(shader._owning_blob);
     }
+    void free(fence const& f);
+    void free(query_range const& q);
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -195,6 +202,23 @@ public:
         static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
         read_from_buffer_raw(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
     }
+
+    //
+    // fence API
+    //
+
+    /// signal a fence to a given value from CPU
+    void signal_fence_cpu(fence const& fence, uint64_t new_value);
+    /// block on CPU until a fence reaches a given value
+    void wait_fence_cpu(fence const& fence, uint64_t wait_value);
+
+    /// signal a fence to a given value from a specified GPU queue
+    void signal_fence_gpu(fence const& fence, uint64_t new_value, queue_type queue);
+    /// block on a specified GPU queue until a fence reaches a given value
+    void wait_fence_gpu(fence const& fence, uint64_t wait_value, queue_type queue);
+
+    /// read the current value of a fence
+    [[nodiscard]] uint64_t get_fence_value(fence const& fence);
 
     //
     // consumption API
@@ -276,12 +300,19 @@ public:
     tg::isize2 get_backbuffer_size() const;
     format get_backbuffer_format() const;
     unsigned get_num_backbuffers() const;
+    uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
+
+    double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
+    {
+        return (double(end - start) / mGPUTimestampFrequency) * 1000.;
+    }
 
     /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+
 
     //
     // miscellaneous
@@ -380,13 +411,17 @@ private:
 
     // members
 private:
+    // backend
     phi::Backend* mBackend = nullptr;
     bool mOwnsBackend = false;
+
+    // constant info
+    uint64_t mGPUTimestampFrequency;
+
+    // components
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;
-
-    // components
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
 

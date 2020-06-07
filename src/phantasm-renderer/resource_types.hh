@@ -1,15 +1,13 @@
 #pragma once
 
-#include <phantasm-hardware-interface/types.hh>
+#include <typed-geometry/types/size.hh>
 
-#include <phantasm-renderer/enums.hh>
-#include <phantasm-renderer/fwd.hh>
+#include <phantasm-hardware-interface/handles.hh>
 
 #include <phantasm-renderer/common/resource_info.hh>
-
 #include <phantasm-renderer/detail/auto_destroyer.hh>
+#include <phantasm-renderer/enums.hh>
 
-#include <typed-geometry/tg-lean.hh>
 
 namespace pr
 {
@@ -72,6 +70,21 @@ struct compute_pipeline_state : public pipeline_state_abstract
 };
 
 //
+// auxilliary
+
+struct fence
+{
+    phi::handle::fence handle = phi::handle::null_fence;
+};
+
+struct query_range
+{
+    phi::handle::query_range handle = phi::handle::null_query_range;
+    pr::query_type type;
+    unsigned num;
+};
+
+//
 // auto_ and cached_ aliases
 
 // move-only, self-destructing versions
@@ -82,6 +95,8 @@ using auto_texture = auto_destroyer<texture, false>;
 using auto_shader_binary = auto_destroyer<shader_binary, false>;
 using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
 using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
+using auto_fence = auto_destroyer<fence, false>;
+using auto_query_range = auto_destroyer<query_range, false>;
 
 // move-only, self-cachefreeing versions
 using cached_buffer = auto_destroyer<buffer, true>;

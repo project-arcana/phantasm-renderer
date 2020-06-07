@@ -104,6 +104,28 @@ void raii::Frame::resolve(const render_target& src, const render_target& dest)
     resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
 
+void raii::Frame::write_timestamp(const query_range& query_range, unsigned index)
+{
+    CC_ASSERT(query_range.type == query_type::timestamp && "Expected timestamp query range to write a timestamp to");
+    CC_ASSERT(index < query_range.num && "OOB query write");
+
+    phi::cmd::write_timestamp wcmd;
+    wcmd.index = index;
+    wcmd.query_range = query_range.handle;
+    mWriter.add_command(wcmd);
+}
+
+void raii::Frame::resolve_queries(const query_range& src, const buffer& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes)
+{
+    CC_ASSERT(first_query + num_queries <= src.num && "OOB query resolve read");
+    CC_ASSERT(dest_offset_bytes + num_queries * sizeof(uint64_t) <= dest.info.size_bytes && "OOB query resolve write");
+    flushPendingTransitions();
+
+    phi::cmd::resolve_queries rcmd;
+    rcmd.init(dest.res.handle, src.handle, first_query, num_queries, dest_offset_bytes);
+    mWriter.add_command(rcmd);
+}
+
 void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffer& upload_buffer, const texture& dest_texture)
 {
     transition(dest_texture, pr::state::copy_dest);

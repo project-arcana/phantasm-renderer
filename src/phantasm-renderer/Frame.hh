@@ -93,6 +93,12 @@ public:
     void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
 
+    /// write a timestamp to a query in a given (timestamp) query range
+    void write_timestamp(query_range const& query_range, unsigned index);
+
+    /// resolve one or more queries in a range and write their contents to a buffer
+    void resolve_queries(query_range const& src, buffer const& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes = 0);
+
     /// begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
     void begin_debug_label(char const* label) { write_raw_cmd(phi::cmd::begin_debug_label{label}); }
     void end_debug_label() { write_raw_cmd(phi::cmd::end_debug_label{}); }

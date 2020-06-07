@@ -22,6 +22,8 @@ using phi::blend_op;
 using phi::cull_mode;
 using phi::depth_function;
 using phi::primitive_topology;
+using phi::query_type;
+using phi::queue_type;
 using phi::resource_heap;
 using phi::sampler_address_mode;
 using phi::sampler_border_color;

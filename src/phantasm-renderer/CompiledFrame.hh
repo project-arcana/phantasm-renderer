@@ -2,7 +2,7 @@
 
 #include <clean-core/vector.hh>
 
-#include <phantasm-hardware-interface/types.hh>
+#include <phantasm-hardware-interface/handles.hh>
 
 #include <phantasm-renderer/common/state_info.hh>
 

@@ -39,14 +39,18 @@ struct graphics_pass_info;
 struct compute_pass_info;
 struct framebuffer_info;
 
-// shaders and pipeline states
+// shaders, PSOs, fences, query ranges
 struct shader_binary;
 struct pipeline_state_abstract;
 struct graphics_pipeline_state;
 struct compute_pipeline_state;
+struct fence;
+struct query_range;
 using auto_shader_binary = auto_destroyer<shader_binary, false>;
 using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
 using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
+using auto_fence = auto_destroyer<fence, false>;
+using auto_query_range = auto_destroyer<query_range, false>;
 
 // shader arguments
 struct argument;
