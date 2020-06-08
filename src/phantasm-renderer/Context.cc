@@ -232,7 +232,7 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
-    CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to read from non-readback buffer");
+    CC_ASSERT(buffer.info.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
     CC_ASSERT(buffer.info.size_bytes >= out_data.size() + offset_in_buffer && "Buffer read out of bounds");
 
     auto* const map = map_buffer(buffer);
