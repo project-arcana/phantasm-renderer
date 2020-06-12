@@ -17,25 +17,25 @@ using namespace pr;
 
 namespace
 {
-phi::sc::target stage_to_sc_target(phi::shader_stage stage)
+dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
 {
     switch (stage)
     {
     case phi::shader_stage::vertex:
-        return phi::sc::target::vertex;
+        return dxcw::target::vertex;
     case phi::shader_stage::hull:
-        return phi::sc::target::hull;
+        return dxcw::target::hull;
     case phi::shader_stage::domain:
-        return phi::sc::target::domain;
+        return dxcw::target::domain;
     case phi::shader_stage::geometry:
-        return phi::sc::target::geometry;
+        return dxcw::target::geometry;
     case phi::shader_stage::pixel:
-        return phi::sc::target::pixel;
+        return dxcw::target::pixel;
     case phi::shader_stage::compute:
-        return phi::sc::target::compute;
+        return dxcw::target::compute;
     default:
         PR_LOG_WARN("Unsupported shader stage for online compilation");
-        return phi::sc::target::pixel;
+        return dxcw::target::pixel;
     }
 }
 
@@ -136,10 +136,10 @@ auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi:
 
 auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
 {
-    phi::sc::binary bin;
+    dxcw::binary bin;
 
-    auto const sc_target = stage_to_sc_target(stage);
-    auto const sc_output = mBackend->getBackendType() == phi::backend_type::d3d12 ? phi::sc::output::dxil : phi::sc::output::spirv;
+    auto const sc_target = stage_to_dxcw_target(stage);
+    auto const sc_output = mBackend->getBackendType() == phi::backend_type::d3d12 ? dxcw::output::dxil : dxcw::output::spirv;
 
     {
         auto lg = std::lock_guard(mMutexShaderCompilation); // unsynced, mutex: compilation
@@ -635,7 +635,7 @@ buffer Context::acquireBuffer(const buffer_info& info)
 
 void Context::freeShaderBinary(IDxcBlob* blob)
 {
-    phi::sc::destroy_blob(blob); // intern. synced
+    dxcw::destroy_blob(blob); // intern. synced
 }
 
 void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }

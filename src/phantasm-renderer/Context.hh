@@ -419,7 +419,7 @@ private:
     uint64_t mGPUTimestampFrequency;
 
     // components
-    phi::sc::compiler mShaderCompiler;
+    dxcw::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
