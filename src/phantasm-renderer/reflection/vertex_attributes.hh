@@ -29,7 +29,7 @@ constexpr phi::format to_attribute_format()
         return af::rgb32f;
     else if constexpr (tg::is_comp_like<T, 2, cc::float32>)
         return af::rg32f;
-    else if constexpr (tg::is_comp_like<T, 1, cc::float32>)
+    else if constexpr (std::is_same_v<T, cc::float32>)
         return af::r32f;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::int32>)
@@ -38,7 +38,7 @@ constexpr phi::format to_attribute_format()
         return af::rgb32i;
     else if constexpr (tg::is_comp_like<T, 2, cc::int32>)
         return af::rg32i;
-    else if constexpr (tg::is_comp_like<T, 1, cc::int32>)
+    else if constexpr (std::is_same_v<T, cc::int32>)
         return af::r32i;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::uint32>)
@@ -47,35 +47,35 @@ constexpr phi::format to_attribute_format()
         return af::rgb32u;
     else if constexpr (tg::is_comp_like<T, 2, cc::uint32>)
         return af::rg32u;
-    else if constexpr (tg::is_comp_like<T, 1, cc::uint32>)
+    else if constexpr (std::is_same_v<T, cc::uint32>)
         return af::r32u;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::int16>)
         return af::rgba16i;
     else if constexpr (tg::is_comp_like<T, 2, cc::int16>)
         return af::rg16i;
-    else if constexpr (tg::is_comp_like<T, 1, cc::int16>)
+    else if constexpr (std::is_same_v<T, cc::int16>)
         return af::r16i;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::uint16>)
         return af::rgba16u;
     else if constexpr (tg::is_comp_like<T, 2, cc::uint16>)
         return af::rg16u;
-    else if constexpr (tg::is_comp_like<T, 1, cc::uint16>)
+    else if constexpr (std::is_same_v<T, cc::uint16>)
         return af::r16u;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::int8>)
         return af::rgba8i;
     else if constexpr (tg::is_comp_like<T, 2, cc::int8>)
         return af::rg8i;
-    else if constexpr (tg::is_comp_like<T, 1, cc::int8>)
+    else if constexpr (std::is_same_v<T, cc::int8>)
         return af::r8i;
 
     else if constexpr (tg::is_comp_like<T, 4, cc::uint8>)
         return af::rgba8u;
     else if constexpr (tg::is_comp_like<T, 2, cc::uint8>)
         return af::rg8u;
-    else if constexpr (tg::is_comp_like<T, 1, cc::uint8>)
+    else if constexpr (std::is_same_v<T, cc::uint8>)
         return af::r8u;
 
     else

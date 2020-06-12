@@ -1,10 +1,10 @@
 #pragma once
 
+#include <clean-core/typedefs.hh>
+
 #include <phantasm-hardware-interface/arguments.hh>
 #include <phantasm-hardware-interface/detail/trivial_capped_vector.hh>
 #include <phantasm-hardware-interface/types.hh>
-
-#include <phantasm-renderer/common/murmur_hash.hh>
 
 
 namespace pr
@@ -20,7 +20,7 @@ struct freeable_cached_obj
     };
 
     type type;
-    murmur_hash hash;
+    cc::hash_t hash;
 };
 
 // for economic reasons, SRVs, UAVs and Samplers are limited for cache-access shader views
@@ -40,13 +40,13 @@ struct graphics_pass_info_data
     bool has_root_consts = false;
     phi::detail::trivial_capped_vector<phi::vertex_attribute_info, 8> vertex_attributes;
     phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
-    phi::detail::trivial_capped_vector<murmur_hash, 5> shader_hashes;
+    phi::detail::trivial_capped_vector<cc::hash_t, 5> shader_hashes;
 };
 
 struct compute_pass_info_data
 {
     bool has_root_consts = false;
     phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
-    murmur_hash shader_hash;
+    cc::hash_t shader_hash;
 };
 }

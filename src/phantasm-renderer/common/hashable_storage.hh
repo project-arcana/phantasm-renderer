@@ -4,6 +4,7 @@
 
 #include <clean-core/new.hh>
 #include <clean-core/storage.hh>
+#include <clean-core/xxHash.hh>
 
 #include "murmur_hash.hh"
 
@@ -40,6 +41,9 @@ public:
 
     // with the established guarantees, hashing and comparison are trivial
     void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
+
+    cc::hash_t get_xxhash() const { return cc::hash_xxh3(cc::as_byte_span(_storage.value), 0); }
+
     bool operator==(hashable_storage<T> const& rhs) const noexcept { return std::memcmp(&_storage.value, &rhs._storage.value, sizeof(T)) == 0; }
 
 private:

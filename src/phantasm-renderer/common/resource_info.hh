@@ -2,11 +2,7 @@
 
 #include <clean-core/hash.hh>
 
-#include <typed-geometry/types/size.hh>
-
 #include <phantasm-hardware-interface/arguments.hh>
-
-#include <phantasm-renderer/enums.hh>
 
 namespace pr
 {

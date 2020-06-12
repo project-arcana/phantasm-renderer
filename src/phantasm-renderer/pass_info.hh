@@ -107,12 +107,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;
@@ -153,12 +148,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    [[nodiscard]] cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;
@@ -211,8 +201,15 @@ public:
         return *this;
     }
 
+    /// Add a render target with blend state
+    framebuffer_info& target(pr::format format, pr::blend_state blend_state)
+    {
+        _storage.get().render_targets.push_back(phi::render_target_config{format, true, blend_state});
+        return *this;
+    }
+
     /// Add a render target with blend configuration
-    framebuffer_info& target(phi::render_target_config config)
+    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::render_target_config config)
     {
         _storage.get().render_targets.push_back(config);
         return *this;
@@ -235,12 +232,7 @@ public:
 
 private:
     friend class raii::Frame;
-    [[nodiscard]] murmur_hash get_hash() const
-    {
-        murmur_hash res;
-        _storage.get_murmur(res);
-        return res;
-    }
+    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
 private:
     friend class Context;

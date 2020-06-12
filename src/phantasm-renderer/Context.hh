@@ -53,6 +53,8 @@ public:
     [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
     /// create a texture from an info struct
     [[nodiscard]] auto_texture make_texture(texture_info const& info);
+    /// create a texture from the info of a different texture. NOTE: does not concern contents or state
+    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source) { return make_texture(clone_source.info); }
 
     /// create a render target
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
@@ -60,6 +62,8 @@ public:
     [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
     /// create a render target from an info struct
     [[nodiscard]] auto_render_target make_target(render_target_info const& info);
+    /// create a render target from the info of a different one. NOTE: does not concern contents or state
+    [[nodiscard]] auto_render_target make_target_clone(render_target const& clone_source) { return make_target(clone_source.info); }
 
     /// create a buffer
     [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -71,6 +75,8 @@ public:
     [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0);
     /// create a buffer from an info struct
     [[nodiscard]] auto_buffer make_buffer(buffer_info const& info);
+    /// create a buffer from the info of a different buffer. NOTE: does not concern contents or state
+    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source) { return make_buffer(clone_source.info); }
 
 
     /// create a shader from binary data
@@ -90,12 +96,20 @@ public:
     /// create a compute pipeline state
     [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
+    /// create a fence for synchronisation, initial value 0
+    [[nodiscard]] auto_fence make_fence();
+    /// create a contiguous range of queries
+    [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
+
     //
     // cache lookup API
     //
 
     /// create or retrieve a render target from the cache
     [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    /// create or retrieve a render target with an optimized clear value from the cache
+    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
+    /// create or retrieve a render target from an info struct from the cache
     [[nodiscard]] cached_render_target get_target(render_target_info const& info);
 
     /// create or retrieve a buffer from the cache
@@ -141,6 +155,8 @@ public:
         if (shader._owning_blob != nullptr)
             freeShaderBinary(shader._owning_blob);
     }
+    void free(fence const& f);
+    void free(query_range const& q);
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -186,6 +202,23 @@ public:
         static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
         read_from_buffer_raw(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
     }
+
+    //
+    // fence API
+    //
+
+    /// signal a fence to a given value from CPU
+    void signal_fence_cpu(fence const& fence, uint64_t new_value);
+    /// block on CPU until a fence reaches a given value
+    void wait_fence_cpu(fence const& fence, uint64_t wait_value);
+
+    /// signal a fence to a given value from a specified GPU queue
+    void signal_fence_gpu(fence const& fence, uint64_t new_value, queue_type queue);
+    /// block on a specified GPU queue until a fence reaches a given value
+    void wait_fence_gpu(fence const& fence, uint64_t wait_value, queue_type queue);
+
+    /// read the current value of a fence
+    [[nodiscard]] uint64_t get_fence_value(fence const& fence);
 
     //
     // consumption API
@@ -267,12 +300,19 @@ public:
     tg::isize2 get_backbuffer_size() const;
     format get_backbuffer_format() const;
     unsigned get_num_backbuffers() const;
+    uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
+
+    double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
+    {
+        return (double(end - start) / mGPUTimestampFrequency) * 1000.;
+    }
 
     /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+
 
     //
     // miscellaneous
@@ -356,28 +396,32 @@ private:
     // single cache access, Frame-side API
 private:
     friend class raii::Frame;
-    phi::handle::pipeline_state acquire_graphics_pso(murmur_hash hash, const graphics_pass_info& gp, const framebuffer_info& fb);
-    phi::handle::pipeline_state acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp);
+    phi::handle::pipeline_state acquire_graphics_pso(cc::hash_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
+    phi::handle::pipeline_state acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp);
 
-    phi::handle::shader_view acquire_graphics_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
-    phi::handle::shader_view acquire_compute_sv(murmur_hash hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_graphics_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_compute_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 
-    void free_graphics_pso(murmur_hash hash);
-    void free_compute_pso(murmur_hash hash);
-    void free_graphics_sv(murmur_hash hash);
-    void free_compute_sv(murmur_hash hash);
+    void free_graphics_pso(cc::hash_t hash);
+    void free_compute_pso(cc::hash_t hash);
+    void free_graphics_sv(cc::hash_t hash);
+    void free_compute_sv(cc::hash_t hash);
 
     // members
 private:
+    // backend
     phi::Backend* mBackend = nullptr;
     bool mOwnsBackend = false;
+
+    // constant info
+    uint64_t mGPUTimestampFrequency;
+
+    // components
     phi::sc::compiler mShaderCompiler;
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;
-
-    // components
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
 

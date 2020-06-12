@@ -65,23 +65,23 @@ public:
     //
     // transitions and present
 
-    void transition(buffer const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(texture const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(render_target const& res, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
-    void transition(phi::handle::resource raw_resource, phi::resource_state target, phi::shader_stage_flags_t dependency = {});
+    void transition(buffer const& res, state target, shader_flags dependency = {});
+    void transition(texture const& res, state target, shader_flags dependency = {});
+    void transition(render_target const& res, state target, shader_flags dependency = {});
+    void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
     void present_after_submit(render_target const& backbuffer)
     {
         CC_ASSERT(!mPresentAfterSubmitRequested && "only one present_after_submit per pr::raii::Frame allowed");
-        transition(backbuffer, phi::resource_state::present);
+        transition(backbuffer, state::present);
         mPresentAfterSubmitRequested = true;
     }
 
     //
     // commands
 
-    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0);
+    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
     void copy(texture const& src, texture const& dest);
@@ -92,6 +92,12 @@ public:
     /// resolve a multisampled render target to a texture or different RT
     void resolve(render_target const& src, texture const& dest);
     void resolve(render_target const& src, render_target const& dest);
+
+    /// write a timestamp to a query in a given (timestamp) query range
+    void write_timestamp(query_range const& query_range, unsigned index);
+
+    /// resolve one or more queries in a range and write their contents to a buffer
+    void resolve_queries(query_range const& src, buffer const& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes = 0);
 
     /// begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
     void begin_debug_label(char const* label) { write_raw_cmd(phi::cmd::begin_debug_label{label}); }
@@ -132,7 +138,7 @@ public:
     /// write multiple resource slice transitions - no state tracking
     void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
 
-    pr::Context& context() { return *mCtx; }
+    Context& context() { return *mCtx; }
 
 public:
     // redirect intuitive misuses

@@ -79,6 +79,14 @@ struct resource_view_info
     return res;
 }
 
+[[nodiscard]] inline resource_view_info resource_view_structured_buffer(buffer const& buf, unsigned num_elems, unsigned stride_bytes, unsigned first_element = 0)
+{
+    resource_view_info res;
+    res.guid = buf.res.guid;
+    res.rv.init_as_structured_buffer(buf.res.handle, num_elems, stride_bytes, first_element);
+    return res;
+}
+
 // fixed size, hashable, no raw resources allowed
 struct argument
 {

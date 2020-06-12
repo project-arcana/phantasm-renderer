@@ -26,6 +26,8 @@ public:
     void draw(buffer const& vertex_buffer, buffer const& index_buffer);
     void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices);
 
+    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, unsigned num_args, unsigned arg_buffer_offset = 0);
+
     void set_offset(unsigned vertex_offset, unsigned index_offset = 0);
 
     void set_scissor(tg::iaabb2 scissor) { mCmd.scissor = scissor; }

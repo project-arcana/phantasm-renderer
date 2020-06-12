@@ -1,5 +1,7 @@
 #include "Context.hh"
 
+#include <clean-core/xxHash.hh>
+
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/detail/byte_util.hh>
@@ -9,7 +11,6 @@
 #include <phantasm-renderer/CompiledFrame.hh>
 #include <phantasm-renderer/Frame.hh>
 #include <phantasm-renderer/common/log.hh>
-#include <phantasm-renderer/common/murmur_hash.hh>
 #include <phantasm-renderer/detail/backends.hh>
 
 using namespace pr;
@@ -128,7 +129,7 @@ auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi:
     res._data = data;
     res._size = size;
     res._owning_blob = nullptr;
-    murmurhash3_x64_128(res._data, int(res._size), 0, res._hash);
+    res._hash = cc::hash_xxh3({res._data, res._size}, 0);
 
     return {res, this};
 }
@@ -184,7 +185,18 @@ auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info
     return auto_compute_pipeline_state{{{mBackend->createComputePipelineState(cp.arg_shapes, cp_wrap._shader, cp.has_root_consts)}}, this};
 }
 
+auto_fence Context::make_fence() { return auto_fence{{mBackend->createFence()}, this}; }
+
+auto_query_range Context::make_query_range(phi::query_type type, unsigned num_queries)
+{
+    auto const handle = mBackend->createQueryRange(type, num_queries);
+    return auto_query_range{{handle, type, num_queries}, this};
+}
+
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
+
+void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
+void Context::free(const query_range& q) { mBackend->free(q.handle); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
@@ -220,7 +232,7 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
-    CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to read from non-readback buffer");
+    CC_ASSERT(buffer.info.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
     CC_ASSERT(buffer.info.size_bytes >= out_data.size() + offset_in_buffer && "Buffer read out of bounds");
 
     auto* const map = map_buffer(buffer);
@@ -228,13 +240,35 @@ void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out
     unmap_buffer(buffer);
 }
 
+void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }
+
+void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend->waitFenceCPU(fence.handle, wait_value); }
+
+void Context::signal_fence_gpu(const fence& fence, uint64_t new_value, phi::queue_type queue)
+{
+    mBackend->signalFenceGPU(fence.handle, new_value, queue);
+}
+
+void Context::wait_fence_gpu(const fence& fence, uint64_t wait_value, phi::queue_type queue)
+{
+    mBackend->waitFenceGPU(fence.handle, wait_value, queue);
+}
+
+uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
+
 std::byte* Context::map_buffer(const buffer& buffer) { return mBackend->mapBuffer(buffer.res.handle); }
 
 void Context::unmap_buffer(const buffer& buffer) { mBackend->unmapBuffer(buffer.res.handle); }
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info{format, size.width, size.height, num_samples, array_size};
+    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size);
+    return {acquireRenderTarget(info), this};
+}
+
+cached_render_target Context::get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
+{
+    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size, optimized_clear);
     return {acquireRenderTarget(info), this};
 }
 
@@ -541,6 +575,8 @@ void Context::internalInitialize()
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
     mShaderCompiler.initialize();
+
+    mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
 }
 
 render_target Context::createRenderTarget(const render_target_info& info)
@@ -620,7 +656,7 @@ void Context::freeCachedTexture(const texture_info& info, raw_resource res)
 
 void Context::freeCachedBuffer(const buffer_info& info, raw_resource res) { mCacheBuffers.free(res, info, mGpuEpochTracker.get_current_epoch_cpu()); }
 
-phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, graphics_pass_info const& gp, framebuffer_info const& fb)
+phi::handle::pipeline_state Context::acquire_graphics_pso(cc::hash_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
     phi::handle::pipeline_state pso = mCacheGraphicsPSOs.acquire(hash);
 
@@ -636,7 +672,7 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(murmur_hash hash, grap
     return pso;
 }
 
-phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const compute_pass_info& cp)
+phi::handle::pipeline_state Context::acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp)
 {
     phi::handle::pipeline_state pso = mCacheComputePSOs.acquire(hash);
     if (!pso.is_valid())
@@ -648,7 +684,7 @@ phi::handle::pipeline_state Context::acquire_compute_pso(murmur_hash hash, const
     return pso;
 }
 
-phi::handle::shader_view Context::acquire_graphics_sv(murmur_hash hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_graphics_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mCacheGraphicsSVs.acquire(hash);
     if (!sv.is_valid())
@@ -660,7 +696,7 @@ phi::handle::shader_view Context::acquire_graphics_sv(murmur_hash hash, const ha
     return sv;
 }
 
-phi::handle::shader_view Context::acquire_compute_sv(murmur_hash hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_compute_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mCacheComputeSVs.acquire(hash);
     if (!sv.is_valid())
@@ -694,8 +730,8 @@ void Context::free_all(cc::span<const freeable_cached_obj> freeables)
     }
 }
 
-void Context::free_graphics_pso(murmur_hash hash) { mCacheGraphicsPSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_pso(murmur_hash hash) { mCacheComputePSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_pso(cc::hash_t hash) { mCacheGraphicsPSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_pso(cc::hash_t hash) { mCacheComputePSOs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
 
-void Context::free_graphics_sv(murmur_hash hash) { mCacheGraphicsSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_sv(murmur_hash hash) { mCacheComputeSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_sv(cc::hash_t hash) { mCacheGraphicsSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_sv(cc::hash_t hash) { mCacheComputeSVs.free(hash, mGpuEpochTracker.get_current_epoch_cpu()); }
