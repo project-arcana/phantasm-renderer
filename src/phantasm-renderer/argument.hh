@@ -133,12 +133,12 @@ public:
     /// add a configured UAV
     void add_mutable(resource_view_info const& rvi) { _add_uav(rvi.rv, rvi.guid); }
 
-    void add_sampler(phi::sampler_filter filter, unsigned anisotropy = 16u, phi::sampler_address_mode address_mode = phi::sampler_address_mode::wrap)
+    void add_sampler(pr::sampler_filter filter, unsigned anisotropy = 16u, pr::sampler_address_mode address_mode = pr::sampler_address_mode::wrap)
     {
-        add_sampler(phi::sampler_config(filter, anisotropy, address_mode));
+        add_sampler(pr::sampler_config(filter, anisotropy, address_mode));
     }
 
-    void add_sampler(phi::sampler_config const& config)
+    void add_sampler(pr::sampler_config const& config)
     {
         CC_ASSERT_MSG(!_info.get().uavs.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
                                                 "use persistent prebuilt_arguments from Context::build_argument() instead");
