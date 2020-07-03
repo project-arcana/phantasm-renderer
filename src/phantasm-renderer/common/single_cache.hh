@@ -20,7 +20,7 @@ template <class ValT>
 struct single_cache
 {
 private:
-    static constexpr ValT invalid_val = ValT{phi::handle::null_handle_index};
+    static constexpr ValT invalid_val = ValT{phi::handle::null_handle_value};
     struct map_element;
 
 public:
