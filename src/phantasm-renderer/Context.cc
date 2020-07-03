@@ -88,13 +88,13 @@ auto_texture Context::make_texture(const texture_info& info) { return {createTex
 
 auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size);
+    auto const info = render_target_info::create(format, size, num_samples, array_size);
     return {createRenderTarget(info), this};
 }
 
 auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
 {
-    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size, optimized_clear);
+    auto const info = render_target_info::create(format, size, num_samples, array_size, optimized_clear);
     return {createRenderTarget(info), this};
 }
 
@@ -262,13 +262,13 @@ void Context::unmap_buffer(const buffer& buffer) { mBackend->unmapBuffer(buffer.
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size);
+    auto const info = render_target_info::create(format, size, num_samples, array_size);
     return {acquireRenderTarget(info), this};
 }
 
 cached_render_target Context::get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
 {
-    auto const info = render_target_info::create(format, size.width, size.height, num_samples, array_size, optimized_clear);
+    auto const info = render_target_info::create(format, size, num_samples, array_size, optimized_clear);
     return {acquireRenderTarget(info), this};
 }
 

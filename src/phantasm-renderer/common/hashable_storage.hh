@@ -24,7 +24,9 @@ public:
     hashable_storage()
     {
         std::memset(&_storage.value, 0, sizeof(T)); // memset padding and unitialized bytes to 0
-        new (&_storage.value) T();                  // call default ctor
+
+        if constexpr (!std::is_trivially_constructible_v<T, void>)
+            new (&_storage.value) T(); // call default ctor
     }
 
     // copy ctor/assign is memcpy to preserve the memset padding - noexcept to allow noexcept default move in outer types
@@ -36,8 +38,13 @@ public:
         return *this;
     }
 
-    hashable_storage(hashable_storage&& rhs) noexcept = delete;
-    hashable_storage& operator=(hashable_storage&& rhs) noexcept = delete;
+    hashable_storage(hashable_storage&& rhs) noexcept { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
+    hashable_storage& operator=(hashable_storage&& rhs) noexcept
+    {
+        if (this != &rhs)
+            std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T));
+        return *this;
+    }
 
     // with the established guarantees, hashing and comparison are trivial
     void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
