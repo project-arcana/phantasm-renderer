@@ -344,6 +344,8 @@ public:
 
     void destroy();
 
+    bool is_initialized() const { return mBackend != nullptr; }
+
 public:
     // deleted overrides
 
