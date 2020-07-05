@@ -120,14 +120,14 @@ auto_buffer Context::make_readback_buffer(unsigned size, unsigned stride)
 
 auto_buffer Context::make_buffer(const buffer_info& info) { return {createBuffer(info), this}; }
 
-auto_shader_binary Context::make_shader(std::byte const* data, size_t size, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(cc::span<cc::byte const> data, phi::shader_stage stage)
 {
-    CC_ASSERT(data != nullptr);
+    CC_ASSERT(data.data() != nullptr);
 
     shader_binary res;
     res._stage = stage;
-    res._data = data;
-    res._size = size;
+    res._data = data.data();
+    res._size = data.size();
     res._owning_blob = nullptr;
     res._hash = cc::hash_xxh3({res._data, res._size}, 0);
 
@@ -153,7 +153,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
     }
     else
     {
-        auto res = make_shader(bin.data, bin.size, stage);
+        auto res = make_shader({bin.data, bin.size}, stage);
         res.data._owning_blob = bin.internal_blob;
         return res;
     }

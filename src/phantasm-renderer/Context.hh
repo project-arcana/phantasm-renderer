@@ -80,7 +80,7 @@ public:
 
 
     /// create a shader from binary data
-    [[nodiscard]] auto_shader_binary make_shader(std::byte const* data, size_t size, pr::shader stage);
+    [[nodiscard]] auto_shader_binary make_shader(cc::span<cc::byte const> data, pr::shader stage);
     /// create a shader by compiling it live from text
     [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader stage);
 
