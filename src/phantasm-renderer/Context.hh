@@ -318,10 +318,19 @@ public:
     // miscellaneous
     //
 
+    /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
+    /// ends a capture previously started with start_capture()
     bool end_capture();
 
+    /// returns the underlying phantasm-hardware-interface backend
     phi::Backend& get_backend() { return *mBackend; }
+
+    /// monotonously increasing uint64, always greater or equal to GPU epoch
+    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
+
+    /// monotously increasing uint64, GPU timeline, always less or equal to CPU
+    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker.get_current_epoch_gpu(); }
 
 public:
     //
