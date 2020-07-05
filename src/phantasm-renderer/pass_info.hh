@@ -99,7 +99,7 @@ public:
         return *this;
     }
 
-    graphics_pass_info& topology(phi::primitive_topology topology)
+    graphics_pass_info& topology(pr::primitive_topology topology)
     {
         _storage.get().graphics_config.topology = topology;
         return *this;
