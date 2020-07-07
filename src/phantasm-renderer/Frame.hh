@@ -199,6 +199,7 @@ private:
 private:
     friend class Framebuffer;
     void framebufferOnJoin(Framebuffer const&);
+    void framebufferOnSortByPSO(unsigned num_drawcalls);
 
     phi::handle::pipeline_state framebufferAcquireGraphicsPSO(pr::graphics_pass_info const& gp, pr::framebuffer_info const& fb, int fb_inferred_num_samples);
 

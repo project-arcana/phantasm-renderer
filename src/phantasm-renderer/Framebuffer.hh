@@ -35,6 +35,10 @@ public:
     /// this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
 
+    /// sort previously recorded drawcalls by PSO - advanced feature
+    /// requires #num_drawcalls contiguously recorded drawcalls
+    void sort_drawcalls_by_pso(unsigned num_drawcalls);
+
 public:
     // redirect intuitive misuses
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;

@@ -1,5 +1,7 @@
 #include "Frame.hh"
 
+#include <algorithm> // std::sort
+
 #include <clean-core/hash_combine.hh>
 #include <clean-core/utility.hh>
 
@@ -313,6 +315,18 @@ void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
     phi::cmd::end_render_pass ecmd;
     mWriter.add_command(ecmd);
     mFramebufferActive = false;
+}
+
+void raii::Frame::framebufferOnSortByPSO(unsigned num_drawcalls)
+{
+    // sort previously recorded draw commands by PSO, directly in the command buffer
+    // requires strictly NOTHING but drawcalls recorded, but will catch any misuse
+    std::byte* const drawcall_start = mWriter.buffer_head() - sizeof(phi::cmd::draw) * num_drawcalls;
+    cc::span<phi::cmd::draw> const drawcalls_as_span = {reinterpret_cast<phi::cmd::draw*>(drawcall_start), num_drawcalls};
+    std::sort(drawcalls_as_span.begin(), drawcalls_as_span.end(), [](phi::cmd::draw const& a, phi::cmd::draw const& b) {
+        CC_ASSERT(a.s_internal_type == phi::cmd::detail::cmd_type::draw && "draw calls interleaved or different amount recorded");
+        return unsigned(a.pipeline_state._value) < unsigned(b.pipeline_state._value);
+    });
 }
 
 phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
