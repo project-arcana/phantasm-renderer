@@ -84,10 +84,24 @@ public:
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
-    void copy(texture const& src, texture const& dest);
+    /// copies all array slices at the given MIP level from src to dest
+    void copy(texture const& src, texture const& dest, unsigned mip_index = 0);
+    /// copies MIP level 0, array slice 0 from src to dest
     void copy(texture const& src, render_target const& dest);
+    /// copies src to MIP level 0, array slice 0 of dest
     void copy(render_target const& src, texture const& dest);
+    /// copies contents of src to dest
     void copy(render_target const& src, render_target const& dest);
+
+    /// copy textures specifying all details of the operation
+    void copy_subsection(texture const& src,
+                         texture const& dest,
+                         unsigned src_mip_index,
+                         unsigned src_array_index,
+                         unsigned dest_mip_index,
+                         unsigned dest_array_index,
+                         unsigned num_array_slices,
+                         tg::isize2 dest_size);
 
     /// resolve a multisampled render target to a texture or different RT
     void resolve(render_target const& src, texture const& dest);
@@ -183,7 +197,7 @@ private:
 
     void flushPendingTransitions();
 
-    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
+    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, unsigned mip_index, unsigned first_array_index, unsigned num_array_slices);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
 
     phi::handle::pipeline_state acquireComputePSO(compute_pass_info const& cp);

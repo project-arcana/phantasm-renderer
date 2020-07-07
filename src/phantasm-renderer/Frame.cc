@@ -76,24 +76,60 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const texture& src, const texture& dest)
+void raii::Frame::copy(const texture& src, const texture& dest, unsigned mip_index)
 {
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
+    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
+    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
+    CC_ASSERT(mip_index < dest.info.num_mips && mip_index < src.info.num_mips && "mip index out of bounds");
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, mip_index, 0, dest.info.depth_or_array_size);
 }
 
 void raii::Frame::copy(const texture& src, const render_target& dest)
 {
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
+    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
+    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
 }
 
 void raii::Frame::copy(const render_target& src, const texture& dest)
 {
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
+    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
+    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
 }
 
 void raii::Frame::copy(const render_target& src, const render_target& dest)
 {
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
+    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
+    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
+    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
+}
+
+void raii::Frame::copy_subsection(const texture& src,
+                                  const texture& dest,
+                                  unsigned src_mip_index,
+                                  unsigned src_array_index,
+                                  unsigned dest_mip_index,
+                                  unsigned dest_array_index,
+                                  unsigned num_array_slices,
+                                  tg::isize2 dest_size)
+{
+    // TODO: OOB asserts
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
+    flushPendingTransitions();
+
+    phi::cmd::copy_texture ccmd;
+    ccmd.source = src.res.handle;
+    ccmd.destination = src.res.handle;
+    ccmd.src_mip_index = src_mip_index;
+    ccmd.src_array_index = src_array_index;
+    ccmd.dest_mip_index = dest_mip_index;
+    ccmd.dest_array_index = dest_array_index;
+    ccmd.width = unsigned(dest_size.width);
+    ccmd.height = unsigned(dest_size.height);
+    ccmd.num_array_slices = num_array_slices;
+    mWriter.add_command(ccmd);
 }
 
 void raii::Frame::resolve(const render_target& src, const texture& dest)
@@ -222,14 +258,14 @@ void raii::Frame::flushPendingTransitions()
     }
 }
 
-void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, unsigned mip_index, unsigned first_array_index, unsigned num_array_slices)
 {
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
     phi::cmd::copy_texture ccmd;
-    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h), 0);
+    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h), mip_index, first_array_index, num_array_slices);
     mWriter.add_command(ccmd);
 }
 

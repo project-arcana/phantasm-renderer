@@ -403,7 +403,7 @@ bool Context::flush(gpu_epoch_t epoch)
 }
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
-bool Context::end_capture() { return mBackend->endForcedDiagnosticCapture(); }
+bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
 
 void Context::on_window_resize(tg::isize2 size) { mBackend->onResize(size); }
 

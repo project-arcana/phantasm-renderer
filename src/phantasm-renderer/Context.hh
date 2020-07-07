@@ -321,7 +321,7 @@ public:
     /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
     /// ends a capture previously started with start_capture()
-    bool end_capture();
+    bool stop_capture();
 
     /// returns the underlying phantasm-hardware-interface backend
     phi::Backend& get_backend() { return *mBackend; }
