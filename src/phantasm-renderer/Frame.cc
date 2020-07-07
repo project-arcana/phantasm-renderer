@@ -76,6 +76,17 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     mWriter.add_command(ccmd);
 }
 
+void raii::Frame::copy(const render_target& src, const buffer& dest, size_t dest_offset)
+{
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
+    flushPendingTransitions();
+
+    phi::cmd::copy_texture_to_buffer ccmd;
+    ccmd.init(src.res.handle, dest.res.handle, src.info.width, src.info.height, dest_offset);
+    mWriter.add_command(ccmd);
+}
+
 void raii::Frame::copy(const texture& src, const texture& dest, unsigned mip_index)
 {
     CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");

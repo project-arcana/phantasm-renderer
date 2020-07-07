@@ -81,8 +81,13 @@ public:
     //
     // commands
 
+    /// copy buffer to buffer
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
+    /// copy buffer to texture
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
+
+    /// copy texture to buffer
+    void copy(render_target const& src, buffer const& dest, size_t dest_offset = 0);
 
     /// copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, unsigned mip_index = 0);

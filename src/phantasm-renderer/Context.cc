@@ -438,6 +438,14 @@ unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt
     return res_bytes;
 }
 
+unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const
+{
+    CC_ASSERT(pixel.x < size.width && pixel.y < size.height && "pixel out of bounds");
+    auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
+    auto const row_width = phi::mem::align_up(bytes_per_pixel * size.width, 256);
+    return pixel.y * row_width + pixel.x * bytes_per_pixel;
+}
+
 render_target Context::acquire_backbuffer()
 {
     auto const backbuffer = mBackend->acquireBackbuffer();
