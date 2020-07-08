@@ -191,7 +191,7 @@ public:
     void write_to_buffer(buffer const& buffer, T const& data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::write_to_buffer_t] Pointer instead of raw data provided");
-        write_to_buffer_raw(buffer, cc::as_byte_span<T const>(data), offset_in_buffer);
+        write_to_buffer_raw(buffer, cc::as_byte_span(data), offset_in_buffer);
     }
 
     /// map a readback buffer, memcpy its contents to the provided location, and unmap it
@@ -200,7 +200,7 @@ public:
     void read_from_buffer(buffer const& buffer, T& out_data, size_t offset_in_buffer = 0)
     {
         static_assert(!std::is_pointer_v<T>, "[pr::Context::read_from_buffer_t] Pointer instead of raw data provided");
-        read_from_buffer_raw(buffer, cc::as_byte_span<T>(out_data), offset_in_buffer);
+        read_from_buffer_raw(buffer, cc::as_byte_span(out_data), offset_in_buffer);
     }
 
     //
