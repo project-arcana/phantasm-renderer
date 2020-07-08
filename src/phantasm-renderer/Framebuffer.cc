@@ -9,10 +9,7 @@ pr::raii::GraphicsPass pr::raii::Framebuffer::make_pass(const pr::graphics_pass_
     return {mParent, mParent->framebufferAcquireGraphicsPSO(gp, mHashInfo, mNumSamples)};
 }
 
-void pr::raii::Framebuffer::sort_drawcalls_by_pso(unsigned num_drawcalls)
-{
-    mParent->framebufferOnSortByPSO(num_drawcalls);
-}
+void pr::raii::Framebuffer::sort_drawcalls_by_pso(unsigned num_drawcalls) { mParent->framebufferOnSortByPSO(num_drawcalls); }
 
 void pr::raii::Framebuffer::destroy()
 {
