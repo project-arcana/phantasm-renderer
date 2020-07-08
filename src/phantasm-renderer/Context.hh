@@ -307,21 +307,33 @@ public:
         return (double(end - start) / mGPUTimestampFrequency) * 1000.;
     }
 
-    /// returns the amount of bytes needed to store the contents of a texture in an upload buffer
+    /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+
+    /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
+    unsigned calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
 
     //
     // miscellaneous
     //
 
+    /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
-    bool end_capture();
+    /// ends a capture previously started with start_capture()
+    bool stop_capture();
 
+    /// returns the underlying phantasm-hardware-interface backend
     phi::Backend& get_backend() { return *mBackend; }
+
+    /// monotonously increasing uint64, always greater or equal to GPU epoch
+    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
+
+    /// monotously increasing uint64, GPU timeline, always less or equal to CPU
+    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker.get_current_epoch_gpu(); }
 
 public:
     //
@@ -452,12 +464,12 @@ inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, u
     return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
 }
 
-inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, phi::format fmt, unsigned num_mips) const
+inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, pr::format fmt, unsigned num_mips) const
 {
     return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
 }
 
-inline unsigned Context::calculate_texture_upload_size(int width, phi::format fmt, unsigned num_mips) const
+inline unsigned Context::calculate_texture_upload_size(int width, pr::format fmt, unsigned num_mips) const
 {
     return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
 }

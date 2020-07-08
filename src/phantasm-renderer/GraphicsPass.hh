@@ -39,11 +39,18 @@ public:
 
     void set_constant_buffer_offset(unsigned offset);
 
+
     template <class T>
     void write_constants(T const& val)
     {
         mCmd.write_root_constants<T>(val);
     }
+
+    /// NOTE: advanced usage
+    phi::cmd::draw& raw_command() { return mCmd; }
+
+    /// NOTE: advanced usage
+    void reset_pipeline_state(phi::handle::pipeline_state pso) { mCmd.pipeline_state = pso; }
 
     GraphicsPass(GraphicsPass&& rhs) = default;
 
