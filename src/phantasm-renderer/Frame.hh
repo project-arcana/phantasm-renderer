@@ -159,6 +159,8 @@ public:
 
     Context& context() { return *mCtx; }
 
+    bool is_empty() const { return mWriter.is_empty(); }
+
 public:
     // redirect intuitive misuses
     /// (graphics passes can only be created from framebuffers)
@@ -241,7 +243,6 @@ private:
     void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }
     size_t getSize() const { return mWriter.size(); }
-    bool isEmpty() const { return mWriter.is_empty(); }
 
     // members
 private:

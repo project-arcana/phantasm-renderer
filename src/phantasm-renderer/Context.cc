@@ -335,7 +335,7 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
-    if (frame.isEmpty())
+    if (frame.is_empty())
     {
         return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), false);
     }
