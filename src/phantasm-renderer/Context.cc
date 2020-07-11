@@ -420,6 +420,7 @@ unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt
     // calculate number of mips if zero is given
     num_mips = num_mips > 0 ? num_mips : phi::util::get_num_mips(size.width, size.height);
     auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
+    bool const do_d3d12_align = mBackendType == pr::backend::d3d12;
     auto res_bytes = 0u;
 
     for (auto a = 0; a < size.depth; ++a)
@@ -429,7 +430,11 @@ unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt
             auto const mip_width = cc::max(unsigned(tg::floor(size.width / tg::pow(2.f, float(mip)))), 1u);
             auto const mip_height = cc::max(unsigned(tg::floor(size.height / tg::pow(2.f, float(mip)))), 1u);
 
-            auto const row_pitch = phi::mem::align_up(bytes_per_pixel * mip_width, 256);
+            unsigned row_pitch = bytes_per_pixel * mip_width;
+
+            if (do_d3d12_align)
+                row_pitch = phi::mem::align_up(row_pitch, 256);
+
             auto const custom_offset = row_pitch * mip_height;
             res_bytes += custom_offset;
         }
@@ -442,7 +447,12 @@ unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg
 {
     CC_ASSERT(pixel.x < size.width && pixel.y < size.height && "pixel out of bounds");
     auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
-    auto const row_width = phi::mem::align_up(bytes_per_pixel * size.width, 256);
+
+    unsigned row_width = bytes_per_pixel * size.width;
+
+    if (mBackendType == pr::backend::d3d12)
+        row_width = phi::mem::align_up(row_width, 256);
+
     return pixel.y * row_width + pixel.x * bytes_per_pixel;
 }
 
@@ -585,6 +595,7 @@ void Context::internalInitialize()
     mShaderCompiler.initialize();
 
     mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
+    mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
 }
 
 render_target Context::createRenderTarget(const render_target_info& info)

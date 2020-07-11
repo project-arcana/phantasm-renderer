@@ -328,6 +328,7 @@ public:
 
     /// returns the underlying phantasm-hardware-interface backend
     phi::Backend& get_backend() { return *mBackend; }
+    pr::backend get_backend_type() const { return mBackendType; }
 
     /// monotonously increasing uint64, always greater or equal to GPU epoch
     gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
@@ -428,6 +429,7 @@ private:
     // backend
     phi::Backend* mBackend = nullptr;
     bool mOwnsBackend = false;
+    pr::backend mBackendType;
 
     // constant info
     uint64_t mGPUTimestampFrequency;
