@@ -101,6 +101,14 @@ public:
     /// create a contiguous range of queries
     [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
 
+    /// create a swapchain
+    [[nodiscard]] swapchain make_swapchain(phi::window_handle const& window_handle,
+                                           tg::isize2 initial_size,
+                                           pr::present_mode mode = pr::present_mode::synced,
+                                           unsigned num_backbuffers = 3);
+
+    void destroy_swapchain(pr::swapchain sc);
+
     //
     // cache lookup API
     //
@@ -240,7 +248,7 @@ public:
     void discard(CompiledFrame&& frame);
 
     /// flips backbuffers
-    void present();
+    void present(swapchain sc);
 
     /// blocks on the CPU until all pending GPU operations are done
     void flush();
@@ -249,10 +257,10 @@ public:
     /// returns false if the epoch was reached already, or flushes and returns true
     bool flush(gpu_epoch_t epoch);
 
-    void on_window_resize(tg::isize2 size);
-    [[nodiscard]] bool clear_backbuffer_resize();
+    void on_window_resize(swapchain sc, tg::isize2 size);
+    [[nodiscard]] bool clear_backbuffer_resize(swapchain sc);
 
-    [[nodiscard]] render_target acquire_backbuffer();
+    [[nodiscard]] render_target acquire_backbuffer(swapchain sc);
 
     //
     // cache management
@@ -297,9 +305,9 @@ public:
     // info
     //
 
-    tg::isize2 get_backbuffer_size() const;
-    format get_backbuffer_format() const;
-    unsigned get_num_backbuffers() const;
+    tg::isize2 get_backbuffer_size(swapchain sc) const;
+    format get_backbuffer_format(swapchain sc) const;
+    unsigned get_num_backbuffers(swapchain sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
@@ -343,16 +351,16 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    Context(phi::window_handle const& window_handle, backend type = backend::vulkan);
+    Context(backend type) { initialize(type); }
     /// internally create a backend with specified config
-    Context(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
+    Context(backend type, phi::backend_config const& config) { initialize(type, config); }
     /// attach to an existing backend
-    Context(phi::Backend* backend);
+    Context(phi::Backend* backend) { initialize(backend); }
 
     ~Context() { destroy(); }
 
-    void initialize(phi::window_handle const& window_handle, backend type = backend::vulkan);
-    void initialize(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
+    void initialize(backend type);
+    void initialize(backend type, phi::backend_config const& config);
     void initialize(phi::Backend* backend);
 
     void destroy();

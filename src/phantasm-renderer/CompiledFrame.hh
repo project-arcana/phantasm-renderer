@@ -21,7 +21,7 @@ public:
     CompiledFrame(CompiledFrame const&) = delete;
     CompiledFrame& operator=(CompiledFrame const&) = delete;
     CompiledFrame(CompiledFrame&& rhs) noexcept
-      : parent(rhs.parent), cmdlist(rhs.cmdlist), freeables(cc::move(rhs.freeables)), should_present_after_submit(rhs.should_present_after_submit)
+      : parent(rhs.parent), cmdlist(rhs.cmdlist), freeables(cc::move(rhs.freeables)), present_after_submit_swapchain(rhs.present_after_submit_swapchain)
     {
         rhs.parent = nullptr;
     }
@@ -34,7 +34,7 @@ public:
             parent = rhs.parent;
             cmdlist = rhs.cmdlist;
             freeables = cc::move(rhs.freeables);
-            should_present_after_submit = rhs.should_present_after_submit;
+            present_after_submit_swapchain = rhs.present_after_submit_swapchain;
             rhs.parent = nullptr;
         }
 
@@ -45,8 +45,8 @@ public:
 
 private:
     friend class Context;
-    CompiledFrame(Context* parent, phi::handle::command_list cmdlist, cc::vector<freeable_cached_obj>&& freeables, bool present_after_submit)
-      : parent(parent), cmdlist(cmdlist), freeables(cc::move(freeables)), should_present_after_submit(present_after_submit)
+    CompiledFrame(Context* parent, phi::handle::command_list cmdlist, cc::vector<freeable_cached_obj>&& freeables, phi::handle::swapchain present_after_submit_sc)
+      : parent(parent), cmdlist(cmdlist), freeables(cc::move(freeables)), present_after_submit_swapchain(present_after_submit_sc)
     {
     }
 
@@ -55,6 +55,6 @@ private:
     Context* parent = nullptr;
     phi::handle::command_list cmdlist = phi::handle::null_command_list;
     cc::vector<freeable_cached_obj> freeables;
-    bool should_present_after_submit = false;
+    phi::handle::swapchain present_after_submit_swapchain = phi::handle::null_swapchain;
 };
 }

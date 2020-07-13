@@ -21,6 +21,7 @@ using phi::blend_logic_op;
 using phi::blend_op;
 using phi::cull_mode;
 using phi::depth_function;
+using phi::present_mode;
 using phi::primitive_topology;
 using phi::query_type;
 using phi::queue_type;
@@ -33,6 +34,7 @@ using phi::sampler_filter;
 // type renames
 using shader_flags = phi::shader_stage_flags_t;
 using clear_value = phi::rt_clear_value;
+using swapchain = phi::handle::swapchain;
 
 // type passthroughs
 using phi::blend_state;

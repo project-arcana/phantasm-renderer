@@ -71,11 +71,11 @@ public:
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
-    void present_after_submit(render_target const& backbuffer)
+    void present_after_submit(render_target const& backbuffer, swapchain sc)
     {
-        CC_ASSERT(!mPresentAfterSubmitRequested && "only one present_after_submit per pr::raii::Frame allowed");
+        CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
         transition(backbuffer, state::present);
-        mPresentAfterSubmitRequested = true;
+        mPresentAfterSubmitRequest = sc;
     }
 
     //
@@ -251,6 +251,6 @@ private:
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::vector<freeable_cached_obj> mFreeables;
     bool mFramebufferActive = false;
-    bool mPresentAfterSubmitRequested = false;
+    phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };
 }
