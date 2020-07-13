@@ -4,6 +4,7 @@
 
 #include <clean-core/map.hh>
 #include <clean-core/typedefs.hh>
+#include <clean-core/vector.hh>
 
 #include <rich-log/log.hh>
 
@@ -62,16 +63,22 @@ public:
     void cull_all(gpu_epoch_t current_gpu_epoch, F&& destroy_func)
     {
         auto lg = std::lock_guard(_mutex);
-        auto f_can_cull = [&](map_element const& elem) { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
+        auto f_can_cull = [&](map_element const& elem) -> bool { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
+
+        cc::vector<cc::hash_t> keys_to_remove;
+        keys_to_remove.reserve(_map.size());
 
         for (auto&& [key, elem] : _map)
         {
             if (f_can_cull(elem))
             {
                 destroy_func(elem.val);
-                CC_RUNTIME_ASSERT(false && "cc::map remove unimplemented and required here");
+                keys_to_remove.push_back(key);
             }
         }
+
+        for (auto key : keys_to_remove)
+            _map.remove_key(key);
     }
 
     template <class F>

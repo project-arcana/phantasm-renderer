@@ -271,11 +271,11 @@ public:
 
     /// frees all shader_views from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    [[deprecated("unimplemented")]] unsigned clear_shader_view_cache();
+    unsigned clear_shader_view_cache();
 
     /// frees all pipeline_states from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    [[deprecated("unimplemented")]] unsigned clear_pipeline_state_cache();
+    unsigned clear_pipeline_state_cache();
 
     //
     // phi interop
