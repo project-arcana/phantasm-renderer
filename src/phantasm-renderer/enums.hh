@@ -34,7 +34,6 @@ using phi::sampler_filter;
 // type renames
 using shader_flags = phi::shader_stage_flags_t;
 using clear_value = phi::rt_clear_value;
-using swapchain = phi::handle::swapchain;
 
 // type passthroughs
 using phi::blend_state;

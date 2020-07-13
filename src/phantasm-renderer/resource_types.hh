@@ -84,6 +84,11 @@ struct query_range
     unsigned num;
 };
 
+struct swapchain
+{
+    phi::handle::swapchain handle = phi::handle::null_swapchain;
+};
+
 //
 // auto_ and cached_ aliases
 
@@ -97,6 +102,7 @@ using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, fal
 using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
 using auto_fence = auto_destroyer<fence, false>;
 using auto_query_range = auto_destroyer<query_range, false>;
+using auto_swapchain = auto_destroyer<swapchain, false>;
 
 // move-only, self-cachefreeing versions
 using cached_buffer = auto_destroyer<buffer, true>;

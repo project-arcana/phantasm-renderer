@@ -75,7 +75,7 @@ public:
     {
         CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
         transition(backbuffer, state::present);
-        mPresentAfterSubmitRequest = sc;
+        mPresentAfterSubmitRequest = sc.handle;
     }
 
     //

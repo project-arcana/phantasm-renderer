@@ -22,6 +22,7 @@ struct auto_destroy_proxy
     static void destroy(pr::Context* ctx, prebuilt_argument const& v);
     static void destroy(pr::Context* ctx, fence const& v);
     static void destroy(pr::Context* ctx, query_range const& v);
+    static void destroy(pr::Context* ctx, swapchain const& v);
 };
 }
 

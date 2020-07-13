@@ -15,4 +15,6 @@ void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pipeline_st
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::shader_binary& v) { ctx->free(v); }
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::prebuilt_argument& v) { ctx->freeShaderView(v._sv); }
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::fence& v) { ctx->free(v); }
+
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::query_range& v) { ctx->free(v); }
+void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::swapchain& v) { ctx->free(v); }

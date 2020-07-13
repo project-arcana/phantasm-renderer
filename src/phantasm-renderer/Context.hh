@@ -102,12 +102,10 @@ public:
     [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
 
     /// create a swapchain
-    [[nodiscard]] swapchain make_swapchain(phi::window_handle const& window_handle,
-                                           tg::isize2 initial_size,
-                                           pr::present_mode mode = pr::present_mode::synced,
-                                           unsigned num_backbuffers = 3);
-
-    void destroy_swapchain(pr::swapchain sc);
+    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
+                                                tg::isize2 initial_size,
+                                                pr::present_mode mode = pr::present_mode::synced,
+                                                unsigned num_backbuffers = 3);
 
     //
     // cache lookup API
@@ -165,6 +163,7 @@ public:
     }
     void free(fence const& f);
     void free(query_range const& q);
+    void free(swapchain const& sc);
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -248,7 +247,7 @@ public:
     void discard(CompiledFrame&& frame);
 
     /// flips backbuffers
-    void present(swapchain sc);
+    void present(swapchain const& sc);
 
     /// blocks on the CPU until all pending GPU operations are done
     void flush();
@@ -257,10 +256,10 @@ public:
     /// returns false if the epoch was reached already, or flushes and returns true
     bool flush(gpu_epoch_t epoch);
 
-    void on_window_resize(swapchain sc, tg::isize2 size);
-    [[nodiscard]] bool clear_backbuffer_resize(swapchain sc);
+    void on_window_resize(swapchain const& sc, tg::isize2 size);
+    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
 
-    [[nodiscard]] render_target acquire_backbuffer(swapchain sc);
+    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
 
     //
     // cache management
@@ -305,9 +304,9 @@ public:
     // info
     //
 
-    tg::isize2 get_backbuffer_size(swapchain sc) const;
-    format get_backbuffer_format(swapchain sc) const;
-    unsigned get_num_backbuffers(swapchain sc) const;
+    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
+    format get_backbuffer_format(swapchain const& sc) const;
+    unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
@@ -372,11 +371,12 @@ public:
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
-    void free(auto_destroyer<T, Cached> const&) = delete;
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free(auto_destroyer<T, Cached> const&) = delete;
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
-    void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_to_cache(auto_destroyer<T, Cached> const&)
+        = delete;
 
 private:
     //
