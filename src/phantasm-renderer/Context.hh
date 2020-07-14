@@ -350,11 +350,11 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    Context(backend type) { initialize(type); }
+    explicit Context(backend type) { initialize(type); }
     /// internally create a backend with specified config
-    Context(backend type, phi::backend_config const& config) { initialize(type, config); }
+    explicit Context(backend type, phi::backend_config const& config) { initialize(type, config); }
     /// attach to an existing backend
-    Context(phi::Backend* backend) { initialize(backend); }
+    explicit Context(phi::Backend* backend) { initialize(backend); }
 
     ~Context() { destroy(); }
 
