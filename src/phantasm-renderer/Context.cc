@@ -193,10 +193,16 @@ auto_query_range Context::make_query_range(phi::query_type type, unsigned num_qu
     return auto_query_range{{handle, type, num_queries}, this};
 }
 
+auto_swapchain Context::make_swapchain(const phi::window_handle& window_handle, tg::isize2 initial_size, pr::present_mode mode, unsigned num_backbuffers)
+{
+    return {{mBackend->createSwapchain(window_handle, initial_size, mode, num_backbuffers)}, this};
+}
+
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
 
 void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
+void Context::free(swapchain const& sc) { mBackend->free(sc.handle); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
@@ -335,14 +341,14 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
-    if (frame.isEmpty())
+    if (frame.is_empty())
     {
-        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), false);
+        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequested);
+        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequest);
     }
 }
 
@@ -361,9 +367,9 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
         mGpuEpochTracker.increment_epoch();
         res = mGpuEpochTracker.get_current_epoch_cpu();
 
-        if (frame.should_present_after_submit)
+        if (frame.present_after_submit_swapchain.is_valid())
         {
-            present();
+            present({frame.present_after_submit_swapchain});
         }
     }
 
@@ -380,12 +386,12 @@ void Context::discard(CompiledFrame&& frame)
     frame.parent = nullptr;
 }
 
-void Context::present()
+void Context::present(swapchain const& sc)
 {
 #ifdef CC_ENABLE_ASSERTIONS
     CC_ASSERT(mSafetyState.did_acquire_before_present && "Context::present without prior acquire_backbuffer");
 #endif
-    mBackend->present();
+    mBackend->present(sc.handle);
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = false;
 #endif
@@ -405,21 +411,22 @@ bool Context::flush(gpu_epoch_t epoch)
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
 
-void Context::on_window_resize(tg::isize2 size) { mBackend->onResize(size); }
+void Context::on_window_resize(swapchain const& sc, tg::isize2 size) { mBackend->onResize(sc.handle, size); }
 
-bool Context::clear_backbuffer_resize() { return mBackend->clearPendingResize(); }
+bool Context::clear_backbuffer_resize(swapchain const& sc) { return mBackend->clearPendingResize(sc.handle); }
 
-tg::isize2 Context::get_backbuffer_size() const { return mBackend->getBackbufferSize(); }
+tg::isize2 Context::get_backbuffer_size(swapchain const& sc) const { return mBackend->getBackbufferSize(sc.handle); }
 
-phi::format Context::get_backbuffer_format() const { return mBackend->getBackbufferFormat(); }
+phi::format Context::get_backbuffer_format(swapchain const& sc) const { return mBackend->getBackbufferFormat(sc.handle); }
 
-unsigned Context::get_num_backbuffers() const { return mBackend->getNumBackbuffers(); }
+unsigned Context::get_num_backbuffers(swapchain const& sc) const { return mBackend->getNumBackbuffers(sc.handle); }
 
 unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, unsigned num_mips) const
 {
     // calculate number of mips if zero is given
     num_mips = num_mips > 0 ? num_mips : phi::util::get_num_mips(size.width, size.height);
     auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
+    bool const do_d3d12_align = mBackendType == pr::backend::d3d12;
     auto res_bytes = 0u;
 
     for (auto a = 0; a < size.depth; ++a)
@@ -429,7 +436,11 @@ unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt
             auto const mip_width = cc::max(unsigned(tg::floor(size.width / tg::pow(2.f, float(mip)))), 1u);
             auto const mip_height = cc::max(unsigned(tg::floor(size.height / tg::pow(2.f, float(mip)))), 1u);
 
-            auto const row_pitch = phi::mem::align_up(bytes_per_pixel * mip_width, 256);
+            unsigned row_pitch = bytes_per_pixel * mip_width;
+
+            if (do_d3d12_align)
+                row_pitch = phi::mem::align_up(row_pitch, 256);
+
             auto const custom_offset = row_pitch * mip_height;
             res_bytes += custom_offset;
         }
@@ -442,18 +453,23 @@ unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg
 {
     CC_ASSERT(pixel.x < size.width && pixel.y < size.height && "pixel out of bounds");
     auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
-    auto const row_width = phi::mem::align_up(bytes_per_pixel * size.width, 256);
+
+    unsigned row_width = bytes_per_pixel * size.width;
+
+    if (mBackendType == pr::backend::d3d12)
+        row_width = phi::mem::align_up(row_width, 256);
+
     return pixel.y * row_width + pixel.x * bytes_per_pixel;
 }
 
-render_target Context::acquire_backbuffer()
+render_target Context::acquire_backbuffer(swapchain const& sc)
 {
-    auto const backbuffer = mBackend->acquireBackbuffer();
-    auto const size = mBackend->getBackbufferSize();
+    auto const backbuffer = mBackend->acquireBackbuffer(sc.handle);
+    auto const size = mBackend->getBackbufferSize(sc.handle);
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = true;
 #endif
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(), size.width, size.height, 1, 1, {0, 0, 0, 1}}};
+    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(sc.handle), size.width, size.height, 1, 1, {0, 0, 0, 1}}};
 }
 
 unsigned Context::clear_resource_caches()
@@ -502,30 +518,22 @@ unsigned Context::clear_pipeline_state_cache()
     return num_frees;
 }
 
-Context::Context(phi::window_handle const& window_handle, backend type) { initialize(window_handle, type); }
-
-Context::Context(const phi::window_handle& window_handle, backend type, const phi::backend_config& config)
-{
-    initialize(window_handle, type, config);
-}
-
-Context::Context(phi::Backend* backend) { initialize(backend); }
-
-void Context::initialize(const phi::window_handle& window_handle, backend type)
+void Context::initialize(backend type)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
-    initialize(window_handle, type, cfg);
+    initialize(type, cfg);
 }
 
-void Context::initialize(const phi::window_handle& window_handle, backend type, const phi::backend_config& config)
+void Context::initialize(backend type, const phi::backend_config& config)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 
     mOwnsBackend = true;
-    mBackend = detail::make_backend(type, window_handle, config);
+    mBackend = detail::make_backend(type);
+    mBackend->initialize(config);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
     internalInitialize();
 }
@@ -585,6 +593,7 @@ void Context::internalInitialize()
     mShaderCompiler.initialize();
 
     mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
+    mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
 }
 
 render_target Context::createRenderTarget(const render_target_info& info)

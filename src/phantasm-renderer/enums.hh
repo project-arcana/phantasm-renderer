@@ -21,6 +21,7 @@ using phi::blend_logic_op;
 using phi::blend_op;
 using phi::cull_mode;
 using phi::depth_function;
+using phi::present_mode;
 using phi::primitive_topology;
 using phi::query_type;
 using phi::queue_type;

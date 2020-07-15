@@ -46,11 +46,13 @@ struct graphics_pipeline_state;
 struct compute_pipeline_state;
 struct fence;
 struct query_range;
+struct swapchain;
 using auto_shader_binary = auto_destroyer<shader_binary, false>;
 using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
 using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
 using auto_fence = auto_destroyer<fence, false>;
 using auto_query_range = auto_destroyer<query_range, false>;
+using auto_swapchain = auto_destroyer<swapchain, false>;
 
 // shader arguments
 struct argument;

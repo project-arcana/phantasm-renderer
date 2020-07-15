@@ -101,6 +101,12 @@ public:
     /// create a contiguous range of queries
     [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
 
+    /// create a swapchain
+    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
+                                                tg::isize2 initial_size,
+                                                pr::present_mode mode = pr::present_mode::synced,
+                                                unsigned num_backbuffers = 3);
+
     //
     // cache lookup API
     //
@@ -157,6 +163,7 @@ public:
     }
     void free(fence const& f);
     void free(query_range const& q);
+    void free(swapchain const& sc);
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -240,7 +247,7 @@ public:
     void discard(CompiledFrame&& frame);
 
     /// flips backbuffers
-    void present();
+    void present(swapchain const& sc);
 
     /// blocks on the CPU until all pending GPU operations are done
     void flush();
@@ -249,10 +256,10 @@ public:
     /// returns false if the epoch was reached already, or flushes and returns true
     bool flush(gpu_epoch_t epoch);
 
-    void on_window_resize(tg::isize2 size);
-    [[nodiscard]] bool clear_backbuffer_resize();
+    void on_window_resize(swapchain const& sc, tg::isize2 size);
+    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
 
-    [[nodiscard]] render_target acquire_backbuffer();
+    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
 
     //
     // cache management
@@ -264,11 +271,11 @@ public:
 
     /// frees all shader_views from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    [[deprecated("unimplemented")]] unsigned clear_shader_view_cache();
+    unsigned clear_shader_view_cache();
 
     /// frees all pipeline_states from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    [[deprecated("unimplemented")]] unsigned clear_pipeline_state_cache();
+    unsigned clear_pipeline_state_cache();
 
     //
     // phi interop
@@ -297,9 +304,9 @@ public:
     // info
     //
 
-    tg::isize2 get_backbuffer_size() const;
-    format get_backbuffer_format() const;
-    unsigned get_num_backbuffers() const;
+    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
+    format get_backbuffer_format(swapchain const& sc) const;
+    unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
@@ -328,6 +335,7 @@ public:
 
     /// returns the underlying phantasm-hardware-interface backend
     phi::Backend& get_backend() { return *mBackend; }
+    pr::backend get_backend_type() const { return mBackendType; }
 
     /// monotonously increasing uint64, always greater or equal to GPU epoch
     gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
@@ -342,16 +350,16 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    Context(phi::window_handle const& window_handle, backend type = backend::vulkan);
+    explicit Context(backend type) { initialize(type); }
     /// internally create a backend with specified config
-    Context(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
+    explicit Context(backend type, phi::backend_config const& config) { initialize(type, config); }
     /// attach to an existing backend
-    Context(phi::Backend* backend);
+    explicit Context(phi::Backend* backend) { initialize(backend); }
 
     ~Context() { destroy(); }
 
-    void initialize(phi::window_handle const& window_handle, backend type = backend::vulkan);
-    void initialize(phi::window_handle const& window_handle, backend type, phi::backend_config const& config);
+    void initialize(backend type);
+    void initialize(backend type, phi::backend_config const& config);
     void initialize(phi::Backend* backend);
 
     void destroy();
@@ -363,11 +371,12 @@ public:
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
-    void free(auto_destroyer<T, Cached> const&) = delete;
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free(auto_destroyer<T, Cached> const&) = delete;
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
-    void free_to_cache(auto_destroyer<T, Cached> const&) = delete;
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_to_cache(auto_destroyer<T, Cached> const&)
+        = delete;
 
 private:
     //
@@ -428,6 +437,7 @@ private:
     // backend
     phi::Backend* mBackend = nullptr;
     bool mOwnsBackend = false;
+    pr::backend mBackendType;
 
     // constant info
     uint64_t mGPUTimestampFrequency;

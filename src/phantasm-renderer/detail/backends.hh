@@ -5,5 +5,5 @@
 
 namespace pr::detail
 {
-[[nodiscard]] phi::Backend* make_backend(backend type, phi::window_handle const& window_handle, phi::backend_config const& cfg);
+[[nodiscard]] phi::Backend* make_backend(backend type);
 }
