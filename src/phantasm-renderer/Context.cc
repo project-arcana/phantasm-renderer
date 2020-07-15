@@ -41,11 +41,7 @@ dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
 
 }
 
-raii::Frame Context::make_frame(size_t initial_size)
-{
-    // TODO: pool the memory blocks for frames
-    return {this, initial_size};
-}
+raii::Frame Context::make_frame(size_t initial_size, cc::allocator* alloc) { return pr::raii::Frame{this, initial_size, alloc}; }
 
 auto_texture Context::make_texture(int width, phi::format format, unsigned num_mips, bool allow_uav)
 {

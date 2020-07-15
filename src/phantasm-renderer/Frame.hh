@@ -1,15 +1,14 @@
 #pragma once
 
+#include <clean-core/alloc_vector.hh>
 #include <clean-core/defer.hh>
 #include <clean-core/span.hh>
-#include <clean-core/string_view.hh>
 
 #include <typed-geometry/tg.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/common/growing_writer.hh>
-#include <phantasm-renderer/default_config.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
@@ -177,7 +176,13 @@ public:
 public:
     Frame(Frame const&) = delete;
     Frame& operator=(Frame const&) = delete;
-    Frame(Frame&& rhs) noexcept : mCtx(rhs.mCtx), mWriter(cc::move(rhs.mWriter)), mPendingTransitionCommand(rhs.mPendingTransitionCommand)
+    Frame(Frame&& rhs) noexcept
+      : mCtx(rhs.mCtx),
+        mWriter(cc::move(rhs.mWriter)),
+        mPendingTransitionCommand(rhs.mPendingTransitionCommand),
+        mFreeables(cc::move(rhs.mFramebufferActive)),
+        mFramebufferActive(rhs.mFramebufferActive),
+        mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
     {
         rhs.mCtx = nullptr;
     }
@@ -190,6 +195,9 @@ public:
             mCtx = rhs.mCtx;
             mWriter = cc::move(rhs.mWriter);
             mPendingTransitionCommand = rhs.mPendingTransitionCommand;
+            mFreeables = cc::move(rhs.mFreeables);
+            mFramebufferActive = rhs.mFramebufferActive;
+            mPresentAfterSubmitRequest = rhs.mPresentAfterSubmitRequest;
             rhs.mCtx = nullptr;
         }
 
@@ -238,7 +246,7 @@ private:
     // Context-side API
 private:
     friend Context;
-    Frame(Context* ctx, size_t size) : mCtx(ctx), mWriter(size) {}
+    Frame(Context* ctx, size_t size, cc::allocator* alloc) : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc) {}
 
     void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }
@@ -249,7 +257,7 @@ private:
     Context* mCtx;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
-    cc::vector<freeable_cached_obj> mFreeables;
+    cc::alloc_vector<freeable_cached_obj> mFreeables;
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };

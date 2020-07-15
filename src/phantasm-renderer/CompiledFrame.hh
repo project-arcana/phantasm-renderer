@@ -1,6 +1,6 @@
 #pragma once
 
-#include <clean-core/vector.hh>
+#include <clean-core/alloc_vector.hh>
 
 #include <phantasm-hardware-interface/handles.hh>
 
@@ -45,7 +45,7 @@ public:
 
 private:
     friend class Context;
-    CompiledFrame(Context* parent, phi::handle::command_list cmdlist, cc::vector<freeable_cached_obj>&& freeables, phi::handle::swapchain present_after_submit_sc)
+    CompiledFrame(Context* parent, phi::handle::command_list cmdlist, cc::alloc_vector<freeable_cached_obj>&& freeables, phi::handle::swapchain present_after_submit_sc)
       : parent(parent), cmdlist(cmdlist), freeables(cc::move(freeables)), present_after_submit_swapchain(present_after_submit_sc)
     {
     }
@@ -54,7 +54,7 @@ private:
 
     Context* parent = nullptr;
     phi::handle::command_list cmdlist = phi::handle::null_command_list;
-    cc::vector<freeable_cached_obj> freeables;
+    cc::alloc_vector<freeable_cached_obj> freeables;
     phi::handle::swapchain present_after_submit_swapchain = phi::handle::null_swapchain;
 };
 }

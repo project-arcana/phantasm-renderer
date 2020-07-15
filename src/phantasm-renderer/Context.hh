@@ -37,7 +37,7 @@ public:
     //
 
     /// start a frame, allowing command recording
-    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
+    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048, cc::allocator* alloc = cc::system_allocator);
 
     /// create a 1D texture
     [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
