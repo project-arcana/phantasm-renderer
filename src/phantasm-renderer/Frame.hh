@@ -4,7 +4,7 @@
 #include <clean-core/defer.hh>
 #include <clean-core/span.hh>
 
-#include <typed-geometry/tg.hh>
+#include <typed-geometry/types/size.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
 
@@ -55,7 +55,7 @@ public:
     /// start a compute pass from persisted PSO
     [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
 
-    /// starta compute pass from a raw phi PSO
+    /// start a compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 
     /// fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
@@ -70,12 +70,7 @@ public:
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
-    void present_after_submit(render_target const& backbuffer, swapchain sc)
-    {
-        CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
-        transition(backbuffer, state::present);
-        mPresentAfterSubmitRequest = sc.handle;
-    }
+    void present_after_submit(render_target const& backbuffer, swapchain sc);
 
     //
     // commands
@@ -187,22 +182,7 @@ public:
         rhs.mCtx = nullptr;
     }
 
-    Frame& operator=(Frame&& rhs) noexcept
-    {
-        if (this != &rhs)
-        {
-            internalDestroy();
-            mCtx = rhs.mCtx;
-            mWriter = cc::move(rhs.mWriter);
-            mPendingTransitionCommand = rhs.mPendingTransitionCommand;
-            mFreeables = cc::move(rhs.mFreeables);
-            mFramebufferActive = rhs.mFramebufferActive;
-            mPresentAfterSubmitRequest = rhs.mPresentAfterSubmitRequest;
-            rhs.mCtx = nullptr;
-        }
-
-        return *this;
-    }
+    Frame& operator=(Frame&& rhs) noexcept;
 
     ~Frame() { internalDestroy(); }
 
@@ -246,7 +226,7 @@ private:
     // Context-side API
 private:
     friend Context;
-    Frame(Context* ctx, size_t size, cc::allocator* alloc) : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc) {}
+    explicit Frame(Context* ctx, size_t size, cc::allocator* alloc) : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc) {}
 
     void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }

@@ -32,6 +32,23 @@ raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pas
     return buildFramebuffer(raw_command, -1, nullptr);
 }
 
+raii::Frame& raii::Frame::operator=(raii::Frame&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        internalDestroy();
+        mCtx = rhs.mCtx;
+        mWriter = cc::move(rhs.mWriter);
+        mPendingTransitionCommand = rhs.mPendingTransitionCommand;
+        mFreeables = cc::move(rhs.mFreeables);
+        mFramebufferActive = rhs.mFramebufferActive;
+        mPresentAfterSubmitRequest = rhs.mPresentAfterSubmitRequest;
+        rhs.mCtx = nullptr;
+    }
+
+    return *this;
+}
+
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
 void raii::Frame::transition(const buffer& res, pr::state target, shader_flags dependency)
@@ -52,6 +69,13 @@ void raii::Frame::transition(phi::handle::resource raw_resource, pr::state targe
         flushPendingTransitions();
 
     mPendingTransitionCommand.add(raw_resource, target, dependency);
+}
+
+void raii::Frame::present_after_submit(const render_target& backbuffer, swapchain sc)
+{
+    CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
+    transition(backbuffer, state::present);
+    mPresentAfterSubmitRequest = sc.handle;
 }
 
 void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset, size_t num_bytes)
@@ -183,7 +207,7 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
     CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
 
     auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
-    auto const use_d3d12_per_row_alingment = mCtx->get_backend().getBackendType() == phi::backend_type::d3d12;
+    auto const use_d3d12_per_row_alingment = mCtx->get_backend_type() == pr::backend::d3d12;
     auto* const upload_buffer_map = mCtx->map_buffer(upload_buffer);
 
     phi::cmd::copy_buffer_to_texture command;
