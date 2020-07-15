@@ -339,6 +339,13 @@ public:
     // miscellaneous
     //
 
+    /// resets the debug name of a resource
+    /// this is the name visible to diagnostic tools and referred to by validation warnings
+    void set_debug_name(texture const& tex, char const* name);
+    void set_debug_name(render_target const& rt, char const* name);
+    void set_debug_name(buffer const& buf, char const* name);
+    void set_debug_name(phi::handle::resource raw_res, char const* name);
+
     /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
     /// ends a capture previously started with start_capture()

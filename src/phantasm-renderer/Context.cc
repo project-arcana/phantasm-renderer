@@ -463,6 +463,11 @@ unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg
     return pixel.y * row_width + pixel.x * bytes_per_pixel;
 }
 
+void Context::set_debug_name(const texture& tex, const char* name) { mBackend->setDebugName(tex.res.handle, name); }
+void Context::set_debug_name(const render_target& rt, const char* name) { mBackend->setDebugName(rt.res.handle, name); }
+void Context::set_debug_name(const buffer& buf, const char* name) { mBackend->setDebugName(buf.res.handle, name); }
+void Context::set_debug_name(phi::handle::resource raw_res, const char* name) { mBackend->setDebugName(raw_res, name); }
+
 render_target Context::acquire_backbuffer(swapchain const& sc)
 {
     auto const backbuffer = mBackend->acquireBackbuffer(sc.handle);
