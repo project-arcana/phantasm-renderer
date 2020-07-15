@@ -320,18 +320,26 @@ public:
     unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
+    /// returns the difference between two GPU timestamp values in milliseconds
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
     {
         return (double(end - start) / mGPUTimestampFrequency) * 1000.;
     }
+    /// returns the difference between two GPU timestamp values in microseconds
+    uint64_t get_timestamp_difference_microseconds(uint64_t start, uint64_t end) const
+    {
+        return (end - start) / (mGPUTimestampFrequency / 1'000'000);
+    }
 
     /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
+    /// ex. use case: allocating upload buffers of the right size to upload textures
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
+    /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
     unsigned calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
 
