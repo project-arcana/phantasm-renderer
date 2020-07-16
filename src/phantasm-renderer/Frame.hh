@@ -40,11 +40,11 @@ public:
 
         // add targets
         (addRenderTargetToFramebuffer(bcmd, num_samples, targets), ...);
-        return buildFramebuffer(bcmd, num_samples, nullptr);
+        return buildFramebuffer(bcmd, num_samples, nullptr, true);
     }
 
     /// create a framebuffer from a raw phi command
-    [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command) &;
+    [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command, bool auto_transition = true) &;
 
     /// create a framebuffer using a builder with more configuration options
     [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
@@ -202,7 +202,7 @@ private:
     // framebuffer_builder-side API
 private:
     friend struct framebuffer_builder;
-    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override);
+    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override, bool auto_transition);
 
     // Framebuffer-side API
 private:
