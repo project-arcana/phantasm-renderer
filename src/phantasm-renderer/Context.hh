@@ -349,10 +349,10 @@ public:
 
     /// resets the debug name of a resource
     /// this is the name visible to diagnostic tools and referred to by validation warnings
-    void set_debug_name(texture const& tex, char const* name);
-    void set_debug_name(render_target const& rt, char const* name);
-    void set_debug_name(buffer const& buf, char const* name);
-    void set_debug_name(phi::handle::resource raw_res, char const* name);
+    void set_debug_name(texture const& tex, cc::string_view name);
+    void set_debug_name(render_target const& rt, cc::string_view name);
+    void set_debug_name(buffer const& buf, cc::string_view name);
+    void set_debug_name(phi::handle::resource raw_res, cc::string_view name);
 
     /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
@@ -393,7 +393,7 @@ public:
     bool is_initialized() const { return mBackend != nullptr; }
 
 public:
-    // deleted overrides
+    // deleted overridess
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
