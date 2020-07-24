@@ -393,7 +393,7 @@ public:
     bool is_initialized() const { return mBackend != nullptr; }
 
 public:
-    // deleted overridess
+    // deleted overrides
 
     // auto_ types are not to be freed manually, only free unlocked types
     template <class T, bool Cached>
