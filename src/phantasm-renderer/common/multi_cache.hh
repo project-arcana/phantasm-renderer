@@ -60,6 +60,8 @@ public:
     template <class F>
     void cull(gpu_epoch_t current_gpu_epoch, F&& free_func)
     {
+        (void)current_gpu_epoch;
+        (void)free_func;
         auto lg = std::lock_guard(_mutex);
         ++_current_gen;
         // TODO go through a subsection of the map, and if the last gen used is old, delete old entries
