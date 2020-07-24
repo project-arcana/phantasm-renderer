@@ -3,7 +3,6 @@
 #include <type_traits>
 
 #include <clean-core/new.hh>
-#include <clean-core/storage.hh>
 #include <clean-core/xxHash.hh>
 
 #include "murmur_hash.hh"
@@ -15,45 +14,28 @@ struct hashable_storage
 {
     static_assert(std::is_trivially_destructible_v<T>, "T must not have a destructor");
     static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+    static_assert(sizeof(T) > 0, "T must be fully known");
 
 public:
-    T& get() { return _storage.value; }
-    T const& get() const { return _storage.value; }
-
+    T& get() { return *reinterpret_cast<T*>(_storage); }
+    T const& get() const { return *reinterpret_cast<T const*>(_storage); }
 
     hashable_storage()
     {
-        std::memset(&_storage.value, 0, sizeof(T)); // memset padding and unitialized bytes to 0
+        std::memset(_storage, 0, sizeof(_storage)); // memset padding and unitialized bytes to 0
 
         if constexpr (!std::is_trivially_constructible_v<T, void>)
-            new (&_storage.value) T(); // call default ctor
-    }
-
-    // copy ctor/assign is memcpy to preserve the memset padding - noexcept to allow noexcept default move in outer types
-    hashable_storage(hashable_storage const& rhs) noexcept { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
-    hashable_storage& operator=(hashable_storage const& rhs) noexcept
-    {
-        if (this != &rhs)
-            std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T));
-        return *this;
-    }
-
-    hashable_storage(hashable_storage&& rhs) noexcept { std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T)); }
-    hashable_storage& operator=(hashable_storage&& rhs) noexcept
-    {
-        if (this != &rhs)
-            std::memcpy(&_storage.value, &rhs._storage.value, sizeof(T));
-        return *this;
+            new (&_storage) T(); // call default ctor
     }
 
     // with the established guarantees, hashing and comparison are trivial
-    void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(&_storage.value, sizeof(T), 0, out); }
+    void get_murmur(murmur_hash& out) const { murmurhash3_x64_128(_storage, sizeof(T), 0, out); }
 
-    cc::hash_t get_xxhash() const { return cc::hash_xxh3(cc::as_byte_span(_storage.value), 0); }
+    cc::hash_t get_xxhash() const { return cc::hash_xxh3(cc::as_byte_span(_storage), 0); }
 
-    bool operator==(hashable_storage<T> const& rhs) const noexcept { return std::memcmp(&_storage.value, &rhs._storage.value, sizeof(T)) == 0; }
+    bool operator==(hashable_storage<T> const& rhs) const noexcept { return std::memcmp(_storage.value, rhs._storage, sizeof(_storage)) == 0; }
 
 private:
-    cc::storage_for<T> _storage;
+    alignas(alignof(T)) std::byte _storage[sizeof(T)];
 };
 }

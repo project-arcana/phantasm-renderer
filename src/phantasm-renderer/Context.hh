@@ -37,46 +37,57 @@ public:
     //
 
     /// start a frame, allowing command recording
-    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048);
+    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048, cc::allocator* alloc = cc::system_allocator);
 
     /// create a 1D texture
-    [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a 2D texture
-    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a 3D texture
-    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a texture cube
-    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a 1D texture array
-    [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a 2D texture array
-    [[nodiscard]] auto_texture make_texture_array(tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false);
+    [[nodiscard]] auto_texture make_texture_array(
+        tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a texture from an info struct
-    [[nodiscard]] auto_texture make_texture(texture_info const& info);
+    [[nodiscard]] auto_texture make_texture(texture_info const& info, char const* debug_name = nullptr);
     /// create a texture from the info of a different texture. NOTE: does not concern contents or state
-    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source) { return make_texture(clone_source.info); }
+    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source, char const* debug_name = nullptr)
+    {
+        return make_texture(clone_source.info, debug_name);
+    }
 
     /// create a render target
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1, char const* debug_name = nullptr);
     /// create a render target with an optimized clear value
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
+    [[nodiscard]] auto_render_target make_target(
+        tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear, char const* debug_name = nullptr);
     /// create a render target from an info struct
-    [[nodiscard]] auto_render_target make_target(render_target_info const& info);
+    [[nodiscard]] auto_render_target make_target(render_target_info const& info, char const* debug_name = nullptr);
     /// create a render target from the info of a different one. NOTE: does not concern contents or state
-    [[nodiscard]] auto_render_target make_target_clone(render_target const& clone_source) { return make_target(clone_source.info); }
+    [[nodiscard]] auto_render_target make_target_clone(render_target const& clone_source, char const* debug_name = nullptr)
+    {
+        return make_target(clone_source.info, debug_name);
+    }
 
     /// create a buffer
-    [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
+    [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false, char const* debug_name = nullptr);
     /// create a mapped upload buffer which can be directly written to from CPU
-    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0);
+    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, char const* debug_name = nullptr);
     /// create a mapped upload buffer, with a size based on accomodating a given texture's contents
-    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1);
+    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1, char const* debug_name = nullptr);
     /// create a mapped readback buffer which can be directly read from CPU
-    [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0);
+    [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0, char const* debug_name = nullptr);
     /// create a buffer from an info struct
-    [[nodiscard]] auto_buffer make_buffer(buffer_info const& info);
+    [[nodiscard]] auto_buffer make_buffer(buffer_info const& info, char const* debug_name = nullptr);
     /// create a buffer from the info of a different buffer. NOTE: does not concern contents or state
-    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source) { return make_buffer(clone_source.info); }
+    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source, char const* debug_name = nullptr)
+    {
+        return make_buffer(clone_source.info, debug_name);
+    }
 
 
     /// create a shader from binary data
@@ -133,7 +144,7 @@ public:
     //
 
     /// create a resource of undetermined type, without RAII management (use free_untyped)
-    [[nodiscard]] raw_resource make_untyped_unlocked(generic_resource_info const& info);
+    [[nodiscard]] raw_resource make_untyped_unlocked(generic_resource_info const& info, char const* debug_name = nullptr);
 
     /// create or retrieve a resource of undetermined type from cache, without RAII management (use free_to_cache_untyped)
     [[nodiscard]] raw_resource get_untyped_unlocked(generic_resource_info const& info);
@@ -309,24 +320,39 @@ public:
     unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
+    /// returns the difference between two GPU timestamp values in milliseconds
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
     {
         return (double(end - start) / mGPUTimestampFrequency) * 1000.;
     }
+    /// returns the difference between two GPU timestamp values in microseconds
+    uint64_t get_timestamp_difference_microseconds(uint64_t start, uint64_t end) const
+    {
+        return (end - start) / (mGPUTimestampFrequency / 1'000'000);
+    }
 
     /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
+    /// ex. use case: allocating upload buffers of the right size to upload textures
     unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
+    /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
     unsigned calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
 
     //
     // miscellaneous
     //
+
+    /// resets the debug name of a resource
+    /// this is the name visible to diagnostic tools and referred to by validation warnings
+    void set_debug_name(texture const& tex, cc::string_view name);
+    void set_debug_name(render_target const& rt, cc::string_view name);
+    void set_debug_name(buffer const& buf, cc::string_view name);
+    void set_debug_name(phi::handle::resource raw_res, cc::string_view name);
 
     /// attempts to start a capture in a connected tool like Renderdoc, PIX, NSight etc
     bool start_capture();
@@ -395,9 +421,9 @@ private:
     void internalInitialize();
 
     // creation
-    render_target createRenderTarget(render_target_info const& info);
-    texture createTexture(texture_info const& info);
-    buffer createBuffer(buffer_info const& info);
+    render_target createRenderTarget(render_target_info const& info, char const* dbg_name = nullptr);
+    texture createTexture(texture_info const& info, char const* dbg_name = nullptr);
+    buffer createBuffer(buffer_info const& info, char const* dbg_name = nullptr);
 
     // multi cache acquire
     render_target acquireRenderTarget(render_target_info const& info);
@@ -468,11 +494,6 @@ private:
     } mSafetyState;
 #endif
 };
-
-inline auto_buffer Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips)
-{
-    return make_upload_buffer(calculate_texture_upload_size(tex, num_mips));
-}
 
 inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, pr::format fmt, unsigned num_mips) const
 {

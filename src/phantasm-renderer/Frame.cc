@@ -27,9 +27,26 @@ void rowwise_copy(std::byte const* src, std::byte* dest, unsigned dest_row_strid
 
 using namespace pr;
 
-raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command) &
+raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command, bool auto_transition) &
 {
-    return buildFramebuffer(raw_command, -1, nullptr);
+    return buildFramebuffer(raw_command, -1, nullptr, auto_transition);
+}
+
+raii::Frame& raii::Frame::operator=(raii::Frame&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        internalDestroy();
+        mCtx = rhs.mCtx;
+        mWriter = cc::move(rhs.mWriter);
+        mPendingTransitionCommand = rhs.mPendingTransitionCommand;
+        mFreeables = cc::move(rhs.mFreeables);
+        mFramebufferActive = rhs.mFramebufferActive;
+        mPresentAfterSubmitRequest = rhs.mPresentAfterSubmitRequest;
+        rhs.mCtx = nullptr;
+    }
+
+    return *this;
 }
 
 raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
@@ -52,6 +69,13 @@ void raii::Frame::transition(phi::handle::resource raw_resource, pr::state targe
         flushPendingTransitions();
 
     mPendingTransitionCommand.add(raw_resource, target, dependency);
+}
+
+void raii::Frame::present_after_submit(const render_target& backbuffer, swapchain sc)
+{
+    CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
+    transition(backbuffer, state::present);
+    mPresentAfterSubmitRequest = sc.handle;
 }
 
 void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset, size_t num_bytes)
@@ -183,7 +207,7 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
     CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
 
     auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
-    auto const use_d3d12_per_row_alingment = mCtx->get_backend().getBackendType() == phi::backend_type::d3d12;
+    auto const use_d3d12_per_row_alingment = mCtx->get_backend_type() == pr::backend::d3d12;
     auto* const upload_buffer_map = mCtx->map_buffer(upload_buffer);
 
     phi::cmd::copy_buffer_to_texture command;
@@ -308,19 +332,23 @@ void raii::Frame::internalDestroy()
     }
 }
 
-raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override)
+raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override, bool auto_transition)
 {
-    for (auto const& rt : bcmd.render_targets)
+    if (auto_transition)
     {
-        transition(rt.rv.resource, pr::state::render_target);
+        for (auto const& rt : bcmd.render_targets)
+        {
+            transition(rt.rv.resource, pr::state::render_target);
+        }
+
+        if (bcmd.depth_target.rv.resource.is_valid())
+        {
+            transition(bcmd.depth_target.rv.resource, pr::state::depth_write);
+        }
+
+        flushPendingTransitions();
     }
 
-    if (bcmd.depth_target.rv.resource.is_valid())
-    {
-        transition(bcmd.depth_target.rv.resource, pr::state::depth_write);
-    }
-
-    flushPendingTransitions();
     mFramebufferActive = true;
     mWriter.add_command(bcmd);
 
