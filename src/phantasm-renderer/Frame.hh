@@ -1,15 +1,14 @@
 #pragma once
 
+#include <clean-core/alloc_vector.hh>
 #include <clean-core/defer.hh>
 #include <clean-core/span.hh>
-#include <clean-core/string_view.hh>
 
-#include <typed-geometry/tg.hh>
+#include <typed-geometry/types/size.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/common/growing_writer.hh>
-#include <phantasm-renderer/default_config.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
@@ -41,11 +40,11 @@ public:
 
         // add targets
         (addRenderTargetToFramebuffer(bcmd, num_samples, targets), ...);
-        return buildFramebuffer(bcmd, num_samples, nullptr);
+        return buildFramebuffer(bcmd, num_samples, nullptr, true);
     }
 
     /// create a framebuffer from a raw phi command
-    [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command) &;
+    [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command, bool auto_transition = true) &;
 
     /// create a framebuffer using a builder with more configuration options
     [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
@@ -56,7 +55,7 @@ public:
     /// start a compute pass from persisted PSO
     [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
 
-    /// starta compute pass from a raw phi PSO
+    /// start a compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 
     /// fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
@@ -71,12 +70,7 @@ public:
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
-    void present_after_submit(render_target const& backbuffer, swapchain sc)
-    {
-        CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
-        transition(backbuffer, state::present);
-        mPresentAfterSubmitRequest = sc.handle;
-    }
+    void present_after_submit(render_target const& backbuffer, swapchain sc);
 
     //
     // commands
@@ -177,24 +171,18 @@ public:
 public:
     Frame(Frame const&) = delete;
     Frame& operator=(Frame const&) = delete;
-    Frame(Frame&& rhs) noexcept : mCtx(rhs.mCtx), mWriter(cc::move(rhs.mWriter)), mPendingTransitionCommand(rhs.mPendingTransitionCommand)
+    Frame(Frame&& rhs) noexcept
+      : mCtx(rhs.mCtx),
+        mWriter(cc::move(rhs.mWriter)),
+        mPendingTransitionCommand(rhs.mPendingTransitionCommand),
+        mFreeables(cc::move(rhs.mFramebufferActive)),
+        mFramebufferActive(rhs.mFramebufferActive),
+        mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
     {
         rhs.mCtx = nullptr;
     }
 
-    Frame& operator=(Frame&& rhs) noexcept
-    {
-        if (this != &rhs)
-        {
-            internalDestroy();
-            mCtx = rhs.mCtx;
-            mWriter = cc::move(rhs.mWriter);
-            mPendingTransitionCommand = rhs.mPendingTransitionCommand;
-            rhs.mCtx = nullptr;
-        }
-
-        return *this;
-    }
+    Frame& operator=(Frame&& rhs) noexcept;
 
     ~Frame() { internalDestroy(); }
 
@@ -214,7 +202,7 @@ private:
     // framebuffer_builder-side API
 private:
     friend struct framebuffer_builder;
-    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override);
+    Framebuffer buildFramebuffer(phi::cmd::begin_render_pass const& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override, bool auto_transition);
 
     // Framebuffer-side API
 private:
@@ -238,7 +226,7 @@ private:
     // Context-side API
 private:
     friend Context;
-    Frame(Context* ctx, size_t size) : mCtx(ctx), mWriter(size) {}
+    explicit Frame(Context* ctx, size_t size, cc::allocator* alloc) : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc) {}
 
     void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }
@@ -249,7 +237,7 @@ private:
     Context* mCtx;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
-    cc::vector<freeable_cached_obj> mFreeables;
+    cc::alloc_vector<freeable_cached_obj> mFreeables;
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };

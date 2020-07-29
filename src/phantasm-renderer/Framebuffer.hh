@@ -160,6 +160,13 @@ public:
         return *this;
     }
 
+    /// disable automatical transitions of render and depth targets into fitting states
+    [[nodiscard]] framebuffer_builder& no_transitions()
+    {
+        _wants_auto_transitions = false;
+        return *this;
+    }
+
     /// create the framebuffer
     [[nodiscard]] Framebuffer make();
 
@@ -199,6 +206,8 @@ private:
     bool _has_custom_viewport = false;
     // if true, custom blendstate was specified
     bool _has_custom_blendstate = false;
+    // if true, wants the frame to automatically insert transitions for all render targets
+    bool _wants_auto_transitions = true;
     int _num_samples = -1; ///< amount of samples of the most recently added RT (-1 initially)
 };
 }

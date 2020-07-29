@@ -1,14 +1,21 @@
 #pragma once
 
+#include <clean-core/allocator.hh>
+
 #include <phantasm-hardware-interface/commands.hh>
 
 namespace pr
 {
-// naive growing writer, TODO: pool and reuse buffers
+// naive growing writer
 struct growing_writer
 {
-    growing_writer(size_t initial_size);
-    growing_writer(growing_writer&& rhs) noexcept : _writer(rhs._writer) { rhs._writer.exchange_buffer(nullptr, 0); }
+    growing_writer(size_t initial_size, cc::allocator* alloc = cc::system_allocator);
+    growing_writer(growing_writer&& rhs) noexcept : _writer(rhs._writer), _alloc(rhs._alloc)
+    {
+        rhs._writer.exchange_buffer(nullptr, 0);
+        rhs._alloc = cc::system_allocator;
+    }
+
     growing_writer& operator=(growing_writer&& rhs) noexcept;
 
     ~growing_writer();
@@ -42,6 +49,7 @@ struct growing_writer
 
 private:
     phi::command_stream_writer _writer;
+    cc::allocator* _alloc;
 };
 
 }
