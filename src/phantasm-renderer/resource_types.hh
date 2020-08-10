@@ -16,8 +16,8 @@ namespace pr
 
 struct raw_resource
 {
-    phi::handle::resource handle;
-    uint64_t guid;
+    phi::handle::resource handle = phi::handle::null_resource;
+    uint64_t guid = 0;
 };
 
 struct buffer
