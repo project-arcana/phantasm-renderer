@@ -99,6 +99,18 @@ public:
         return *this;
     }
 
+    graphics_pass_info& wireframe(bool enable = true)
+    {
+        _storage.get().graphics_config.wireframe = enable;
+        return *this;
+    }
+
+    graphics_pass_info& frontface_winding(bool counterclockwise)
+    {
+        _storage.get().graphics_config.frontface_counterclockwise = counterclockwise;
+        return *this;
+    }
+
     graphics_pass_info& topology(pr::primitive_topology topology)
     {
         _storage.get().graphics_config.topology = topology;
