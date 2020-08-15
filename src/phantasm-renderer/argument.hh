@@ -1,6 +1,6 @@
 #pragma once
 
-#include <clean-core/vector.hh>
+#include <clean-core/alloc_vector.hh>
 
 #include <phantasm-hardware-interface/arguments.hh>
 
@@ -182,8 +182,6 @@ private:
 struct prebuilt_argument
 {
     phi::handle::shader_view _sv = phi::handle::null_shader_view;
-    phi::handle::resource _cbv = phi::handle::null_resource;
-    unsigned _cbv_offset = 0;
 };
 
 using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, false>;
@@ -280,17 +278,17 @@ public:
 
 public:
     friend class Context;
-    argument_builder(Context* parent) : _parent(parent)
+    argument_builder(Context* parent, cc::allocator* temp_alloc) : _parent(parent)
     {
-        _srvs.reserve(16);
-        _uavs.reserve(16);
-        _samplers.reserve(8);
+        _srvs.reset_reserve(temp_alloc, 16);
+        _uavs.reset_reserve(temp_alloc, 16);
+        _samplers.reset_reserve(temp_alloc, 8);
     }
     Context* const _parent;
 
-    cc::vector<phi::resource_view> _srvs;
-    cc::vector<phi::resource_view> _uavs;
-    cc::vector<phi::sampler_config> _samplers;
+    cc::alloc_vector<phi::resource_view> _srvs;
+    cc::alloc_vector<phi::resource_view> _uavs;
+    cc::alloc_vector<phi::sampler_config> _samplers;
 };
 
 }
