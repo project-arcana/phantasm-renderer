@@ -781,7 +781,7 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, unsi
     return make_upload_buffer(calculate_texture_upload_size(tex, num_mips), 0, debug_name);
 }
 
-unsigned pr::Context::calculate_texture_upload_size(const texture &texture, unsigned num_mips) const
+unsigned pr::Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
 {
     return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
 }
