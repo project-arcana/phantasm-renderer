@@ -53,10 +53,10 @@ void pr::argument::fill_default_uav(phi::resource_view& new_rv, const pr::textur
 
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
 {
-    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false)}, _parent};
 }
 
 pr::auto_prebuilt_argument pr::argument_builder::make_compute()
 {
-    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true), phi::handle::null_resource, 0}, _parent};
+    return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true)}, _parent};
 }
