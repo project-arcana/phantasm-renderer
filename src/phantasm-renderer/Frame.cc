@@ -10,17 +10,18 @@
 #include <phantasm-hardware-interface/detail/format_size.hh>
 
 #include <phantasm-renderer/Context.hh>
+#include <phantasm-renderer/common/log.hh>
 
 #include "CompiledFrame.hh"
 
 
 namespace
 {
-void rowwise_copy(std::byte const* src, std::byte* dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned height_pixels)
+void rowwise_copy(cc::span<std::byte const> src, std::byte* dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned height_pixels)
 {
     for (auto y = 0u; y < height_pixels; ++y)
     {
-        std::memcpy(dest + y * dest_row_stride_bytes, src + y * row_size_bytes, row_size_bytes);
+        std::memcpy(dest + y * dest_row_stride_bytes, src.data() + y * row_size_bytes, row_size_bytes);
     }
 }
 }
@@ -199,7 +200,7 @@ void raii::Frame::resolve_queries(const query_range& src, const buffer& dest, un
     mWriter.add_command(rcmd);
 }
 
-void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffer& upload_buffer, const texture& dest_texture)
+void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, const buffer& upload_buffer, const texture& dest_texture)
 {
     transition(dest_texture, pr::state::copy_dest);
     flushPendingTransitions();
@@ -236,6 +237,7 @@ void raii::Frame::upload_texture_data(std::byte const* texture_data, const buffe
         auto const mip_offset_bytes = mip_row_stride_bytes * command.dest_height;
         accumulated_offset_bytes += mip_offset_bytes;
 
+        CC_ASSERT(texture_data.size() >= mip_row_size_bytes * command.dest_height && "texture source data too small");
         rowwise_copy(texture_data, upload_buffer_map + command.source_offset, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
     }
 

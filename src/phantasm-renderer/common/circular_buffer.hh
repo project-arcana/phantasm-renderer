@@ -2,8 +2,6 @@
 
 #include <cstddef>
 
-#include <rich-log/log.hh>
-
 #include <clean-core/move.hh>
 #include <clean-core/new.hh>
 #include <clean-core/utility.hh>

@@ -128,7 +128,7 @@ public:
 
     /// uploads texture data correctly to a destination texture respecting rowwise alignment
     /// expects an appropriately sized upload buffer (see Context::calculate_texture_upload_size)
-    void upload_texture_data(std::byte const* texture_data, buffer const& upload_buffer, texture const& dest_texture);
+    void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
 
     //
     // raw phi commands

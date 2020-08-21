@@ -6,9 +6,7 @@
 #include <clean-core/typedefs.hh>
 #include <clean-core/vector.hh>
 
-#include <rich-log/log.hh>
-
-#include <phantasm-hardware-interface/types.hh>
+#include <phantasm-hardware-interface/handles.hh>
 
 #include <phantasm-renderer/fwd.hh>
 
@@ -59,6 +57,7 @@ public:
         elem.required_gpu_epoch = current_cpu_epoch;
     }
 
+    /// destroys all elements that are not currently referenced (CPU) or in flight (GPU)
     template <class F>
     void cull_all(gpu_epoch_t current_gpu_epoch, F&& destroy_func)
     {

@@ -6,10 +6,9 @@
 #include <clean-core/span.hh>
 #include <clean-core/string_view.hh>
 
-#include <typed-geometry/tg-lean.hh>
+#include <typed-geometry/types/size.hh>
 
 #include <phantasm-hardware-interface/fwd.hh>
-#include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
 
 #include <dxc-wrapper/compiler.hh>
@@ -97,10 +96,18 @@ public:
 
     /// create a persisted shader argument for graphics passes
     [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    /// create a persisted shader argument for graphics passes from raw phi types
+    [[nodiscard]] auto_prebuilt_argument make_graphics_argument(cc::span<phi::resource_view const> srvs,
+                                                                cc::span<phi::resource_view const> uavs,
+                                                                cc::span<phi::sampler_config const> samplers);
     /// create a persisted shader argument for compute passes
     [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument const& arg);
+    /// create a persisted shader argument for compute passes from raw phi types
+    [[nodiscard]] auto_prebuilt_argument make_compute_argument(cc::span<phi::resource_view const> srvs,
+                                                               cc::span<phi::resource_view const> uavs,
+                                                               cc::span<phi::sampler_config const> samplers);
     /// create a persisted shader argument, builder pattern
-    [[nodiscard]] argument_builder build_argument() { return {this}; }
+    [[nodiscard]] argument_builder build_argument(cc::allocator* temp_alloc = cc::system_allocator) { return {this, temp_alloc}; }
 
     /// create a graphics pipeline state
     [[nodiscard]] auto_graphics_pipeline_state make_pipeline_state(graphics_pass_info const& gp, framebuffer_info const& fb);
@@ -363,10 +370,10 @@ public:
     phi::Backend& get_backend() { return *mBackend; }
     pr::backend get_backend_type() const { return mBackendType; }
 
-    /// monotonously increasing uint64, always greater or equal to GPU epoch
+    /// uint64 incremented on every submit, always greater or equal to GPU
     gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
 
-    /// monotously increasing uint64, GPU timeline, always less or equal to CPU
+    /// uint64 incremented after every finished commandlist, GPU timeline, always less or equal to CPU
     gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker.get_current_epoch_gpu(); }
 
 public:
@@ -494,19 +501,4 @@ private:
     } mSafetyState;
 #endif
 };
-
-inline unsigned Context::calculate_texture_upload_size(tg::isize2 size, pr::format fmt, unsigned num_mips) const
-{
-    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
-}
-
-inline unsigned Context::calculate_texture_upload_size(int width, pr::format fmt, unsigned num_mips) const
-{
-    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
-}
-
-inline unsigned Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
-{
-    return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
-}
 }

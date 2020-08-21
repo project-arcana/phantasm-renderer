@@ -163,13 +163,27 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 auto_prebuilt_argument Context::make_graphics_argument(const argument& arg)
 {
     auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false), phi::handle::null_resource, 0}, this};
+    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false)}, this};
+}
+
+auto_prebuilt_argument Context::make_graphics_argument(cc::span<const phi::resource_view> srvs,
+                                                       cc::span<const phi::resource_view> uavs,
+                                                       cc::span<const phi::sampler_config> samplers)
+{
+    return {prebuilt_argument{mBackend->createShaderView(srvs, uavs, samplers, false)}, this};
 }
 
 auto_prebuilt_argument Context::make_compute_argument(const argument& arg)
 {
     auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true), phi::handle::null_resource, 0}, this};
+    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true)}, this};
+}
+
+auto_prebuilt_argument Context::make_compute_argument(cc::span<const phi::resource_view> srvs,
+                                                      cc::span<const phi::resource_view> uavs,
+                                                      cc::span<const phi::sampler_config> samplers)
+{
+    return {prebuilt_argument{mBackend->createShaderView(srvs, uavs, samplers, true)}, this};
 }
 
 auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
@@ -765,4 +779,19 @@ void Context::free_compute_sv(cc::hash_t hash) { mCacheComputeSVs.free(hash, mGp
 auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, unsigned num_mips, const char* debug_name)
 {
     return make_upload_buffer(calculate_texture_upload_size(tex, num_mips), 0, debug_name);
+}
+
+unsigned pr::Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
+}
+
+unsigned pr::Context::calculate_texture_upload_size(int width, format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
+}
+
+unsigned pr::Context::calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips) const
+{
+    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
 }
