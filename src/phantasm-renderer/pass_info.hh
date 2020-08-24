@@ -234,7 +234,7 @@ public:
     /// Add a depth render target based on format only
     framebuffer_info& depth(pr::format format)
     {
-        _storage.get().add_depth_target(format);
+        _storage.get().set_depth_target(format);
         return *this;
     }
 

@@ -80,7 +80,7 @@ constexpr phi::format to_attribute_format()
 
     else
     {
-        static_assert(sizeof(T) == 0, "incompatbile attribute type");
+        static_assert(sizeof(T) == 0, "incompatible attribute type");
         return af::rgba32f;
     }
 }

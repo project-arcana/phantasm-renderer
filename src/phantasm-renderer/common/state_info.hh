@@ -40,7 +40,7 @@ struct graphics_pass_info_data
     bool has_root_consts = false;
     phi::detail::trivial_capped_vector<phi::vertex_attribute_info, 8> vertex_attributes;
     phi::detail::trivial_capped_vector<phi::arg::shader_arg_shape, phi::limits::max_shader_arguments> arg_shapes;
-    phi::detail::trivial_capped_vector<cc::hash_t, 5> shader_hashes;
+    phi::detail::trivial_capped_vector<cc::hash_t, phi::limits::num_graphics_shader_stages> shader_hashes;
 };
 
 struct compute_pass_info_data
