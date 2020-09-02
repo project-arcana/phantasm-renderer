@@ -344,6 +344,7 @@ public:
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(render_target const& target) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset

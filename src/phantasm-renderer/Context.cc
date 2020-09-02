@@ -755,6 +755,11 @@ unsigned pr::Context::calculate_texture_upload_size(const texture& texture, unsi
     return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
 }
 
+unsigned Context::calculate_texture_upload_size(const render_target& target) const
+{
+    return calculate_texture_upload_size({target.info.width, target.info.height, int(target.info.array_size)}, target.info.format, 1);
+}
+
 unsigned pr::Context::calculate_texture_upload_size(int width, format fmt, unsigned num_mips) const
 {
     return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
