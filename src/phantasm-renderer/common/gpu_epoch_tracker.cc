@@ -1,6 +1,5 @@
 #include "gpu_epoch_tracker.hh"
 
-
 #include <clean-core/assert.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>

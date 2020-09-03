@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <mutex>
 
 #include <clean-core/span.hh>
@@ -16,6 +17,7 @@
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/single_cache.hh>
+#include <phantasm-renderer/detail/deferred_destruction_queue.hh>
 
 #include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/enums.hh>
@@ -157,7 +159,10 @@ public:
     [[nodiscard]] raw_resource get_untyped_unlocked(generic_resource_info const& info);
 
     //
-    // freeing API
+    // freeing
+    //   destroy a resource immediately
+    //   must not be CPU-used after call
+    //   must not be in flight on GPU during call
     //
 
     /// free a resource that was unlocked from automatic management
@@ -182,6 +187,31 @@ public:
     void free(fence const& f);
     void free(query_range const& q);
     void free(swapchain const& sc);
+
+    //
+    // deferred freeing
+    //   destroy a resource in the future once currently pending GPU operations are done
+    //   must not be CPU-used after call, or referenced in future Frame submits
+    //   use Frame::free_deferred_after_submit if the latter can't be guaranteed
+    //
+
+    /// free a buffer once no longer in flight
+    void free_deferred(buffer const& buf);
+    /// free a texture once no longer in flight
+    void free_deferred(texture const& tex);
+    /// free a render target once no longer in flight
+    void free_deferred(render_target const& rt);
+    /// free a resource once no longer in flight
+    void free_deferred(raw_resource const& res);
+    /// free raw PHI resources once no longer in flight
+    void free_deferred(phi::handle::resource res);
+    void free_deferred(phi::handle::shader_view sv);
+
+    //
+    // cache freeing
+    //   place a resource back into the cache for reuse
+    //   must not be CPU-used after call, or referenced in future Frame submits
+    //
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -295,6 +325,11 @@ public:
     /// returns amount of freed elements
     unsigned clear_pipeline_state_cache();
 
+    /// runs all deferred free operations that are no longer in flight
+    /// this also happens automatically on any call to free_deferred
+    /// returns amount of freed elements
+    unsigned clear_pending_deferred_frees();
+
     //
     // phi interop
     //
@@ -384,17 +419,20 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    explicit Context(backend type) { initialize(type); }
+    explicit Context(backend type, cc::allocator* alloc = cc::system_allocator) { initialize(type, alloc); }
     /// internally create a backend with specified config
-    explicit Context(backend type, phi::backend_config const& config) { initialize(type, config); }
+    explicit Context(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator)
+    {
+        initialize(type, config, alloc);
+    }
     /// attach to an existing backend
-    explicit Context(phi::Backend* backend) { initialize(backend); }
+    explicit Context(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator) { initialize(backend, alloc); }
 
     ~Context() { destroy(); }
 
-    void initialize(backend type);
-    void initialize(backend type, phi::backend_config const& config);
-    void initialize(phi::Backend* backend);
+    void initialize(backend type, cc::allocator* alloc = cc::system_allocator);
+    void initialize(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator);
+    void initialize(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator);
 
     void destroy();
 
@@ -412,6 +450,11 @@ public:
     [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_to_cache(auto_destroyer<T, Cached> const&)
         = delete;
 
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred(auto_destroyer<T, Cached> const&)
+        = delete;
+
 private:
     //
     // internal from here on out
@@ -426,7 +469,7 @@ private:
 private:
     [[nodiscard]] uint64_t acquireGuid();
 
-    void internalInitialize();
+    void internalInitialize(cc::allocator* alloc);
 
     // creation
     render_target createRenderTarget(render_target_info const& info, char const* dbg_name = nullptr);
@@ -482,6 +525,7 @@ private:
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
+    deferred_destruction_queue mDeferredQueue;
 
     // caches (have dtors, members must be below backend ptr)
     multi_cache<render_target_info> mCacheRenderTargets;

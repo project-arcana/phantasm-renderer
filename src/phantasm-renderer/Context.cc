@@ -219,6 +219,12 @@ void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
 void Context::free(swapchain const& sc) { mBackend->free(sc.handle); }
 
+void Context::free_deferred(buffer const& buf) { free_deferred(buf.res.handle); }
+void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle); }
+void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
+void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
+void Context::free_deferred(phi::handle::resource res) { mDeferredQueue.free(*this, res); }
+
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
     switch (info.type)
@@ -358,12 +364,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.is_empty())
     {
-        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), phi::handle::null_swapchain);
+        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequest);
+        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
     }
 }
 
@@ -389,6 +395,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     }
 
     free_all(frame.freeables);
+    mDeferredQueue.free_range(*this, frame.deferred_free_resources);
     frame.parent = nullptr;
     return res;
 }
@@ -398,6 +405,7 @@ void Context::discard(CompiledFrame&& frame)
     if (frame.cmdlist.is_valid())
         mBackend->discard(cc::span{frame.cmdlist});
     free_all(frame.freeables);
+    mDeferredQueue.free_range(*this, frame.deferred_free_resources);
     frame.parent = nullptr;
 }
 
@@ -507,16 +515,18 @@ unsigned Context::clear_pipeline_state_cache()
     return num_frees;
 }
 
-void Context::initialize(backend type)
+unsigned Context::clear_pending_deferred_frees() { return mDeferredQueue.free_all_pending(*this); }
+
+void Context::initialize(backend type, cc::allocator* alloc)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
-    initialize(type, cfg);
+    initialize(type, cfg, alloc);
 }
 
-void Context::initialize(backend type, const phi::backend_config& config)
+void Context::initialize(backend type, const phi::backend_config& config, cc::allocator* alloc)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 
@@ -524,17 +534,17 @@ void Context::initialize(backend type, const phi::backend_config& config)
     mBackend = detail::make_backend(type);
     mBackend->initialize(config);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
-    internalInitialize();
+    internalInitialize(alloc);
 }
 
-void Context::initialize(phi::Backend* backend)
+void Context::initialize(phi::Backend* backend, cc::allocator* alloc)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 
     mBackend = backend;
     mOwnsBackend = false;
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Invalid backend received");
-    internalInitialize();
+    internalInitialize(alloc);
 }
 
 void Context::destroy()
@@ -561,6 +571,7 @@ void Context::destroy()
         // destroy other components
         mGpuEpochTracker.destroy();
         mShaderCompiler.destroy();
+        mDeferredQueue.destroy(*this);
 
         // if onwing mBackend, destroy and free it
         if (mOwnsBackend)
@@ -573,13 +584,14 @@ void Context::destroy()
     }
 }
 
-void Context::internalInitialize()
+void Context::internalInitialize(cc::allocator* alloc)
 {
     mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
     mShaderCompiler.initialize();
+    mDeferredQueue.initialize(alloc);
 
     mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
