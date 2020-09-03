@@ -110,6 +110,8 @@ struct vertex_visitor
 template <class VertT>
 [[nodiscard]] auto get_vertex_attributes()
 {
+    static_assert(rf::is_introspectable<VertT>, "Vertex type must be introspectable for automatic attribute extraction."
+                                                "Provide `template <class In> constexpr void introspect(In&& insp, Vertex& vert);'");
     detail::vertex_visitor<VertT> visitor;
     VertT* volatile dummy_ptr = nullptr;
     rf::do_introspect(visitor, *dummy_ptr);
