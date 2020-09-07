@@ -271,16 +271,6 @@ void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBacken
 
 void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend->waitFenceCPU(fence.handle, wait_value); }
 
-void Context::signal_fence_gpu(const fence& fence, uint64_t new_value, phi::queue_type queue)
-{
-    mBackend->signalFenceGPU(fence.handle, new_value, queue);
-}
-
-void Context::wait_fence_gpu(const fence& fence, uint64_t wait_value, phi::queue_type queue)
-{
-    mBackend->waitFenceGPU(fence.handle, wait_value, queue);
-}
-
 uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
 
 std::byte* Context::map_buffer(const buffer& buffer) { return mBackend->mapBuffer(buffer.res.handle); }
@@ -381,12 +371,21 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
     if (frame.cmdlist.is_valid())
     {
+        mGpuEpochTracker._cached_epoch_gpu = mGpuEpochTracker.get_current_epoch_gpu(mBackend);
+
+        // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
+        phi::fence_operation signal_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu};
+
         {
+            // unsynced, mutex: submission
             auto const lg = std::lock_guard(mMutexSubmission);
-            mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
+            mBackend->submit(cc::span{frame.cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
         }
-        mGpuEpochTracker.increment_epoch();
-        res = mGpuEpochTracker.get_current_epoch_cpu();
+
+        // increment CPU epoch after signalling
+        ++mGpuEpochTracker._current_epoch_cpu;
+
+        res = mGpuEpochTracker._current_epoch_cpu;
 
         if (frame.present_after_submit_swapchain.is_valid())
         {
@@ -395,7 +394,10 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     }
 
     free_all(frame.freeables);
-    mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
+    if (!frame.deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
     frame.parent = nullptr;
     return res;
 }
@@ -405,7 +407,10 @@ void Context::discard(CompiledFrame&& frame)
     if (frame.cmdlist.is_valid())
         mBackend->discard(cc::span{frame.cmdlist});
     free_all(frame.freeables);
-    mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
+    if (!frame.deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
     frame.parent = nullptr;
 }
 
@@ -424,7 +429,7 @@ void Context::flush() { mBackend->flushGPU(); }
 
 bool Context::flush(gpu_epoch_t epoch)
 {
-    if (mGpuEpochTracker.get_current_epoch_gpu() >= epoch)
+    if (mGpuEpochTracker._cached_epoch_gpu >= epoch)
         return false;
 
     flush();
@@ -474,7 +479,7 @@ unsigned Context::clear_resource_caches()
     cc::vector<phi::handle::resource> freeable;
     freeable.reserve(100);
 
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheRenderTargets.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
     mCacheTextures.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
@@ -489,7 +494,7 @@ unsigned Context::clear_shader_view_cache()
     cc::vector<phi::handle::shader_view> freeable;
     freeable.reserve(100);
 
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheGraphicsSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
     mCacheComputeSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
@@ -501,7 +506,7 @@ unsigned Context::clear_shader_view_cache()
 unsigned Context::clear_pipeline_state_cache()
 {
     unsigned num_frees = 0;
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheGraphicsPSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
         ++num_frees;
@@ -569,7 +574,7 @@ void Context::destroy()
         mCacheRenderTargets.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
 
         // destroy other components
-        mGpuEpochTracker.destroy();
+        mGpuEpochTracker.destroy(mBackend);
         mShaderCompiler.destroy();
         mDeferredQueue.destroy(*this);
 
@@ -617,7 +622,7 @@ buffer Context::createBuffer(const buffer_info& info, char const* dbg_name)
 
 render_target Context::acquireRenderTarget(const render_target_info& info)
 {
-    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};
@@ -630,7 +635,7 @@ render_target Context::acquireRenderTarget(const render_target_info& info)
 
 texture Context::acquireTexture(const texture_info& info)
 {
-    auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};
@@ -643,7 +648,7 @@ texture Context::acquireTexture(const texture_info& info)
 
 buffer Context::acquireBuffer(const buffer_info& info)
 {
-    auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};

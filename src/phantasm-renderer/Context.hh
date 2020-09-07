@@ -267,11 +267,6 @@ public:
     /// block on CPU until a fence reaches a given value
     void wait_fence_cpu(fence const& fence, uint64_t wait_value);
 
-    /// signal a fence to a given value from a specified GPU queue
-    void signal_fence_gpu(fence const& fence, uint64_t new_value, queue_type queue);
-    /// block on a specified GPU queue until a fence reaches a given value
-    void wait_fence_gpu(fence const& fence, uint64_t wait_value, queue_type queue);
-
     /// read the current value of a fence
     [[nodiscard]] uint64_t get_fence_value(fence const& fence);
 
@@ -407,10 +402,10 @@ public:
     pr::backend get_backend_type() const { return mBackendType; }
 
     /// uint64 incremented on every submit, always greater or equal to GPU
-    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
+    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker._current_epoch_cpu; }
 
     /// uint64 incremented after every finished commandlist, GPU timeline, always less or equal to CPU
-    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker.get_current_epoch_gpu(); }
+    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker._cached_epoch_gpu; }
 
 public:
     //

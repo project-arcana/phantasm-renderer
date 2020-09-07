@@ -5,6 +5,7 @@
 #include <phantasm-hardware-interface/Backend.hh>
 
 #include <phantasm-renderer/Context.hh>
+#include <phantasm-renderer/common/log.hh>
 
 void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::shader_view sv)
 {
@@ -21,7 +22,11 @@ void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::resourc
 void pr::deferred_destruction_queue::free_range(pr::Context& ctx, cc::span<const phi::handle::resource> res_range)
 {
     free_all_pending(ctx);
-    pending_res_new.push_back_span(res_range);
+    if (res_range.size() > 0)
+    {
+        pending_res_new.push_back_span(res_range);
+        // PR_LOG("free, OLD: {}, NEW: {}, cpu: {}", gpu_epoch_old, gpu_epoch_new, latest_new_cpu);
+    }
 }
 
 void pr::deferred_destruction_queue::initialize(cc::allocator* alloc, unsigned num_reserved_svs, unsigned num_reserved_res)
@@ -49,8 +54,13 @@ unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
     auto const epoch_cpu = ctx.get_current_cpu_epoch();
     auto const epoch_gpu = ctx.get_current_gpu_epoch();
 
+    //    PR_LOG("cull: CPU: {}, GPU: {}", epoch_cpu, epoch_gpu);
+    //    PR_LOG("    old: {}, new: {}", gpu_epoch_old, gpu_epoch_new);
+
     unsigned num_freed = 0;
-    if (epoch_gpu >= gpu_epoch_old)
+    // NOTE: on vulkan there is some sort of issue with out-of-order submission
+    // which requires this safety buffer - or it's an overzelaous validation layer
+    if (epoch_gpu >= gpu_epoch_old + 2)
     {
         // can free old
         if (pending_svs_old.size() > 0)
@@ -70,6 +80,7 @@ unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
         pending_res_new.clear();
 
         gpu_epoch_old = gpu_epoch_new;
+        // PR_LOG("freed {} elements as GPU progressed enough", num_freed);
     }
 
     CC_ASSERT(epoch_cpu >= gpu_epoch_new && ">400 year overflow or programmer error");
