@@ -250,21 +250,27 @@ void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info,
 void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const> data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to write to non-upload buffer");
-    CC_ASSERT(buffer.info.size_bytes >= data.size() + offset_in_buffer && "Buffer write out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= data.size_bytes() + offset_in_buffer && "Buffer write out of bounds");
 
-    auto* const map = map_buffer(buffer);
-    std::memcpy(map + offset_in_buffer, data.data(), data.size());
-    unmap_buffer(buffer);
+    int const map_begin = int(offset_in_buffer);
+    int const map_end = int(offset_in_buffer + data.size_bytes());
+
+    std::byte* const map = map_buffer(buffer, map_begin, map_end);
+    std::memcpy(map, data.data(), data.size_bytes());
+    unmap_buffer(buffer, map_begin, map_end);
 }
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
-    CC_ASSERT(buffer.info.size_bytes >= out_data.size() + offset_in_buffer && "Buffer read out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= out_data.size_bytes() + offset_in_buffer && "Buffer read out of bounds");
 
-    auto* const map = map_buffer(buffer);
-    std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size());
-    unmap_buffer(buffer);
+    int const map_begin = int(offset_in_buffer);
+    int const map_end = int(offset_in_buffer + out_data.size_bytes());
+
+    std::byte const* const map = map_buffer(buffer, map_begin, map_end);
+    std::memcpy(out_data.data(), map, out_data.size_bytes());
+    unmap_buffer(buffer, map_begin, map_end);
 }
 
 void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }
@@ -273,9 +279,9 @@ void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend
 
 uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
 
-std::byte* Context::map_buffer(const buffer& buffer) { return mBackend->mapBuffer(buffer.res.handle); }
+std::byte* Context::map_buffer(const buffer& buffer, int begin, int end) { return mBackend->mapBuffer(buffer.res.handle, begin, end); }
 
-void Context::unmap_buffer(const buffer& buffer) { mBackend->unmapBuffer(buffer.res.handle); }
+void Context::unmap_buffer(const buffer& buffer, int begin, int end) { mBackend->unmapBuffer(buffer.res.handle, begin, end); }
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {

@@ -228,11 +228,13 @@ public:
 
     /// map a buffer created on the upload or readback heap in order to access it on CPU
     /// a buffer can be mapped multiple times at once
-    [[nodiscard]] std::byte* map_buffer(buffer const& buffer);
+    /// begin and end specify the range of the mapping in bytes, end == -1 being the entire width
+    [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int begin = 0, int end = -1);
 
     /// unmap a buffer previously mapped using map_buffer
     /// a buffer can be destroyed while mapped
-    void unmap_buffer(buffer const& buffer);
+    /// begin and end specify the range of CPU-side modified data in bytes, end == -1 being the entire width
+    void unmap_buffer(buffer const& buffer, int begin = 0, int end = -1);
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     void write_to_buffer_raw(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0);
