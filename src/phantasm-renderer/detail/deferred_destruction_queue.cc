@@ -24,7 +24,7 @@ void pr::deferred_destruction_queue::free_range(pr::Context& ctx, cc::span<const
     free_all_pending(ctx);
     if (res_range.size() > 0)
     {
-        pending_res_new.push_back_span(res_range);
+        pending_res_new.push_back_range(res_range);
         // PR_LOG("free, OLD: {}, NEW: {}, cpu: {}", gpu_epoch_old, gpu_epoch_new, latest_new_cpu);
     }
 }
