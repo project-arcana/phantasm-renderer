@@ -3,7 +3,7 @@
 #include <clean-core/typedefs.hh>
 
 #include <phantasm-hardware-interface/arguments.hh>
-#include <phantasm-hardware-interface/detail/trivial_capped_vector.hh>
+#include <phantasm-hardware-interface/common/container/trivial_capped_vector.hh>
 #include <phantasm-hardware-interface/types.hh>
 
 
