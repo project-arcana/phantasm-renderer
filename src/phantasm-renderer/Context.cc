@@ -5,9 +5,9 @@
 #include <clean-core/xxHash.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
-#include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
 #include <phantasm-hardware-interface/common/format_size.hh>
+#include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/util.hh>
 
 #include <phantasm-renderer/CompiledFrame.hh>
@@ -256,7 +256,7 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
     int const map_end = int(offset_in_buffer + data.size_bytes());
 
     std::byte* const map = map_buffer(buffer, map_begin, map_end);
-    std::memcpy(map, data.data(), data.size_bytes());
+    std::memcpy(map + offset_in_buffer, data.data(), data.size_bytes());
     unmap_buffer(buffer, map_begin, map_end);
 }
 
@@ -269,7 +269,7 @@ void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out
     int const map_end = int(offset_in_buffer + out_data.size_bytes());
 
     std::byte const* const map = map_buffer(buffer, map_begin, map_end);
-    std::memcpy(out_data.data(), map, out_data.size_bytes());
+    std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size_bytes());
     unmap_buffer(buffer, map_begin, map_end);
 }
 
@@ -279,9 +279,12 @@ void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend
 
 uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
 
-std::byte* Context::map_buffer(const buffer& buffer, int begin, int end) { return mBackend->mapBuffer(buffer.res.handle, begin, end); }
+std::byte* Context::map_buffer(const buffer& buffer, int invalidate_begin, int invalidate_end)
+{
+    return mBackend->mapBuffer(buffer.res.handle, invalidate_begin, invalidate_end);
+}
 
-void Context::unmap_buffer(const buffer& buffer, int begin, int end) { mBackend->unmapBuffer(buffer.res.handle, begin, end); }
+void Context::unmap_buffer(const buffer& buffer, int flush_begin, int flush_end) { mBackend->unmapBuffer(buffer.res.handle, flush_begin, flush_end); }
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
