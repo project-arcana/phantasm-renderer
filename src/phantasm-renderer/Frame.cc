@@ -223,7 +223,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     // for (auto a = 0u; a < img_size.array_size; ++a)
     {
         command.dest_array_index = 0u; // a;
-        command.source_offset = accumulated_offset_bytes;
+        command.source_offset_bytes = accumulated_offset_bytes;
 
         mWriter.add_command(command);
 
@@ -238,7 +238,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
         accumulated_offset_bytes += mip_offset_bytes;
 
         CC_ASSERT(texture_data.size() >= mip_row_size_bytes * command.dest_height && "texture source data too small");
-        rowwise_copy(texture_data, upload_buffer_map + command.source_offset, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
+        rowwise_copy(texture_data, upload_buffer_map + command.source_offset_bytes, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
     }
 
     mCtx->unmap_buffer(upload_buffer);
