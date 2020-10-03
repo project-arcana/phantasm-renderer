@@ -437,7 +437,6 @@ void Context::present(swapchain const& sc)
 void Context::flush() { mBackend->flushGPU(); }
 
 
-
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
 
