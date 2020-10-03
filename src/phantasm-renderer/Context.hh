@@ -116,16 +116,8 @@ public:
     /// create a compute pipeline state
     [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
-    /// create a fence for synchronisation, initial value 0
-    [[nodiscard]] auto_fence make_fence();
     /// create a contiguous range of queries
     [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
-
-    /// create a swapchain
-    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
-                                                tg::isize2 initial_size,
-                                                pr::present_mode mode = pr::present_mode::synced,
-                                                unsigned num_backbuffers = 3);
 
     //
     // cache lookup API
@@ -184,9 +176,7 @@ public:
         if (shader._owning_blob != nullptr)
             freeShaderBinary(shader._owning_blob);
     }
-    void free(fence const& f);
     void free(query_range const& q);
-    void free(swapchain const& sc);
 
     //
     // deferred freeing
@@ -228,9 +218,15 @@ public:
 
     /// map a buffer created on the upload or readback heap in order to access it on CPU
     /// a buffer can be mapped multiple times at once
-    /// begin and end specify the range of CPU-side read data in bytes, end == -1 being the entire width
+    /// invalidate_begin and -end specify the range of CPU-side read data in bytes, end == -1 being the entire width
     /// NOTE: begin > 0 does not add an offset to the returned pointer
     [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1);
+
+    /// map a buffer and return a span of the mapped memory (instead of just a pointer)
+    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1)
+    {
+        return {map_buffer(buffer, invalidate_begin, invalidate_end), buffer.info.size_bytes};
+    }
 
     /// unmap a buffer previously mapped using map_buffer
     /// a buffer can be destroyed while mapped
@@ -266,6 +262,11 @@ public:
     // fence API
     //
 
+    /// create a fence for synchronisation, initial value 0
+    [[nodiscard]] auto_fence make_fence();
+
+    void free(fence const& f);
+
     /// signal a fence to a given value from CPU
     void signal_fence_cpu(fence const& fence, uint64_t new_value);
     /// block on CPU until a fence reaches a given value
@@ -275,7 +276,7 @@ public:
     [[nodiscard]] uint64_t get_fence_value(fence const& fence);
 
     //
-    // consumption API
+    // command list submission
     //
 
     /// compiles a frame (records the command list)
@@ -283,30 +284,64 @@ public:
     [[nodiscard]] CompiledFrame compile(raii::Frame&& frame);
 
     /// submits a previously compiled frame to the GPU
-    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
     gpu_epoch_t submit(CompiledFrame&& frame);
 
     /// convenience to compile and submit a frame in a single call
-    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
     gpu_epoch_t submit(raii::Frame&& frame);
 
     /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
 
-    /// flips backbuffers
+    //
+    // swapchain API
+    //
+
+    /// create a swapchain on a given window
+    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
+                                                tg::isize2 initial_size,
+                                                pr::present_mode mode = pr::present_mode::synced,
+                                                unsigned num_backbuffers = 3);
+
+    /// destroy a swapchain
+    void free(swapchain const& sc);
+
+    /// flips backbuffers on the given swapchain,
+    /// showing the previously acquired backbuffer on screen
+    /// NOTE: this requires a previous call to acquire_backbuffer
     void present(swapchain const& sc);
+
+    /// resize a swapchain's backbuffers based on a window (OS) resize event
+    /// NOTE: backbuffers won't always resize, and can have a different size than the window
+    void on_window_resize(swapchain const& sc, tg::isize2 size);
+
+    /// returns true if the swapchain's backbuffers were resized since the last call
+    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
+
+    /// acquires the next backbuffer in line
+    /// this should occur as late as possible into the frame
+    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
+
+    /// returns the size of the swapchain's backbuffers
+    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
+
+    /// returns the format of the swapchain's backbuffers
+    /// (on D3D12 and Desktop Vulkan this is always format::bgra8un)
+    format get_backbuffer_format(swapchain const& sc) const;
+
+    /// returns the amount of backbuffers a swapchain contains
+    unsigned get_num_backbuffers(swapchain const& sc) const;
+
+    //
+    // GPU synchronization
+    //
 
     /// blocks on the CPU until all pending GPU operations are done
     void flush();
 
-    /// conditional flush
-    /// returns false if the epoch was reached already, or flushes and returns true
-    bool flush(gpu_epoch_t epoch);
-
-    void on_window_resize(swapchain const& sc, tg::isize2 size);
-    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
-
-    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
+    /// returns whether the epoch was reached on the GPU
+    bool is_gpu_epoch_reached(gpu_epoch_t epoch) const { return mGpuEpochTracker._cached_epoch_gpu >= epoch; }
 
     //
     // cache management
@@ -353,12 +388,9 @@ public:
     }
 
     //
-    // info
+    // general info
     //
 
-    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
-    format get_backbuffer_format(swapchain const& sc) const;
-    unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
     /// returns the difference between two GPU timestamp values in milliseconds

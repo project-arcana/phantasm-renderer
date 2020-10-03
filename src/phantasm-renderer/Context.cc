@@ -436,14 +436,7 @@ void Context::present(swapchain const& sc)
 
 void Context::flush() { mBackend->flushGPU(); }
 
-bool Context::flush(gpu_epoch_t epoch)
-{
-    if (mGpuEpochTracker._cached_epoch_gpu >= epoch)
-        return false;
 
-    flush();
-    return true;
-}
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
