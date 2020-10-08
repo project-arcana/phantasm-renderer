@@ -25,7 +25,7 @@ public:
         std::memset(_storage, 0, sizeof(_storage)); // memset padding and unitialized bytes to 0
 
         if constexpr (!std::is_trivially_constructible_v<T, void>)
-            new (&_storage) T(); // call default ctor
+            new (cc::placement_new, &_storage) T(); // call default ctor
     }
 
     // with the established guarantees, hashing and comparison are trivial

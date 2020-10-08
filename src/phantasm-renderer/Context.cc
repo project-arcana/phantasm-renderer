@@ -5,9 +5,9 @@
 #include <clean-core/xxHash.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
+#include <phantasm-hardware-interface/common/byte_util.hh>
+#include <phantasm-hardware-interface/common/format_size.hh>
 #include <phantasm-hardware-interface/config.hh>
-#include <phantasm-hardware-interface/detail/byte_util.hh>
-#include <phantasm-hardware-interface/detail/format_size.hh>
 #include <phantasm-hardware-interface/util.hh>
 
 #include <phantasm-renderer/CompiledFrame.hh>
@@ -144,7 +144,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     {
         auto lg = std::lock_guard(mMutexShaderCompilation); // unsynced, mutex: compilation
-        bin = mShaderCompiler.compile_binary(code.data(), entrypoint.data(), sc_target, sc_output);
+        bin = mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output);
     }
 
     if (bin.data == nullptr)
@@ -219,6 +219,12 @@ void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
 void Context::free(swapchain const& sc) { mBackend->free(sc.handle); }
 
+void Context::free_deferred(buffer const& buf) { free_deferred(buf.res.handle); }
+void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle); }
+void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
+void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
+void Context::free_deferred(phi::handle::resource res) { mDeferredQueue.free(*this, res); }
+
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
     switch (info.type)
@@ -244,42 +250,41 @@ void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info,
 void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const> data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to write to non-upload buffer");
-    CC_ASSERT(buffer.info.size_bytes >= data.size() + offset_in_buffer && "Buffer write out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= data.size_bytes() + offset_in_buffer && "Buffer write out of bounds");
 
-    auto* const map = map_buffer(buffer);
-    std::memcpy(map + offset_in_buffer, data.data(), data.size());
-    unmap_buffer(buffer);
+    int const map_begin = int(offset_in_buffer);
+    int const map_end = int(offset_in_buffer + data.size_bytes());
+
+    std::byte* const map = map_buffer(buffer, map_begin, map_end);
+    std::memcpy(map + offset_in_buffer, data.data(), data.size_bytes());
+    unmap_buffer(buffer, map_begin, map_end);
 }
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
     CC_ASSERT(buffer.info.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
-    CC_ASSERT(buffer.info.size_bytes >= out_data.size() + offset_in_buffer && "Buffer read out of bounds");
+    CC_ASSERT(buffer.info.size_bytes >= out_data.size_bytes() + offset_in_buffer && "Buffer read out of bounds");
 
-    auto* const map = map_buffer(buffer);
-    std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size());
-    unmap_buffer(buffer);
+    int const map_begin = int(offset_in_buffer);
+    int const map_end = int(offset_in_buffer + out_data.size_bytes());
+
+    std::byte const* const map = map_buffer(buffer, map_begin, map_end);
+    std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size_bytes());
+    unmap_buffer(buffer, map_begin, map_end);
 }
 
 void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }
 
 void Context::wait_fence_cpu(const fence& fence, uint64_t wait_value) { mBackend->waitFenceCPU(fence.handle, wait_value); }
 
-void Context::signal_fence_gpu(const fence& fence, uint64_t new_value, phi::queue_type queue)
-{
-    mBackend->signalFenceGPU(fence.handle, new_value, queue);
-}
-
-void Context::wait_fence_gpu(const fence& fence, uint64_t wait_value, phi::queue_type queue)
-{
-    mBackend->waitFenceGPU(fence.handle, wait_value, queue);
-}
-
 uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenceValue(fence.handle); }
 
-std::byte* Context::map_buffer(const buffer& buffer) { return mBackend->mapBuffer(buffer.res.handle); }
+std::byte* Context::map_buffer(const buffer& buffer, int invalidate_begin, int invalidate_end)
+{
+    return mBackend->mapBuffer(buffer.res.handle, invalidate_begin, invalidate_end);
+}
 
-void Context::unmap_buffer(const buffer& buffer) { mBackend->unmapBuffer(buffer.res.handle); }
+void Context::unmap_buffer(const buffer& buffer, int flush_begin, int flush_end) { mBackend->unmapBuffer(buffer.res.handle, flush_begin, flush_end); }
 
 cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
@@ -358,12 +363,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.is_empty())
     {
-        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), phi::handle::null_swapchain);
+        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), frame.mPresentAfterSubmitRequest);
+        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
     }
 }
 
@@ -375,12 +380,21 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
     if (frame.cmdlist.is_valid())
     {
+        mGpuEpochTracker._cached_epoch_gpu = mGpuEpochTracker.get_current_epoch_gpu(mBackend);
+
+        // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
+        phi::fence_operation signal_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu};
+
         {
+            // unsynced, mutex: submission
             auto const lg = std::lock_guard(mMutexSubmission);
-            mBackend->submit(cc::span{frame.cmdlist}); // unsynced, mutex: submission
+            mBackend->submit(cc::span{frame.cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
         }
-        mGpuEpochTracker.increment_epoch();
-        res = mGpuEpochTracker.get_current_epoch_cpu();
+
+        // increment CPU epoch after signalling
+        ++mGpuEpochTracker._current_epoch_cpu;
+
+        res = mGpuEpochTracker._current_epoch_cpu;
 
         if (frame.present_after_submit_swapchain.is_valid())
         {
@@ -389,6 +403,10 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     }
 
     free_all(frame.freeables);
+
+    if (!frame.deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
     frame.parent = nullptr;
     return res;
 }
@@ -398,6 +416,10 @@ void Context::discard(CompiledFrame&& frame)
     if (frame.cmdlist.is_valid())
         mBackend->discard(cc::span{frame.cmdlist});
     free_all(frame.freeables);
+
+    if (!frame.deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+
     frame.parent = nullptr;
 }
 
@@ -414,14 +436,6 @@ void Context::present(swapchain const& sc)
 
 void Context::flush() { mBackend->flushGPU(); }
 
-bool Context::flush(gpu_epoch_t epoch)
-{
-    if (mGpuEpochTracker.get_current_epoch_gpu() >= epoch)
-        return false;
-
-    flush();
-    return true;
-}
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
@@ -438,43 +452,12 @@ unsigned Context::get_num_backbuffers(swapchain const& sc) const { return mBacke
 
 unsigned Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, unsigned num_mips) const
 {
-    // calculate number of mips if zero is given
-    num_mips = num_mips > 0 ? num_mips : phi::util::get_num_mips(size.width, size.height);
-    auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
-    bool const do_d3d12_align = mBackendType == pr::backend::d3d12;
-    auto res_bytes = 0u;
-
-    for (auto a = 0; a < size.depth; ++a)
-    {
-        for (auto mip = 0u; mip < num_mips; ++mip)
-        {
-            auto const mip_width = cc::max(unsigned(tg::floor(size.width / tg::pow(2.f, float(mip)))), 1u);
-            auto const mip_height = cc::max(unsigned(tg::floor(size.height / tg::pow(2.f, float(mip)))), 1u);
-
-            unsigned row_pitch = bytes_per_pixel * mip_width;
-
-            if (do_d3d12_align)
-                row_pitch = phi::mem::align_up(row_pitch, 256);
-
-            auto const custom_offset = row_pitch * mip_height;
-            res_bytes += custom_offset;
-        }
-    }
-
-    return res_bytes;
+    return phi::util::get_texture_size_bytes(size, fmt, num_mips, mBackendType == pr::backend::d3d12);
 }
 
 unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const
 {
-    CC_ASSERT(pixel.x < size.width && pixel.y < size.height && "pixel out of bounds");
-    auto const bytes_per_pixel = phi::detail::format_size_bytes(fmt);
-
-    unsigned row_width = bytes_per_pixel * size.width;
-
-    if (mBackendType == pr::backend::d3d12)
-        row_width = phi::mem::align_up(row_width, 256);
-
-    return pixel.y * row_width + pixel.x * bytes_per_pixel;
+    return phi::util::get_texture_pixel_byte_offset(size, fmt, pixel, mBackendType == pr::backend::d3d12);
 }
 
 void Context::set_debug_name(const texture& tex, cc::string_view name) { mBackend->setDebugName(tex.res.handle, name); }
@@ -497,7 +480,7 @@ unsigned Context::clear_resource_caches()
     cc::vector<phi::handle::resource> freeable;
     freeable.reserve(100);
 
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheRenderTargets.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
     mCacheTextures.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
@@ -512,7 +495,7 @@ unsigned Context::clear_shader_view_cache()
     cc::vector<phi::handle::shader_view> freeable;
     freeable.reserve(100);
 
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheGraphicsSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
     mCacheComputeSVs.cull_all(gpu_epoch, [&](phi::handle::shader_view sv) { freeable.push_back(sv); });
@@ -524,7 +507,7 @@ unsigned Context::clear_shader_view_cache()
 unsigned Context::clear_pipeline_state_cache()
 {
     unsigned num_frees = 0;
-    auto const gpu_epoch = mGpuEpochTracker.get_current_epoch_gpu();
+    auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
     mCacheGraphicsPSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
         ++num_frees;
@@ -538,16 +521,18 @@ unsigned Context::clear_pipeline_state_cache()
     return num_frees;
 }
 
-void Context::initialize(backend type)
+unsigned Context::clear_pending_deferred_frees() { return mDeferredQueue.free_all_pending(*this); }
+
+void Context::initialize(backend type, cc::allocator* alloc)
 {
     phi::backend_config cfg;
 #ifndef CC_RELEASE
     cfg.validation = phi::validation_level::on_extended;
 #endif
-    initialize(type, cfg);
+    initialize(type, cfg, alloc);
 }
 
-void Context::initialize(backend type, const phi::backend_config& config)
+void Context::initialize(backend type, const phi::backend_config& config, cc::allocator* alloc)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 
@@ -555,17 +540,17 @@ void Context::initialize(backend type, const phi::backend_config& config)
     mBackend = detail::make_backend(type);
     mBackend->initialize(config);
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Failed to create backend");
-    internalInitialize();
+    internalInitialize(alloc);
 }
 
-void Context::initialize(phi::Backend* backend)
+void Context::initialize(phi::Backend* backend, cc::allocator* alloc)
 {
     CC_RUNTIME_ASSERT(mBackend == nullptr && "pr::Context double initialize");
 
     mBackend = backend;
     mOwnsBackend = false;
     CC_RUNTIME_ASSERT(mBackend != nullptr && "Invalid backend received");
-    internalInitialize();
+    internalInitialize(alloc);
 }
 
 void Context::destroy()
@@ -590,8 +575,9 @@ void Context::destroy()
         mCacheRenderTargets.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
 
         // destroy other components
-        mGpuEpochTracker.destroy();
+        mGpuEpochTracker.destroy(mBackend);
         mShaderCompiler.destroy();
+        mDeferredQueue.destroy(*this);
 
         // if onwing mBackend, destroy and free it
         if (mOwnsBackend)
@@ -604,13 +590,14 @@ void Context::destroy()
     }
 }
 
-void Context::internalInitialize()
+void Context::internalInitialize(cc::allocator* alloc)
 {
     mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
     mCacheRenderTargets.reserve(64);
     mShaderCompiler.initialize();
+    mDeferredQueue.initialize(alloc);
 
     mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
@@ -636,7 +623,7 @@ buffer Context::createBuffer(const buffer_info& info, char const* dbg_name)
 
 render_target Context::acquireRenderTarget(const render_target_info& info)
 {
-    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};
@@ -649,7 +636,7 @@ render_target Context::acquireRenderTarget(const render_target_info& info)
 
 texture Context::acquireTexture(const texture_info& info)
 {
-    auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheTextures.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};
@@ -662,7 +649,7 @@ texture Context::acquireTexture(const texture_info& info)
 
 buffer Context::acquireBuffer(const buffer_info& info)
 {
-    auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker.get_current_epoch_gpu());
+    auto lookup = mCacheBuffers.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
         return {lookup, info};
@@ -784,6 +771,11 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, unsi
 unsigned pr::Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
 {
     return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
+}
+
+unsigned Context::calculate_texture_upload_size(const render_target& target) const
+{
+    return calculate_texture_upload_size({target.info.width, target.info.height, int(target.info.array_size)}, target.info.format, 1);
 }
 
 unsigned pr::Context::calculate_texture_upload_size(int width, format fmt, unsigned num_mips) const
