@@ -117,12 +117,8 @@ public:
         return *this;
     }
 
-private:
-    friend class raii::Frame;
     cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
-private:
-    friend class Context;
     hashable_storage<graphics_pass_info_data> _storage;
     cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
 };
@@ -238,16 +234,12 @@ public:
     /// Add a depth render target based on format only
     framebuffer_info& depth(pr::format format)
     {
-        _storage.get().add_depth_target(format);
+        _storage.get().set_depth_target(format);
         return *this;
     }
 
-private:
-    friend class raii::Frame;
     cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
-private:
-    friend class Context;
     hashable_storage<phi::arg::framebuffer_config> _storage;
 };
 

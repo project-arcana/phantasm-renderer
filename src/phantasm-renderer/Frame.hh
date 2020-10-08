@@ -130,6 +130,17 @@ public:
     /// expects an appropriately sized upload buffer (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
 
+    /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
+    /// free a texture once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.res.handle); }
+    /// free a render target once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(render_target const& rt) { free_deferred_after_submit(rt.res.handle); }
+    /// free a resource once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(raw_resource const& res) { free_deferred_after_submit(res.handle); }
+    /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
+
     //
     // raw phi commands
 
@@ -168,6 +179,10 @@ public:
     [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
     [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
+    template <class T, bool Cached>
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, Cached> const&)
+        = delete;
+
 public:
     Frame(Frame const&) = delete;
     Frame& operator=(Frame const&) = delete;
@@ -176,6 +191,7 @@ public:
         mWriter(cc::move(rhs.mWriter)),
         mPendingTransitionCommand(rhs.mPendingTransitionCommand),
         mFreeables(cc::move(rhs.mFramebufferActive)),
+        mDeferredFreeResources(cc::move(rhs.mDeferredFreeResources)),
         mFramebufferActive(rhs.mFramebufferActive),
         mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
     {
@@ -226,7 +242,10 @@ private:
     // Context-side API
 private:
     friend Context;
-    explicit Frame(Context* ctx, size_t size, cc::allocator* alloc) : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc) {}
+    explicit Frame(Context* ctx, size_t size, cc::allocator* alloc)
+      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc)
+    {
+    }
 
     void finalize();
     std::byte* getMemory() const { return mWriter.buffer(); }
@@ -238,6 +257,7 @@ private:
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::alloc_vector<freeable_cached_obj> mFreeables;
+    cc::alloc_vector<phi::handle::resource> mDeferredFreeResources;
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };

@@ -6,8 +6,8 @@
 #include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
-#include <phantasm-hardware-interface/detail/byte_util.hh>
-#include <phantasm-hardware-interface/detail/format_size.hh>
+#include <phantasm-hardware-interface/common/byte_util.hh>
+#include <phantasm-hardware-interface/common/format_size.hh>
 
 #include <phantasm-renderer/Context.hh>
 #include <phantasm-renderer/common/log.hh>
@@ -207,7 +207,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
     CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
 
-    auto const bytes_per_pixel = phi::detail::format_size_bytes(dest_texture.info.fmt);
+    auto const bytes_per_pixel = phi::util::get_format_size_bytes(dest_texture.info.fmt);
     auto const use_d3d12_per_row_alingment = mCtx->get_backend_type() == pr::backend::d3d12;
     auto* const upload_buffer_map = mCtx->map_buffer(upload_buffer);
 
@@ -223,7 +223,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     // for (auto a = 0u; a < img_size.array_size; ++a)
     {
         command.dest_array_index = 0u; // a;
-        command.source_offset = accumulated_offset_bytes;
+        command.source_offset_bytes = accumulated_offset_bytes;
 
         mWriter.add_command(command);
 
@@ -232,13 +232,13 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
 
         // MIP maps are 256-byte aligned per row in d3d12
         if (use_d3d12_per_row_alingment)
-            mip_row_stride_bytes = phi::mem::align_up(mip_row_stride_bytes, 256);
+            mip_row_stride_bytes = phi::util::align_up(mip_row_stride_bytes, 256);
 
         auto const mip_offset_bytes = mip_row_stride_bytes * command.dest_height;
         accumulated_offset_bytes += mip_offset_bytes;
 
         CC_ASSERT(texture_data.size() >= mip_row_size_bytes * command.dest_height && "texture source data too small");
-        rowwise_copy(texture_data, upload_buffer_map + command.source_offset, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
+        rowwise_copy(texture_data, upload_buffer_map + command.source_offset_bytes, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
     }
 
     mCtx->unmap_buffer(upload_buffer);

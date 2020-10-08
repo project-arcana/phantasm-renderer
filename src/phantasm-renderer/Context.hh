@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <mutex>
 
 #include <clean-core/span.hh>
@@ -16,6 +17,7 @@
 #include <phantasm-renderer/common/gpu_epoch_tracker.hh>
 #include <phantasm-renderer/common/multi_cache.hh>
 #include <phantasm-renderer/common/single_cache.hh>
+#include <phantasm-renderer/detail/deferred_destruction_queue.hh>
 
 #include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/enums.hh>
@@ -114,16 +116,8 @@ public:
     /// create a compute pipeline state
     [[nodiscard]] auto_compute_pipeline_state make_pipeline_state(compute_pass_info const& cp);
 
-    /// create a fence for synchronisation, initial value 0
-    [[nodiscard]] auto_fence make_fence();
     /// create a contiguous range of queries
     [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
-
-    /// create a swapchain
-    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
-                                                tg::isize2 initial_size,
-                                                pr::present_mode mode = pr::present_mode::synced,
-                                                unsigned num_backbuffers = 3);
 
     //
     // cache lookup API
@@ -157,7 +151,10 @@ public:
     [[nodiscard]] raw_resource get_untyped_unlocked(generic_resource_info const& info);
 
     //
-    // freeing API
+    // freeing
+    //   destroy a resource immediately
+    //   must not be CPU-used after call
+    //   must not be in flight on GPU during call
     //
 
     /// free a resource that was unlocked from automatic management
@@ -179,9 +176,32 @@ public:
         if (shader._owning_blob != nullptr)
             freeShaderBinary(shader._owning_blob);
     }
-    void free(fence const& f);
     void free(query_range const& q);
-    void free(swapchain const& sc);
+
+    //
+    // deferred freeing
+    //   destroy a resource in the future once currently pending GPU operations are done
+    //   must not be CPU-used after call, or referenced in future Frame submits
+    //   use Frame::free_deferred_after_submit if the latter can't be guaranteed
+    //
+
+    /// free a buffer once no longer in flight
+    void free_deferred(buffer const& buf);
+    /// free a texture once no longer in flight
+    void free_deferred(texture const& tex);
+    /// free a render target once no longer in flight
+    void free_deferred(render_target const& rt);
+    /// free a resource once no longer in flight
+    void free_deferred(raw_resource const& res);
+    /// free raw PHI resources once no longer in flight
+    void free_deferred(phi::handle::resource res);
+    void free_deferred(phi::handle::shader_view sv);
+
+    //
+    // cache freeing
+    //   place a resource back into the cache for reuse
+    //   must not be CPU-used after call, or referenced in future Frame submits
+    //
 
     /// free a resource of undetermined type by placing it in the cache for reuse
     void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
@@ -198,11 +218,21 @@ public:
 
     /// map a buffer created on the upload or readback heap in order to access it on CPU
     /// a buffer can be mapped multiple times at once
-    [[nodiscard]] std::byte* map_buffer(buffer const& buffer);
+    /// invalidate_begin and -end specify the range of CPU-side read data in bytes, end == -1 being the entire width
+    /// NOTE: begin > 0 does not add an offset to the returned pointer
+    [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1);
+
+    /// map a buffer and return a span of the mapped memory (instead of just a pointer)
+    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1)
+    {
+        return {map_buffer(buffer, invalidate_begin, invalidate_end), buffer.info.size_bytes};
+    }
 
     /// unmap a buffer previously mapped using map_buffer
     /// a buffer can be destroyed while mapped
-    void unmap_buffer(buffer const& buffer);
+    /// on non-desktop it might be required to unmap upload buffers for the writes to become visible
+    /// begin and end specify the range of CPU-side modified data in bytes, end == -1 being the entire width
+    void unmap_buffer(buffer const& buffer, int flush_begin = 0, int flush_end = -1);
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     void write_to_buffer_raw(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0);
@@ -232,21 +262,21 @@ public:
     // fence API
     //
 
+    /// create a fence for synchronisation, initial value 0
+    [[nodiscard]] auto_fence make_fence();
+
+    void free(fence const& f);
+
     /// signal a fence to a given value from CPU
     void signal_fence_cpu(fence const& fence, uint64_t new_value);
     /// block on CPU until a fence reaches a given value
     void wait_fence_cpu(fence const& fence, uint64_t wait_value);
 
-    /// signal a fence to a given value from a specified GPU queue
-    void signal_fence_gpu(fence const& fence, uint64_t new_value, queue_type queue);
-    /// block on a specified GPU queue until a fence reaches a given value
-    void wait_fence_gpu(fence const& fence, uint64_t wait_value, queue_type queue);
-
     /// read the current value of a fence
     [[nodiscard]] uint64_t get_fence_value(fence const& fence);
 
     //
-    // consumption API
+    // command list submission
     //
 
     /// compiles a frame (records the command list)
@@ -254,30 +284,64 @@ public:
     [[nodiscard]] CompiledFrame compile(raii::Frame&& frame);
 
     /// submits a previously compiled frame to the GPU
-    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
     gpu_epoch_t submit(CompiledFrame&& frame);
 
     /// convenience to compile and submit a frame in a single call
-    /// returns an epoch that can be waited on using Context::wait_for_epoch()
+    /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
     gpu_epoch_t submit(raii::Frame&& frame);
 
     /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
 
-    /// flips backbuffers
+    //
+    // swapchain API
+    //
+
+    /// create a swapchain on a given window
+    [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
+                                                tg::isize2 initial_size,
+                                                pr::present_mode mode = pr::present_mode::synced,
+                                                unsigned num_backbuffers = 3);
+
+    /// destroy a swapchain
+    void free(swapchain const& sc);
+
+    /// flips backbuffers on the given swapchain,
+    /// showing the previously acquired backbuffer on screen
+    /// NOTE: this requires a previous call to acquire_backbuffer
     void present(swapchain const& sc);
+
+    /// resize a swapchain's backbuffers based on a window (OS) resize event
+    /// NOTE: backbuffers won't always resize, and can have a different size than the window
+    void on_window_resize(swapchain const& sc, tg::isize2 size);
+
+    /// returns true if the swapchain's backbuffers were resized since the last call
+    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
+
+    /// acquires the next backbuffer in line
+    /// this should occur as late as possible into the frame
+    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
+
+    /// returns the size of the swapchain's backbuffers
+    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
+
+    /// returns the format of the swapchain's backbuffers
+    /// (on D3D12 and Desktop Vulkan this is always format::bgra8un)
+    format get_backbuffer_format(swapchain const& sc) const;
+
+    /// returns the amount of backbuffers a swapchain contains
+    unsigned get_num_backbuffers(swapchain const& sc) const;
+
+    //
+    // GPU synchronization
+    //
 
     /// blocks on the CPU until all pending GPU operations are done
     void flush();
 
-    /// conditional flush
-    /// returns false if the epoch was reached already, or flushes and returns true
-    bool flush(gpu_epoch_t epoch);
-
-    void on_window_resize(swapchain const& sc, tg::isize2 size);
-    [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
-
-    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
+    /// returns whether the epoch was reached on the GPU
+    bool is_gpu_epoch_reached(gpu_epoch_t epoch) const { return mGpuEpochTracker._cached_epoch_gpu >= epoch; }
 
     //
     // cache management
@@ -294,6 +358,11 @@ public:
     /// frees all pipeline_states from pr caches that are not acquired or in flight
     /// returns amount of freed elements
     unsigned clear_pipeline_state_cache();
+
+    /// runs all deferred free operations that are no longer in flight
+    /// this also happens automatically on any call to free_deferred
+    /// returns amount of freed elements
+    unsigned clear_pending_deferred_frees();
 
     //
     // phi interop
@@ -319,12 +388,9 @@ public:
     }
 
     //
-    // info
+    // general info
     //
 
-    tg::isize2 get_backbuffer_size(swapchain const& sc) const;
-    format get_backbuffer_format(swapchain const& sc) const;
-    unsigned get_num_backbuffers(swapchain const& sc) const;
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
     /// returns the difference between two GPU timestamp values in milliseconds
@@ -344,6 +410,7 @@ public:
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+    unsigned calculate_texture_upload_size(render_target const& target) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
@@ -371,10 +438,10 @@ public:
     pr::backend get_backend_type() const { return mBackendType; }
 
     /// uint64 incremented on every submit, always greater or equal to GPU
-    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker.get_current_epoch_cpu(); }
+    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker._current_epoch_cpu; }
 
     /// uint64 incremented after every finished commandlist, GPU timeline, always less or equal to CPU
-    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker.get_current_epoch_gpu(); }
+    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker._cached_epoch_gpu; }
 
 public:
     //
@@ -383,17 +450,20 @@ public:
 
     Context() = default;
     /// internally create a backend with default config
-    explicit Context(backend type) { initialize(type); }
+    explicit Context(backend type, cc::allocator* alloc = cc::system_allocator) { initialize(type, alloc); }
     /// internally create a backend with specified config
-    explicit Context(backend type, phi::backend_config const& config) { initialize(type, config); }
+    explicit Context(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator)
+    {
+        initialize(type, config, alloc);
+    }
     /// attach to an existing backend
-    explicit Context(phi::Backend* backend) { initialize(backend); }
+    explicit Context(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator) { initialize(backend, alloc); }
 
     ~Context() { destroy(); }
 
-    void initialize(backend type);
-    void initialize(backend type, phi::backend_config const& config);
-    void initialize(phi::Backend* backend);
+    void initialize(backend type, cc::allocator* alloc = cc::system_allocator);
+    void initialize(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator);
+    void initialize(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator);
 
     void destroy();
 
@@ -411,6 +481,11 @@ public:
     [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_to_cache(auto_destroyer<T, Cached> const&)
         = delete;
 
+    // auto_ types are not to be freed manually, only free unlocked types
+    template <class T, bool Cached>
+    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred(auto_destroyer<T, Cached> const&)
+        = delete;
+
 private:
     //
     // internal from here on out
@@ -425,7 +500,7 @@ private:
 private:
     [[nodiscard]] uint64_t acquireGuid();
 
-    void internalInitialize();
+    void internalInitialize(cc::allocator* alloc);
 
     // creation
     render_target createRenderTarget(render_target_info const& info, char const* dbg_name = nullptr);
@@ -481,6 +556,7 @@ private:
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
+    deferred_destruction_queue mDeferredQueue;
 
     // caches (have dtors, members must be below backend ptr)
     multi_cache<render_target_info> mCacheRenderTargets;
