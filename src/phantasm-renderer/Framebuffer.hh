@@ -183,7 +183,7 @@ private:
 
     void adjust_config(render_target const& rt)
     {
-        CC_ASSERT(_num_samples == -1 || _num_samples == int(rt.info.num_samples) && "render targets in framebuffer have inconsistent sample amounts");
+        CC_ASSERT((_num_samples == -1 || _num_samples == int(rt.info.num_samples)) && "render targets in framebuffer have inconsistent sample amounts");
         _num_samples = int(rt.info.num_samples);
 
         if (!_has_custom_viewport)
