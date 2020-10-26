@@ -387,7 +387,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
         {
             // unsynced, mutex: submission
-            auto const lg = std::lock_guard(mMutexSubmission);
+            auto const lg = std::lock_guard<std::mutex>(mMutexSubmission);
             mBackend->submit(cc::span{frame.cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
         }
 
