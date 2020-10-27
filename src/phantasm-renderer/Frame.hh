@@ -126,9 +126,14 @@ public:
     //
     // specials
 
-    /// uploads texture data correctly to a destination texture respecting rowwise alignment
-    /// expects an appropriately sized upload buffer (see Context::calculate_texture_upload_size)
+    /// uploads texture data correctly to a destination texture, respecting rowwise alignment
+    /// transition cmd + copy_buf_to_tex cmd
+    /// expects upload buffer with sufficient size (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
+
+    /// creates a suitable upload buffer and calls upload_texutre_data
+    /// (deferred freeing it afterwards)
+    void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
