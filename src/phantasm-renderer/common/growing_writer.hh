@@ -43,7 +43,15 @@ struct growing_writer
     size_t max_size() const { return _writer.max_size(); }
     bool is_empty() const { return _writer.empty(); }
 
-    void accomodate(size_t cmd_size);
+    void accomodate(size_t cmd_size)
+    {
+        if (!_writer.can_accomodate(cmd_size))
+        {
+            size_t const new_size = (_writer.max_size() + cmd_size) << 1;
+            std::byte* const new_buffer = _alloc->realloc(_writer.buffer(), _writer.max_size(), new_size);
+            _writer.exchange_buffer(new_buffer, new_size);
+        }
+    }
 
     phi::command_stream_writer& raw_writer() { return _writer; }
 
