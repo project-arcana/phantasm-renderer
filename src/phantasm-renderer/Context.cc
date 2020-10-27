@@ -130,7 +130,7 @@ auto_shader_binary Context::make_shader(cc::span<cc::byte const> data, phi::shad
     res._data = data.data();
     res._size = data.size();
     res._owning_blob = nullptr;
-    res._hash = cc::hash_xxh3({res._data, res._size}, 0);
+    res._hash = cc::hash_xxh3({res._data, res._size}, 31);
 
     return {res, this};
 }
@@ -363,12 +363,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.is_empty())
     {
-        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
+        return CompiledFrame(phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
+        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
     }
 }
 
@@ -376,9 +376,10 @@ gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::mov
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
+    CC_ASSERT(frame.is_valid() && "submitted an invalid CompiledFrame");
     gpu_epoch_t res = 0;
 
-    if (frame.cmdlist.is_valid())
+    if (frame._cmdlist.is_valid()) // CompiledFrame doesn't always hold a commandlist
     {
         mGpuEpochTracker._cached_epoch_gpu = mGpuEpochTracker.get_current_epoch_gpu(mBackend);
 
@@ -388,7 +389,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
         {
             // unsynced, mutex: submission
             auto const lg = std::lock_guard<std::mutex>(mMutexSubmission);
-            mBackend->submit(cc::span{frame.cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
+            mBackend->submit(cc::span{frame._cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
         }
 
         // increment CPU epoch after signalling
@@ -396,31 +397,32 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
         res = mGpuEpochTracker._current_epoch_cpu;
 
-        if (frame.present_after_submit_swapchain.is_valid())
+        if (frame._present_after_submit_swapchain.is_valid())
         {
-            present({frame.present_after_submit_swapchain});
+            present({frame._present_after_submit_swapchain});
         }
     }
 
-    free_all(frame.freeables);
+    free_all(frame._freeables);
 
-    if (!frame.deferred_free_resources.empty())
-        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+    if (!frame._deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    frame.parent = nullptr;
+    frame.invalidate();
+
     return res;
 }
 
 void Context::discard(CompiledFrame&& frame)
 {
-    if (frame.cmdlist.is_valid())
-        mBackend->discard(cc::span{frame.cmdlist});
-    free_all(frame.freeables);
+    if (frame._cmdlist.is_valid())
+        mBackend->discard(cc::span{frame._cmdlist});
+    free_all(frame._freeables);
 
-    if (!frame.deferred_free_resources.empty())
-        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+    if (!frame._deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    frame.parent = nullptr;
+    frame.invalidate();
 }
 
 void Context::present(swapchain const& sc)

@@ -91,7 +91,7 @@ public:
     }
 
 
-    /// create a shader from binary data
+    /// create a shader from binary data (only hashes the data)
     [[nodiscard]] auto_shader_binary make_shader(cc::span<cc::byte const> data, pr::shader stage);
     /// create a shader by compiling it live from text
     [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader stage);
