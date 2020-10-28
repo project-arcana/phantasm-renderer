@@ -108,6 +108,10 @@ private:
             else if constexpr (Mode == auto_mode::guard)
             {
                 CC_ASSERT(detail::auto_destroy_proxy::is_destroy_legal(parent) && "discarded auto_ type without .disown() (and before a context shutdown)");
+
+                // guard-types also destroy, but only after the context is in shutdown mode (Context::flush_and_shutdown)
+                // (the only reason to destroy here is to avoid the PHI-level leak detection marking these as leaks)
+                detail::auto_destroy_proxy::destroy(parent, data);
             }
 
             parent = nullptr;
