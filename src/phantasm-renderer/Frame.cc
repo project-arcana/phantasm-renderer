@@ -432,8 +432,8 @@ void raii::Frame::framebufferOnSortByPSO(unsigned num_drawcalls)
 
 phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
 {
-    CC_ASSERT(fb_inferred_num_samples == -1
-              || fb_inferred_num_samples == gp._storage.get().graphics_config.samples && "graphics_pass_info has incorrect amount of samples configured");
+    CC_ASSERT((fb_inferred_num_samples == -1
+              || fb_inferred_num_samples == gp._storage.get().graphics_config.samples) && "graphics_pass_info has incorrect amount of samples configured");
     auto const combined_hash = cc::hash_combine(gp.get_hash(), fb.get_hash());
     auto const res = mCtx->acquire_graphics_pso(combined_hash, gp, fb);
     mFreeables.push_back({freeable_cached_obj::graphics_pso, combined_hash});
