@@ -24,5 +24,3 @@ pr::growing_writer& pr::growing_writer::operator=(pr::growing_writer&& rhs) noex
 }
 
 pr::growing_writer::~growing_writer() { _alloc->free(_writer.buffer()); }
-
-
