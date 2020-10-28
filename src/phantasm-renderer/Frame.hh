@@ -185,7 +185,7 @@ public:
     [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
     template <class T, auto_mode M>
-    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
         = delete;
 
 public:

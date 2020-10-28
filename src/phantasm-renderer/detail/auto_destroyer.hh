@@ -86,7 +86,7 @@ struct auto_destroyer
     [[deprecated("auto_ types are move-only")]] auto_destroyer(auto_destroyer const&) = delete;
     [[deprecated("auto_ types are move-only")]] auto_destroyer& operator=(auto_destroyer const&) = delete;
 
-    // force unlock from rvalue
+    // force disown from rvalue
     [[deprecated("discarding auto_ type here would destroy contents, use .disown()")]] operator T&() && = delete;
     [[deprecated("discarding auto_ type here would destroy contents, use .disown()")]] operator T const&() const&& = delete;
 

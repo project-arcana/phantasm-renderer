@@ -261,7 +261,7 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
 
     // automatically create and free_deferred a matching upload buffer
-    pr::buffer upload_buffer = mCtx->make_upload_buffer_for_texture(dest_texture, 1, "Frame::upload_texture_data - internal").unlock();
+    pr::buffer upload_buffer = mCtx->make_upload_buffer_for_texture(dest_texture, 1, "Frame::upload_texture_data - internal").disown();
 
     upload_texture_data(texture_data, upload_buffer, dest_texture);
 
