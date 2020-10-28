@@ -93,21 +93,21 @@ struct swapchain
 // auto_ and cached_ aliases
 
 // move-only, self-destructing versions
-using auto_buffer = auto_destroyer<buffer, false>;
-using auto_render_target = auto_destroyer<render_target, false>;
-using auto_texture = auto_destroyer<texture, false>;
+using auto_buffer = auto_destroyer<buffer, auto_mode::guard>;
+using auto_render_target = auto_destroyer<render_target, auto_mode::guard>;
+using auto_texture = auto_destroyer<texture, auto_mode::guard>;
 
-using auto_shader_binary = auto_destroyer<shader_binary, false>;
-using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, false>;
-using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, false>;
-using auto_fence = auto_destroyer<fence, false>;
-using auto_query_range = auto_destroyer<query_range, false>;
-using auto_swapchain = auto_destroyer<swapchain, false>;
+using auto_shader_binary = auto_destroyer<shader_binary, auto_mode::destroy>; // this is a CPU-only type, allow auto destruction
+using auto_graphics_pipeline_state = auto_destroyer<graphics_pipeline_state, auto_mode::guard>;
+using auto_compute_pipeline_state = auto_destroyer<compute_pipeline_state, auto_mode::guard>;
+using auto_fence = auto_destroyer<fence, auto_mode::guard>;
+using auto_query_range = auto_destroyer<query_range, auto_mode::guard>;
+using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 
 // move-only, self-cachefreeing versions
-using cached_buffer = auto_destroyer<buffer, true>;
-using cached_render_target = auto_destroyer<render_target, true>;
-using cached_texture = auto_destroyer<texture, true>;
+using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
+using cached_render_target = auto_destroyer<render_target, auto_mode::cache>;
+using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
 
 };

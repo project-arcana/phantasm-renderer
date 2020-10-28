@@ -184,7 +184,7 @@ struct prebuilt_argument
     phi::handle::shader_view _sv = phi::handle::null_shader_view;
 };
 
-using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, false>;
+using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, auto_mode::guard>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
 struct argument_builder

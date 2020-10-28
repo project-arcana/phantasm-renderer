@@ -8,6 +8,8 @@ void pr::detail::auto_destroy_proxy::cache_deref(pr::Context* ctx, const pr::buf
 void pr::detail::auto_destroy_proxy::cache_deref(pr::Context* ctx, const pr::render_target& v) { ctx->free_to_cache(v); }
 void pr::detail::auto_destroy_proxy::cache_deref(pr::Context* ctx, const pr::texture& v) { ctx->free_to_cache(v); }
 
+bool pr::detail::auto_destroy_proxy::is_destroy_legal(pr::Context* ctx) { return ctx->is_shutting_down(); }
+
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::buffer& v) { ctx->free_untyped(v.res); }
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::render_target& v) { ctx->free_untyped(v.res); }
 void pr::detail::auto_destroy_proxy::destroy(pr::Context* ctx, const pr::texture& v) { ctx->free_untyped(v.res); }

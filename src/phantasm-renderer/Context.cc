@@ -214,6 +214,15 @@ auto_swapchain Context::make_swapchain(const phi::window_handle& window_handle, 
 }
 
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
+void Context::free_range(cc::span<const phi::handle::resource> res_range) { mBackend->freeRange(res_range); }
+
+void Context::free_range(cc::span<const prebuilt_argument> arg_range)
+{
+    static_assert(sizeof(prebuilt_argument) == sizeof(phi::handle::shader_view), "wrong assmuption about prebuild_argument");
+    mBackend->freeRange(arg_range.reinterpret_as<phi::handle::shader_view const>());
+}
+
+void Context::free_range(cc::span<const phi::handle::shader_view> sv_range) { mBackend->freeRange(sv_range); }
 
 void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
@@ -224,6 +233,8 @@ void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle);
 void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
 void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
 void Context::free_deferred(phi::handle::resource res) { mDeferredQueue.free(*this, res); }
+
+void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mDeferredQueue.free_range(*this, res_range); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
@@ -376,6 +387,7 @@ gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::mov
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
+    CC_ASSERT(!mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit frames during global shutdown");
     CC_ASSERT(frame.is_valid() && "submitted an invalid CompiledFrame");
     gpu_epoch_t res = 0;
 
@@ -437,6 +449,12 @@ void Context::present(swapchain const& sc)
 }
 
 void Context::flush() { mBackend->flushGPU(); }
+
+void Context::flush_and_shutdown()
+{
+    flush();
+    mIsShuttingDown.store(true, std::memory_order_release);
+}
 
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
@@ -594,6 +612,7 @@ void Context::destroy()
 
 void Context::internalInitialize(cc::allocator* alloc)
 {
+    mIsShuttingDown.store(false);
     mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
