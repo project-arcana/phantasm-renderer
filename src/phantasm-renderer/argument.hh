@@ -17,7 +17,7 @@ struct resource_view_info
 {
     resource_view_info& format(pr::format fmt)
     {
-        rv.pixel_format = fmt;
+        rv.texture_info.pixel_format = fmt;
         return *this;
     }
 

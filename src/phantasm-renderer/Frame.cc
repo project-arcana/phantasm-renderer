@@ -383,10 +383,10 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     framebuffer_info fb_info;
 
     for (auto const& target : bcmd.render_targets)
-        fb_info.target(target.rv.pixel_format);
+        fb_info.target(target.rv.texture_info.pixel_format);
 
     if (bcmd.depth_target.rv.resource.is_valid())
-        fb_info.depth(bcmd.depth_target.rv.pixel_format);
+        fb_info.depth(bcmd.depth_target.rv.texture_info.pixel_format);
 
     if (has_blendstate_overrides)
     {
