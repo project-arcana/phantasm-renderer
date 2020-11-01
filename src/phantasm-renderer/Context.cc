@@ -266,9 +266,9 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
     int const map_begin = int(offset_in_buffer);
     int const map_end = int(offset_in_buffer + data.size_bytes());
 
-    std::byte* const map = map_buffer(buffer, map_begin, map_end);
+    std::byte* const map = map_buffer(buffer, 0, 0); // invalidate nothing
     std::memcpy(map + offset_in_buffer, data.data(), data.size_bytes());
-    unmap_buffer(buffer, map_begin, map_end);
+    unmap_buffer(buffer, map_begin, map_end); // flush the whole range
 }
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
@@ -279,9 +279,9 @@ void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out
     int const map_begin = int(offset_in_buffer);
     int const map_end = int(offset_in_buffer + out_data.size_bytes());
 
-    std::byte const* const map = map_buffer(buffer, map_begin, map_end);
+    std::byte const* const map = map_buffer(buffer, map_begin, map_end); // invalidate the whole range
     std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size_bytes());
-    unmap_buffer(buffer, map_begin, map_end);
+    unmap_buffer(buffer, 0, 0); // flush nothing
 }
 
 void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }

@@ -98,6 +98,7 @@ public:
         fill_default_srv(new_rv, img, 0, unsigned(-1));
         _add_srv(new_rv, img.res.guid);
     }
+
     /// add a default-configured structured buffer SRV
     void add(buffer const& buffer)
     {
@@ -105,8 +106,10 @@ public:
         _add_srv(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
                  buffer.res.guid);
     }
+
     /// add a default-configured 2D texture SRV
     void add(render_target const& rt) { _add_srv(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid); }
+
     /// add a configured SRV
     void add(resource_view_info const& rvi) { _add_srv(rvi.rv, rvi.guid); }
 
@@ -117,6 +120,7 @@ public:
         fill_default_uav(new_rv, img, 0, unsigned(-1));
         _add_uav(new_rv, img.res.guid);
     }
+
     /// add a default-configured buffer UAV
     void add_mutable(buffer const& buffer)
     {
@@ -124,6 +128,7 @@ public:
         _add_uav(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
                  buffer.res.guid);
     }
+
     /// add a default-configured 2D texture UAV
     void add_mutable(render_target const& rt)
     {
