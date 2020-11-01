@@ -153,10 +153,19 @@ public:
     }
 
     /// override the viewport (defaults to minimum of target sizes)
-    [[nodiscard]] framebuffer_builder& set_viewport(int w, int h)
+    [[nodiscard]] framebuffer_builder& set_viewport(int w, int h) { return this->set_viewport({w, h}); }
+
+    /// override the viewport (defaults to minimum of target sizes)
+    [[nodiscard]] framebuffer_builder& set_viewport(tg::isize2 size)
     {
-        _cmd.viewport = {w, h};
+        _cmd.viewport = size;
         _has_custom_viewport = true;
+        return *this;
+    }
+
+    [[nodiscard]] framebuffer_builder& set_viewport_offset(tg::ivec2 offset)
+    {
+        _cmd.viewport_offset = offset;
         return *this;
     }
 
