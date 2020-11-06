@@ -9,6 +9,7 @@ namespace pr
 // naive growing writer
 struct growing_writer
 {
+    growing_writer() = default;
     growing_writer(size_t initial_size, cc::allocator* alloc = cc::system_allocator);
     growing_writer(growing_writer&& rhs) noexcept : _writer(rhs._writer), _alloc(rhs._alloc)
     {
@@ -57,7 +58,7 @@ struct growing_writer
 
 private:
     phi::command_stream_writer _writer;
-    cc::allocator* _alloc;
+    cc::allocator* _alloc = cc::system_allocator;
 };
 
 }

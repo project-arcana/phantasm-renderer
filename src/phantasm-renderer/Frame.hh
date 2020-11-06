@@ -205,6 +205,7 @@ public:
 
     Frame& operator=(Frame&& rhs) noexcept;
 
+    Frame() = default;
     ~Frame() { internalDestroy(); }
 
     // private
@@ -258,7 +259,7 @@ private:
 
     // members
 private:
-    Context* mCtx;
+    Context* mCtx = nullptr;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::alloc_vector<freeable_cached_obj> mFreeables;
