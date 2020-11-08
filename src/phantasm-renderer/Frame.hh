@@ -135,6 +135,13 @@ public:
     /// (deferred freeing it afterwards)
     void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
+    void upload_texture_subresource(cc::span<std::byte const> texture_data,
+                                    unsigned row_size_bytes,
+                                    buffer const& upload_buffer,
+                                    unsigned buffer_offset_bytes,
+                                    texture const& dest_texture,
+                                    unsigned dest_subres_index);
+
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
     /// free a texture once no longer in flight AFTER this frame was submitted/discarded

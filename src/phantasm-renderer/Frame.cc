@@ -8,6 +8,7 @@
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
 #include <phantasm-hardware-interface/common/format_size.hh>
+#include <phantasm-hardware-interface/util.hh>
 
 #include <phantasm-renderer/Context.hh>
 #include <phantasm-renderer/common/log.hh>
@@ -17,17 +18,33 @@
 
 namespace
 {
-bool is_rowwise_copy_in_bounds(unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned height_pixels, unsigned source_size_bytes, unsigned destination_size_bytes)
+bool is_rowwise_copy_in_bounds(unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned num_rows, unsigned source_size_bytes, unsigned destination_size_bytes)
 {
-    auto const largest_src_access = height_pixels * row_size_bytes;
-    auto const largest_dest_access = (height_pixels - 1) * dest_row_stride_bytes + row_size_bytes;
+    // num_rows is the height in pixels for regular formats, but is lower for block compressed formats
+    auto const largest_src_access = num_rows * row_size_bytes;
+    auto const largest_dest_access = (num_rows - 1) * dest_row_stride_bytes + row_size_bytes;
 
-    return (largest_src_access <= source_size_bytes) && (largest_dest_access <= destination_size_bytes);
+    bool const is_in_bounds = (largest_src_access <= source_size_bytes) && (largest_dest_access <= destination_size_bytes);
+
+    if (!is_in_bounds)
+    {
+        PR_LOG_ERROR("Frame::upload_texture_data: rowwise copy from texture data to upload buffer is out of bounds");
+        if (largest_src_access > source_size_bytes)
+            PR_LOG_ERROR("src bound error: access {} > size {} (exceeding by {} B)", largest_src_access, source_size_bytes, largest_src_access - source_size_bytes);
+        if (largest_dest_access > destination_size_bytes)
+            PR_LOG_ERROR("dst bound error: access {} > size {} (exceeding by {} B)", largest_dest_access, destination_size_bytes,
+                         largest_dest_access - destination_size_bytes);
+
+        PR_LOG_ERROR("while writing {} rows of {} bytes (strided {})", num_rows, row_size_bytes, dest_row_stride_bytes);
+    }
+
+    return is_in_bounds;
 }
 
-void rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned height_pixels)
+void rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned num_rows)
 {
-    for (auto y = 0u; y < height_pixels; ++y)
+    // num_rows is the height in pixels for regular formats, but is lower for block compressed formats
+    for (auto y = 0u; y < num_rows; ++y)
     {
         std::memcpy(dest + y * dest_row_stride_bytes, src + y * row_size_bytes, row_size_bytes);
     }
@@ -217,8 +234,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     flushPendingTransitions();
 
     auto const bytes_per_pixel = phi::util::get_format_size_bytes(dest_texture.info.fmt);
-    auto const use_d3d12_per_row_alingment = mCtx->get_backend_type() == pr::backend::d3d12;
-    auto* const upload_buffer_map = mCtx->map_buffer(upload_buffer);
+    bool const use_d3d12_per_row_alignment = mCtx->get_backend_type() == pr::backend::d3d12;
 
     phi::cmd::copy_buffer_to_texture command;
     command.source = upload_buffer.res.handle;
@@ -227,33 +243,36 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     command.dest_height = unsigned(dest_texture.info.height);
     command.dest_mip_index = 0;
 
+    std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
     auto accumulated_offset_bytes = 0u;
 
-    // for (auto a = 0u; a < img_size.array_size; ++a)
+    for (auto a = 0u; a < dest_texture.info.depth_or_array_size; ++a)
     {
-        command.dest_array_index = 0u; // a;
+        command.dest_array_index = a;
         command.source_offset_bytes = accumulated_offset_bytes;
 
         mWriter.add_command(command);
 
-        auto const mip_row_size_bytes = bytes_per_pixel * command.dest_width;
-        auto mip_row_stride_bytes = mip_row_size_bytes;
+        auto const row_size_bytes = bytes_per_pixel * command.dest_width;
+        auto row_stride_bytes = row_size_bytes;
 
-        // MIP maps are 256-byte aligned per row in d3d12
-        if (use_d3d12_per_row_alingment)
-            mip_row_stride_bytes = phi::util::align_up(mip_row_stride_bytes, 256);
+        // texture (pixel) rows are 256-byte aligned per row in d3d12
+        if (use_d3d12_per_row_alignment)
+        {
+            row_stride_bytes = phi::util::align_up(row_stride_bytes, 256);
+        }
 
-        auto const mip_offset_bytes = mip_row_stride_bytes * command.dest_height;
-        accumulated_offset_bytes += mip_offset_bytes;
+        auto const offset_bytes = row_stride_bytes * command.dest_height;
+        accumulated_offset_bytes += offset_bytes;
 
-        CC_ASSERT(is_rowwise_copy_in_bounds(mip_row_stride_bytes, mip_row_size_bytes, command.dest_height, unsigned(texture_data.size()),
+        CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, command.dest_height, unsigned(texture_data.size()),
                                             upload_buffer.info.size_bytes - unsigned(command.source_offset_bytes))
                   && "[Frame::upload_texture_data] source data or destination buffer too small");
 
-        rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, mip_row_stride_bytes, mip_row_size_bytes, command.dest_height);
+        rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, command.dest_height);
     }
 
-    mCtx->unmap_buffer(upload_buffer);
+    mCtx->unmap_buffer(upload_buffer); // full flush
 }
 
 void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_data, const texture& dest_texture)
@@ -266,6 +285,50 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
     upload_texture_data(texture_data, upload_buffer, dest_texture);
 
     free_deferred_after_submit(upload_buffer);
+}
+
+void raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
+                                             unsigned row_size_bytes,
+                                             const buffer& upload_buffer,
+                                             unsigned buffer_offset_bytes,
+                                             const texture& dest_texture,
+                                             unsigned dest_subres_index)
+{
+    CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
+    flushPendingTransitions();
+
+    tg::isize2 const mip_resolution = phi::util::get_mip_size({dest_texture.info.width, dest_texture.info.height}, dest_subres_index);
+
+    phi::cmd::copy_buffer_to_texture command;
+    command.source = upload_buffer.res.handle;
+    command.destination = dest_texture.res.handle;
+    command.source_offset_bytes = buffer_offset_bytes;
+    command.dest_width = unsigned(mip_resolution.width);
+    command.dest_height = unsigned(mip_resolution.height);
+    command.dest_mip_index = dest_subres_index;
+    command.dest_array_index = 0;
+    mWriter.add_command(command);
+
+    bool const use_d3d12_per_row_alignment = mCtx->get_backend_type() == pr::backend::d3d12;
+    auto row_stride_bytes = row_size_bytes;
+
+    // texture (pixel) rows are 256-byte aligned per row in d3d12
+    if (use_d3d12_per_row_alignment)
+    {
+        row_stride_bytes = phi::util::align_up(row_stride_bytes, 256);
+    }
+
+    std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0) + buffer_offset_bytes; // no invalidate
+
+    auto const num_rows = texture_data.size() / row_size_bytes;
+
+    CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, num_rows, unsigned(texture_data.size()),
+                                        upload_buffer.info.size_bytes - unsigned(command.source_offset_bytes))
+              && "[Frame::upload_texture_subresource] source data or destination buffer too small");
+
+    rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
+
+    mCtx->unmap_buffer(upload_buffer, buffer_offset_bytes, -1); // flush
 }
 
 void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)
