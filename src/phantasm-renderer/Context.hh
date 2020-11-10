@@ -91,7 +91,7 @@ public:
     }
 
 
-    /// create a shader from binary data
+    /// create a shader from binary data (only hashes the data)
     [[nodiscard]] auto_shader_binary make_shader(cc::span<cc::byte const> data, pr::shader stage);
     /// create a shader by compiling it live from text
     [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader stage);
@@ -157,8 +157,9 @@ public:
     //   must not be in flight on GPU during call
     //
 
-    /// free a resource that was unlocked from automatic management
+    /// free a resource that was disowned from automatic management
     void free_untyped(phi::handle::resource resource);
+
     void free_untyped(raw_resource const& resource) { free_untyped(resource.handle); }
 
     /// free a buffer
@@ -178,6 +179,19 @@ public:
     }
     void free(query_range const& q);
 
+    void free_range(cc::span<phi::handle::resource const> res_range);
+    void free_range(cc::span<prebuilt_argument const> arg_range);
+    void free_range(cc::span<phi::handle::shader_view const> sv_range);
+
+    /// convenience to free multiple (disowned) resources
+    template <class... Res>
+    void free_multiple_resources(Res&&... res_args)
+    {
+        // any resource still wrapped in the auto_ wrapper wouldn't have a .res member (but instead .data.res)
+        phi::handle::resource flat_handles[] = {res_args.res.handle...};
+        free_range(flat_handles);
+    }
+
     //
     // deferred freeing
     //   destroy a resource in the future once currently pending GPU operations are done
@@ -196,6 +210,7 @@ public:
     /// free raw PHI resources once no longer in flight
     void free_deferred(phi::handle::resource res);
     void free_deferred(phi::handle::shader_view sv);
+    void free_range_deferred(cc::span<phi::handle::resource const> res_range);
 
     //
     // cache freeing
@@ -343,6 +358,11 @@ public:
     /// returns whether the epoch was reached on the GPU
     bool is_gpu_epoch_reached(gpu_epoch_t epoch) const { return mGpuEpochTracker._cached_epoch_gpu >= epoch; }
 
+    /// "shuts down" the context: calls flush(), no longer accepts frame submits, and
+    /// no longer asserts on non-disowned resources getting destroyed
+    /// NOTE: this NOT the same as Context::destroy()
+    void flush_and_shutdown();
+
     //
     // cache management
     //
@@ -416,6 +436,7 @@ public:
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
     unsigned calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
+    bool is_shutting_down() const { return mIsShuttingDown.load(std::memory_order_relaxed); }
 
     //
     // miscellaneous
@@ -461,10 +482,12 @@ public:
 
     ~Context() { destroy(); }
 
+    /// initializes the context
     void initialize(backend type, cc::allocator* alloc = cc::system_allocator);
     void initialize(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator);
     void initialize(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator);
 
+    /// destroys the context
     void destroy();
 
     bool is_initialized() const { return mBackend != nullptr; }
@@ -472,19 +495,17 @@ public:
 public:
     // deleted overrides
 
-    // auto_ types are not to be freed manually, only free unlocked types
-    template <class T, bool Cached>
-    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free(auto_destroyer<T, Cached> const&) = delete;
+    // auto_ types are not to be freed manually, only free disowned types
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free(auto_destroyer<T, M> const&) = delete;
 
-    // auto_ types are not to be freed manually, only free unlocked types
-    template <class T, bool Cached>
-    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_to_cache(auto_destroyer<T, Cached> const&)
-        = delete;
+    // auto_ types are not to be freed manually, only free disowned types
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_to_cache(auto_destroyer<T, M> const&) = delete;
 
-    // auto_ types are not to be freed manually, only free unlocked types
-    template <class T, bool Cached>
-    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred(auto_destroyer<T, Cached> const&)
-        = delete;
+    // auto_ types are not to be freed manually, only free disowned types
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred(auto_destroyer<T, M> const&) = delete;
 
 private:
     //
@@ -556,6 +577,7 @@ private:
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
     std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
+    std::atomic<bool> mIsShuttingDown = {false};
     deferred_destruction_queue mDeferredQueue;
 
     // caches (have dtors, members must be below backend ptr)

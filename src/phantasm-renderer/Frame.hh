@@ -126,9 +126,21 @@ public:
     //
     // specials
 
-    /// uploads texture data correctly to a destination texture respecting rowwise alignment
-    /// expects an appropriately sized upload buffer (see Context::calculate_texture_upload_size)
+    /// uploads texture data correctly to a destination texture, respecting rowwise alignment
+    /// transition cmd + copy_buf_to_tex cmd
+    /// expects upload buffer with sufficient size (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
+
+    /// creates a suitable upload buffer and calls upload_texutre_data
+    /// (deferred freeing it afterwards)
+    void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
+
+    void upload_texture_subresource(cc::span<std::byte const> texture_data,
+                                    unsigned row_size_bytes,
+                                    buffer const& upload_buffer,
+                                    unsigned buffer_offset_bytes,
+                                    texture const& dest_texture,
+                                    unsigned dest_subres_index);
 
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
@@ -179,8 +191,8 @@ public:
     [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
     [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
-    template <class T, bool Cached>
-    [[deprecated("auto_ types must not be explicitly freed, use .unlock() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, Cached> const&)
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
         = delete;
 
 public:
@@ -200,6 +212,7 @@ public:
 
     Frame& operator=(Frame&& rhs) noexcept;
 
+    Frame() = default;
     ~Frame() { internalDestroy(); }
 
     // private
@@ -253,7 +266,7 @@ private:
 
     // members
 private:
-    Context* mCtx;
+    Context* mCtx = nullptr;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
     cc::alloc_vector<freeable_cached_obj> mFreeables;

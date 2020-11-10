@@ -7,7 +7,7 @@
 void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
 {
     new_rv.resource = img.res.handle;
-    new_rv.pixel_format = img.info.fmt;
+    new_rv.texture_info.pixel_format = img.info.fmt;
     new_rv.texture_info.mip_start = mip_start;
 
     if (mip_size != unsigned(-1))
