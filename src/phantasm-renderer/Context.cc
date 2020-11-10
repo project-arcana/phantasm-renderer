@@ -130,7 +130,7 @@ auto_shader_binary Context::make_shader(cc::span<cc::byte const> data, phi::shad
     res._data = data.data();
     res._size = data.size();
     res._owning_blob = nullptr;
-    res._hash = cc::hash_xxh3({res._data, res._size}, 0);
+    res._hash = cc::hash_xxh3({res._data, res._size}, 31);
 
     return {res, this};
 }
@@ -214,6 +214,15 @@ auto_swapchain Context::make_swapchain(const phi::window_handle& window_handle, 
 }
 
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
+void Context::free_range(cc::span<const phi::handle::resource> res_range) { mBackend->freeRange(res_range); }
+
+void Context::free_range(cc::span<const prebuilt_argument> arg_range)
+{
+    static_assert(sizeof(prebuilt_argument) == sizeof(phi::handle::shader_view), "wrong assmuption about prebuild_argument");
+    mBackend->freeRange(arg_range.reinterpret_as<phi::handle::shader_view const>());
+}
+
+void Context::free_range(cc::span<const phi::handle::shader_view> sv_range) { mBackend->freeRange(sv_range); }
 
 void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
@@ -224,6 +233,8 @@ void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle);
 void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
 void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
 void Context::free_deferred(phi::handle::resource res) { mDeferredQueue.free(*this, res); }
+
+void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mDeferredQueue.free_range(*this, res_range); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
@@ -255,9 +266,9 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
     int const map_begin = int(offset_in_buffer);
     int const map_end = int(offset_in_buffer + data.size_bytes());
 
-    std::byte* const map = map_buffer(buffer, map_begin, map_end);
+    std::byte* const map = map_buffer(buffer, 0, 0); // invalidate nothing
     std::memcpy(map + offset_in_buffer, data.data(), data.size_bytes());
-    unmap_buffer(buffer, map_begin, map_end);
+    unmap_buffer(buffer, map_begin, map_end); // flush the whole range
 }
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
@@ -268,9 +279,9 @@ void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out
     int const map_begin = int(offset_in_buffer);
     int const map_end = int(offset_in_buffer + out_data.size_bytes());
 
-    std::byte const* const map = map_buffer(buffer, map_begin, map_end);
+    std::byte const* const map = map_buffer(buffer, map_begin, map_end); // invalidate the whole range
     std::memcpy(out_data.data(), map + offset_in_buffer, out_data.size_bytes());
-    unmap_buffer(buffer, map_begin, map_end);
+    unmap_buffer(buffer, 0, 0); // flush nothing
 }
 
 void Context::signal_fence_cpu(const fence& fence, uint64_t new_value) { mBackend->signalFenceCPU(fence.handle, new_value); }
@@ -363,12 +374,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 
     if (frame.is_empty())
     {
-        return CompiledFrame(this, phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
+        return CompiledFrame(phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(this, cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
+        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
     }
 }
 
@@ -376,9 +387,11 @@ gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::mov
 
 gpu_epoch_t Context::submit(CompiledFrame&& frame)
 {
+    CC_ASSERT(!mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit frames during global shutdown");
+    CC_ASSERT(frame.is_valid() && "submitted an invalid CompiledFrame");
     gpu_epoch_t res = 0;
 
-    if (frame.cmdlist.is_valid())
+    if (frame._cmdlist.is_valid()) // CompiledFrame doesn't always hold a commandlist
     {
         mGpuEpochTracker._cached_epoch_gpu = mGpuEpochTracker.get_current_epoch_gpu(mBackend);
 
@@ -387,8 +400,8 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
         {
             // unsynced, mutex: submission
-            auto const lg = std::lock_guard(mMutexSubmission);
-            mBackend->submit(cc::span{frame.cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
+            auto const lg = std::lock_guard<std::mutex>(mMutexSubmission);
+            mBackend->submit(cc::span{frame._cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
         }
 
         // increment CPU epoch after signalling
@@ -396,31 +409,32 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
         res = mGpuEpochTracker._current_epoch_cpu;
 
-        if (frame.present_after_submit_swapchain.is_valid())
+        if (frame._present_after_submit_swapchain.is_valid())
         {
-            present({frame.present_after_submit_swapchain});
+            present({frame._present_after_submit_swapchain});
         }
     }
 
-    free_all(frame.freeables);
+    free_all(frame._freeables);
 
-    if (!frame.deferred_free_resources.empty())
-        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+    if (!frame._deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    frame.parent = nullptr;
+    frame.invalidate();
+
     return res;
 }
 
 void Context::discard(CompiledFrame&& frame)
 {
-    if (frame.cmdlist.is_valid())
-        mBackend->discard(cc::span{frame.cmdlist});
-    free_all(frame.freeables);
+    if (frame._cmdlist.is_valid())
+        mBackend->discard(cc::span{frame._cmdlist});
+    free_all(frame._freeables);
 
-    if (!frame.deferred_free_resources.empty())
-        mDeferredQueue.free_range(*this, frame.deferred_free_resources);
+    if (!frame._deferred_free_resources.empty())
+        mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    frame.parent = nullptr;
+    frame.invalidate();
 }
 
 void Context::present(swapchain const& sc)
@@ -435,6 +449,12 @@ void Context::present(swapchain const& sc)
 }
 
 void Context::flush() { mBackend->flushGPU(); }
+
+void Context::flush_and_shutdown()
+{
+    flush();
+    mIsShuttingDown.store(true, std::memory_order_release);
+}
 
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
@@ -592,6 +612,7 @@ void Context::destroy()
 
 void Context::internalInitialize(cc::allocator* alloc)
 {
+    mIsShuttingDown.store(false);
     mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
