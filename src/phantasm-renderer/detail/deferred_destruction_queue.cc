@@ -9,24 +9,33 @@
 
 void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::shader_view sv)
 {
-    free_all_pending(ctx);
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
     pending_svs_new.push_back(sv);
 }
 
 void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::resource res)
 {
-    free_all_pending(ctx);
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
     pending_res_new.push_back(res);
 }
 
 void pr::deferred_destruction_queue::free_range(pr::Context& ctx, cc::span<const phi::handle::resource> res_range)
 {
-    free_all_pending(ctx);
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
     if (res_range.size() > 0)
     {
         pending_res_new.push_back_range(res_range);
         // PR_LOG("free, OLD: {}, NEW: {}, cpu: {}", gpu_epoch_old, gpu_epoch_new, latest_new_cpu);
     }
+}
+
+unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
+{
+    auto lg = std::lock_guard(mutex);
+    return _free_pending_unsynced(ctx);
 }
 
 void pr::deferred_destruction_queue::initialize(cc::allocator* alloc, unsigned num_reserved_svs, unsigned num_reserved_res)
@@ -39,6 +48,7 @@ void pr::deferred_destruction_queue::initialize(cc::allocator* alloc, unsigned n
 
 void pr::deferred_destruction_queue::destroy(pr::Context& ctx)
 {
+    auto lg = std::lock_guard(mutex);
     ctx.get_backend().freeRange(pending_svs_old);
     ctx.get_backend().freeRange(pending_svs_new);
     ctx.get_backend().freeRange(pending_res_old);
@@ -49,7 +59,7 @@ void pr::deferred_destruction_queue::destroy(pr::Context& ctx)
     pending_res_new = {};
 }
 
-unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
+unsigned pr::deferred_destruction_queue::_free_pending_unsynced(pr::Context& ctx)
 {
     auto const epoch_cpu = ctx.get_current_cpu_epoch();
     auto const epoch_gpu = ctx.get_current_gpu_epoch();
