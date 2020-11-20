@@ -18,7 +18,7 @@
 
 namespace
 {
-bool is_rowwise_copy_in_bounds(unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned num_rows, unsigned source_size_bytes, unsigned destination_size_bytes)
+bool is_rowwise_copy_in_bounds(size_t dest_row_stride_bytes, size_t row_size_bytes, size_t num_rows, size_t source_size_bytes, size_t destination_size_bytes)
 {
     // num_rows is the height in pixels for regular formats, but is lower for block compressed formats
     auto const largest_src_access = num_rows * row_size_bytes;
@@ -41,13 +41,18 @@ bool is_rowwise_copy_in_bounds(unsigned dest_row_stride_bytes, unsigned row_size
     return is_in_bounds;
 }
 
-void rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, unsigned dest_row_stride_bytes, unsigned row_size_bytes, unsigned num_rows)
+// returns bytes written to dest
+size_t rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, size_t dest_row_stride_bytes, size_t row_size_bytes, unsigned num_rows)
 {
     // num_rows is the height in pixels for regular formats, but is lower for block compressed formats
     for (auto y = 0u; y < num_rows; ++y)
     {
-        std::memcpy(dest + y * dest_row_stride_bytes, src + y * row_size_bytes, row_size_bytes);
+        auto const src_offset = y * row_size_bytes;
+        auto const dst_offset = y * dest_row_stride_bytes;
+        std::memcpy(dest + dst_offset, src + src_offset, row_size_bytes);
     }
+
+    return dest_row_stride_bytes * (num_rows - 1) + row_size_bytes;
 }
 }
 
@@ -244,7 +249,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     command.dest_mip_index = 0;
 
     std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
-    auto accumulated_offset_bytes = 0u;
+    size_t accumulated_offset_bytes = 0u;
 
     for (auto a = 0u; a < dest_texture.info.depth_or_array_size; ++a)
     {
@@ -265,8 +270,8 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
         auto const offset_bytes = row_stride_bytes * command.dest_height;
         accumulated_offset_bytes += offset_bytes;
 
-        CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, command.dest_height, unsigned(texture_data.size()),
-                                            upload_buffer.info.size_bytes - unsigned(command.source_offset_bytes))
+        CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, command.dest_height, texture_data.size(),
+                                            upload_buffer.info.size_bytes - command.source_offset_bytes)
                   && "[Frame::upload_texture_data] source data or destination buffer too small");
 
         rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, command.dest_height);
@@ -287,12 +292,12 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
     free_deferred_after_submit(upload_buffer);
 }
 
-void raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
-                                             unsigned row_size_bytes,
-                                             const buffer& upload_buffer,
-                                             unsigned buffer_offset_bytes,
-                                             const texture& dest_texture,
-                                             unsigned dest_subres_index)
+size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
+                                               unsigned row_size_bytes,
+                                               const buffer& upload_buffer,
+                                               unsigned buffer_offset_bytes,
+                                               const texture& dest_texture,
+                                               unsigned dest_subres_index)
 {
     CC_ASSERT(upload_buffer.info.heap == resource_heap::upload && "buffer is not an upload buffer");
     flushPendingTransitions();
@@ -318,7 +323,7 @@ void raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_d
         row_stride_bytes = phi::util::align_up(row_stride_bytes, 256);
     }
 
-    std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0) + buffer_offset_bytes; // no invalidate
+    std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
 
     auto const num_rows = texture_data.size() / row_size_bytes;
 
@@ -326,9 +331,12 @@ void raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_d
                                         upload_buffer.info.size_bytes - unsigned(command.source_offset_bytes))
               && "[Frame::upload_texture_subresource] source data or destination buffer too small");
 
-    rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
+    auto const last_offset = rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
 
-    mCtx->unmap_buffer(upload_buffer, buffer_offset_bytes, -1); // flush
+    mCtx->unmap_buffer(upload_buffer, buffer_offset_bytes, buffer_offset_bytes + last_offset); // flush exact range
+
+    // amount of bytes written to upload buffer, starting at offset
+    return last_offset;
 }
 
 void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)
