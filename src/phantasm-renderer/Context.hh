@@ -207,10 +207,17 @@ public:
     void free_deferred(render_target const& rt);
     /// free a resource once no longer in flight
     void free_deferred(raw_resource const& res);
+
+    /// free a PSO once no longer in flight
+    void free_deferred(graphics_pipeline_state const& gpso);
+    void free_deferred(compute_pipeline_state const& cpso);
+
     /// free raw PHI resources once no longer in flight
     void free_deferred(phi::handle::resource res);
     void free_deferred(phi::handle::shader_view sv);
+    void free_deferred(phi::handle::pipeline_state pso);
     void free_range_deferred(cc::span<phi::handle::resource const> res_range);
+    void free_range_deferred(cc::span<phi::handle::shader_view const> sv_range);
 
     //
     // cache freeing

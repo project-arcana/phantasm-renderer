@@ -232,9 +232,15 @@ void Context::free_deferred(buffer const& buf) { free_deferred(buf.res.handle); 
 void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle); }
 void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
 void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
+void Context::free_deferred(graphics_pipeline_state const& gpso) { free_deferred(gpso._handle); }
+void Context::free_deferred(compute_pipeline_state const& cpso) { free_deferred(cpso._handle); }
+
 void Context::free_deferred(phi::handle::resource res) { mDeferredQueue.free(*this, res); }
+void Context::free_deferred(phi::handle::shader_view sv) { mDeferredQueue.free(*this, sv); }
+void Context::free_deferred(phi::handle::pipeline_state pso) { mDeferredQueue.free(*this, pso); }
 
 void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mDeferredQueue.free_range(*this, res_range); }
+void Context::free_range_deferred(cc::span<const phi::handle::shader_view> sv_range) { mDeferredQueue.free_range(*this, sv_range); }
 
 void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
 {
