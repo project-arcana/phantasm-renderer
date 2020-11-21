@@ -48,7 +48,11 @@ public:
 
 public:
     Framebuffer(Framebuffer const&) = delete;
-    Framebuffer(Framebuffer&& rhs) noexcept : mParent(rhs.mParent) { rhs.mParent = nullptr; }
+    Framebuffer(Framebuffer&& rhs) noexcept
+      : mParent(rhs.mParent), mHashInfo(cc::move(rhs.mHashInfo)), mNumSamples(rhs.mNumSamples), mHasBlendstateOverrides(rhs.mHasBlendstateOverrides)
+    {
+        rhs.mParent = nullptr;
+    }
     Framebuffer& operator=(Framebuffer const&) = delete;
     Framebuffer& operator=(Framebuffer&& rhs) noexcept
     {
@@ -56,6 +60,9 @@ public:
         {
             destroy();
             mParent = rhs.mParent;
+            mHashInfo = cc::move(rhs.mHashInfo);
+            mNumSamples = rhs.mNumSamples;
+            mHasBlendstateOverrides = rhs.mHasBlendstateOverrides;
             rhs.mParent = nullptr;
         }
 
@@ -71,10 +78,11 @@ private:
     }
     void destroy();
 
-    Frame* mParent;
+    Frame* mParent = nullptr;
     framebuffer_info mHashInfo;
-    int mNumSamples; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
-    bool mHasBlendstateOverrides; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
+    int mNumSamples = 0; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
+    bool mHasBlendstateOverrides
+        = false; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
 };
 
 struct framebuffer_builder

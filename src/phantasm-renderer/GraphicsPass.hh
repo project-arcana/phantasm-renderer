@@ -28,7 +28,7 @@ public:
 
     void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, unsigned num_args, unsigned arg_buffer_offset = 0);
 
-    void set_offset(unsigned vertex_offset, unsigned index_offset = 0);
+    void set_offset(int vertex_offset, unsigned index_offset = 0);
 
     void set_scissor(tg::iaabb2 scissor) { mCmd.scissor = scissor; }
     void set_scissor(int left, int top, int right, int bot) { mCmd.scissor = tg::iaabb2({left, top}, {right, bot}); }
@@ -52,7 +52,8 @@ public:
     /// NOTE: advanced usage
     void reset_pipeline_state(phi::handle::pipeline_state pso) { mCmd.pipeline_state = pso; }
 
-    GraphicsPass(GraphicsPass&& rhs) = default;
+    GraphicsPass(GraphicsPass const&) = delete;
+    GraphicsPass(GraphicsPass&& rhs) noexcept = default;
 
 private:
     friend class Framebuffer;
@@ -86,7 +87,7 @@ private:
 
 // inline implementation
 
-inline void GraphicsPass::set_offset(unsigned vertex_offset, unsigned index_offset)
+inline void GraphicsPass::set_offset(int vertex_offset, unsigned index_offset)
 {
     mCmd.vertex_offset = vertex_offset;
     mCmd.index_offset = index_offset;
