@@ -21,10 +21,10 @@ public:
         return p;
     }
 
-    void draw(unsigned num_vertices);
-    void draw(buffer const& vertex_buffer);
-    void draw(buffer const& vertex_buffer, buffer const& index_buffer);
-    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices);
+    void draw(unsigned num_vertices, unsigned num_instances = 1);
+    void draw(buffer const& vertex_buffer, unsigned num_instances = 1);
+    void draw(buffer const& vertex_buffer, buffer const& index_buffer, unsigned num_instances = 1);
+    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices, unsigned num_instances = 1);
 
     void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, unsigned num_args, unsigned arg_buffer_offset = 0);
 

@@ -4,27 +4,30 @@
 
 #include "Frame.hh"
 
-void pr::raii::GraphicsPass::draw(unsigned num_vertices) { draw(phi::handle::null_resource, phi::handle::null_resource, num_vertices); }
-
-void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer)
+void pr::raii::GraphicsPass::draw(unsigned num_vertices, unsigned num_instances)
 {
-    CC_ASSERT(vertex_buffer.info.stride_bytes > 0 && "vertex buffer not strided");
-    draw(vertex_buffer.res.handle, phi::handle::null_resource, vertex_buffer.info.size_bytes / vertex_buffer.info.stride_bytes);
+    draw(phi::handle::null_resource, phi::handle::null_resource, num_vertices, num_instances);
 }
 
-void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer)
+void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, unsigned num_instances)
+{
+    CC_ASSERT(vertex_buffer.info.stride_bytes > 0 && "vertex buffer not strided");
+    draw(vertex_buffer.res.handle, phi::handle::null_resource, vertex_buffer.info.size_bytes / vertex_buffer.info.stride_bytes, num_instances);
+}
+
+void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer, unsigned num_instances)
 {
     CC_ASSERT(vertex_buffer.info.stride_bytes > 0 && "vertex buffer not strided");
     CC_ASSERT(index_buffer.info.stride_bytes > 0 && "index buffer not strided");
     CC_ASSERT(index_buffer.info.stride_bytes <= 4 && "index buffer stride unusually large - switched up vertex and index buffer?");
-    draw(vertex_buffer.res.handle, index_buffer.res.handle, index_buffer.info.size_bytes / index_buffer.info.stride_bytes);
+    draw(vertex_buffer.res.handle, index_buffer.res.handle, index_buffer.info.size_bytes / index_buffer.info.stride_bytes, num_instances);
 }
 
-void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices)
+void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices, unsigned num_instances)
 {
     mCmd.vertex_buffer = vertex_buffer;
     mCmd.index_buffer = index_buffer;
-
+    mCmd.num_instances = num_instances;
     mCmd.num_indices = num_indices;
 
     mParent->passOnDraw(mCmd);
