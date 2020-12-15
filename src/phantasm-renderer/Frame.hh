@@ -9,6 +9,7 @@
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/common/growing_writer.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
@@ -19,7 +20,7 @@
 
 namespace pr::raii
 {
-class Frame
+class PR_API Frame
 {
 public:
     //

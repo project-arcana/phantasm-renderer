@@ -3,6 +3,7 @@
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/resource_types.hh>
 
@@ -10,7 +11,7 @@ namespace pr::raii
 {
 class Frame;
 
-class ComputePass
+class PR_API ComputePass
 {
 public:
     template <class... Args>

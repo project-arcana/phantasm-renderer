@@ -7,6 +7,7 @@
 #include <phantasm-renderer/common/hashable_storage.hh>
 
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
@@ -15,7 +16,7 @@
 
 namespace pr
 {
-struct graphics_pass_info
+struct PR_API graphics_pass_info
 {
 public:
     /// Add a shader argument specifiying the amount of elements
@@ -123,7 +124,7 @@ public:
     cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
 };
 
-struct compute_pass_info
+struct PR_API compute_pass_info
 {
 public:
     /// Add a shader argument specifiying the amount of elements
@@ -199,7 +200,7 @@ template <class... ShaderTs>
     return res;
 }
 
-struct framebuffer_info
+struct PR_API framebuffer_info
 {
 public:
     /// Add a render target based on format only

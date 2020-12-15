@@ -20,6 +20,7 @@
 #include <phantasm-renderer/detail/deferred_destruction_queue.hh>
 
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 
@@ -30,7 +31,7 @@ namespace pr
  *
  *
  */
-class Context
+class PR_API Context
 {
 public:
     //

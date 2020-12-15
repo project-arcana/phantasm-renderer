@@ -2,13 +2,14 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/fwd.hh>
 
 namespace pr
 {
 namespace detail
 {
-struct auto_destroy_proxy
+struct PR_API auto_destroy_proxy
 {
     static void cache_deref(pr::Context* ctx, buffer const& v);
     static void cache_deref(pr::Context* ctx, render_target const& v);

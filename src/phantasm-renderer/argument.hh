@@ -5,6 +5,7 @@
 #include <phantasm-hardware-interface/arguments.hh>
 
 #include <phantasm-renderer/common/hashable_storage.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/state_info.hh>
 
 #include <phantasm-renderer/enums.hh>
@@ -13,7 +14,7 @@
 
 namespace pr
 {
-struct resource_view_info
+struct PR_API resource_view_info
 {
     resource_view_info& format(pr::format fmt)
     {
@@ -88,7 +89,7 @@ struct resource_view_info
 }
 
 // fixed size, hashable, no raw resources allowed
-struct argument
+struct PR_API argument
 {
 public:
     /// add a default-configured texture SRV
@@ -192,7 +193,7 @@ struct prebuilt_argument
 using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, auto_mode::guard>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
-struct argument_builder
+struct PR_API argument_builder
 {
 public:
     //

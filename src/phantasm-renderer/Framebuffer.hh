@@ -6,13 +6,14 @@
 #include <phantasm-hardware-interface/commands.hh>
 
 #include <phantasm-renderer/GraphicsPass.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/pass_info.hh>
 
 namespace pr::raii
 {
-class Framebuffer
+class PR_API Framebuffer
 {
 public:
     // lvalue-qualified as Framebuffer has to stay alive
@@ -85,7 +86,7 @@ private:
         = false; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
 };
 
-struct framebuffer_builder
+struct PR_API framebuffer_builder
 {
 public:
     /// add a rendertarget to the framebuffer that loads is contents (ie. is not cleared)
