@@ -369,7 +369,7 @@ void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd
         CC_ASSERT(num_samples == int(rt.info.num_samples) && "make_framebuffer: inconsistent amount of samples in render targets");
     }
 
-    if (phi::is_depth_format(rt.info.format))
+    if (phi::util::is_depth_format(rt.info.format))
     {
         CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to raii::Frame::make_framebuffer");
         bcmd.set_2d_depth_stencil(rt.res.handle, rt.info.format, phi::rt_clear_type::clear, rt.info.num_samples > 1);
