@@ -448,7 +448,9 @@ void Context::present(swapchain const& sc)
 #ifdef CC_ENABLE_ASSERTIONS
     CC_ASSERT(mSafetyState.did_acquire_before_present && "Context::present without prior acquire_backbuffer");
 #endif
+
     mBackend->present(sc.handle);
+
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = false;
 #endif

@@ -343,7 +343,6 @@ public:
     [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
 
     /// acquires the next backbuffer in line
-    /// this should occur as late as possible into the frame
     [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
 
     /// returns the size of the swapchain's backbuffers
