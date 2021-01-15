@@ -25,6 +25,8 @@ void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buf
 
 void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices, unsigned num_instances)
 {
+    CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");
+
     mCmd.vertex_buffer = vertex_buffer;
     mCmd.index_buffer = index_buffer;
     mCmd.num_instances = num_instances;
@@ -35,6 +37,8 @@ void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::hand
 
 void pr::raii::GraphicsPass::draw_indirect(const pr::buffer& argument_buffer, const pr::buffer& vertex_buffer, unsigned num_args, unsigned arg_buffer_offset)
 {
+    CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");
+
     phi::cmd::draw_indirect dcmd;
     std::memcpy(dcmd.root_constants, mCmd.root_constants, sizeof(dcmd.root_constants));
     std::memcpy(dcmd.shader_arguments.data(), mCmd.shader_arguments.data(), sizeof(dcmd.shader_arguments));
