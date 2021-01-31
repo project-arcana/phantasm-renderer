@@ -96,12 +96,28 @@ public:
         if (phi::util::is_depth_format(rt.info.format))
         {
             _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, 1.f, 0, phi::rt_clear_type::load};
-            _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index, 1u, array_index);
+
+            if (array_index > 0)
+            {
+                _cmd.depth_target.rv.init_as_tex2d_array(rt.res.handle, rt.info.format, rt.info.num_samples > 1, array_index, 1u, mip_index);
+            }
+            else
+            {
+                _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index);
+            }
         }
         else
         {
             _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, phi::rt_clear_type::load});
-            _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index, 1u, array_index);
+
+            if (array_index > 0)
+            {
+                _cmd.render_targets.back().rv.init_as_tex2d_array(rt.res.handle, rt.info.format, rt.info.num_samples > 1, array_index, 1u, mip_index);
+            }
+            else
+            {
+                _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index);
+            }
         }
         adjust_config_for_render_target(rt);
         return *this;
@@ -114,7 +130,15 @@ public:
         CC_ASSERT(!phi::util::is_depth_format(rt.info.format) && "invoked clear_target color variant with a depth render target");
 
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
-        _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index, 1u, array_index);
+        if (array_index > 0)
+        {
+            _cmd.render_targets.back().rv.init_as_tex2d_array(rt.res.handle, rt.info.format, rt.info.num_samples > 1, array_index, 1u, mip_index);
+        }
+        else
+        {
+            _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index);
+        }
+
         adjust_config_for_render_target(rt);
         return *this;
     }
@@ -125,7 +149,15 @@ public:
         CC_ASSERT(phi::util::is_depth_format(rt.info.format) && "invoked clear_target depth variant with a non-depth render target");
 
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};
-        _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index, 1u, array_index);
+
+        if (array_index > 0)
+        {
+            _cmd.depth_target.rv.init_as_tex2d_array(rt.res.handle, rt.info.format, rt.info.num_samples > 1, array_index, 1u, mip_index);
+        }
+        else
+        {
+            _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1, mip_index);
+        }
         adjust_config_for_render_target(rt);
         return *this;
     }

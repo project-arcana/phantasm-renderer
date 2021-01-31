@@ -56,19 +56,19 @@ struct PR_API resource_view_info
     uint64_t guid;
 };
 
-[[nodiscard]] inline resource_view_info resource_view_2d(texture const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+[[nodiscard]] inline resource_view_info resource_view_2d(texture const& tex, unsigned mip_index = 0)
 {
     resource_view_info res;
     res.guid = tex.res.guid;
-    res.rv.init_as_tex2d(tex.res.handle, tex.info.fmt, false, mip_start, mip_size);
+    res.rv.init_as_tex2d(tex.res.handle, tex.info.fmt, false, mip_index);
     return res;
 }
 
-[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_index = 0)
 {
     resource_view_info res;
     res.guid = tex.res.guid;
-    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_start, mip_size);
+    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_index);
     return res;
 }
 
