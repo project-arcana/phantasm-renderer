@@ -103,9 +103,9 @@ public:
     /// add a default-configured structured buffer SRV
     void add(buffer const& buffer)
     {
-        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
-        _add_srv(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
-                 buffer.res.guid);
+        phi::resource_view new_rv;
+        pr::argument::fill_default_srv(new_rv, buffer);
+        _add_srv(new_rv, buffer.res.guid);
     }
 
     /// add a default-configured 2D texture SRV
@@ -156,6 +156,16 @@ public:
     unsigned get_num_uavs() const { return unsigned(_info.get().uavs.size()); }
     unsigned get_num_samplers() const { return unsigned(_info.get().samplers.size()); }
 
+    static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
+
+    static void fill_default_srv(phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start = 0u)
+    {
+        CC_ASSERT(buf.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
+        new_rv.init_as_structured_buffer(buf.res.handle, buf.info.size_bytes / buf.info.stride_bytes, buf.info.stride_bytes, element_start);
+    }
+
+    static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
+
 private:
     void _add_srv(phi::resource_view rv, uint64_t guid)
     {
@@ -174,10 +184,6 @@ private:
         _info.get().uavs.push_back(rv);
         _info.get().uav_guids.push_back(guid);
     }
-
-    friend struct argument_builder;
-    static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
-    static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
 
 private:
     friend class raii::Frame;
@@ -207,9 +213,8 @@ public:
     }
     argument_builder& add(buffer const& buffer)
     {
-        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV argument has no stride, pass a stride during creation");
         auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
+        pr::argument::fill_default_srv(new_rv, buffer);
         return *this;
     }
     argument_builder& add(render_target const& rt)
