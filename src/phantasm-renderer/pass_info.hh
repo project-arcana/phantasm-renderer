@@ -26,6 +26,13 @@ public:
         return *this;
     }
 
+    /// Add a shader argument shape
+    graphics_pass_info& arg(phi::arg::shader_arg_shape const& arg_shape)
+    {
+        _storage.get().arg_shapes.push_back(arg_shape);
+        return *this;
+    }
+
     /// add a shader argument matching the shape of a given pr::argument
     graphics_pass_info& arg(argument const& argument, bool has_cbv = false)
     {
@@ -134,6 +141,13 @@ public:
         return *this;
     }
 
+    /// Add a shader argument shape
+    compute_pass_info& arg(phi::arg::shader_arg_shape const& arg_shape)
+    {
+        _storage.get().arg_shapes.push_back(arg_shape);
+        return *this;
+    }
+
     /// add a shader argument matching the shape of a given pr::argument
     compute_pass_info& arg(argument const& argument, bool has_cbv = false)
     {
@@ -155,12 +169,8 @@ public:
         return *this;
     }
 
-private:
-    friend class raii::Frame;
     [[nodiscard]] cc::hash_t get_hash() const { return _storage.get_xxhash(); }
 
-private:
-    friend class Context;
     hashable_storage<compute_pass_info_data> _storage;
     phi::arg::shader_binary _shader;
 };

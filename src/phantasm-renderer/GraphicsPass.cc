@@ -52,15 +52,8 @@ void pr::raii::GraphicsPass::draw_indirect(const pr::buffer& argument_buffer, co
     mParent->write_raw_cmd(dcmd);
 }
 
-void pr::raii::GraphicsPass::add_argument(const pr::argument& arg)
+void pr::raii::GraphicsPass::add_cached_argument(const pr::argument& arg, phi::handle::resource cbv, uint32_t cbv_offset)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(phi::handle::null_resource, 0, mParent->passAcquireGraphicsShaderView(arg));
-}
-
-
-void pr::raii::GraphicsPass::add_argument(const pr::argument& arg, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset, mParent->passAcquireGraphicsShaderView(arg));
+    mCmd.add_shader_arg(cbv, cbv_offset, mParent->passAcquireGraphicsShaderView(arg));
 }

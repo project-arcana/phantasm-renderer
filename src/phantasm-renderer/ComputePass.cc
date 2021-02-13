@@ -13,15 +13,8 @@ void pr::raii::ComputePass::dispatch(unsigned x, unsigned y, unsigned z)
     mParent->passOnDispatch(mCmd);
 }
 
-
-void pr::raii::ComputePass::add_argument(const pr::argument& arg)
+void pr::raii::ComputePass::add_cached_argument(const pr::argument& arg, phi::handle::resource constant_buffer, uint32_t constant_buffer_offset)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(phi::handle::null_resource, 0, mParent->passAcquireComputeShaderView(arg));
-}
-
-void pr::raii::ComputePass::add_argument(const pr::argument& arg, const pr::buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset, mParent->passAcquireComputeShaderView(arg));
+    mCmd.add_shader_arg(constant_buffer, constant_buffer_offset, mParent->passAcquireComputeShaderView(arg));
 }

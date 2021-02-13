@@ -14,11 +14,49 @@ class Frame;
 class PR_API GraphicsPass
 {
 public:
-    template <class... Args>
-    [[nodiscard]] GraphicsPass bind(Args&&... args)
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(cc::forward<Args>(args)...);
+        p.add_argument(sv._sv, phi::handle::null_resource, 0);
+        return p;
+    }
+
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_argument(sv._sv, constant_buffer.res.handle, constant_buffer_offset);
+        return p;
+    }
+
+    // CBV only
+    [[nodiscard]] GraphicsPass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_argument(phi::handle::null_shader_view, constant_buffer.res.handle, constant_buffer_offset);
+        return p;
+    }
+
+    // raw phi
+    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0)
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_argument(sv, cbv, cbv_offset);
+        return p;
+    }
+
+    // cache-access variants
+    // hits a OS mutex
+    [[nodiscard]] GraphicsPass bind(argument const& arg)
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_cached_argument(arg, phi::handle::null_resource, 0);
+        return p;
+    }
+
+    [[nodiscard]] GraphicsPass bind(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_cached_argument(arg, constant_buffer.res.handle, constant_buffer_offset);
         return p;
     }
 
@@ -66,19 +104,12 @@ private:
     GraphicsPass(Frame* parent, phi::cmd::draw const& cmd, unsigned arg_i) : mParent(parent), mCmd(cmd), mArgNum(arg_i) {}
 
 private:
-    // cache-access variants
+    // persisted, raw phi
+    void add_argument(phi::handle::shader_view sv, phi::handle::resource cbv, uint32_t cbv_offset);
+
+    // cache-access variant
     // hits a OS mutex
-    void add_argument(argument const& arg);
-    void add_argument(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
-
-    // persisted variants
-    void add_argument(prebuilt_argument const& sv);
-    void add_argument(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
-
-    // raw phi
-    void add_argument(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0);
-
-    void add_argument(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0);
+    void add_cached_argument(argument const& arg, phi::handle::resource cbv, uint32_t cbv_offset);
 
     Frame* mParent = nullptr;
     phi::cmd::draw mCmd;
@@ -112,27 +143,9 @@ inline void GraphicsPass::set_constant_buffer_offset(unsigned offset)
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
 }
 
-inline void GraphicsPass::add_argument(prebuilt_argument const& sv)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(phi::handle::null_resource, 0, sv._sv);
-}
-
-inline void GraphicsPass::add_argument(prebuilt_argument const& sv, const buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset, sv._sv);
-}
-
 inline void GraphicsPass::add_argument(phi::handle::shader_view sv, phi::handle::resource cbv, uint32_t cbv_offset)
 {
     ++mArgNum;
     mCmd.add_shader_arg(cbv, cbv_offset, sv);
-}
-
-inline void GraphicsPass::add_argument(const buffer& constant_buffer, uint32_t constant_buffer_offset)
-{
-    ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer.res.handle, constant_buffer_offset);
 }
 }
