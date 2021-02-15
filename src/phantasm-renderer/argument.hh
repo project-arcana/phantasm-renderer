@@ -156,6 +156,13 @@ public:
     unsigned get_num_uavs() const { return unsigned(_info.get().uavs.size()); }
     unsigned get_num_samplers() const { return unsigned(_info.get().samplers.size()); }
 
+    void clear()
+    {
+        _info.get().srvs.clear();
+        _info.get().uavs.clear();
+        _info.get().samplers.clear();
+    }
+
     static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
 
     static void fill_default_srv(phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start = 0u)
