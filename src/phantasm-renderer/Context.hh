@@ -122,7 +122,9 @@ public:
     [[nodiscard]] auto_shader_binary make_shader(cc::span<cc::byte const> data, pr::shader stage);
 
     /// create a shader by compiling it live from text
-    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader stage);
+    /// build_debug: compile without optimizations and embed debug symbols/PDB info (/Od /Zi /Qembed_debug) - required for shader debugging in Rdoc, PIX etc
+    [[nodiscard]] auto_shader_binary make_shader(
+        cc::string_view code, cc::string_view entrypoint, pr::shader stage, bool build_debug = false, cc::allocator* scratch_alloc = cc::system_allocator);
 
     //
     // prebuilt arguments (shader views)
@@ -631,7 +633,7 @@ private:
     pr::backend mBackendType;
 
     // constant info
-    uint64_t mGPUTimestampFrequency;
+    uint64_t mGPUTimestampFrequency = 0;
 
     // components
     dxcw::compiler mShaderCompiler;

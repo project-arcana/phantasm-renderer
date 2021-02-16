@@ -135,7 +135,7 @@ auto_shader_binary Context::make_shader(cc::span<cc::byte const> data, phi::shad
     return {res, this};
 }
 
-auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
 {
     dxcw::binary bin;
 
@@ -144,7 +144,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     {
         auto lg = std::lock_guard(mMutexShaderCompilation); // unsynced, mutex: compilation
-        bin = mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output);
+        bin = mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output, build_debug, nullptr, nullptr, nullptr, scratch_alloc);
     }
 
     if (bin.data == nullptr)
