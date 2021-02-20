@@ -115,8 +115,11 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
+    size_t const num_copied_bytes = num_bytes > 0 ? num_bytes : cc::min(src.info.size_bytes, dest.info.size_bytes);
+    CC_ASSERT(num_copied_bytes + src_offset <= src.info.size_bytes && num_copied_bytes + dest_offset <= dest.info.size_bytes && "Buffer Copy OOB");
+
     phi::cmd::copy_buffer ccmd;
-    ccmd.init(src.res.handle, dest.res.handle, num_bytes > 0 ? num_bytes : cc::min(src.info.size_bytes, dest.info.size_bytes), src_offset, dest_offset);
+    ccmd.init(src.res.handle, dest.res.handle, num_copied_bytes, src_offset, dest_offset);
     mWriter.add_command(ccmd);
 }
 
@@ -125,6 +128,8 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
+
+
     phi::cmd::copy_buffer_to_texture ccmd;
     ccmd.init(src.res.handle, dest.res.handle, unsigned(dest.info.width) / (1 + dest_mip_index), unsigned(dest.info.height) / (1 + dest_mip_index),
               src_offset, dest_mip_index, dest_array_index);
@@ -285,9 +290,19 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
     CC_ASSERT(dest_texture.info.depth_or_array_size == 1 && "array upload unimplemented");
 
     // automatically create and free_deferred a matching upload buffer
-    pr::buffer upload_buffer = mCtx->make_upload_buffer_for_texture(dest_texture, 1, "Frame::upload_texture_data - internal").disown();
+    pr::buffer upload_buffer = mCtx->make_upload_buffer_for_texture(dest_texture, 1, "Frame::auto_upload_texture_data - internal").disown();
 
     upload_texture_data(texture_data, upload_buffer, dest_texture);
+
+    free_deferred_after_submit(upload_buffer);
+}
+
+void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer)
+{
+    pr::buffer upload_buffer = mCtx->make_upload_buffer(data.size(), 0u, "Frame::auto_upload_buffer_data - internal").disown();
+
+    mCtx->write_to_buffer_raw(upload_buffer, data);
+    this->copy(upload_buffer, dest_buffer, 0, 0, data.size());
 
     free_deferred_after_submit(upload_buffer);
 }

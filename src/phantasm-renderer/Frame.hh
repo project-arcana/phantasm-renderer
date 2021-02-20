@@ -78,6 +78,7 @@ public:
 
     /// copy buffer to buffer
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
+
     /// copy buffer to texture
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
@@ -86,10 +87,13 @@ public:
 
     /// copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, unsigned mip_index = 0);
+
     /// copies MIP level 0, array slice 0 from src to dest
     void copy(texture const& src, render_target const& dest);
+
     /// copies src to MIP level 0, array slice 0 of dest
     void copy(render_target const& src, texture const& dest);
+
     /// copies contents of src to dest
     void copy(render_target const& src, render_target const& dest);
 
@@ -143,14 +147,21 @@ public:
                                       texture const& dest_texture,
                                       unsigned dest_subres_index);
 
+    /// creates a suitable temporary upload buffer and copies data to the destination buffer
+    void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
+
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
+
     /// free a texture once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.res.handle); }
+
     /// free a render target once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(render_target const& rt) { free_deferred_after_submit(rt.res.handle); }
+
     /// free a resource once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(raw_resource const& res) { free_deferred_after_submit(res.handle); }
+
     /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
 
@@ -181,8 +192,10 @@ public:
 
 public:
     // redirect intuitive misuses
+
     /// (graphics passes can only be created from framebuffers)
     [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
+
     /// frame must not be discarded while framebuffers/passes are alive
     [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
     [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
