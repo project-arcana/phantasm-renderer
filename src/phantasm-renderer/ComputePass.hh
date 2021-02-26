@@ -60,7 +60,9 @@ public:
         return p;
     }
 
-    void dispatch(unsigned x, unsigned y = 1, unsigned z = 1);
+    void dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1);
+
+    void dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments = 1, uint32_t offset_bytes = 0);
 
     void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
     void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);
