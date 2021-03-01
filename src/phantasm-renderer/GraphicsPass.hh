@@ -60,23 +60,29 @@ public:
         return p;
     }
 
-    void draw(unsigned num_vertices, unsigned num_instances = 1);
-    void draw(buffer const& vertex_buffer, unsigned num_instances = 1);
-    void draw(buffer const& vertex_buffer, buffer const& index_buffer, unsigned num_instances = 1);
-    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, unsigned num_indices, unsigned num_instances = 1);
+    void draw(uint32_t num_vertices, uint32_t num_instances = 1);
+    void draw(buffer const& vertex_buffer, uint32_t num_instances = 1);
+    void draw(buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_instances = 1);
+    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1);
 
-    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, unsigned num_args, unsigned arg_buffer_offset = 0);
+    void draw_indirect(phi::handle::resource argument_buffer,
+                       phi::handle::resource vertex_buffer,
+                       phi::handle::resource index_buffer,
+                       uint32_t num_args,
+                       uint32_t arg_buffer_offset_bytes = 0);
+    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
+    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
 
-    void set_offset(int vertex_offset, unsigned index_offset = 0);
+    void set_offset(int vertex_offset, uint32_t index_offset = 0);
 
     void set_scissor(tg::iaabb2 scissor) { mCmd.scissor = scissor; }
     void set_scissor(int left, int top, int right, int bot) { mCmd.scissor = tg::iaabb2({left, top}, {right, bot}); }
     void unset_scissor() { mCmd.scissor = tg::iaabb2(-1, -1); }
 
-    void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
-    void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);
+    void set_constant_buffer(buffer const& constant_buffer, uint32_t offset = 0);
+    void set_constant_buffer(phi::handle::resource raw_cbv, uint32_t offset = 0);
 
-    void set_constant_buffer_offset(unsigned offset);
+    void set_constant_buffer_offset(uint32_t offset);
 
 
     template <class T>
@@ -101,7 +107,7 @@ private:
 
 private:
     // internal re-bind ctor
-    GraphicsPass(Frame* parent, phi::cmd::draw const& cmd, unsigned arg_i) : mParent(parent), mCmd(cmd), mArgNum(arg_i) {}
+    GraphicsPass(Frame* parent, phi::cmd::draw const& cmd, uint32_t arg_i) : mParent(parent), mCmd(cmd), mArgNum(arg_i) {}
 
 private:
     // persisted, raw phi
@@ -114,30 +120,30 @@ private:
     Frame* mParent = nullptr;
     phi::cmd::draw mCmd;
     // index of owning argument - 1, 0 means no arguments existing
-    unsigned mArgNum = 0;
+    uint32_t mArgNum = 0;
 };
 
 // inline implementation
 
-inline void GraphicsPass::set_offset(int vertex_offset, unsigned index_offset)
+inline void GraphicsPass::set_offset(int vertex_offset, uint32_t index_offset)
 {
     mCmd.vertex_offset = vertex_offset;
     mCmd.index_offset = index_offset;
 }
 
-inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, unsigned offset)
+inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, uint32_t offset)
 {
     set_constant_buffer(constant_buffer.res.handle, offset);
 }
 
-inline void GraphicsPass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)
+inline void GraphicsPass::set_constant_buffer(phi::handle::resource raw_cbv, uint32_t offset)
 {
     CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer on a GraphicsPass without prior bind");
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer = raw_cbv;
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
 }
 
-inline void GraphicsPass::set_constant_buffer_offset(unsigned offset)
+inline void GraphicsPass::set_constant_buffer_offset(uint32_t offset)
 {
     CC_ASSERT(mArgNum != 0 && "Attempted to set_constant_buffer_offset on a GraphicsPass without prior bind");
     mCmd.shader_arguments[uint8_t(mArgNum - 1)].constant_buffer_offset = offset;
