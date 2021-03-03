@@ -102,6 +102,25 @@ void raii::Frame::transition(phi::handle::resource raw_resource, pr::state targe
     mPendingTransitionCommand.add(raw_resource, target, dependency);
 }
 
+void pr::raii::Frame::barrier_uav(cc::span<phi::handle::resource const> resources)
+{
+    phi::cmd::barrier_uav bcmd;
+
+    for (phi::handle::resource const res : resources)
+    {
+        if (bcmd.resources.full())
+        {
+            write_raw_cmd(bcmd);
+            bcmd.resources.clear();
+        }
+
+        bcmd.resources.push_back(res);
+    }
+
+    // empty UAV barrier list is valid as well
+    write_raw_cmd(bcmd);
+}
+
 void raii::Frame::present_after_submit(const render_target& backbuffer, swapchain sc)
 {
     CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");

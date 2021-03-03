@@ -41,6 +41,9 @@ public:
     /// requires #num_drawcalls contiguously recorded drawcalls
     void sort_drawcalls_by_pso(unsigned num_drawcalls);
 
+    /// returns the parent frame
+    Frame& get_frame() const { return *mParent; }
+
 public:
     // redirect intuitive misuses
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;

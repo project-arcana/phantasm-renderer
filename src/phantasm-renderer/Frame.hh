@@ -70,6 +70,8 @@ public:
     void transition(render_target const& res, state target, shader_flags dependency = {});
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
+    void barrier_uav(cc::span<phi::handle::resource const> resources);
+
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
     void present_after_submit(render_target const& backbuffer, swapchain sc);
 
