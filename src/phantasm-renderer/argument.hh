@@ -101,10 +101,10 @@ public:
     }
 
     /// add a default-configured structured buffer SRV
-    void add(buffer const& buffer)
+    void add(buffer const& buffer, uint32_t element_start = 0u)
     {
         phi::resource_view new_rv;
-        pr::argument::fill_default_srv(new_rv, buffer);
+        pr::argument::fill_default_srv(new_rv, buffer, element_start);
         _add_srv(new_rv, buffer.res.guid);
     }
 
@@ -168,7 +168,9 @@ public:
     static void fill_default_srv(phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start = 0u)
     {
         CC_ASSERT(buf.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
-        new_rv.init_as_structured_buffer(buf.res.handle, buf.info.size_bytes / buf.info.stride_bytes, buf.info.stride_bytes, element_start);
+        uint32_t const num_elems = buf.info.size_bytes / buf.info.stride_bytes;
+        CC_ASSERT(element_start < num_elems && "element_start is OOB");
+        new_rv.init_as_structured_buffer(buf.res.handle, num_elems - element_start, buf.info.stride_bytes, element_start);
     }
 
     static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);

@@ -476,9 +476,9 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
         {
             transition(bcmd.depth_target.rv.resource, pr::state::depth_write);
         }
-
-        flushPendingTransitions();
     }
+
+    flushPendingTransitions();
 
     mFramebufferActive = true;
     mWriter.add_command(bcmd);
