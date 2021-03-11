@@ -47,58 +47,52 @@ raii::Frame Context::make_frame(size_t initial_size, cc::allocator* alloc) { ret
 
 auto_texture Context::make_texture(int width, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, 1, num_mips};
+    auto const info = texture_info::create_tex(format, {width, 1}, num_mips, phi::texture_dimension::t1d, 1u, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 1, num_mips};
+    auto const info = texture_info::create_tex(format, size, num_mips, phi::texture_dimension::t2d, 1u, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture(tg::isize3 size, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info
-        = texture_info{format, phi::texture_dimension::t3d, allow_uav, size.width, size.height, static_cast<unsigned int>(size.depth), num_mips};
+    auto const info = texture_info::create_tex(format, {size.width, size.height}, num_mips, phi::texture_dimension::t3d, size.depth, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture_cube(tg::isize2 size, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, 6, num_mips};
+    auto const info = texture_info::create_tex(format, size, num_mips, phi::texture_dimension::t2d, 6u, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture_array(int width, unsigned num_elems, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info = texture_info{format, phi::texture_dimension::t1d, allow_uav, width, 1, num_elems, num_mips};
+    auto const info = texture_info::create_tex(format, {width, 1}, num_mips, phi::texture_dimension::t1d, num_elems, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture_array(tg::isize2 size, unsigned num_elems, phi::format format, unsigned num_mips, bool allow_uav, char const* debug_name)
 {
-    auto const info = texture_info{format, phi::texture_dimension::t2d, allow_uav, size.width, size.height, num_elems, num_mips};
+    auto const info = texture_info::create_tex(format, size, num_mips, phi::texture_dimension::t2d, num_elems, allow_uav);
     return {createTexture(info, debug_name), this};
 }
 
 auto_texture Context::make_texture(const texture_info& info, char const* debug_name) { return {createTexture(info, debug_name), this}; }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, char const* debug_name)
+auto_texture Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, char const* debug_name)
 {
-    auto const info = render_target_info::create(format, size, num_samples, array_size);
-    return {createRenderTarget(info, debug_name), this};
+    auto const info = texture_info::create_rt(format, size, num_samples, array_size);
+    return {createTexture(info, debug_name), this};
 }
 
-auto_render_target Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear, char const* debug_name)
+auto_texture Context::make_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear, char const* debug_name)
 {
-    auto const info = render_target_info::create(format, size, num_samples, array_size, optimized_clear);
-    return {createRenderTarget(info, debug_name), this};
-}
-
-auto_render_target Context::make_target(const render_target_info& info, char const* debug_name)
-{
-    return {createRenderTarget(info, debug_name), this};
+    auto const info = texture_info::create_rt(format, size, num_samples, array_size, optimized_clear);
+    return {createTexture(info, debug_name), this};
 }
 
 auto_buffer Context::make_buffer(unsigned size, unsigned stride, bool allow_uav, char const* debug_name)
@@ -230,7 +224,6 @@ void Context::free(swapchain const& sc) { mBackend->free(sc.handle); }
 
 void Context::free_deferred(buffer const& buf) { free_deferred(buf.res.handle); }
 void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle); }
-void Context::free_deferred(render_target const& rt) { free_deferred(rt.res.handle); }
 void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
 void Context::free_deferred(graphics_pipeline_state const& gpso) { free_deferred(gpso._handle); }
 void Context::free_deferred(compute_pipeline_state const& cpso) { free_deferred(cpso._handle); }
@@ -246,11 +239,9 @@ void Context::free_to_cache_untyped(const raw_resource& resource, const generic_
 {
     switch (info.type)
     {
-    case phi::arg::create_resource_info::e_resource_render_target:
-        return freeCachedTarget(info.info_render_target, resource);
-    case phi::arg::create_resource_info::e_resource_texture:
+    case phi::arg::resource_description::e_resource_texture:
         return freeCachedTexture(info.info_texture, resource);
-    case phi::arg::create_resource_info::e_resource_buffer:
+    case phi::arg::resource_description::e_resource_buffer:
         return freeCachedBuffer(info.info_buffer, resource);
     default:
         CC_ASSERT(false && "invalid type");
@@ -261,8 +252,6 @@ void Context::free_to_cache_untyped(const raw_resource& resource, const generic_
 void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(buffer.info, buffer.res); }
 
 void Context::free_to_cache(const texture& texture) { freeCachedTexture(texture.info, texture.res); }
-
-void Context::free_to_cache(const render_target& rt) { freeCachedTarget(rt.info, rt.res); }
 
 void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const> data, size_t offset_in_buffer)
 {
@@ -303,19 +292,17 @@ std::byte* Context::map_buffer(const buffer& buffer, int invalidate_begin, int i
 
 void Context::unmap_buffer(const buffer& buffer, int flush_begin, int flush_end) { mBackend->unmapBuffer(buffer.res.handle, flush_begin, flush_end); }
 
-cached_render_target Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
+cached_texture Context::get_target(tg::isize2 size, phi::format format, unsigned num_samples, unsigned array_size)
 {
-    auto const info = render_target_info::create(format, size, num_samples, array_size);
-    return {acquireRenderTarget(info), this};
+    auto const info = texture_info::create_rt(format, size, num_samples, array_size);
+    return {acquireTexture(info), this};
 }
 
-cached_render_target Context::get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
+cached_texture Context::get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear)
 {
-    auto const info = render_target_info::create(format, size, num_samples, array_size, optimized_clear);
-    return {acquireRenderTarget(info), this};
+    auto const info = texture_info::create_rt(format, size, num_samples, array_size, optimized_clear);
+    return {acquireTexture(info), this};
 }
-
-cached_render_target Context::get_target(const render_target_info& info) { return {acquireRenderTarget(info), this}; }
 
 cached_buffer Context::get_buffer(unsigned size, unsigned stride, bool allow_uav)
 {
@@ -343,11 +330,9 @@ raw_resource Context::make_untyped_unlocked(const generic_resource_info& info, c
 {
     switch (info.type)
     {
-    case phi::arg::create_resource_info::e_resource_render_target:
-        return createRenderTarget(info.info_render_target, debug_name).res;
-    case phi::arg::create_resource_info::e_resource_texture:
+    case phi::arg::resource_description::e_resource_texture:
         return createTexture(info.info_texture, debug_name).res;
-    case phi::arg::create_resource_info::e_resource_buffer:
+    case phi::arg::resource_description::e_resource_buffer:
         return createBuffer(info.info_buffer, debug_name).res;
     default:
         CC_ASSERT(false && "invalid type");
@@ -360,11 +345,9 @@ raw_resource Context::get_untyped_unlocked(const generic_resource_info& info)
 {
     switch (info.type)
     {
-    case phi::arg::create_resource_info::e_resource_render_target:
-        return acquireRenderTarget(info.info_render_target).res;
-    case phi::arg::create_resource_info::e_resource_texture:
+    case phi::arg::resource_description::e_resource_texture:
         return acquireTexture(info.info_texture).res;
-    case phi::arg::create_resource_info::e_resource_buffer:
+    case phi::arg::resource_description::e_resource_buffer:
         return acquireBuffer(info.info_buffer).res;
     default:
         CC_ASSERT(false && "invalid type");
@@ -489,18 +472,19 @@ unsigned Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg
 }
 
 void Context::set_debug_name(const texture& tex, cc::string_view name) { mBackend->setDebugName(tex.res.handle, name); }
-void Context::set_debug_name(const render_target& rt, cc::string_view name) { mBackend->setDebugName(rt.res.handle, name); }
 void Context::set_debug_name(const buffer& buf, cc::string_view name) { mBackend->setDebugName(buf.res.handle, name); }
 void Context::set_debug_name(phi::handle::resource raw_res, cc::string_view name) { mBackend->setDebugName(raw_res, name); }
 
-render_target Context::acquire_backbuffer(swapchain const& sc)
+texture Context::acquire_backbuffer(swapchain const& sc)
 {
     auto const backbuffer = mBackend->acquireBackbuffer(sc.handle);
     auto const size = mBackend->getBackbufferSize(sc.handle);
+
 #ifdef CC_ENABLE_ASSERTIONS
     mSafetyState.did_acquire_before_present = true;
 #endif
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, {mBackend->getBackbufferFormat(sc.handle), size.width, size.height, 1, 1, {0, 0, 0, 1}}};
+
+    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, texture_info::create_rt(mBackend->getBackbufferFormat(sc.handle), size)};
 }
 
 unsigned Context::clear_resource_caches()
@@ -510,7 +494,6 @@ unsigned Context::clear_resource_caches()
 
     auto const gpu_epoch = mGpuEpochTracker._cached_epoch_gpu;
 
-    mCacheRenderTargets.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
     mCacheTextures.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
     mCacheBuffers.cull_all(gpu_epoch, [&](phi::handle::resource rt) { freeable.push_back(rt); });
 
@@ -600,7 +583,6 @@ void Context::destroy()
 
         mCacheBuffers.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
         mCacheTextures.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
-        mCacheRenderTargets.iterate_values([&](phi::handle::resource res) { mBackend->free(res); });
 
         // destroy other components
         mGpuEpochTracker.destroy(mBackend);
@@ -624,7 +606,6 @@ void Context::internalInitialize(cc::allocator* alloc)
     mGpuEpochTracker.initialize(mBackend);
     mCacheBuffers.reserve(256);
     mCacheTextures.reserve(256);
-    mCacheRenderTargets.reserve(64);
     mShaderCompiler.initialize();
     mDeferredQueue.initialize(alloc);
 
@@ -632,14 +613,9 @@ void Context::internalInitialize(cc::allocator* alloc)
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
 }
 
-render_target Context::createRenderTarget(const render_target_info& info, char const* dbg_name)
-{
-    return {{mBackend->createRenderTargetFromInfo(info, dbg_name), acquireGuid()}, info};
-}
-
 texture Context::createTexture(const texture_info& info, const char* dbg_name)
 {
-    return {{mBackend->createTextureFromInfo(info, dbg_name), acquireGuid()}, info};
+    return {{mBackend->createTexture(info, dbg_name), acquireGuid()}, info};
 }
 
 buffer Context::createBuffer(const buffer_info& info, char const* dbg_name)
@@ -648,19 +624,6 @@ buffer Context::createBuffer(const buffer_info& info, char const* dbg_name)
 
     phi::handle::resource handle = mBackend->createBufferFromInfo(info, dbg_name);
     return {{handle, acquireGuid()}, info};
-}
-
-render_target Context::acquireRenderTarget(const render_target_info& info)
-{
-    auto lookup = mCacheRenderTargets.acquire(info, mGpuEpochTracker._cached_epoch_gpu);
-    if (lookup.handle.is_valid())
-    {
-        return {lookup, info};
-    }
-    else
-    {
-        return createRenderTarget(info);
-    }
 }
 
 texture Context::acquireTexture(const texture_info& info)
@@ -699,11 +662,6 @@ void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); 
 void Context::freePipelineState(phi::handle::pipeline_state ps) { mBackend->free(ps); }
 
 uint64_t Context::acquireGuid() { return mResourceGUID.fetch_add(1); }
-
-void Context::freeCachedTarget(const render_target_info& info, raw_resource res)
-{
-    mCacheRenderTargets.free(res, info, mGpuEpochTracker.get_current_epoch_cpu());
-}
 
 void Context::freeCachedTexture(const texture_info& info, raw_resource res)
 {
@@ -800,11 +758,6 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, unsi
 unsigned pr::Context::calculate_texture_upload_size(const texture& texture, unsigned num_mips) const
 {
     return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
-}
-
-unsigned Context::calculate_texture_upload_size(const render_target& target) const
-{
-    return calculate_texture_upload_size({target.info.width, target.info.height, int(target.info.array_size)}, target.info.format, 1);
 }
 
 unsigned pr::Context::calculate_texture_upload_size(int width, format fmt, unsigned num_mips) const

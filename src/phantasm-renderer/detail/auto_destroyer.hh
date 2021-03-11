@@ -12,13 +12,11 @@ namespace detail
 struct PR_API auto_destroy_proxy
 {
     static void cache_deref(pr::Context* ctx, buffer const& v);
-    static void cache_deref(pr::Context* ctx, render_target const& v);
     static void cache_deref(pr::Context* ctx, texture const& v);
 
     static bool is_destroy_legal(pr::Context* ctx);
 
     static void destroy(pr::Context* ctx, buffer const& v);
-    static void destroy(pr::Context* ctx, render_target const& v);
     static void destroy(pr::Context* ctx, texture const& v);
     static void destroy(pr::Context* ctx, pipeline_state_abstract const& v);
     static void destroy(pr::Context* ctx, shader_binary const& v);

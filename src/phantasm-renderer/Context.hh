@@ -76,20 +76,11 @@ public:
     // render targets
 
     /// create a render target
-    [[nodiscard]] auto_render_target make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1, char const* debug_name = nullptr);
 
     /// create a render target with an optimized clear value
-    [[nodiscard]] auto_render_target make_target(
+    [[nodiscard]] auto_texture make_target(
         tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear, char const* debug_name = nullptr);
-
-    /// create a render target from an info struct
-    [[nodiscard]] auto_render_target make_target(render_target_info const& info, char const* debug_name = nullptr);
-
-    /// create a render target from the info of a different one. NOTE: does not concern contents or state
-    [[nodiscard]] auto_render_target make_target_clone(render_target const& clone_source, char const* debug_name = nullptr)
-    {
-        return make_target(clone_source.info, debug_name);
-    }
 
     //
     // buffers
@@ -168,13 +159,10 @@ public:
     //
 
     /// create or retrieve a render target from the cache
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
 
     /// create or retrieve a render target with an optimized clear value from the cache
-    [[nodiscard]] cached_render_target get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
-
-    /// create or retrieve a render target from an info struct from the cache
-    [[nodiscard]] cached_render_target get_target(render_target_info const& info);
+    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
 
     /// create or retrieve a buffer from the cache
     [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
@@ -213,9 +201,6 @@ public:
     /// free a texture
     void free(texture const& texture) { free_untyped(texture.res); }
 
-    /// free a render_target
-    void free(render_target const& rt) { free_untyped(rt.res); }
-
     void free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
     void free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
     void free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
@@ -252,9 +237,6 @@ public:
     /// free a texture once no longer in flight
     void free_deferred(texture const& tex);
 
-    /// free a render target once no longer in flight
-    void free_deferred(render_target const& rt);
-
     /// free a resource once no longer in flight
     void free_deferred(raw_resource const& res);
 
@@ -283,9 +265,6 @@ public:
 
     /// free a texture by placing it in the cache for reuse
     void free_to_cache(texture const& texture);
-
-    /// free a render target by placing it in the cache for reuse
-    void free_to_cache(render_target const& rt);
 
     //
     // buffer map API
@@ -396,7 +375,7 @@ public:
     [[nodiscard]] bool clear_backbuffer_resize(swapchain const& sc);
 
     /// acquires the next backbuffer in line
-    [[nodiscard]] render_target acquire_backbuffer(swapchain const& sc);
+    [[nodiscard]] texture acquire_backbuffer(swapchain const& sc);
 
     /// returns the size of the swapchain's backbuffers
     tg::isize2 get_backbuffer_size(swapchain const& sc) const;
@@ -457,11 +436,6 @@ public:
         return {import_phi_resource(raw_resource), info};
     }
 
-    [[nodiscard]] render_target import_phi_target(phi::handle::resource raw_resource, render_target_info const& info)
-    {
-        return {import_phi_resource(raw_resource), info};
-    }
-
     [[nodiscard]] texture import_phi_texture(phi::handle::resource raw_resource, texture_info const& info)
     {
         return {import_phi_resource(raw_resource), info};
@@ -490,7 +464,6 @@ public:
     unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
     unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
-    unsigned calculate_texture_upload_size(render_target const& target) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
@@ -505,7 +478,6 @@ public:
     /// resets the debug name of a resource
     /// this is the name visible to diagnostic tools and referred to by validation warnings
     void set_debug_name(texture const& tex, cc::string_view name);
-    void set_debug_name(render_target const& rt, cc::string_view name);
     void set_debug_name(buffer const& buf, cc::string_view name);
     void set_debug_name(phi::handle::resource raw_res, cc::string_view name);
 
@@ -588,12 +560,10 @@ private:
     void internalInitialize(cc::allocator* alloc);
 
     // creation
-    render_target createRenderTarget(render_target_info const& info, char const* dbg_name = nullptr);
     texture createTexture(texture_info const& info, char const* dbg_name = nullptr);
     buffer createBuffer(buffer_info const& info, char const* dbg_name = nullptr);
 
     // multi cache acquire
-    render_target acquireRenderTarget(render_target_info const& info);
     texture acquireTexture(texture_info const& info);
     buffer acquireBuffer(buffer_info const& info);
 
@@ -605,7 +575,6 @@ private:
     void freeShaderView(phi::handle::shader_view sv);
     void freePipelineState(phi::handle::pipeline_state ps);
 
-    void freeCachedTarget(render_target_info const& info, raw_resource res);
     void freeCachedTexture(texture_info const& info, raw_resource res);
     void freeCachedBuffer(buffer_info const& info, raw_resource res);
 
@@ -645,7 +614,6 @@ private:
     deferred_destruction_queue mDeferredQueue;
 
     // caches (have dtors, members must be below backend ptr)
-    multi_cache<render_target_info> mCacheRenderTargets;
     multi_cache<texture_info> mCacheTextures;
     multi_cache<buffer_info> mCacheBuffers;
 

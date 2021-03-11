@@ -92,8 +92,6 @@ void raii::Frame::transition(const buffer& res, pr::state target, shader_flags d
 
 void raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency) { transition(res.res.handle, target, dependency); }
 
-void raii::Frame::transition(const render_target& res, pr::state target, shader_flags dependency) { transition(res.res.handle, target, dependency); }
-
 void raii::Frame::transition(phi::handle::resource raw_resource, pr::state target, shader_flags dependency)
 {
     if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
@@ -121,7 +119,7 @@ void pr::raii::Frame::barrier_uav(cc::span<phi::handle::resource const> resource
     write_raw_cmd(bcmd);
 }
 
-void raii::Frame::present_after_submit(const render_target& backbuffer, swapchain sc)
+void raii::Frame::present_after_submit(const texture& backbuffer, swapchain sc)
 {
     CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
     transition(backbuffer, state::present);
@@ -155,7 +153,7 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const render_target& src, const buffer& dest, size_t dest_offset)
+void pr::raii::Frame::copy(texture const& src, buffer const& dest, size_t dest_offset)
 {
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
@@ -172,27 +170,6 @@ void raii::Frame::copy(const texture& src, const texture& dest, unsigned mip_ind
     CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
     CC_ASSERT(mip_index < dest.info.num_mips && mip_index < src.info.num_mips && "mip index out of bounds");
     copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, mip_index, 0, dest.info.depth_or_array_size);
-}
-
-void raii::Frame::copy(const texture& src, const render_target& dest)
-{
-    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
-    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
-}
-
-void raii::Frame::copy(const render_target& src, const texture& dest)
-{
-    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
-    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
-}
-
-void raii::Frame::copy(const render_target& src, const render_target& dest)
-{
-    CC_ASSERT(src.info.width == dest.info.width && "copy size mismatch");
-    CC_ASSERT(src.info.height == dest.info.height && "copy size mismatch");
-    copyTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height, 0, 0, 1);
 }
 
 void raii::Frame::copy_subsection(const texture& src,
@@ -222,12 +199,7 @@ void raii::Frame::copy_subsection(const texture& src,
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::resolve(const render_target& src, const texture& dest)
-{
-    resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
-}
-
-void raii::Frame::resolve(const render_target& src, const render_target& dest)
+void raii::Frame::resolve(const texture& src, const texture& dest)
 {
     resolveTextureInternal(src.res.handle, dest.res.handle, dest.info.width, dest.info.height);
 }
@@ -393,7 +365,7 @@ void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_sl
         mWriter.add_command(tcmd);
 }
 
-void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, const render_target& rt)
+void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, const texture& rt)
 {
     bcmd.viewport.width = cc::min(bcmd.viewport.width, rt.info.width);
     bcmd.viewport.height = cc::min(bcmd.viewport.height, rt.info.height);
@@ -403,14 +375,14 @@ void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd
         CC_ASSERT(num_samples == int(rt.info.num_samples) && "make_framebuffer: inconsistent amount of samples in render targets");
     }
 
-    if (phi::util::is_depth_format(rt.info.format))
+    if (phi::util::is_depth_format(rt.info.fmt))
     {
         CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to raii::Frame::make_framebuffer");
-        bcmd.set_2d_depth_stencil(rt.res.handle, rt.info.format, phi::rt_clear_type::clear, rt.info.num_samples > 1);
+        bcmd.set_2d_depth_stencil(rt.res.handle, rt.info.fmt, phi::rt_clear_type::clear, rt.info.num_samples > 1);
     }
     else
     {
-        bcmd.add_2d_rt(rt.res.handle, rt.info.format, phi::rt_clear_type::clear, rt.info.num_samples > 1);
+        bcmd.add_2d_rt(rt.res.handle, rt.info.fmt, phi::rt_clear_type::clear, rt.info.num_samples > 1);
     }
 }
 

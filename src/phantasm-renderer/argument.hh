@@ -64,14 +64,6 @@ struct PR_API resource_view_info
     return res;
 }
 
-[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_index = 0)
-{
-    resource_view_info res;
-    res.guid = tex.res.guid;
-    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_index);
-    return res;
-}
-
 [[nodiscard]] inline resource_view_info resource_view_cube(texture const& tex)
 {
     resource_view_info res;
@@ -108,9 +100,6 @@ public:
         _add_srv(new_rv, buffer.res.guid);
     }
 
-    /// add a default-configured 2D texture SRV
-    void add(render_target const& rt) { _add_srv(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid); }
-
     /// add a configured SRV
     void add(resource_view_info const& rvi) { _add_srv(rvi.rv, rvi.guid); }
 
@@ -128,12 +117,6 @@ public:
         CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV has no stride, pass a stride during creation");
         _add_uav(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
                  buffer.res.guid);
-    }
-
-    /// add a default-configured 2D texture UAV
-    void add_mutable(render_target const& rt)
-    {
-        _add_uav(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid);
     }
 
     /// add a configured UAV
@@ -226,12 +209,6 @@ public:
         pr::argument::fill_default_srv(new_rv, buffer);
         return *this;
     }
-    argument_builder& add(render_target const& rt)
-    {
-        auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        return *this;
-    }
     argument_builder& add(resource_view_info const& rvi)
     {
         _srvs.push_back(rvi.rv);
@@ -257,12 +234,6 @@ public:
         CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV argument has no stride, pass a stride during creation");
         auto& new_rv = _uavs.emplace_back();
         new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
-        return *this;
-    }
-    argument_builder& add_mutable(render_target const& rt)
-    {
-        auto& new_rv = _uavs.emplace_back();
-        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
         return *this;
     }
     argument_builder& add_mutable(resource_view_info const& rvi)

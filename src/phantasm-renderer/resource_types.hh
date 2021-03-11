@@ -26,20 +26,14 @@ struct buffer
     buffer_info info;
 };
 
-struct render_target
-{
-    raw_resource res;
-    render_target_info info;
-
-    int samples() const { return info.num_samples; }
-    tg::isize2 size() const { return {info.width, info.height}; }
-    pr::format format() const { return info.format; }
-};
-
 struct texture
 {
     raw_resource res;
     texture_info info;
+
+    int samples() const { return info.num_samples; }
+    tg::isize2 size() const { return {info.width, info.height}; }
+    pr::format format() const { return info.fmt; }
 };
 
 //
@@ -94,7 +88,6 @@ struct swapchain
 
 // move-only, self-destructing versions
 using auto_buffer = auto_destroyer<buffer, auto_mode::guard>;
-using auto_render_target = auto_destroyer<render_target, auto_mode::guard>;
 using auto_texture = auto_destroyer<texture, auto_mode::guard>;
 
 using auto_shader_binary = auto_destroyer<shader_binary, auto_mode::destroy>; // this is a CPU-only type, allow auto destruction
@@ -106,7 +99,6 @@ using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 
 // move-only, self-cachefreeing versions
 using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
-using cached_render_target = auto_destroyer<render_target, auto_mode::cache>;
 using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
 

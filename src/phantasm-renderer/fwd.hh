@@ -29,15 +29,12 @@ struct auto_destroyer;
 // resources
 struct raw_resource;
 struct buffer;
-struct render_target;
 struct texture;
 
 using auto_buffer = auto_destroyer<buffer, auto_mode::guard>;
-using auto_render_target = auto_destroyer<render_target, auto_mode::guard>;
 using auto_texture = auto_destroyer<texture, auto_mode::guard>;
 
 using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
-using cached_render_target = auto_destroyer<render_target, auto_mode::cache>;
 using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
 
