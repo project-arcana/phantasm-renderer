@@ -45,23 +45,23 @@ public:
     // textures
 
     /// create a 1D texture
-    [[nodiscard]] auto_texture make_texture(int width, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_texture(int32_t width, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a 2D texture
-    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_texture(tg::isize2 size, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a 3D texture
-    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_texture(tg::isize3 size, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a texture cube
-    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_texture_cube(tg::isize2 size, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a 1D texture array
-    [[nodiscard]] auto_texture make_texture_array(int width, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_texture_array(int32_t width, uint32_t num_elems, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a 2D texture array
     [[nodiscard]] auto_texture make_texture_array(
-        tg::isize2 size, unsigned num_elems, format format, unsigned num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
+        tg::isize2 size, uint32_t num_elems, format format, uint32_t num_mips = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a texture from an info struct
     [[nodiscard]] auto_texture make_texture(texture_info const& info, char const* debug_name = nullptr);
@@ -76,26 +76,26 @@ public:
     // render targets
 
     /// create a render target
-    [[nodiscard]] auto_texture make_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1, char const* debug_name = nullptr);
+    [[nodiscard]] auto_texture make_target(tg::isize2 size, format format, uint32_t num_samples = 1, uint32_t array_size = 1, char const* debug_name = nullptr);
 
     /// create a render target with an optimized clear value
     [[nodiscard]] auto_texture make_target(
-        tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear, char const* debug_name = nullptr);
+        tg::isize2 size, format format, uint32_t num_samples, uint32_t array_size, phi::rt_clear_value optimized_clear, char const* debug_name = nullptr);
 
     //
     // buffers
 
     /// create a buffer
-    [[nodiscard]] auto_buffer make_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false, char const* debug_name = nullptr);
+    [[nodiscard]] auto_buffer make_buffer(uint32_t size, uint32_t stride = 0, bool allow_uav = false, char const* debug_name = nullptr);
 
     /// create a mapped upload buffer which can be directly written to from CPU
-    [[nodiscard]] auto_buffer make_upload_buffer(unsigned size, unsigned stride = 0, char const* debug_name = nullptr);
+    [[nodiscard]] auto_buffer make_upload_buffer(uint32_t size, uint32_t stride = 0, char const* debug_name = nullptr);
 
     /// create a mapped upload buffer, with a size based on accomodating a given texture's contents
-    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, unsigned num_mips = 1, char const* debug_name = nullptr);
+    [[nodiscard]] auto_buffer make_upload_buffer_for_texture(texture const& tex, uint32_t num_mips = 1, char const* debug_name = nullptr);
 
     /// create a mapped readback buffer which can be directly read from CPU
-    [[nodiscard]] auto_buffer make_readback_buffer(unsigned size, unsigned stride = 0, char const* debug_name = nullptr);
+    [[nodiscard]] auto_buffer make_readback_buffer(uint32_t size, uint32_t stride = 0, char const* debug_name = nullptr);
 
     /// create a buffer from an info struct
     [[nodiscard]] auto_buffer make_buffer(buffer_info const& info, char const* debug_name = nullptr);
@@ -152,22 +152,22 @@ public:
     // query ranges
 
     /// create a contiguous range of queries
-    [[nodiscard]] auto_query_range make_query_range(pr::query_type type, unsigned num_queries);
+    [[nodiscard]] auto_query_range make_query_range(pr::query_type type, uint32_t num_queries);
 
     //
     // resource cache lookup
     //
 
     /// create or retrieve a render target from the cache
-    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, unsigned num_samples = 1, unsigned array_size = 1);
+    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, uint32_t num_samples = 1, uint32_t array_size = 1);
 
     /// create or retrieve a render target with an optimized clear value from the cache
-    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, unsigned num_samples, unsigned array_size, phi::rt_clear_value optimized_clear);
+    [[nodiscard]] cached_texture get_target(tg::isize2 size, format format, uint32_t num_samples, uint32_t array_size, phi::rt_clear_value optimized_clear);
 
     /// create or retrieve a buffer from the cache
-    [[nodiscard]] cached_buffer get_buffer(unsigned size, unsigned stride = 0, bool allow_uav = false);
-    [[nodiscard]] cached_buffer get_upload_buffer(unsigned size, unsigned stride = 0);
-    [[nodiscard]] cached_buffer get_readback_buffer(unsigned size, unsigned stride = 0);
+    [[nodiscard]] cached_buffer get_buffer(uint32_t size, uint32_t stride = 0, bool allow_uav = false);
+    [[nodiscard]] cached_buffer get_upload_buffer(uint32_t size, uint32_t stride = 0);
+    [[nodiscard]] cached_buffer get_readback_buffer(uint32_t size, uint32_t stride = 0);
     [[nodiscard]] cached_buffer get_buffer(buffer_info const& info);
 
     /// create or retrieve a texture from the cache
@@ -274,10 +274,10 @@ public:
     /// a buffer can be mapped multiple times at once
     /// invalidate_begin and -end specify the range of CPU-side read data in bytes, end == -1 being the entire width
     /// NOTE: begin > 0 does not add an offset to the returned pointer
-    [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1);
+    [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int32_t invalidate_begin = 0, int32_t invalidate_end = -1);
 
     /// map a buffer and return a span of the mapped memory (instead of just a pointer)
-    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int invalidate_begin = 0, int invalidate_end = -1)
+    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int32_t invalidate_begin = 0, int32_t invalidate_end = -1)
     {
         return {map_buffer(buffer, invalidate_begin, invalidate_end), buffer.info.size_bytes};
     }
@@ -286,7 +286,7 @@ public:
     /// a buffer can be destroyed while mapped
     /// on non-desktop it might be required to unmap upload buffers for the writes to become visible
     /// begin and end specify the range of CPU-side modified data in bytes, end == -1 being the entire width
-    void unmap_buffer(buffer const& buffer, int flush_begin = 0, int flush_end = -1);
+    void unmap_buffer(buffer const& buffer, int32_t flush_begin = 0, int32_t flush_end = -1);
 
     /// map an upload buffer, memcpy the provided data into it, and unmap it
     void write_to_buffer_raw(buffer const& buffer, cc::span<std::byte const> data, size_t offset_in_buffer = 0);
@@ -357,7 +357,7 @@ public:
     [[nodiscard]] auto_swapchain make_swapchain(phi::window_handle const& window_handle,
                                                 tg::isize2 initial_size,
                                                 pr::present_mode mode = pr::present_mode::synced,
-                                                unsigned num_backbuffers = 3);
+                                                uint32_t num_backbuffers = 3);
 
     /// destroy a swapchain
     void free(swapchain const& sc);
@@ -385,7 +385,7 @@ public:
     format get_backbuffer_format(swapchain const& sc) const;
 
     /// returns the amount of backbuffers a swapchain contains
-    unsigned get_num_backbuffers(swapchain const& sc) const;
+    uint32_t get_num_backbuffers(swapchain const& sc) const;
 
     //
     // GPU synchronization
@@ -408,20 +408,20 @@ public:
 
     /// frees all resources (textures, rendertargets, buffers) from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    unsigned clear_resource_caches();
+    uint32_t clear_resource_caches();
 
     /// frees all shader_views from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    unsigned clear_shader_view_cache();
+    uint32_t clear_shader_view_cache();
 
     /// frees all pipeline_states from pr caches that are not acquired or in flight
     /// returns amount of freed elements
-    unsigned clear_pipeline_state_cache();
+    uint32_t clear_pipeline_state_cache();
 
     /// runs all deferred free operations that are no longer in flight
     /// this also happens automatically on any call to free_deferred
     /// returns amount of freed elements
-    unsigned clear_pending_deferred_frees();
+    uint32_t clear_pending_deferred_frees();
 
     //
     // phi interop
@@ -460,14 +460,14 @@ public:
 
     /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
     /// ex. use case: allocating upload buffers of the right size to upload textures
-    unsigned calculate_texture_upload_size(tg::isize3 size, format fmt, unsigned num_mips = 1) const;
-    unsigned calculate_texture_upload_size(tg::isize2 size, format fmt, unsigned num_mips = 1) const;
-    unsigned calculate_texture_upload_size(int width, format fmt, unsigned num_mips = 1) const;
-    unsigned calculate_texture_upload_size(texture const& texture, unsigned num_mips = 1) const;
+    uint32_t calculate_texture_upload_size(tg::isize3 size, format fmt, uint32_t num_mips = 1) const;
+    uint32_t calculate_texture_upload_size(tg::isize2 size, format fmt, uint32_t num_mips = 1) const;
+    uint32_t calculate_texture_upload_size(int32_t width, format fmt, uint32_t num_mips = 1) const;
+    uint32_t calculate_texture_upload_size(texture const& texture, uint32_t num_mips = 1) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
-    unsigned calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
+    uint32_t calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
     bool is_shutting_down() const { return mIsShuttingDown.load(std::memory_order_relaxed); }
 
