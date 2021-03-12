@@ -129,8 +129,8 @@ public:
 
     void add_sampler(pr::sampler_config const& config)
     {
-        CC_ASSERT_MSG(!_info.get().uavs.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
-                                                "use persistent prebuilt_arguments from Context::build_argument() instead");
+        CC_ASSERT_MSG(!_info.get().samplers.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
+                                                    "use persistent prebuilt_arguments from Context::build_argument() instead");
 
         _info.get().samplers.push_back(config);
     }
