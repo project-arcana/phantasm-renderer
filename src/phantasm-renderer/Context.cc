@@ -183,9 +183,13 @@ auto_prebuilt_argument Context::make_compute_argument(cc::span<const phi::resour
 auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_info& gp_wrap, const framebuffer_info& fb)
 {
     auto const& gp = gp_wrap._storage.get();
-    return auto_graphics_pipeline_state{{{mBackend->createPipelineState({gp.vertex_attributes, gp.vertex_size_bytes}, fb._storage.get(),
-                                                                        gp.arg_shapes, gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}},
-                                        this};
+
+    phi::arg::vertex_format vert_format;
+    vert_format.attributes = gp.vertex_attributes;
+    vert_format.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
+
+    return auto_graphics_pipeline_state{
+        {{mBackend->createPipelineState(vert_format, fb._storage.get(), gp.arg_shapes, gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}}, this};
 }
 
 auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)

@@ -27,7 +27,7 @@ void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::hand
 {
     CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");
 
-    mCmd.vertex_buffer = vertex_buffer;
+    mCmd.vertex_buffers[0] = vertex_buffer;
     mCmd.index_buffer = index_buffer;
     mCmd.num_instances = num_instances;
     mCmd.num_indices = num_indices;
@@ -46,7 +46,7 @@ void raii::GraphicsPass::draw_indirect(phi::handle::resource argument_buffer, ph
     dcmd.indirect_argument_buffer = argument_buffer;
     dcmd.argument_buffer_offset_bytes = arg_buffer_offset_bytes;
     dcmd.num_arguments = num_args;
-    dcmd.vertex_buffer = vertex_buffer;
+    dcmd.vertex_buffers[0] = vertex_buffer;
     dcmd.index_buffer = index_buffer;
 
     mParent->write_raw_cmd(dcmd);

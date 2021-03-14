@@ -47,7 +47,7 @@ public:
     }
 
     /// Set vertex size and attributes from data
-    graphics_pass_info& vertex(unsigned size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
+    graphics_pass_info& vertex(uint32_t size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
     {
         _storage.get().vertex_size_bytes = size_bytes;
 
@@ -135,7 +135,7 @@ struct PR_API compute_pass_info
 {
 public:
     /// Add a shader argument specifiying the amount of elements
-    compute_pass_info& arg(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
+    compute_pass_info& arg(uint32_t num_srvs, uint32_t num_uavs = 0, uint32_t num_samplers = 0, bool has_cbv = false)
     {
         _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
         return *this;
