@@ -35,6 +35,23 @@ void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::hand
     mParent->passOnDraw(mCmd);
 }
 
+void pr::raii::GraphicsPass::draw(cc::span<phi::handle::resource const> vertex_buffers, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances)
+{
+    CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");
+    CC_ASSERT(vertex_buffers.size() <= phi::limits::max_vertex_buffers && "too many vertex buffers supplied");
+
+    mCmd.vertex_buffers[0] = phi::handle::null_resource; // properly invalidate in case span is empty
+    std::memcpy(mCmd.vertex_buffers, vertex_buffers.data(), cc::min(sizeof(mCmd.vertex_buffers), vertex_buffers.size_bytes()));
+    mCmd.index_buffer = index_buffer;
+    mCmd.num_instances = num_instances;
+    mCmd.num_indices = num_indices;
+
+    mParent->passOnDraw(mCmd);
+
+    // invalidate buffers beyond the first one for subsequent draws
+    mCmd.vertex_buffers[1] = phi::handle::null_resource;
+}
+
 void raii::GraphicsPass::draw_indirect(phi::handle::resource argument_buffer, phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes)
 {
     CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");

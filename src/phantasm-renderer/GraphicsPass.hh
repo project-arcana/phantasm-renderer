@@ -60,18 +60,33 @@ public:
         return p;
     }
 
+    // draw without vertices
     void draw(uint32_t num_vertices, uint32_t num_instances = 1);
+
+    // draw vertices
     void draw(buffer const& vertex_buffer, uint32_t num_instances = 1);
+
+    // indexed draw
     void draw(buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_instances = 1);
+
+    // indexed draw with raw handles
     void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1);
 
+    // indexed draw with raw handles and up to 4 vertex buffers
+    void draw(cc::span<phi::handle::resource const> vertex_buffers, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1);
+
+    // indirect draw
+    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
+
+    // indirect indexed draw
+    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
+
+    // indirect draw with raw handles
     void draw_indirect(phi::handle::resource argument_buffer,
                        phi::handle::resource vertex_buffer,
                        phi::handle::resource index_buffer,
                        uint32_t num_args,
                        uint32_t arg_buffer_offset_bytes = 0);
-    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
-    void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
 
     void set_offset(int vertex_offset, uint32_t index_offset = 0);
 

@@ -18,18 +18,27 @@ struct raw_resource
 {
     phi::handle::resource handle = phi::handle::null_resource;
     uint64_t guid = 0;
+
+    bool is_valid() const { return handle.is_valid(); }
+    void invalidate() { handle.invalidate(); }
 };
 
 struct buffer
 {
     raw_resource res;
     buffer_info info;
+
+    bool is_valid() const { return res.handle.is_valid(); }
+    void invalidate() { res.handle.invalidate(); }
 };
 
 struct texture
 {
     raw_resource res;
     texture_info info;
+
+    bool is_valid() const { return res.handle.is_valid(); }
+    void invalidate() { res.handle.invalidate(); }
 
     int samples() const { return info.num_samples; }
     tg::isize2 size() const { return {info.width, info.height}; }
@@ -75,7 +84,7 @@ struct query_range
 {
     phi::handle::query_range handle = phi::handle::null_query_range;
     pr::query_type type;
-    unsigned num;
+    uint32_t num;
 };
 
 struct swapchain
@@ -97,7 +106,7 @@ using auto_fence = auto_destroyer<fence, auto_mode::guard>;
 using auto_query_range = auto_destroyer<query_range, auto_mode::guard>;
 using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 
-// move-only, self-cachefreeing versions
+// move-only, self-cache-freeing versions
 using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
 using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
