@@ -46,10 +46,10 @@ public:
 
     // cache-access variants
     // hits a OS mutex
-    [[nodiscard]] GraphicsPass bind(argument const& arg)
+    [[nodiscard]] GraphicsPass bind(argument const& arg, phi::handle::resource constant_buffer = phi::handle::null_resource, uint32_t constant_buffer_offset = 0)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, phi::handle::null_resource, 0);
+        p.add_cached_argument(arg, constant_buffer, constant_buffer_offset);
         return p;
     }
 
