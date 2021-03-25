@@ -85,10 +85,10 @@ struct PR_API argument
 {
 public:
     /// add a default-configured texture SRV
-    void add(texture const& img)
+    void add(texture const& img, uint32_t mip_start = 0, uint32_t mip_size = uint32_t(-1))
     {
         phi::resource_view new_rv;
-        fill_default_srv(new_rv, img, 0, unsigned(-1));
+        fill_default_srv(new_rv, img, mip_start, mip_size);
         _add_srv(new_rv, img.res.guid);
     }
 
@@ -104,10 +104,10 @@ public:
     void add(resource_view_info const& rvi) { _add_srv(rvi.rv, rvi.guid); }
 
     /// add a default-configured texture UAV
-    void add_mutable(texture const& img)
+    void add_mutable(texture const& img, uint32_t mip_start = 0, uint32_t mip_size = uint32_t(-1))
     {
         phi::resource_view new_rv;
-        fill_default_uav(new_rv, img, 0, unsigned(-1));
+        fill_default_uav(new_rv, img, mip_start, mip_size);
         _add_uav(new_rv, img.res.guid);
     }
 
