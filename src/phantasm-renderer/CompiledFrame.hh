@@ -4,6 +4,7 @@
 
 #include <phantasm-hardware-interface/handles.hh>
 
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/state_info.hh>
 
 namespace pr
@@ -12,7 +13,7 @@ class Context;
 
 /// A compiled command list ready for submission, as received from Context::compile(frame)
 /// move-only, must be submitted or discarded via the Context before destruction
-class CompiledFrame
+class PR_API CompiledFrame
 {
 public:
     CompiledFrame() = default;

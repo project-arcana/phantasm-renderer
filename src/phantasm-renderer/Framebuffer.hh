@@ -4,15 +4,17 @@
 #include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/commands.hh>
+#include <phantasm-hardware-interface/common/format_size.hh>
 
 #include <phantasm-renderer/GraphicsPass.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
 #include <phantasm-renderer/pass_info.hh>
 
 namespace pr::raii
 {
-class Framebuffer
+class PR_API Framebuffer
 {
 public:
     // lvalue-qualified as Framebuffer has to stay alive
@@ -39,6 +41,9 @@ public:
     /// requires #num_drawcalls contiguously recorded drawcalls
     void sort_drawcalls_by_pso(unsigned num_drawcalls);
 
+    /// returns the parent frame
+    Frame& get_frame() const { return *mParent; }
+
 public:
     // redirect intuitive misuses
     [[deprecated("pr::raii::Framebuffer must stay alive while passes are used")]] GraphicsPass make_pass(graphics_pipeline_state const&) && = delete;
@@ -48,7 +53,11 @@ public:
 
 public:
     Framebuffer(Framebuffer const&) = delete;
-    Framebuffer(Framebuffer&& rhs) noexcept : mParent(rhs.mParent) { rhs.mParent = nullptr; }
+    Framebuffer(Framebuffer&& rhs) noexcept
+      : mParent(rhs.mParent), mHashInfo(cc::move(rhs.mHashInfo)), mNumSamples(rhs.mNumSamples), mHasBlendstateOverrides(rhs.mHasBlendstateOverrides)
+    {
+        rhs.mParent = nullptr;
+    }
     Framebuffer& operator=(Framebuffer const&) = delete;
     Framebuffer& operator=(Framebuffer&& rhs) noexcept
     {
@@ -56,6 +65,9 @@ public:
         {
             destroy();
             mParent = rhs.mParent;
+            mHashInfo = cc::move(rhs.mHashInfo);
+            mNumSamples = rhs.mNumSamples;
+            mHasBlendstateOverrides = rhs.mHasBlendstateOverrides;
             rhs.mParent = nullptr;
         }
 
@@ -71,56 +83,95 @@ private:
     }
     void destroy();
 
-    Frame* mParent;
+    Frame* mParent = nullptr;
     framebuffer_info mHashInfo;
-    int mNumSamples; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
-    bool mHasBlendstateOverrides; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
+    int mNumSamples = 0; ///< amount of multisamples of the rendertargets, inferred. unknown (-1) on some paths
+    bool mHasBlendstateOverrides
+        = false; ///< whether mHashInfo contains blendstate overrides - this triggers asserts if using persisted PSOs as they are unaffected by these settings
 };
 
-struct framebuffer_builder
+struct PR_API framebuffer_builder
 {
 public:
     /// add a rendertarget to the framebuffer that loads is contents (ie. is not cleared)
-    [[nodiscard]] framebuffer_builder& loaded_target(render_target const& rt)
+    [[nodiscard]] framebuffer_builder& loaded_target(texture const& rt, uint32_t mip_index = 0u, uint32_t array_index = 0u)
     {
-        if (phi::is_depth_format(rt.info.format))
+        if (phi::util::is_depth_format(rt.info.fmt))
         {
-            _cmd.set_2d_depth_stencil(rt.res.handle, rt.info.format, phi::rt_clear_type::load, rt.info.num_samples > 1);
+            _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, 1.f, 0, phi::rt_clear_type::load};
+
+            if (array_index > 0)
+            {
+                _cmd.depth_target.rv.init_as_tex2d_array(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, array_index, 1u, mip_index);
+            }
+            else
+            {
+                _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, mip_index);
+            }
         }
         else
         {
-            _cmd.add_2d_rt(rt.res.handle, rt.info.format, phi::rt_clear_type::load, rt.info.num_samples > 1);
+            _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {0.f, 0.f, 0.f, 1.f}, phi::rt_clear_type::load});
+
+            if (array_index > 0)
+            {
+                _cmd.render_targets.back().rv.init_as_tex2d_array(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, array_index, 1u, mip_index);
+            }
+            else
+            {
+                _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, mip_index);
+            }
         }
-        adjust_config(rt);
+        adjust_config_for_render_target(rt);
         return *this;
     }
 
     /// add a rendertarget to the framebuffer that clears to a specified value
-    [[nodiscard]] framebuffer_builder& cleared_target(render_target const& rt, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f)
+    [[nodiscard]] framebuffer_builder& cleared_target(
+        texture const& rt, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f, uint32_t mip_index = 0u, uint32_t array_index = 0u)
     {
-        CC_ASSERT(!phi::is_depth_format(rt.info.format) && "invoked clear_target color variant with a depth render target");
+        CC_ASSERT(!phi::util::is_depth_format(rt.info.fmt) && "invoked clear_target color variant with a depth render target");
+
         _cmd.render_targets.push_back(phi::cmd::begin_render_pass::render_target_info{{}, {clear_r, clear_g, clear_b, clear_a}, phi::rt_clear_type::clear});
-        _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_config(rt);
+        if (array_index > 0)
+        {
+            _cmd.render_targets.back().rv.init_as_tex2d_array(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, array_index, 1u, mip_index);
+        }
+        else
+        {
+            _cmd.render_targets.back().rv.init_as_tex2d(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, mip_index);
+        }
+
+        adjust_config_for_render_target(rt);
         return *this;
     }
 
     /// add a depth rendertarget to the framebuffer that clears to a specified value
-    [[nodiscard]] framebuffer_builder& cleared_depth(render_target const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0)
+    [[nodiscard]] framebuffer_builder& cleared_depth(texture const& rt, float clear_depth = 1.f, uint8_t clear_stencil = 0, uint32_t mip_index = 0u, uint32_t array_index = 0u)
     {
-        CC_ASSERT(phi::is_depth_format(rt.info.format) && "invoked clear_target depth variant with a non-depth render target");
+        CC_ASSERT(phi::util::is_depth_format(rt.info.fmt) && "invoked clear_target depth variant with a non-depth render target");
+
         _cmd.depth_target = phi::cmd::begin_render_pass::depth_stencil_info{{}, clear_depth, clear_stencil, phi::rt_clear_type::clear};
-        _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
-        adjust_config(rt);
+
+        if (array_index > 0)
+        {
+            _cmd.depth_target.rv.init_as_tex2d_array(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, array_index, 1u, mip_index);
+        }
+        else
+        {
+            _cmd.depth_target.rv.init_as_tex2d(rt.res.handle, rt.info.fmt, rt.info.num_samples > 1, mip_index);
+        }
+        adjust_config_for_render_target(rt);
         return *this;
     }
 
     /// add a rendertarget to the framebuffer that loads is contents (ie. is not cleared), including a blend state override
     /// NOTE: blend state only applies to cached PSOs created from the framebuffer
-    [[nodiscard]] framebuffer_builder& loaded_target(render_target const& rt, pr::blend_state const& blend)
+    [[nodiscard]] framebuffer_builder& loaded_target(texture const& rt, pr::blend_state const& blend, uint32_t mip_index = 0u, uint32_t array_index = 0u)
     {
-        CC_ASSERT(!phi::is_depth_format(rt.info.format) && "cannot specify blend state for depth targets");
-        (void)loaded_target(rt);
+        CC_ASSERT(!phi::util::is_depth_format(rt.info.fmt) && "cannot specify blend state for depth targets");
+
+        (void)loaded_target(rt, mip_index, array_index);
         _has_custom_blendstate = true;
         auto& state = _blendstate_overrides.render_targets.back();
         state.blend_enable = true;
@@ -130,11 +181,17 @@ public:
 
     /// add a rendertarget to the framebuffer that clears to a specified value, including a blend state override
     /// NOTE: blend state only applies to cached PSOs created from the framebuffer
-    [[nodiscard]] framebuffer_builder& cleared_target(
-        render_target const& rt, pr::blend_state const& blend, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f)
+    [[nodiscard]] framebuffer_builder& cleared_target(texture const& rt,
+                                                      pr::blend_state const& blend,
+                                                      float clear_r = 0.f,
+                                                      float clear_g = 0.f,
+                                                      float clear_b = 0.f,
+                                                      float clear_a = 1.f,
+                                                      uint32_t mip_index = 0u,
+                                                      uint32_t array_index = 0u)
     {
-        CC_ASSERT(!phi::is_depth_format(rt.info.format) && "cannot specify blend state for depth targets");
-        (void)cleared_target(rt, clear_r, clear_g, clear_b, clear_a);
+        CC_ASSERT(!phi::util::is_depth_format(rt.info.fmt) && "cannot specify blend state for depth targets");
+        (void)cleared_target(rt, clear_r, clear_g, clear_b, clear_a, mip_index, array_index);
         _has_custom_blendstate = true;
         auto& state = _blendstate_overrides.render_targets.back();
         state.blend_enable = true;
@@ -144,7 +201,7 @@ public:
 
     /// Set and enable the blend logic operation
     /// NOTE: only applies to cached PSOs created from the framebuffer
-    [[nodiscard]] framebuffer_builder& logic_op(phi::blend_logic_op op)
+    [[nodiscard]] framebuffer_builder& logic_op(pr::blend_logic_op op)
     {
         _has_custom_blendstate = true;
         _blendstate_overrides.logic_op = op;
@@ -190,20 +247,25 @@ private:
         _cmd.set_null_depth_stencil();
     }
 
-    void adjust_config(render_target const& rt)
+    void adjust_config_for_render_target(texture const& rt)
     {
-        CC_ASSERT((_num_samples == -1 || _num_samples == int(rt.info.num_samples)) && "render targets in framebuffer have inconsistent sample amounts");
-        _num_samples = int(rt.info.num_samples);
+        adjust_config_for_render_target(rt.info.num_samples, {rt.info.width, rt.info.height}, rt.info.fmt);
+    }
+
+    void adjust_config_for_render_target(uint32_t num_samples, tg::isize2 res, pr::format fmt)
+    {
+        CC_ASSERT((_num_samples == -1 || _num_samples == int(num_samples)) && "render targets in framebuffer have inconsistent sample amounts");
+        _num_samples = int(num_samples);
 
         if (!_has_custom_viewport)
         {
-            _cmd.viewport.width = cc::min(_cmd.viewport.width, rt.info.width);
-            _cmd.viewport.height = cc::min(_cmd.viewport.height, rt.info.height);
+            _cmd.viewport.width = cc::min(_cmd.viewport.width, res.width);
+            _cmd.viewport.height = cc::min(_cmd.viewport.height, res.height);
         }
 
         // keep blenstate override RTs consistent in size
-        if (!phi::is_depth_format(rt.info.format))
-            _blendstate_overrides.add_render_target(rt.info.format);
+        if (!phi::util::is_depth_format(fmt))
+            _blendstate_overrides.add_render_target(fmt);
     }
 
 private:
