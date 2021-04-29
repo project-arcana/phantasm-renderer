@@ -9,6 +9,7 @@
 #include "CompiledFrame.hh"
 #include "ComputePass.hh"
 #include "Frame.hh"
+#include "Framebuffer.hh"
 #include "GraphicsPass.hh"
 #include "argument.hh"
 #include "pass_info.hh"
