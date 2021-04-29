@@ -3,7 +3,6 @@
 #include <mutex>
 
 #include <clean-core/map.hh>
-#include <clean-core/typedefs.hh>
 #include <clean-core/vector.hh>
 
 #include <phantasm-hardware-interface/handles.hh>
@@ -25,7 +24,7 @@ private:
 public:
     void reserve(size_t num_elems) { _map.reserve(num_elems); }
 
-    [[nodiscard]] ValT acquire(cc::hash_t key)
+    [[nodiscard]] ValT acquire(uint64_t key)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
@@ -37,7 +36,7 @@ public:
         return elem.val;
     }
 
-    void insert(ValT val, cc::hash_t key)
+    void insert(ValT val, uint64_t key)
     {
         auto lg = std::lock_guard(_mutex);
         CC_ASSERT(val != invalid_val && "[single_cache] invalid value inserted");
@@ -47,7 +46,7 @@ public:
         elem.required_gpu_epoch = 0;
     }
 
-    void free(cc::hash_t key, gpu_epoch_t current_cpu_epoch)
+    void free(uint64_t key, gpu_epoch_t current_cpu_epoch)
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = _map[key];
@@ -64,7 +63,7 @@ public:
         auto lg = std::lock_guard(_mutex);
         auto f_can_cull = [&](map_element const& elem) -> bool { return elem.num_references == 0 && elem.required_gpu_epoch <= current_gpu_epoch; };
 
-        cc::vector<cc::hash_t> keys_to_remove;
+        cc::vector<uint64_t> keys_to_remove;
         keys_to_remove.reserve(_map.size());
 
         for (auto&& [key, elem] : _map)
@@ -98,7 +97,7 @@ private:
         gpu_epoch_t required_gpu_epoch = 0; ///< CPU epoch when this element was last freed
     };
 
-    cc::map<cc::hash_t, map_element> _map;
+    cc::map<uint64_t, map_element> _map;
     std::mutex _mutex;
 };
 }

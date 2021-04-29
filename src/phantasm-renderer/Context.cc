@@ -160,7 +160,7 @@ auto_buffer Context::make_readback_buffer(uint32_t size, uint32_t stride, char c
 
 auto_buffer Context::make_buffer(const buffer_info& info, char const* debug_name) { return {createBuffer(info, debug_name), this}; }
 
-auto_shader_binary Context::make_shader(cc::span<cc::byte const> data, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(cc::span<std::byte const> data, phi::shader_stage stage)
 {
     CC_ASSERT(data.data() != nullptr);
 
@@ -764,7 +764,7 @@ void Context::freeCachedBuffer(const buffer_info& info, raw_resource res)
     mImpl->mCacheBuffers.free(res, info, mImpl->mGpuEpochTracker.get_current_epoch_cpu());
 }
 
-phi::handle::pipeline_state Context::acquire_graphics_pso(cc::hash_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
+phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
     phi::handle::pipeline_state pso = mImpl->mCacheGraphicsPSOs.acquire(hash);
 
@@ -780,7 +780,7 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(cc::hash_t hash, graph
     return pso;
 }
 
-phi::handle::pipeline_state Context::acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp)
+phi::handle::pipeline_state Context::acquire_compute_pso(uint64_t hash, const compute_pass_info& cp)
 {
     phi::handle::pipeline_state pso = mImpl->mCacheComputePSOs.acquire(hash);
     if (!pso.is_valid())
@@ -792,7 +792,7 @@ phi::handle::pipeline_state Context::acquire_compute_pso(cc::hash_t hash, const 
     return pso;
 }
 
-phi::handle::shader_view Context::acquire_graphics_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_graphics_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mImpl->mCacheGraphicsSVs.acquire(hash);
     if (!sv.is_valid())
@@ -804,7 +804,7 @@ phi::handle::shader_view Context::acquire_graphics_sv(cc::hash_t hash, const has
     return sv;
 }
 
-phi::handle::shader_view Context::acquire_compute_sv(cc::hash_t hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_compute_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
 {
     phi::handle::shader_view sv = mImpl->mCacheComputeSVs.acquire(hash);
     if (!sv.is_valid())
@@ -838,11 +838,11 @@ void Context::free_all(cc::span<const freeable_cached_obj> freeables)
     }
 }
 
-void Context::free_graphics_pso(cc::hash_t hash) { mImpl->mCacheGraphicsPSOs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_pso(cc::hash_t hash) { mImpl->mCacheComputePSOs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_pso(uint64_t hash) { mImpl->mCacheGraphicsPSOs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_pso(uint64_t hash) { mImpl->mCacheComputePSOs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
 
-void Context::free_graphics_sv(cc::hash_t hash) { mImpl->mCacheGraphicsSVs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
-void Context::free_compute_sv(cc::hash_t hash) { mImpl->mCacheComputeSVs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_graphics_sv(uint64_t hash) { mImpl->mCacheGraphicsSVs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
+void Context::free_compute_sv(uint64_t hash) { mImpl->mCacheComputeSVs.free(hash, mImpl->mGpuEpochTracker.get_current_epoch_cpu()); }
 
 auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, uint32_t num_mips, const char* debug_name)
 {
