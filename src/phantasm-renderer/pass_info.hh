@@ -7,6 +7,7 @@
 #include <phantasm-renderer/common/hashable_storage.hh>
 
 #include <phantasm-renderer/argument.hh>
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/state_info.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
@@ -15,13 +16,20 @@
 
 namespace pr
 {
-struct graphics_pass_info
+struct PR_API graphics_pass_info
 {
 public:
     /// Add a shader argument specifiying the amount of elements
     graphics_pass_info& arg(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
     {
         _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
+        return *this;
+    }
+
+    /// Add a shader argument shape
+    graphics_pass_info& arg(phi::arg::shader_arg_shape const& arg_shape)
+    {
+        _storage.get().arg_shapes.push_back(arg_shape);
         return *this;
     }
 
@@ -39,7 +47,7 @@ public:
     }
 
     /// Set vertex size and attributes from data
-    graphics_pass_info& vertex(unsigned size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
+    graphics_pass_info& vertex(uint32_t size_bytes, cc::span<phi::vertex_attribute_info const> attributes)
     {
         _storage.get().vertex_size_bytes = size_bytes;
 
@@ -117,19 +125,26 @@ public:
         return *this;
     }
 
-    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<graphics_pass_info_data> _storage;
     cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
 };
 
-struct compute_pass_info
+struct PR_API compute_pass_info
 {
 public:
     /// Add a shader argument specifiying the amount of elements
-    compute_pass_info& arg(unsigned num_srvs, unsigned num_uavs = 0, unsigned num_samplers = 0, bool has_cbv = false)
+    compute_pass_info& arg(uint32_t num_srvs, uint32_t num_uavs = 0, uint32_t num_samplers = 0, bool has_cbv = false)
     {
         _storage.get().arg_shapes.push_back({num_srvs, num_uavs, num_samplers, has_cbv});
+        return *this;
+    }
+
+    /// Add a shader argument shape
+    compute_pass_info& arg(phi::arg::shader_arg_shape const& arg_shape)
+    {
+        _storage.get().arg_shapes.push_back(arg_shape);
         return *this;
     }
 
@@ -154,12 +169,8 @@ public:
         return *this;
     }
 
-private:
-    friend class raii::Frame;
-    [[nodiscard]] cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    [[nodiscard]] uint64_t get_hash() const { return _storage.get_xxhash(); }
 
-private:
-    friend class Context;
     hashable_storage<compute_pass_info_data> _storage;
     phi::arg::shader_binary _shader;
 };
@@ -199,7 +210,7 @@ template <class... ShaderTs>
     return res;
 }
 
-struct framebuffer_info
+struct PR_API framebuffer_info
 {
 public:
     /// Add a render target based on format only
@@ -238,7 +249,7 @@ public:
         return *this;
     }
 
-    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<phi::arg::framebuffer_config> _storage;
 };

@@ -31,6 +31,8 @@ void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::textur
     {
         if (img.info.depth_or_array_size == 6)
             new_rv.dimension = phi::resource_view_dimension::texturecube;
+        else if (img.info.num_samples > 1)
+            new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_ms_array : phi::resource_view_dimension::texture2d_ms;
         else
             new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
 

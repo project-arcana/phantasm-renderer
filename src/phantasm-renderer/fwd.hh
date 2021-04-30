@@ -29,15 +29,12 @@ struct auto_destroyer;
 // resources
 struct raw_resource;
 struct buffer;
-struct render_target;
 struct texture;
 
 using auto_buffer = auto_destroyer<buffer, auto_mode::guard>;
-using auto_render_target = auto_destroyer<render_target, auto_mode::guard>;
 using auto_texture = auto_destroyer<texture, auto_mode::guard>;
 
 using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
-using cached_render_target = auto_destroyer<render_target, auto_mode::cache>;
 using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
 
@@ -45,6 +42,10 @@ using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 struct graphics_pass_info;
 struct compute_pass_info;
 struct framebuffer_info;
+struct shader_view_info;
+struct graphics_pass_info_data;
+struct compute_pass_info_data;
+struct freeable_cached_obj;
 
 // shaders, PSOs, fences, query ranges
 struct shader_binary;
@@ -64,6 +65,7 @@ using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 // shader arguments
 struct argument;
 struct prebuilt_argument;
+struct argument_builder;
 using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, auto_mode::guard>;
 
 // RAII frame chain
@@ -76,6 +78,8 @@ class ComputePass;
 }
 
 class CompiledFrame;
+template <class T>
+struct hashable_storage;
 
 namespace detail
 {

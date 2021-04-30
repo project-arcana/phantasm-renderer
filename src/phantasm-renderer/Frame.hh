@@ -8,6 +8,7 @@
 
 #include <phantasm-hardware-interface/commands.hh>
 
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/growing_writer.hh>
 #include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
@@ -19,7 +20,7 @@
 
 namespace pr::raii
 {
-class Frame
+class PR_API Frame
 {
 public:
     //
@@ -66,31 +67,27 @@ public:
 
     void transition(buffer const& res, state target, shader_flags dependency = {});
     void transition(texture const& res, state target, shader_flags dependency = {});
-    void transition(render_target const& res, state target, shader_flags dependency = {});
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
+    void barrier_uav(cc::span<phi::handle::resource const> resources);
+
     /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
-    void present_after_submit(render_target const& backbuffer, swapchain sc);
+    void present_after_submit(texture const& backbuffer, swapchain sc);
 
     //
     // commands
 
     /// copy buffer to buffer
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
+
     /// copy buffer to texture
     void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
 
     /// copy texture to buffer
-    void copy(render_target const& src, buffer const& dest, size_t dest_offset = 0);
+    void copy(texture const& src, buffer const& dest, size_t dest_offset = 0);
 
     /// copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, unsigned mip_index = 0);
-    /// copies MIP level 0, array slice 0 from src to dest
-    void copy(texture const& src, render_target const& dest);
-    /// copies src to MIP level 0, array slice 0 of dest
-    void copy(render_target const& src, texture const& dest);
-    /// copies contents of src to dest
-    void copy(render_target const& src, render_target const& dest);
 
     /// copy textures specifying all details of the operation
     void copy_subsection(texture const& src,
@@ -102,9 +99,8 @@ public:
                          unsigned num_array_slices,
                          tg::isize2 dest_size);
 
-    /// resolve a multisampled render target to a texture or different RT
-    void resolve(render_target const& src, texture const& dest);
-    void resolve(render_target const& src, render_target const& dest);
+    /// resolve a multisampled texture
+    void resolve(texture const& src, texture const& dest);
 
     /// write a timestamp to a query in a given (timestamp) query range
     void write_timestamp(query_range const& query_range, unsigned index);
@@ -131,25 +127,29 @@ public:
     /// expects upload buffer with sufficient size (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
 
-    /// creates a suitable upload buffer and calls upload_texutre_data
+    /// creates a suitable upload buffer and calls upload_texture_data
     /// (deferred freeing it afterwards)
     void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
-    void upload_texture_subresource(cc::span<std::byte const> texture_data,
-                                    unsigned row_size_bytes,
-                                    buffer const& upload_buffer,
-                                    unsigned buffer_offset_bytes,
-                                    texture const& dest_texture,
-                                    unsigned dest_subres_index);
+    size_t upload_texture_subresource(cc::span<std::byte const> texture_data,
+                                      unsigned row_size_bytes,
+                                      buffer const& upload_buffer,
+                                      unsigned buffer_offset_bytes,
+                                      texture const& dest_texture,
+                                      unsigned dest_subres_index);
+
+    /// creates a suitable temporary upload buffer and copies data to the destination buffer
+    void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
 
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
+
     /// free a texture once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.res.handle); }
-    /// free a render target once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(render_target const& rt) { free_deferred_after_submit(rt.res.handle); }
+
     /// free a resource once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(raw_resource const& res) { free_deferred_after_submit(res.handle); }
+
     /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
 
@@ -180,8 +180,10 @@ public:
 
 public:
     // redirect intuitive misuses
+
     /// (graphics passes can only be created from framebuffers)
     [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
+
     /// frame must not be discarded while framebuffers/passes are alive
     [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
     [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
@@ -217,7 +219,7 @@ public:
 
     // private
 private:
-    static void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, render_target const& rt);
+    static void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, texture const& rt);
 
     void flushPendingTransitions();
 

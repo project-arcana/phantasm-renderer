@@ -3,6 +3,8 @@
 #include <phantasm-hardware-interface/fwd.hh>
 #include <phantasm-hardware-interface/types.hh>
 
+#include <phantasm-renderer/common/api.hh>
+
 namespace pr
 {
 using gpu_epoch_t = uint64_t;

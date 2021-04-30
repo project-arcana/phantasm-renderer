@@ -4,6 +4,7 @@
 
 #include <phantasm-hardware-interface/arguments.hh>
 
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/common/hashable_storage.hh>
 #include <phantasm-renderer/common/state_info.hh>
 
@@ -13,7 +14,7 @@
 
 namespace pr
 {
-struct resource_view_info
+struct PR_API resource_view_info
 {
     resource_view_info& format(pr::format fmt)
     {
@@ -55,19 +56,11 @@ struct resource_view_info
     uint64_t guid;
 };
 
-[[nodiscard]] inline resource_view_info resource_view_2d(texture const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
+[[nodiscard]] inline resource_view_info resource_view_2d(texture const& tex, unsigned mip_index = 0)
 {
     resource_view_info res;
     res.guid = tex.res.guid;
-    res.rv.init_as_tex2d(tex.res.handle, tex.info.fmt, false, mip_start, mip_size);
-    return res;
-}
-
-[[nodiscard]] inline resource_view_info resource_view_2d(render_target const& tex, unsigned mip_start = 0, unsigned mip_size = unsigned(-1))
-{
-    resource_view_info res;
-    res.guid = tex.res.guid;
-    res.rv.init_as_tex2d(tex.res.handle, tex.info.format, false, mip_start, mip_size);
+    res.rv.init_as_tex2d(tex.res.handle, tex.info.fmt, false, mip_index);
     return res;
 }
 
@@ -88,36 +81,33 @@ struct resource_view_info
 }
 
 // fixed size, hashable, no raw resources allowed
-struct argument
+struct PR_API argument
 {
 public:
     /// add a default-configured texture SRV
-    void add(texture const& img)
+    void add(texture const& img, uint32_t mip_start = 0, uint32_t mip_size = uint32_t(-1))
     {
         phi::resource_view new_rv;
-        fill_default_srv(new_rv, img, 0, unsigned(-1));
+        fill_default_srv(new_rv, img, mip_start, mip_size);
         _add_srv(new_rv, img.res.guid);
     }
 
     /// add a default-configured structured buffer SRV
-    void add(buffer const& buffer)
+    void add(buffer const& buffer, uint32_t element_start = 0u)
     {
-        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
-        _add_srv(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
-                 buffer.res.guid);
+        phi::resource_view new_rv;
+        pr::argument::fill_default_srv(new_rv, buffer, element_start);
+        _add_srv(new_rv, buffer.res.guid);
     }
-
-    /// add a default-configured 2D texture SRV
-    void add(render_target const& rt) { _add_srv(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid); }
 
     /// add a configured SRV
     void add(resource_view_info const& rvi) { _add_srv(rvi.rv, rvi.guid); }
 
     /// add a default-configured texture UAV
-    void add_mutable(texture const& img)
+    void add_mutable(texture const& img, uint32_t mip_start = 0, uint32_t mip_size = uint32_t(-1))
     {
         phi::resource_view new_rv;
-        fill_default_uav(new_rv, img, 0, unsigned(-1));
+        fill_default_uav(new_rv, img, mip_start, mip_size);
         _add_uav(new_rv, img.res.guid);
     }
 
@@ -127,12 +117,6 @@ public:
         CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV has no stride, pass a stride during creation");
         _add_uav(phi::resource_view::structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes),
                  buffer.res.guid);
-    }
-
-    /// add a default-configured 2D texture UAV
-    void add_mutable(render_target const& rt)
-    {
-        _add_uav(phi::resource_view::tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1), rt.res.guid);
     }
 
     /// add a configured UAV
@@ -145,8 +129,8 @@ public:
 
     void add_sampler(pr::sampler_config const& config)
     {
-        CC_ASSERT_MSG(!_info.get().uavs.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
-                                                "use persistent prebuilt_arguments from Context::build_argument() instead");
+        CC_ASSERT_MSG(!_info.get().samplers.full(), "pr::argument samplers full\ncache-access arguments are fixed size,\n"
+                                                    "use persistent prebuilt_arguments from Context::build_argument() instead");
 
         _info.get().samplers.push_back(config);
     }
@@ -154,6 +138,25 @@ public:
     unsigned get_num_srvs() const { return unsigned(_info.get().srvs.size()); }
     unsigned get_num_uavs() const { return unsigned(_info.get().uavs.size()); }
     unsigned get_num_samplers() const { return unsigned(_info.get().samplers.size()); }
+
+    void clear()
+    {
+        _info.get().srvs.clear();
+        _info.get().uavs.clear();
+        _info.get().samplers.clear();
+    }
+
+    static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
+
+    static void fill_default_srv(phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start = 0u)
+    {
+        CC_ASSERT(buf.info.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
+        uint32_t const num_elems = buf.info.size_bytes / buf.info.stride_bytes;
+        CC_ASSERT(element_start < num_elems && "element_start is OOB");
+        new_rv.init_as_structured_buffer(buf.res.handle, num_elems - element_start, buf.info.stride_bytes, element_start);
+    }
+
+    static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
 
 private:
     void _add_srv(phi::resource_view rv, uint64_t guid)
@@ -174,10 +177,6 @@ private:
         _info.get().uav_guids.push_back(guid);
     }
 
-    friend struct argument_builder;
-    static void fill_default_srv(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
-    static void fill_default_uav(phi::resource_view& new_rv, pr::texture const& img, unsigned mip_start, unsigned mip_size);
-
 private:
     friend class raii::Frame;
     friend class Context;
@@ -192,7 +191,7 @@ struct prebuilt_argument
 using auto_prebuilt_argument = auto_destroyer<prebuilt_argument, auto_mode::guard>;
 
 // builder, only received directly from Context, can grow indefinitely in size, not hashable
-struct argument_builder
+struct PR_API argument_builder
 {
 public:
     //
@@ -206,15 +205,8 @@ public:
     }
     argument_builder& add(buffer const& buffer)
     {
-        CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as SRV argument has no stride, pass a stride during creation");
         auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
-        return *this;
-    }
-    argument_builder& add(render_target const& rt)
-    {
-        auto& new_rv = _srvs.emplace_back();
-        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
+        pr::argument::fill_default_srv(new_rv, buffer);
         return *this;
     }
     argument_builder& add(resource_view_info const& rvi)
@@ -242,12 +234,6 @@ public:
         CC_ASSERT(buffer.info.stride_bytes > 0 && "buffer used as UAV argument has no stride, pass a stride during creation");
         auto& new_rv = _uavs.emplace_back();
         new_rv.init_as_structured_buffer(buffer.res.handle, buffer.info.size_bytes / buffer.info.stride_bytes, buffer.info.stride_bytes);
-        return *this;
-    }
-    argument_builder& add_mutable(render_target const& rt)
-    {
-        auto& new_rv = _uavs.emplace_back();
-        new_rv.init_as_tex2d(rt.res.handle, rt.info.format, rt.info.num_samples > 1);
         return *this;
     }
     argument_builder& add_mutable(resource_view_info const& rvi)

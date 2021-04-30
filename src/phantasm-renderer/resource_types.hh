@@ -18,28 +18,31 @@ struct raw_resource
 {
     phi::handle::resource handle = phi::handle::null_resource;
     uint64_t guid = 0;
+
+    bool is_valid() const { return handle.is_valid(); }
+    void invalidate() { handle.invalidate(); }
 };
 
 struct buffer
 {
     raw_resource res;
     buffer_info info;
-};
 
-struct render_target
-{
-    raw_resource res;
-    render_target_info info;
-
-    int samples() const { return info.num_samples; }
-    tg::isize2 size() const { return {info.width, info.height}; }
-    pr::format format() const { return info.format; }
+    bool is_valid() const { return res.handle.is_valid(); }
+    void invalidate() { res.handle.invalidate(); }
 };
 
 struct texture
 {
     raw_resource res;
     texture_info info;
+
+    bool is_valid() const { return res.handle.is_valid(); }
+    void invalidate() { res.handle.invalidate(); }
+
+    int samples() const { return info.num_samples; }
+    tg::isize2 size() const { return {info.width, info.height}; }
+    pr::format format() const { return info.fmt; }
 };
 
 //
@@ -50,7 +53,7 @@ struct shader_binary
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    cc::hash_t _hash;                 ///< xxhash64 over _data, for caching of PSOs using this shader
+    uint64_t _hash;                   ///< xxhash64 over _data, for caching of PSOs using this shader
     phi::shader_stage _stage;
 };
 
@@ -81,7 +84,7 @@ struct query_range
 {
     phi::handle::query_range handle = phi::handle::null_query_range;
     pr::query_type type;
-    unsigned num;
+    uint32_t num;
 };
 
 struct swapchain
@@ -94,7 +97,6 @@ struct swapchain
 
 // move-only, self-destructing versions
 using auto_buffer = auto_destroyer<buffer, auto_mode::guard>;
-using auto_render_target = auto_destroyer<render_target, auto_mode::guard>;
 using auto_texture = auto_destroyer<texture, auto_mode::guard>;
 
 using auto_shader_binary = auto_destroyer<shader_binary, auto_mode::destroy>; // this is a CPU-only type, allow auto destruction
@@ -104,9 +106,8 @@ using auto_fence = auto_destroyer<fence, auto_mode::guard>;
 using auto_query_range = auto_destroyer<query_range, auto_mode::guard>;
 using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 
-// move-only, self-cachefreeing versions
+// move-only, self-cache-freeing versions
 using cached_buffer = auto_destroyer<buffer, auto_mode::cache>;
-using cached_render_target = auto_destroyer<render_target, auto_mode::cache>;
 using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 
 
