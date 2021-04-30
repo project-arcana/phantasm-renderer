@@ -1,28 +1,15 @@
 #pragma once
-
-#include <atomic>
 #include <cstddef>
-#include <mutex>
 
-#include <clean-core/span.hh>
-#include <clean-core/string_view.hh>
+#include <clean-core/fwd.hh>
 
 #include <typed-geometry/types/size.hh>
 
 #include <phantasm-hardware-interface/fwd.hh>
-#include <phantasm-hardware-interface/window_handle.hh>
 
-#include <dxc-wrapper/compiler.hh>
-
-#include <phantasm-renderer/common/gpu_epoch_tracker.hh>
-#include <phantasm-renderer/common/multi_cache.hh>
-#include <phantasm-renderer/common/single_cache.hh>
-#include <phantasm-renderer/detail/deferred_destruction_queue.hh>
-
-#include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/common/api.hh>
-#include <phantasm-renderer/enums.hh>
 #include <phantasm-renderer/fwd.hh>
+#include <phantasm-renderer/resource_types.hh>
 
 namespace pr
 {
@@ -110,7 +97,7 @@ public:
     // shaders
 
     /// create a shader from binary data (only hashes the data)
-    [[nodiscard]] auto_shader_binary make_shader(cc::span<cc::byte const> data, pr::shader stage);
+    [[nodiscard]] auto_shader_binary make_shader(cc::span<std::byte const> data, pr::shader stage);
 
     /// create a shader by compiling it live from text
     /// build_debug: compile without optimizations and embed debug symbols/PDB info (/Od /Zi /Qembed_debug) - required for shader debugging in Rdoc, PIX etc
@@ -137,7 +124,7 @@ public:
                                                                cc::span<phi::sampler_config const> samplers);
 
     /// create a persisted shader argument, builder pattern
-    [[nodiscard]] argument_builder build_argument(cc::allocator* temp_alloc = cc::system_allocator) { return {this, temp_alloc}; }
+    [[nodiscard]] argument_builder build_argument(cc::allocator* temp_alloc = cc::system_allocator);
 
     //
     // pipeline states
@@ -201,14 +188,10 @@ public:
     /// free a texture
     void free(texture const& texture) { free_untyped(texture.res); }
 
-    void free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
-    void free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
-    void free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
-    void free(shader_binary const& shader)
-    {
-        if (shader._owning_blob != nullptr)
-            freeShaderBinary(shader._owning_blob);
-    }
+    void free(graphics_pipeline_state const& pso);
+    void free(compute_pipeline_state const& pso);
+    void free(prebuilt_argument const& arg);
+    void free(shader_binary const& shader);
     void free(query_range const& q);
 
     void free_range(cc::span<phi::handle::resource const> res_range);
@@ -395,7 +378,7 @@ public:
     void flush();
 
     /// returns whether the epoch was reached on the GPU
-    bool is_gpu_epoch_reached(gpu_epoch_t epoch) const { return mGpuEpochTracker._cached_epoch_gpu >= epoch; }
+    bool is_gpu_epoch_reached(gpu_epoch_t epoch) const;
 
     /// "shuts down" the context: calls flush(), no longer accepts frame submits, and
     /// no longer asserts on non-disowned resources getting destroyed
@@ -469,7 +452,7 @@ public:
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset
     uint32_t calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const;
 
-    bool is_shutting_down() const { return mIsShuttingDown.load(std::memory_order_relaxed); }
+    bool is_shutting_down() const;
 
     //
     // miscellaneous
@@ -492,10 +475,10 @@ public:
     pr::backend get_backend_type() const { return mBackendType; }
 
     /// uint64 incremented on every submit, always greater or equal to GPU
-    gpu_epoch_t get_current_cpu_epoch() const { return mGpuEpochTracker._current_epoch_cpu; }
+    gpu_epoch_t get_current_cpu_epoch() const;
 
     /// uint64 incremented after every finished commandlist, GPU timeline, always less or equal to CPU
-    gpu_epoch_t get_current_gpu_epoch() const { return mGpuEpochTracker._cached_epoch_gpu; }
+    gpu_epoch_t get_current_gpu_epoch() const;
 
 public:
     //
@@ -521,6 +504,8 @@ public:
     /// initializes the context
     void initialize(backend type, cc::allocator* alloc = cc::system_allocator);
     void initialize(backend type, phi::backend_config const& config, cc::allocator* alloc = cc::system_allocator);
+
+    /// initializes the context with a pre-existing PHI backend
     void initialize(phi::Backend* backend, cc::allocator* alloc = cc::system_allocator);
 
     /// destroys the context
@@ -557,7 +542,7 @@ private:
 private:
     [[nodiscard]] uint64_t acquireGuid();
 
-    void internalInitialize(cc::allocator* alloc);
+    void internalInitialize(cc::allocator* alloc, bool ownsBackend);
 
     // creation
     texture createTexture(texture_info const& info, char const* dbg_name = nullptr);
@@ -581,54 +566,26 @@ private:
     // single cache access, Frame-side API
 private:
     friend class raii::Frame;
-    phi::handle::pipeline_state acquire_graphics_pso(cc::hash_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
-    phi::handle::pipeline_state acquire_compute_pso(cc::hash_t hash, const compute_pass_info& cp);
+    phi::handle::pipeline_state acquire_graphics_pso(uint64_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
+    phi::handle::pipeline_state acquire_compute_pso(uint64_t hash, const compute_pass_info& cp);
 
-    phi::handle::shader_view acquire_graphics_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
-    phi::handle::shader_view acquire_compute_sv(cc::hash_t hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_graphics_sv(uint64_t hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_compute_sv(uint64_t hash, hashable_storage<shader_view_info> const& info_storage);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 
-    void free_graphics_pso(cc::hash_t hash);
-    void free_compute_pso(cc::hash_t hash);
-    void free_graphics_sv(cc::hash_t hash);
-    void free_compute_sv(cc::hash_t hash);
+    void free_graphics_pso(uint64_t hash);
+    void free_compute_pso(uint64_t hash);
+    void free_graphics_sv(uint64_t hash);
+    void free_compute_sv(uint64_t hash);
 
     // members
 private:
-    // backend
     phi::Backend* mBackend = nullptr;
-    bool mOwnsBackend = false;
     pr::backend mBackendType;
-
-    // constant info
     uint64_t mGPUTimestampFrequency = 0;
 
-    // components
-    dxcw::compiler mShaderCompiler;
-    std::mutex mMutexSubmission;
-    std::mutex mMutexShaderCompilation;
-    gpu_epoch_tracker mGpuEpochTracker;
-    std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
-    std::atomic<bool> mIsShuttingDown = {false};
-    deferred_destruction_queue mDeferredQueue;
-
-    // caches (have dtors, members must be below backend ptr)
-    multi_cache<texture_info> mCacheTextures;
-    multi_cache<buffer_info> mCacheBuffers;
-
-    // single caches (no dtors)
-    single_cache<phi::handle::pipeline_state> mCacheGraphicsPSOs;
-    single_cache<phi::handle::pipeline_state> mCacheComputePSOs;
-    single_cache<phi::handle::shader_view> mCacheGraphicsSVs;
-    single_cache<phi::handle::shader_view> mCacheComputeSVs;
-
-    // safety/assert state
-#ifdef CC_ENABLE_ASSERTIONS
-    struct
-    {
-        bool did_acquire_before_present = false;
-    } mSafetyState;
-#endif
+    struct Implementation;
+    Implementation* mImpl = nullptr;
 };
 }

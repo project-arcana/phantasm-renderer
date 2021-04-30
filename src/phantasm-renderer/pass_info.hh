@@ -125,7 +125,7 @@ public:
         return *this;
     }
 
-    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<graphics_pass_info_data> _storage;
     cc::capped_vector<phi::arg::graphics_shader, 5> _shaders;
@@ -169,7 +169,7 @@ public:
         return *this;
     }
 
-    [[nodiscard]] cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    [[nodiscard]] uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<compute_pass_info_data> _storage;
     phi::arg::shader_binary _shader;
@@ -249,7 +249,7 @@ public:
         return *this;
     }
 
-    cc::hash_t get_hash() const { return _storage.get_xxhash(); }
+    uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<phi::arg::framebuffer_config> _storage;
 };
