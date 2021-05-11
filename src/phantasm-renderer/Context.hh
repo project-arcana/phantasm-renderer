@@ -54,10 +54,7 @@ public:
     [[nodiscard]] auto_texture make_texture(texture_info const& info, char const* debug_name = nullptr);
 
     /// create a texture from the info of a different texture. NOTE: does not concern contents or state
-    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source, char const* debug_name = nullptr)
-    {
-        return make_texture(clone_source.info, debug_name);
-    }
+    [[nodiscard]] auto_texture make_texture_clone(texture const& clone_source, char const* debug_name = nullptr);
 
     //
     // render targets
@@ -88,10 +85,7 @@ public:
     [[nodiscard]] auto_buffer make_buffer(buffer_info const& info, char const* debug_name = nullptr);
 
     /// create a buffer from the info of a different buffer. NOTE: does not concern contents or state
-    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source, char const* debug_name = nullptr)
-    {
-        return make_buffer(clone_source.info, debug_name);
-    }
+    [[nodiscard]] auto_buffer make_buffer_clone(buffer const& clone_source, char const* debug_name = nullptr);
 
     //
     // shaders
@@ -108,7 +102,7 @@ public:
     // prebuilt arguments (shader views)
 
     /// create a persisted shader argument for graphics passes
-    [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument const& arg);
+    [[nodiscard]] auto_prebuilt_argument make_graphics_argument(pr::argument& arg);
 
     /// create a persisted shader argument for graphics passes from raw phi types
     [[nodiscard]] auto_prebuilt_argument make_graphics_argument(cc::span<phi::resource_view const> srvs,
@@ -116,7 +110,7 @@ public:
                                                                 cc::span<phi::sampler_config const> samplers);
 
     /// create a persisted shader argument for compute passes
-    [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument const& arg);
+    [[nodiscard]] auto_prebuilt_argument make_compute_argument(pr::argument& arg);
 
     /// create a persisted shader argument for compute passes from raw phi types
     [[nodiscard]] auto_prebuilt_argument make_compute_argument(cc::span<phi::resource_view const> srvs,
@@ -165,28 +159,28 @@ public:
     //
 
     /// create a resource of undetermined type, without RAII management (use free_untyped)
-    [[nodiscard]] raw_resource make_untyped_unlocked(generic_resource_info const& info, char const* debug_name = nullptr);
+    [[nodiscard]] resource make_untyped_unlocked(generic_resource_info const& info, char const* debug_name = nullptr);
 
     /// create or retrieve a resource of undetermined type from cache, without RAII management (use free_to_cache_untyped)
-    [[nodiscard]] raw_resource get_untyped_unlocked(generic_resource_info const& info);
+    [[nodiscard]] resource get_untyped_unlocked(generic_resource_info const& info);
 
     //
     // freeing
     //   destroy a resource immediately
-    //   must not be CPU-used after call
+    //   must not be CPU-used after call, or referenced in future Frame submits
     //   must not be in flight on GPU during call
     //
 
     /// free a resource that was disowned from automatic management
     void free_untyped(phi::handle::resource resource);
 
-    void free_untyped(raw_resource const& resource) { free_untyped(resource.handle); }
+    void free_untyped(resource const& resource) { free_untyped(resource.handle); }
 
     /// free a buffer
-    void free(buffer const& buffer) { free_untyped(buffer.res); }
+    void free(buffer const& buffer) { free_untyped(buffer.handle); }
 
     /// free a texture
-    void free(texture const& texture) { free_untyped(texture.res); }
+    void free(texture const& texture) { free_untyped(texture.handle); }
 
     void free(graphics_pipeline_state const& pso);
     void free(compute_pipeline_state const& pso);
@@ -202,10 +196,25 @@ public:
     template <class... Res>
     void free_multiple_resources(Res&&... res_args)
     {
-        // any resource still wrapped in the auto_ wrapper wouldn't have a .res member (but instead .data.res)
-        phi::handle::resource flat_handles[] = {res_args.res.handle...};
+        // any resource still wrapped in the auto_ wrapper wouldn't have a .handle member (but instead .data.handle)
+        phi::handle::resource flat_handles[] = {res_args.handle...};
         free_range(flat_handles);
     }
+
+    //
+    // cache freeing
+    //   place a resource back into the cache for reuse
+    //   must not be CPU-used after call, or referenced in future Frame submits
+    //
+
+    /// free a resource of undetermined type by placing it in the cache for reuse
+    void free_to_cache_untyped(resource const& resource);
+
+    /// free a buffer by placing it in the cache for reuse
+    void free_to_cache(buffer const& buffer);
+
+    /// free a texture by placing it in the cache for reuse
+    void free_to_cache(texture const& texture);
 
     //
     // deferred freeing
@@ -221,7 +230,7 @@ public:
     void free_deferred(texture const& tex);
 
     /// free a resource once no longer in flight
-    void free_deferred(raw_resource const& res);
+    void free_deferred(resource const& res);
 
     /// free a PSO once no longer in flight
     void free_deferred(graphics_pipeline_state const& gpso);
@@ -234,20 +243,13 @@ public:
     void free_range_deferred(cc::span<phi::handle::resource const> res_range);
     void free_range_deferred(cc::span<phi::handle::shader_view const> sv_range);
 
-    //
-    // cache freeing
-    //   place a resource back into the cache for reuse
-    //   must not be CPU-used after call, or referenced in future Frame submits
-    //
+    /// place a resource back into the cache for reuse once no longer in flight
+    void free_deferred_to_cache(phi::handle::resource res);
+    void free_deferred_to_cache(resource const& res) { free_deferred_to_cache(res.handle); }
+    void free_deferred_to_cache(buffer const& res) { free_deferred_to_cache(res.handle); }
+    void free_deferred_to_cache(texture const& res) { free_deferred_to_cache(res.handle); }
 
-    /// free a resource of undetermined type by placing it in the cache for reuse
-    void free_to_cache_untyped(raw_resource const& resource, generic_resource_info const& info);
-
-    /// free a buffer by placing it in the cache for reuse
-    void free_to_cache(buffer const& buffer);
-
-    /// free a texture by placing it in the cache for reuse
-    void free_to_cache(texture const& texture);
+    void free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range);
 
     //
     // buffer map API
@@ -260,10 +262,7 @@ public:
     [[nodiscard]] std::byte* map_buffer(buffer const& buffer, int32_t invalidate_begin = 0, int32_t invalidate_end = -1);
 
     /// map a buffer and return a span of the mapped memory (instead of just a pointer)
-    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int32_t invalidate_begin = 0, int32_t invalidate_end = -1)
-    {
-        return {map_buffer(buffer, invalidate_begin, invalidate_end), buffer.info.size_bytes};
-    }
+    [[nodiscard]] cc::span<std::byte> map_buffer_as_span(buffer const& buffer, int32_t invalidate_begin = 0, int32_t invalidate_end = -1);
 
     /// unmap a buffer previously mapped using map_buffer
     /// a buffer can be destroyed while mapped
@@ -412,21 +411,25 @@ public:
 
     /// resource must have an assigned GUID if they are meant to interoperate with pr's caching mechanisms
     /// use this method to "import" a raw phi resource
-    [[nodiscard]] raw_resource import_phi_resource(phi::handle::resource raw_resource) { return {raw_resource, acquireGuid()}; }
+    [[nodiscard]] resource import_phi_resource(phi::handle::resource raw_resource) { return {raw_resource}; }
 
     [[nodiscard]] buffer import_phi_buffer(phi::handle::resource raw_resource, buffer_info const& info)
     {
-        return {import_phi_resource(raw_resource), info};
+        return {import_phi_resource(raw_resource)};
     }
 
     [[nodiscard]] texture import_phi_texture(phi::handle::resource raw_resource, texture_info const& info)
     {
-        return {import_phi_resource(raw_resource), info};
+        return {import_phi_resource(raw_resource)};
     }
 
     //
     // general info
     //
+
+    texture_info const& get_texture_info(pr::texture const& tex) const;
+
+    buffer_info const& get_buffer_info(pr::buffer const& buf) const;
 
     uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
 
@@ -560,8 +563,8 @@ private:
     void freeShaderView(phi::handle::shader_view sv);
     void freePipelineState(phi::handle::pipeline_state ps);
 
-    void freeCachedTexture(texture_info const& info, raw_resource res);
-    void freeCachedBuffer(buffer_info const& info, raw_resource res);
+    void freeCachedTexture(texture_info const& info, resource res);
+    void freeCachedBuffer(buffer_info const& info, resource res);
 
     // single cache access, Frame-side API
 private:

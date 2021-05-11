@@ -54,7 +54,7 @@ public:
     // pass RAII API (compute only, graphics passes are in Framebuffer)
 
     /// start a compute pass from persisted PSO
-    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
+    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline.handle}; }
 
     /// start a compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
@@ -124,11 +124,10 @@ public:
 
     /// uploads texture data correctly to a destination texture, respecting rowwise alignment
     /// transition cmd + copy_buf_to_tex cmd
-    /// expects upload buffer with sufficient size (see Context::calculate_texture_upload_size)
+    /// expects an upload buffer with sufficient size (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
 
-    /// creates a suitable upload buffer and calls upload_texture_data
-    /// (deferred freeing it afterwards)
+    /// creates a suitable temporary upload buffer and calls upload_texture_data
     void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
     size_t upload_texture_subresource(cc::span<std::byte const> texture_data,
@@ -142,16 +141,28 @@ public:
     void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
 
     /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
+    void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.handle); }
 
     /// free a texture once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.res.handle); }
+    void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.handle); }
 
     /// free a resource once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(raw_resource const& res) { free_deferred_after_submit(res.handle); }
+    void free_deferred_after_submit(resource const& res) { free_deferred_after_submit(res.handle); }
 
     /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
+
+    /// free a buffer to the cache once no longer in flight AFTER this frame was submitted/discarded
+    void free_to_cache_deferred_after_submit(buffer const& buf) { free_to_cache_deferred_after_submit(buf.handle); }
+
+    /// free a texture to the cache once no longer in flight AFTER this frame was submitted/discarded
+    void free_to_cache_deferred_after_submit(texture const& tex) { free_to_cache_deferred_after_submit(tex.handle); }
+
+    /// free a resource to the cache once no longer in flight AFTER this frame was submitted/discarded
+    void free_to_cache_deferred_after_submit(resource const& res) { free_to_cache_deferred_after_submit(res.handle); }
+
+    /// free raw PHI resources to the cache once no longer in flight AFTER this frame was submitted/discarded
+    void free_to_cache_deferred_after_submit(phi::handle::resource res) { mDeferredCacheFreeResources.push_back(res); }
 
     //
     // raw phi commands
@@ -196,6 +207,9 @@ public:
     template <class T, auto_mode M>
     [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
         = delete;
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_to_cache_deferred_after_submit(auto_destroyer<T, M> const&)
+        = delete;
 
 public:
     Frame(Frame const&) = delete;
@@ -206,6 +220,7 @@ public:
         mPendingTransitionCommand(rhs.mPendingTransitionCommand),
         mFreeables(cc::move(rhs.mFramebufferActive)),
         mDeferredFreeResources(cc::move(rhs.mDeferredFreeResources)),
+        mDeferredCacheFreeResources(cc::move(rhs.mDeferredCacheFreeResources)),
         mFramebufferActive(rhs.mFramebufferActive),
         mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
     {
@@ -219,7 +234,7 @@ public:
 
     // private
 private:
-    static void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, texture const& rt);
+    void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, texture const& rt);
 
     void flushPendingTransitions();
 
@@ -251,14 +266,14 @@ private:
     void passOnDraw(phi::cmd::draw const& dcmd);
     void passOnDispatch(phi::cmd::dispatch const& dcmd);
 
-    phi::handle::shader_view passAcquireGraphicsShaderView(pr::argument const& arg);
-    phi::handle::shader_view passAcquireComputeShaderView(pr::argument const& arg);
+    phi::handle::shader_view passAcquireGraphicsShaderView(pr::argument& arg);
+    phi::handle::shader_view passAcquireComputeShaderView(pr::argument& arg);
 
     // Context-side API
 private:
     friend Context;
     explicit Frame(Context* ctx, size_t size, cc::allocator* alloc)
-      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc)
+      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc), mDeferredCacheFreeResources(alloc)
     {
     }
 
@@ -271,8 +286,11 @@ private:
     Context* mCtx = nullptr;
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
+
     cc::alloc_vector<freeable_cached_obj> mFreeables;
     cc::alloc_vector<phi::handle::resource> mDeferredFreeResources;
+    cc::alloc_vector<phi::handle::resource> mDeferredCacheFreeResources;
+
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };

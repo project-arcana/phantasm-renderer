@@ -27,7 +27,7 @@ template <class T, auto_mode Cache>
 struct auto_destroyer;
 
 // resources
-struct raw_resource;
+struct resource;
 struct buffer;
 struct texture;
 
