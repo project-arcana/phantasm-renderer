@@ -14,35 +14,20 @@ namespace pr
 //
 // resource types
 
-struct raw_resource
+struct resource
 {
     phi::handle::resource handle = phi::handle::null_resource;
-    uint64_t guid = 0;
 
     bool is_valid() const { return handle.is_valid(); }
     void invalidate() { handle.invalidate(); }
 };
 
-struct buffer
+struct buffer : public resource
 {
-    raw_resource res;
-    buffer_info info;
-
-    bool is_valid() const { return res.handle.is_valid(); }
-    void invalidate() { res.handle.invalidate(); }
 };
 
-struct texture
+struct texture : public resource
 {
-    raw_resource res;
-    texture_info info;
-
-    bool is_valid() const { return res.handle.is_valid(); }
-    void invalidate() { res.handle.invalidate(); }
-
-    int samples() const { return info.num_samples; }
-    tg::isize2 size() const { return {info.width, info.height}; }
-    pr::format format() const { return info.fmt; }
 };
 
 //
@@ -53,8 +38,8 @@ struct shader_binary
     std::byte const* _data = nullptr;
     size_t _size = 0;
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    uint64_t _hash;                   ///< xxhash64 over _data, for caching of PSOs using this shader
-    phi::shader_stage _stage;
+    uint64_t _hash = 0;               ///< xxhash64 over _data, for caching of PSOs using this shader
+    phi::shader_stage _stage = phi::shader_stage::none;
 };
 
 //
@@ -62,7 +47,7 @@ struct shader_binary
 
 struct pipeline_state_abstract
 {
-    phi::handle::pipeline_state _handle = phi::handle::null_pipeline_state;
+    phi::handle::pipeline_state handle = phi::handle::null_pipeline_state;
 };
 
 struct graphics_pipeline_state : public pipeline_state_abstract

@@ -20,6 +20,8 @@ struct deferred_destruction_queue
     void free(pr::Context& ctx, phi::handle::pipeline_state pso);
     void free_range(pr::Context& ctx, cc::span<phi::handle::resource const> res_range);
     void free_range(pr::Context& ctx, cc::span<phi::handle::shader_view const> res_range);
+    void free_to_cache(pr::Context& ctx, phi::handle::resource res);
+    void free_range_to_cache(pr::Context& ctx, cc::span<phi::handle::resource const> res_range);
 
     unsigned free_all_pending(pr::Context& ctx);
 
@@ -39,6 +41,8 @@ private:
     cc::alloc_vector<phi::handle::pipeline_state> pending_psos_new;
     cc::alloc_vector<phi::handle::resource> pending_res_old;
     cc::alloc_vector<phi::handle::resource> pending_res_new;
+    cc::alloc_vector<phi::handle::resource> pending_cached_res_old;
+    cc::alloc_vector<phi::handle::resource> pending_cached_res_new;
 
     std::mutex mutex;
 };

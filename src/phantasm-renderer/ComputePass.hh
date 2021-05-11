@@ -24,7 +24,7 @@ public:
     [[nodiscard]] ComputePass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, constant_buffer.res.handle, constant_buffer_offset);
+        p.add_argument(sv._sv, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
@@ -32,7 +32,7 @@ public:
     [[nodiscard]] ComputePass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(phi::handle::null_shader_view, constant_buffer.res.handle, constant_buffer_offset);
+        p.add_argument(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
@@ -46,17 +46,17 @@ public:
 
     // cache-access variants
     // hits a OS mutex
-    [[nodiscard]] ComputePass bind(argument const& arg)
+    [[nodiscard]] ComputePass bind(argument& arg)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_cached_argument(arg, phi::handle::null_resource, 0);
         return p;
     }
 
-    [[nodiscard]] ComputePass bind(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] ComputePass bind(argument& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer.res.handle, constant_buffer_offset);
+        p.add_cached_argument(arg, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
@@ -91,7 +91,7 @@ private:
 
     // cache-access variant
     // hits a OS mutex
-    void add_cached_argument(argument const& arg, phi::handle::resource cbv, uint32_t cbv_offset);
+    void add_cached_argument(argument& arg, phi::handle::resource cbv, uint32_t cbv_offset);
 
     Frame* mParent = nullptr;
     phi::cmd::dispatch mCmd;
@@ -103,7 +103,7 @@ private:
 
 inline void ComputePass::set_constant_buffer(const buffer& constant_buffer, unsigned offset)
 {
-    set_constant_buffer(constant_buffer.res.handle, offset);
+    set_constant_buffer(constant_buffer.handle, offset);
 }
 
 inline void ComputePass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)

@@ -28,8 +28,6 @@ struct shader_view_info
 {
     phi::flat_vector<phi::resource_view, 4> srvs;
     phi::flat_vector<phi::resource_view, 4> uavs;
-    phi::flat_vector<uint64_t, 4> srv_guids;
-    phi::flat_vector<uint64_t, 4> uav_guids;
     phi::flat_vector<phi::sampler_config, 2> samplers;
 };
 
