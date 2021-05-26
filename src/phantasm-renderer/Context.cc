@@ -306,7 +306,7 @@ void Context::free_deferred(phi::handle::pipeline_state pso) { mImpl->mDeferredQ
 void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mImpl->mDeferredQueue.free_range(*this, res_range); }
 void Context::free_range_deferred(cc::span<const phi::handle::shader_view> sv_range) { mImpl->mDeferredQueue.free_range(*this, sv_range); }
 
-void Context::free_deferred_to_cache(phi::handle::resource res) { mImpl->mDeferredQueue.free_to_cache(*this, res); }
+void Context::free_to_cache_deferred(phi::handle::resource res) { mImpl->mDeferredQueue.free_to_cache(*this, res); }
 
 void Context::free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range)
 {

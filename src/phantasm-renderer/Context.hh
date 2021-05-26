@@ -244,10 +244,10 @@ public:
     void free_range_deferred(cc::span<phi::handle::shader_view const> sv_range);
 
     /// place a resource back into the cache for reuse once no longer in flight
-    void free_deferred_to_cache(phi::handle::resource res);
-    void free_deferred_to_cache(resource const& res) { free_deferred_to_cache(res.handle); }
-    void free_deferred_to_cache(buffer const& res) { free_deferred_to_cache(res.handle); }
-    void free_deferred_to_cache(texture const& res) { free_deferred_to_cache(res.handle); }
+    void free_to_cache_deferred(phi::handle::resource res);
+    void free_to_cache_deferred(resource const& res) { free_to_cache_deferred(res.handle); }
+    void free_to_cache_deferred(buffer const& res) { free_to_cache_deferred(res.handle); }
+    void free_to_cache_deferred(texture const& res) { free_to_cache_deferred(res.handle); }
 
     void free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range);
 
