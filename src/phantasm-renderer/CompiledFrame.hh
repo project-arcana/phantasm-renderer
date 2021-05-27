@@ -29,7 +29,7 @@ public:
         _cmdlist(rhs._cmdlist),
         _freeables(cc::move(rhs._freeables)),
         _deferred_free_resources(cc::move(rhs._deferred_free_resources)),
-        _deferred_cache_free_resources(cc::move(rhs._deferred_cache_free_resources)),
+        _cache_free_resources(cc::move(rhs._cache_free_resources)),
         _present_after_submit_swapchain(rhs._present_after_submit_swapchain)
     {
         rhs.invalidate();
@@ -46,7 +46,7 @@ public:
             _cmdlist = rhs._cmdlist;
             _freeables = cc::move(rhs._freeables);
             _deferred_free_resources = cc::move(rhs._deferred_free_resources);
-            _deferred_cache_free_resources = cc::move(rhs._deferred_cache_free_resources);
+            _cache_free_resources = cc::move(rhs._cache_free_resources);
             _present_after_submit_swapchain = rhs._present_after_submit_swapchain;
 
             rhs.invalidate();
@@ -68,7 +68,7 @@ private:
         _cmdlist(cmdlist),
         _freeables(cc::move(freeables)),
         _deferred_free_resources(cc::move(deferred_free_resources)),
-        _deferred_cache_free_resources(cc::move(deferred_cache_free_resources)),
+        _cache_free_resources(cc::move(deferred_cache_free_resources)),
         _present_after_submit_swapchain(present_after_submit_sc)
     {
     }
@@ -79,7 +79,7 @@ private:
     phi::handle::command_list _cmdlist = phi::handle::null_command_list;
     cc::alloc_vector<freeable_cached_obj> _freeables;
     cc::alloc_vector<phi::handle::resource> _deferred_free_resources;
-    cc::alloc_vector<phi::handle::resource> _deferred_cache_free_resources;
+    cc::alloc_vector<phi::handle::resource> _cache_free_resources;
     phi::handle::swapchain _present_after_submit_swapchain = phi::handle::null_swapchain;
 };
 }

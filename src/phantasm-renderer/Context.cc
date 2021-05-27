@@ -306,12 +306,12 @@ void Context::free_deferred(phi::handle::pipeline_state pso) { mImpl->mDeferredQ
 void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mImpl->mDeferredQueue.free_range(*this, res_range); }
 void Context::free_range_deferred(cc::span<const phi::handle::shader_view> sv_range) { mImpl->mDeferredQueue.free_range(*this, sv_range); }
 
-void Context::free_to_cache_deferred(phi::handle::resource res) { mImpl->mDeferredQueue.free_to_cache(*this, res); }
-
-void Context::free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range)
-{
-    mImpl->mDeferredQueue.free_range_to_cache(*this, res_range);
-}
+// void Context::free_to_cache_deferred(phi::handle::resource res) { mImpl->mDeferredQueue.free_to_cache(*this, res); }
+//
+// void Context::free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range)
+//{
+//    mImpl->mDeferredQueue.free_range_to_cache(*this, res_range);
+//}
 
 void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(mBackend->getResourceBufferDescription(buffer.handle), buffer); }
 
@@ -457,12 +457,12 @@ CompiledFrame Context::compile(raii::Frame&& frame)
     if (frame.is_empty())
     {
         return CompiledFrame(phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources),
-                             cc::move(frame.mDeferredCacheFreeResources), phi::handle::null_swapchain);
+                             cc::move(frame.mCacheFreeResources), phi::handle::null_swapchain);
     }
     else
     {
         auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), cc::move(frame.mDeferredCacheFreeResources),
+        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), cc::move(frame.mCacheFreeResources),
                              frame.mPresentAfterSubmitRequest);
     }
 }
@@ -504,8 +504,10 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     if (!frame._deferred_free_resources.empty())
         mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    if (!frame._deferred_cache_free_resources.empty())
-        mImpl->mDeferredQueue.free_range_to_cache(*this, frame._deferred_cache_free_resources);
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
 
     frame.invalidate();
 
@@ -522,8 +524,10 @@ void Context::discard(CompiledFrame&& frame)
     if (!frame._deferred_free_resources.empty())
         mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
-    if (!frame._deferred_cache_free_resources.empty())
-        mImpl->mDeferredQueue.free_range_to_cache(*this, frame._deferred_cache_free_resources);
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
 
     frame.invalidate();
 }
