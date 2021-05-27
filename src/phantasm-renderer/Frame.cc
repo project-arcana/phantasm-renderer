@@ -294,7 +294,7 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
 
     upload_texture_data(texture_data, upload_buffer, dest_texture);
 
-    free_to_cache_deferred_after_submit(upload_buffer.disown());
+    free_to_cache_after_submit(upload_buffer.disown());
 }
 
 void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer)
@@ -305,7 +305,7 @@ void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer
     mCtx->write_to_buffer_raw(upload_buffer, data);
     this->copy(upload_buffer, dest_buffer, 0, 0, data.size());
 
-    free_to_cache_deferred_after_submit(upload_buffer.disown());
+    free_to_cache_after_submit(upload_buffer.disown());
 }
 
 size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,

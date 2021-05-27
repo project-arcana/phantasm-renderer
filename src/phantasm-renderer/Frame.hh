@@ -152,17 +152,17 @@ public:
     /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
 
-    /// free a buffer to the cache once no longer in flight AFTER this frame was submitted/discarded
-    void free_to_cache_deferred_after_submit(buffer const& buf) { free_to_cache_deferred_after_submit(buf.handle); }
+    /// free a buffer to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(buffer const& buf) { free_to_cache_after_submit(buf.handle); }
 
-    /// free a texture to the cache once no longer in flight AFTER this frame was submitted/discarded
-    void free_to_cache_deferred_after_submit(texture const& tex) { free_to_cache_deferred_after_submit(tex.handle); }
+    /// free a texture to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(texture const& tex) { free_to_cache_after_submit(tex.handle); }
 
-    /// free a resource to the cache once no longer in flight AFTER this frame was submitted/discarded
-    void free_to_cache_deferred_after_submit(resource const& res) { free_to_cache_deferred_after_submit(res.handle); }
+    /// free a resource to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(resource const& res) { free_to_cache_after_submit(res.handle); }
 
-    /// free raw PHI resources to the cache once no longer in flight AFTER this frame was submitted/discarded
-    void free_to_cache_deferred_after_submit(phi::handle::resource res) { mDeferredCacheFreeResources.push_back(res); }
+    /// free raw PHI resources to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(phi::handle::resource res) { mCacheFreeResources.push_back(res); }
 
     //
     // raw phi commands
@@ -220,7 +220,7 @@ public:
         mPendingTransitionCommand(rhs.mPendingTransitionCommand),
         mFreeables(cc::move(rhs.mFramebufferActive)),
         mDeferredFreeResources(cc::move(rhs.mDeferredFreeResources)),
-        mDeferredCacheFreeResources(cc::move(rhs.mDeferredCacheFreeResources)),
+        mCacheFreeResources(cc::move(rhs.mCacheFreeResources)),
         mFramebufferActive(rhs.mFramebufferActive),
         mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
     {
@@ -273,7 +273,7 @@ private:
 private:
     friend Context;
     explicit Frame(Context* ctx, size_t size, cc::allocator* alloc)
-      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc), mDeferredCacheFreeResources(alloc)
+      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc), mCacheFreeResources(alloc)
     {
     }
 
@@ -287,9 +287,14 @@ private:
     growing_writer mWriter;
     phi::cmd::transition_resources mPendingTransitionCommand;
 
+    // cached objects (PSOs or SVs) to free once this frame is submitted or discarded
     cc::alloc_vector<freeable_cached_obj> mFreeables;
+
+    // resources that should get deferred-freed once this frame is submitted or discarded
     cc::alloc_vector<phi::handle::resource> mDeferredFreeResources;
-    cc::alloc_vector<phi::handle::resource> mDeferredCacheFreeResources;
+
+    // resources that should get freed-to-cache once this frame is submitted or discarde
+    cc::alloc_vector<phi::handle::resource> mCacheFreeResources;
 
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
