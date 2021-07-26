@@ -19,7 +19,7 @@ void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, uint32_t num_
 void pr::raii::GraphicsPass::draw(const pr::buffer& vertex_buffer, const pr::buffer& index_buffer, uint32_t num_instances, int vertex_offset, uint32_t index_offset)
 {
     auto const& vertexDesc = mParent->mCtx->get_backend().getResourceBufferDescription(vertex_buffer.handle);
-    auto const& indexDesc = mParent->mCtx->get_backend().getResourceBufferDescription(vertex_buffer.handle);
+    auto const& indexDesc = mParent->mCtx->get_backend().getResourceBufferDescription(index_buffer.handle);
 
     CC_ASSERT(vertexDesc.stride_bytes > 0 && "vertex buffer not strided");
     CC_ASSERT(indexDesc.stride_bytes > 0 && "index buffer not strided");
