@@ -101,10 +101,7 @@ private:
 
 // inline implementation
 
-inline void ComputePass::set_constant_buffer(const buffer& constant_buffer, unsigned offset)
-{
-    set_constant_buffer(constant_buffer.handle, offset);
-}
+inline void ComputePass::set_constant_buffer(const buffer& constant_buffer, unsigned offset) { set_constant_buffer(constant_buffer.handle, offset); }
 
 inline void ComputePass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)
 {
