@@ -102,6 +102,14 @@ public:
         _add_srv(new_rv);
     }
 
+    /// add a raytracing acceleration structure
+    void add(phi::handle::accel_struct as)
+    {
+        phi::resource_view new_rv = {};
+        new_rv.init_as_accel_struct(as);
+        _add_srv(new_rv);
+    }
+
     /// add a configured SRV
     void add(resource_view_info const& rvi) { _add_srv(rvi.rv); }
 
@@ -194,6 +202,20 @@ private:
     friend class Context;
     hashable_storage<shader_view_info> _info;
 };
+
+[[nodiscard]] inline resource_view_info resource_view_buffer(buffer const& buf, Context& ctx, uint32_t element_start = 0u)
+{
+    resource_view_info res;
+    argument::fill_default_srv(&ctx, res.rv, buf, element_start);
+    return res;
+}
+
+[[nodiscard]] inline resource_view_info resource_view_texture(texture const& tex, Context& ctx, uint32_t mip_start = 0u, uint32_t mip_size = 1u)
+{
+    resource_view_info res;
+    argument::fill_default_srv(&ctx, res.rv, tex, mip_start, mip_size);
+    return res;
+}
 
 struct prebuilt_argument
 {
