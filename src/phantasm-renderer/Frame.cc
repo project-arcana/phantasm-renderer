@@ -55,7 +55,7 @@ size_t rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest,
     return dest_row_stride_bytes * (num_rows - 1) + row_size_bytes;
 }
 
-CC_FORCE_INLINE size_t ceil_to_1mb(size_t value) { return cc::align_up(value, 1024 * 1024); }
+CC_FORCE_INLINE uint32_t ceil_to_1mb(uint32_t value) { return cc::align_up(value, 1024 * 1024); }
 }
 
 using namespace pr;
@@ -300,7 +300,7 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
 void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer)
 {
     // ceil size to 1 MB to make cache hits more likely
-    pr::cached_buffer upload_buffer = mCtx->get_upload_buffer(ceil_to_1mb(data.size()), 0u);
+    pr::cached_buffer upload_buffer = mCtx->get_upload_buffer(ceil_to_1mb(uint32_t(data.size())), 0u);
 
     mCtx->write_to_buffer_raw(upload_buffer, data);
     this->copy(upload_buffer, dest_buffer, 0, 0, data.size());
@@ -326,8 +326,8 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     command.source = upload_buffer.handle;
     command.destination = dest_texture.handle;
     command.source_offset_bytes = buffer_offset_bytes;
-    command.dest_width = unsigned(mip_resolution.width);
-    command.dest_height = unsigned(mip_resolution.height);
+    command.dest_width = uint32_t(mip_resolution.width);
+    command.dest_height = uint32_t(mip_resolution.height);
     command.dest_mip_index = dest_subres_index;
     command.dest_array_index = 0;
     mWriter.add_command(command);
@@ -343,15 +343,15 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
 
     std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
 
-    auto const num_rows = texture_data.size() / row_size_bytes;
+    auto const num_rows = uint32_t(texture_data.size() / row_size_bytes);
 
-    CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, num_rows, unsigned(texture_data.size()),
-                                        upbufDesc.size_bytes - unsigned(command.source_offset_bytes))
+    CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, num_rows, uint32_t(texture_data.size()),
+                                        upbufDesc.size_bytes - uint32_t(command.source_offset_bytes))
               && "[Frame::upload_texture_subresource] source data or destination buffer too small");
 
     auto const last_offset = rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
 
-    mCtx->unmap_buffer(upload_buffer, buffer_offset_bytes, buffer_offset_bytes + last_offset); // flush exact range
+    mCtx->unmap_buffer(upload_buffer, int32_t(buffer_offset_bytes), int32_t(buffer_offset_bytes + last_offset)); // flush exact range
 
     // amount of bytes written to upload buffer, starting at offset
     return last_offset;
