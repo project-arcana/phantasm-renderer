@@ -405,15 +405,9 @@ public:
     /// use this method to "import" a raw phi resource
     [[nodiscard]] resource import_phi_resource(phi::handle::resource raw_resource) { return {raw_resource}; }
 
-    [[nodiscard]] buffer import_phi_buffer(phi::handle::resource raw_resource, buffer_info const& info)
-    {
-        return {import_phi_resource(raw_resource)};
-    }
+    [[nodiscard]] buffer import_phi_buffer(phi::handle::resource raw_resource) { return {import_phi_resource(raw_resource)}; }
 
-    [[nodiscard]] texture import_phi_texture(phi::handle::resource raw_resource, texture_info const& info)
-    {
-        return {import_phi_resource(raw_resource)};
-    }
+    [[nodiscard]] texture import_phi_texture(phi::handle::resource raw_resource) { return {import_phi_resource(raw_resource)}; }
 
     //
     // general info
