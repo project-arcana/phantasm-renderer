@@ -81,32 +81,34 @@ public:
     void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
 
     /// copy buffer to texture
-    void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
+    /// writes the specified MIP level of the specified array element
+    void copy(buffer const& src, texture const& dest, size_t src_offset = 0, uint32_t dest_mip_index = 0, uint32_t dest_array_index = 0);
 
     /// copy texture to buffer
-    void copy(texture const& src, buffer const& dest, size_t dest_offset = 0);
+    /// reads the specified MIP level of the specified array element
+    void copy(texture const& src, buffer const& dest, size_t dest_offset = 0, uint32_t src_mip_index = 0, uint32_t src_array_index = 0);
 
     /// copies all array slices at the given MIP level from src to dest
-    void copy(texture const& src, texture const& dest, unsigned mip_index = 0);
+    void copy(texture const& src, texture const& dest, uint32_t mip_index = 0);
 
     /// copy textures specifying all details of the operation
     void copy_subsection(texture const& src,
                          texture const& dest,
-                         unsigned src_mip_index,
-                         unsigned src_array_index,
-                         unsigned dest_mip_index,
-                         unsigned dest_array_index,
-                         unsigned num_array_slices,
+                         uint32_t src_mip_index,
+                         uint32_t src_array_index,
+                         uint32_t dest_mip_index,
+                         uint32_t dest_array_index,
+                         uint32_t num_array_slices,
                          tg::isize2 dest_size);
 
     /// resolve a multisampled texture
     void resolve(texture const& src, texture const& dest);
 
     /// write a timestamp to a query in a given (timestamp) query range
-    void write_timestamp(query_range const& query_range, unsigned index);
+    void write_timestamp(query_range const& query_range, uint32_t index);
 
     /// resolve one or more queries in a range and write their contents to a buffer
-    void resolve_queries(query_range const& src, buffer const& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes = 0);
+    void resolve_queries(query_range const& src, buffer const& dest, uint32_t first_query, uint32_t num_queries, uint32_t dest_offset_bytes = 0);
 
     /// begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
     void begin_debug_label(char const* label) { write_raw_cmd(phi::cmd::begin_debug_label{label}); }
@@ -131,11 +133,11 @@ public:
     void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
     size_t upload_texture_subresource(cc::span<std::byte const> texture_data,
-                                      unsigned row_size_bytes,
+                                      uint32_t row_size_bytes,
                                       buffer const& upload_buffer,
-                                      unsigned buffer_offset_bytes,
+                                      uint32_t buffer_offset_bytes,
                                       texture const& dest_texture,
-                                      unsigned dest_subres_index);
+                                      uint32_t dest_subres_index);
 
     /// creates a suitable temporary upload buffer and copies data to the destination buffer
     void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
@@ -238,7 +240,7 @@ private:
 
     void flushPendingTransitions();
 
-    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, unsigned mip_index, unsigned first_array_index, unsigned num_array_slices);
+    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, uint32_t mip_index, uint32_t first_array_index, uint32_t num_array_slices);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
 
     phi::handle::pipeline_state acquireComputePSO(compute_pass_info const& cp);
@@ -254,7 +256,7 @@ private:
 private:
     friend class Framebuffer;
     void framebufferOnJoin(Framebuffer const&);
-    void framebufferOnSortByPSO(unsigned num_drawcalls);
+    void framebufferOnSortByPSO(uint32_t num_drawcalls);
 
     phi::handle::pipeline_state framebufferAcquireGraphicsPSO(pr::graphics_pass_info const& gp, pr::framebuffer_info const& fb, int fb_inferred_num_samples);
 
