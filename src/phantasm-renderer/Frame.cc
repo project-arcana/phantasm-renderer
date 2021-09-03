@@ -42,7 +42,7 @@ bool is_rowwise_copy_in_bounds(size_t dest_row_stride_bytes, size_t row_size_byt
 }
 
 // returns bytes written to dest
-size_t rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, size_t dest_row_stride_bytes, size_t row_size_bytes, unsigned num_rows)
+size_t rowwise_copy(std::byte const* __restrict src, std::byte* __restrict dest, size_t dest_row_stride_bytes, size_t row_size_bytes, uint32_t num_rows)
 {
     // num_rows is the height in pixels for regular formats, but is lower for block compressed formats
     for (auto y = 0u; y < num_rows; ++y)
@@ -146,7 +146,7 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset, unsigned dest_mip_index, unsigned dest_array_index)
+void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset, uint32_t dest_mip_index, uint32_t dest_array_index)
 {
     auto const& destDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
     transition(src, pr::state::copy_src);
@@ -155,12 +155,12 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
 
 
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src.handle, dest.handle, unsigned(destDesc.width) / (1 + dest_mip_index), unsigned(destDesc.height) / (1 + dest_mip_index), src_offset,
+    ccmd.init(src.handle, dest.handle, uint32_t(destDesc.width) / (1 + dest_mip_index), uint32_t(destDesc.height) / (1 + dest_mip_index), src_offset,
               dest_mip_index, dest_array_index);
     mWriter.add_command(ccmd);
 }
 
-void pr::raii::Frame::copy(texture const& src, buffer const& dest, size_t dest_offset)
+void pr::raii::Frame::copy(texture const& src, buffer const& dest, size_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
 {
     auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
     transition(src, pr::state::copy_src);
@@ -168,11 +168,14 @@ void pr::raii::Frame::copy(texture const& src, buffer const& dest, size_t dest_o
     flushPendingTransitions();
 
     phi::cmd::copy_texture_to_buffer ccmd;
-    ccmd.init(src.handle, dest.handle, srcDesc.width, srcDesc.height, dest_offset);
+
+    auto const mipWidth = uint32_t(phi::util::get_mip_size(srcDesc.width, src_mip_index));
+    auto const mipHeight = uint32_t(phi::util::get_mip_size(srcDesc.height, src_mip_index));
+    ccmd.init(src.handle, dest.handle, mipWidth, mipHeight, dest_offset, src_mip_index, src_array_index);
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const texture& src, const texture& dest, unsigned mip_index)
+void raii::Frame::copy(const texture& src, const texture& dest, uint32_t mip_index)
 {
     auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
     auto const& destDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
@@ -184,11 +187,11 @@ void raii::Frame::copy(const texture& src, const texture& dest, unsigned mip_ind
 
 void raii::Frame::copy_subsection(const texture& src,
                                   const texture& dest,
-                                  unsigned src_mip_index,
-                                  unsigned src_array_index,
-                                  unsigned dest_mip_index,
-                                  unsigned dest_array_index,
-                                  unsigned num_array_slices,
+                                  uint32_t src_mip_index,
+                                  uint32_t src_array_index,
+                                  uint32_t dest_mip_index,
+                                  uint32_t dest_array_index,
+                                  uint32_t num_array_slices,
                                   tg::isize2 dest_size)
 {
     // TODO: OOB asserts
@@ -203,8 +206,8 @@ void raii::Frame::copy_subsection(const texture& src,
     ccmd.src_array_index = src_array_index;
     ccmd.dest_mip_index = dest_mip_index;
     ccmd.dest_array_index = dest_array_index;
-    ccmd.width = unsigned(dest_size.width);
-    ccmd.height = unsigned(dest_size.height);
+    ccmd.width = uint32_t(dest_size.width);
+    ccmd.height = uint32_t(dest_size.height);
     ccmd.num_array_slices = num_array_slices;
     mWriter.add_command(ccmd);
 }
@@ -215,7 +218,7 @@ void raii::Frame::resolve(const texture& src, const texture& dest)
     resolveTextureInternal(src.handle, dest.handle, texDesc.width, texDesc.height);
 }
 
-void raii::Frame::write_timestamp(const query_range& query_range, unsigned index)
+void raii::Frame::write_timestamp(const query_range& query_range, uint32_t index)
 {
     CC_ASSERT(query_range.type == query_type::timestamp && "Expected timestamp query range to write a timestamp to");
     CC_ASSERT(index < query_range.num && "OOB query write");
@@ -226,7 +229,7 @@ void raii::Frame::write_timestamp(const query_range& query_range, unsigned index
     mWriter.add_command(wcmd);
 }
 
-void raii::Frame::resolve_queries(const query_range& src, const buffer& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes)
+void raii::Frame::resolve_queries(const query_range& src, const buffer& dest, uint32_t first_query, uint32_t num_queries, uint32_t dest_offset_bytes)
 {
     CC_ASSERT(first_query + num_queries <= src.num && "OOB query resolve read");
     flushPendingTransitions();
@@ -251,8 +254,8 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     phi::cmd::copy_buffer_to_texture command;
     command.source = upload_buffer.handle;
     command.destination = dest_texture.handle;
-    command.dest_width = unsigned(dest_texture_desc.width);
-    command.dest_height = unsigned(dest_texture_desc.height);
+    command.dest_width = uint32_t(dest_texture_desc.width);
+    command.dest_height = uint32_t(dest_texture_desc.height);
     command.dest_mip_index = 0;
 
     std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
@@ -309,11 +312,11 @@ void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer
 }
 
 size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
-                                               unsigned row_size_bytes,
+                                               uint32_t row_size_bytes,
                                                const buffer& upload_buffer,
-                                               unsigned buffer_offset_bytes,
+                                               uint32_t buffer_offset_bytes,
                                                const texture& dest_texture,
-                                               unsigned dest_subres_index)
+                                               uint32_t dest_subres_index)
 {
     auto const& upbufDesc = mCtx->get_backend().getResourceBufferDescription(upload_buffer.handle);
     auto const& texDesc = mCtx->get_backend().getResourceTextureDescription(dest_texture.handle);
@@ -409,14 +412,14 @@ void raii::Frame::flushPendingTransitions()
     }
 }
 
-void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, unsigned mip_index, unsigned first_array_index, unsigned num_array_slices)
+void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, uint32_t mip_index, uint32_t first_array_index, uint32_t num_array_slices)
 {
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
     phi::cmd::copy_texture ccmd;
-    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h), mip_index, first_array_index, num_array_slices);
+    ccmd.init_symmetric(src, dest, uint32_t(w), uint32_t(h), mip_index, first_array_index, num_array_slices);
     mWriter.add_command(ccmd);
 }
 
@@ -427,7 +430,7 @@ void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle:
     flushPendingTransitions();
 
     phi::cmd::resolve_texture ccmd;
-    ccmd.init_symmetric(src, dest, unsigned(w), unsigned(h));
+    ccmd.init_symmetric(src, dest, uint32_t(w), uint32_t(h));
     mWriter.add_command(ccmd);
 }
 
@@ -508,16 +511,18 @@ void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
     mFramebufferActive = false;
 }
 
-void raii::Frame::framebufferOnSortByPSO(unsigned num_drawcalls)
+void raii::Frame::framebufferOnSortByPSO(uint32_t num_drawcalls)
 {
     // sort previously recorded draw commands by PSO, directly in the command buffer
     // requires strictly NOTHING but drawcalls recorded, but will catch any misuse
     std::byte* const drawcall_start = mWriter.buffer_head() - sizeof(phi::cmd::draw) * num_drawcalls;
     cc::span<phi::cmd::draw> const drawcalls_as_span = {reinterpret_cast<phi::cmd::draw*>(drawcall_start), num_drawcalls};
-    std::sort(drawcalls_as_span.begin(), drawcalls_as_span.end(), [](phi::cmd::draw const& a, phi::cmd::draw const& b) {
-        CC_ASSERT(a.s_internal_type == phi::cmd::detail::cmd_type::draw && "draw calls interleaved or different amount recorded");
-        return unsigned(a.pipeline_state._value) < unsigned(b.pipeline_state._value);
-    });
+    std::sort(drawcalls_as_span.begin(), drawcalls_as_span.end(),
+              [](phi::cmd::draw const& a, phi::cmd::draw const& b)
+              {
+                  CC_ASSERT(a.s_internal_type == phi::cmd::detail::cmd_type::draw && "draw calls interleaved or different amount recorded");
+                  return uint32_t(a.pipeline_state._value) < uint32_t(b.pipeline_state._value);
+              });
 }
 
 phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
