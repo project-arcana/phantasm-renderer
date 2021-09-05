@@ -137,7 +137,8 @@ public:
                                       buffer const& upload_buffer,
                                       uint32_t buffer_offset_bytes,
                                       texture const& dest_texture,
-                                      uint32_t dest_subres_index);
+                                      uint32_t dest_mip_index,
+                                      uint32_t dest_array_index);
 
     /// creates a suitable temporary upload buffer and copies data to the destination buffer
     void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
