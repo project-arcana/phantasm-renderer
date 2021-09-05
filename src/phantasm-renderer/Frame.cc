@@ -316,14 +316,15 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
                                                const buffer& upload_buffer,
                                                uint32_t buffer_offset_bytes,
                                                const texture& dest_texture,
-                                               uint32_t dest_subres_index)
+                                               uint32_t dest_mip_index,
+                                               uint32_t dest_array_index)
 {
     auto const& upbufDesc = mCtx->get_backend().getResourceBufferDescription(upload_buffer.handle);
     auto const& texDesc = mCtx->get_backend().getResourceTextureDescription(dest_texture.handle);
 
     flushPendingTransitions();
 
-    tg::isize2 const mip_resolution = phi::util::get_mip_size({texDesc.width, texDesc.height}, dest_subres_index);
+    tg::isize2 const mip_resolution = phi::util::get_mip_size({texDesc.width, texDesc.height}, dest_mip_index);
 
     phi::cmd::copy_buffer_to_texture command;
     command.source = upload_buffer.handle;
@@ -331,8 +332,8 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     command.source_offset_bytes = buffer_offset_bytes;
     command.dest_width = uint32_t(mip_resolution.width);
     command.dest_height = uint32_t(mip_resolution.height);
-    command.dest_mip_index = dest_subres_index;
-    command.dest_array_index = 0;
+    command.dest_mip_index = dest_mip_index;
+    command.dest_array_index = dest_array_index;
     mWriter.add_command(command);
 
     bool const use_d3d12_per_row_alignment = mCtx->get_backend_type() == pr::backend::d3d12;

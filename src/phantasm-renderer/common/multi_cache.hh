@@ -240,7 +240,7 @@ private:
     cc::map<KeyT, Bucket, resource_info_hasher> mMap;
     cc::atomic_linked_pool<CachedResource, true> mPool;
     cc::alloc_array<std::byte> mCachedResourceIndicesMemory;
-    cc::synced_tlsf_allocator mCachedResourceIndicesAllocator;
+    cc::synced_tlsf_allocator<cc::spin_lock> mCachedResourceIndicesAllocator;
     uint64_t mCurrentGeneration = 0;
     std::mutex mMutex;
 };
