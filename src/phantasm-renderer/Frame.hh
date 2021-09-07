@@ -190,6 +190,10 @@ public:
 
     Context& context() { return *mCtx; }
 
+	/// write all contents of an existing Frame to this one, and clear the other one in the process
+	/// useful for merging separately prepared Frames
+    void consume_other_frame(Frame& other);
+
     bool is_empty() const { return mWriter.is_empty(); }
 
 public:
