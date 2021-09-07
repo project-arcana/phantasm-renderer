@@ -563,3 +563,27 @@ phi::handle::shader_view raii::Frame::passAcquireComputeShaderView(argument& arg
 }
 
 void raii::Frame::finalize() { flushPendingTransitions(); }
+
+void raii::Frame::consume_other_frame(Frame& other)
+{
+    // copy raw commands
+    other.finalize();
+    std::byte* const writePtr = write_raw_bytes(other.mWriter.size());
+    std::memcpy(writePtr, other.mWriter.buffer(), other.mWriter.size());
+    other.mWriter.reset();
+
+    // copy and consume free-requested items
+    mFreeables.push_back_range(other.mFreeables);
+    mDeferredFreeResources.push_back_range(other.mDeferredFreeResources);
+    mCacheFreeResources.push_back_range(other.mCacheFreeResources);
+    other.mFreeables.clear();
+    other.mDeferredFreeResources.clear();
+    other.mCacheFreeResources.clear();
+
+    // overtake present request
+    if (other.mPresentAfterSubmitRequest.is_valid())
+    {
+        mPresentAfterSubmitRequest = other.mPresentAfterSubmitRequest;
+        other.mPresentAfterSubmitRequest.invalidate();
+    }
+}
