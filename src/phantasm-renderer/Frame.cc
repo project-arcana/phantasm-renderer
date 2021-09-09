@@ -252,7 +252,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     bool const use_d3d12_per_row_alignment = mCtx->get_backend_type() == pr::backend::d3d12;
 
     phi::cmd::copy_buffer_to_texture command;
-    command.source = upload_buffer.handle;
+    command.source.buffer = upload_buffer.handle;
     command.destination = dest_texture.handle;
     command.dest_width = uint32_t(dest_texture_desc.width);
     command.dest_height = uint32_t(dest_texture_desc.height);
@@ -264,7 +264,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     for (auto a = 0u; a < dest_texture_desc.depth_or_array_size; ++a)
     {
         command.dest_array_index = a;
-        command.source_offset_bytes = accumulated_offset_bytes;
+        command.source.offset_bytes = accumulated_offset_bytes;
 
         mWriter.add_command(command);
 
@@ -281,10 +281,10 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
         accumulated_offset_bytes += offset_bytes;
 
         CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, command.dest_height, texture_data.size(),
-                                            upload_buffer_desc.size_bytes - command.source_offset_bytes)
+                                            upload_buffer_desc.size_bytes - command.source.offset_bytes)
                   && "[Frame::upload_texture_data] source data or destination buffer too small");
 
-        rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, command.dest_height);
+        rowwise_copy(texture_data.data(), upload_buffer_map + command.source.offset_bytes, row_stride_bytes, row_size_bytes, command.dest_height);
     }
 
     mCtx->unmap_buffer(upload_buffer); // full flush
@@ -327,9 +327,9 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     tg::isize2 const mip_resolution = phi::util::get_mip_size({texDesc.width, texDesc.height}, dest_mip_index);
 
     phi::cmd::copy_buffer_to_texture command;
-    command.source = upload_buffer.handle;
+    command.source.buffer = upload_buffer.handle;
+    command.source.offset_bytes = buffer_offset_bytes;
     command.destination = dest_texture.handle;
-    command.source_offset_bytes = buffer_offset_bytes;
     command.dest_width = uint32_t(mip_resolution.width);
     command.dest_height = uint32_t(mip_resolution.height);
     command.dest_mip_index = dest_mip_index;
@@ -350,10 +350,10 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     auto const num_rows = uint32_t(texture_data.size() / row_size_bytes);
 
     CC_ASSERT(is_rowwise_copy_in_bounds(row_stride_bytes, row_size_bytes, num_rows, uint32_t(texture_data.size()),
-                                        upbufDesc.size_bytes - uint32_t(command.source_offset_bytes))
+                                        upbufDesc.size_bytes - command.source.offset_bytes)
               && "[Frame::upload_texture_subresource] source data or destination buffer too small");
 
-    auto const last_offset = rowwise_copy(texture_data.data(), upload_buffer_map + command.source_offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
+    auto const last_offset = rowwise_copy(texture_data.data(), upload_buffer_map + command.source.offset_bytes, row_stride_bytes, row_size_bytes, num_rows);
 
     mCtx->unmap_buffer(upload_buffer, int32_t(buffer_offset_bytes), int32_t(buffer_offset_bytes + last_offset)); // flush exact range
 
