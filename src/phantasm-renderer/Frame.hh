@@ -190,11 +190,17 @@ public:
 
     Context& context() { return *mCtx; }
 
-	/// write all contents of an existing Frame to this one, and clear the other one in the process
-	/// useful for merging separately prepared Frames
+    /// write all contents of an existing Frame to this one, and clear the other one in the process
+    /// useful for merging separately prepared Frames
     void consume_other_frame(Frame& other);
 
     bool is_empty() const { return mWriter.is_empty(); }
+
+    size_t get_size_bytes() const { return mWriter.size(); }
+
+    size_t get_num_deferred_free_resources() const { return mDeferredFreeResources.size(); }
+
+    size_t get_num_cache_free_resources() const { return mCacheFreeResources.size(); }
 
 public:
     // redirect intuitive misuses

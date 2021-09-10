@@ -118,7 +118,7 @@ struct ResourceCache
 
     // culls non-in-flight resources from buckets that have not been acquired lately
     // returns amount of resources written to outResourcesToFree
-    uint32_t cullUnusedBuckets(gpu_epoch_t currentGPUEpoch, cc::span<phi::handle::resource> outResourcesToFree, uint64_t maxGenDistance = 2) 
+    uint32_t cullUnusedBuckets(gpu_epoch_t currentGPUEpoch, cc::span<phi::handle::resource> outResourcesToFree, uint64_t maxGenDistance = 2)
     {
         CC_CONTRACT(outResourcesToFree.size() > 0);
 
@@ -285,7 +285,7 @@ public:
     {
         auto lg = std::lock_guard(_mutex);
         map_element& elem = access_element(key);
-        CC_ASSERT(!elem.in_flight_buffer.full());
+        CC_ASSERT(!elem.in_flight_buffer.full() && "Too many cached resources of this sort are in-flight at the same time");
         elem.in_flight_buffer.enqueue({val, current_cpu_epoch});
     }
 
