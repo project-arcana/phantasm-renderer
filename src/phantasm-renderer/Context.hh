@@ -417,17 +417,17 @@ public:
 
     buffer_info const& get_buffer_info(pr::buffer const& buf) const;
 
-    uint64_t get_gpu_timestamp_frequency() const { return mGPUTimestampFrequency; }
+    uint64_t get_gpu_timestamp_frequency() const;
 
     /// returns the difference between two GPU timestamp values in milliseconds
     double get_timestamp_difference_milliseconds(uint64_t start, uint64_t end) const
     {
-        return (double(end - start) / mGPUTimestampFrequency) * 1000.;
+        return (double(end - start) / get_gpu_timestamp_frequency()) * 1000.;
     }
     /// returns the difference between two GPU timestamp values in microseconds
     uint64_t get_timestamp_difference_microseconds(uint64_t start, uint64_t end) const
     {
-        return (end - start) / (mGPUTimestampFrequency / 1'000'000);
+        return (end - start) / (get_gpu_timestamp_frequency() / 1'000'000);
     }
 
     /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
@@ -572,7 +572,6 @@ private:
 private:
     phi::Backend* mBackend = nullptr;
     pr::backend mBackendType;
-    uint64_t mGPUTimestampFrequency = 0;
 
     struct Implementation;
     Implementation* mImpl = nullptr;

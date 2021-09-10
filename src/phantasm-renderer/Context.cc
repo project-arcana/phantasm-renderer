@@ -577,6 +577,8 @@ pr::texture_info const& Context::get_texture_info(pr::texture const& tex) const 
 
 pr::buffer_info const& Context::get_buffer_info(pr::buffer const& buf) const { return mBackend->getResourceBufferDescription(buf.handle); }
 
+uint64_t pr::Context::get_gpu_timestamp_frequency() const { return mBackend->getGPUTimestampFrequency(); }
+
 uint32_t Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, uint32_t num_mips) const
 {
     return phi::util::get_texture_size_bytes(size, fmt, num_mips, mBackendType == pr::backend::d3d12);
@@ -638,14 +640,18 @@ uint32_t Context::clear_pipeline_state_cache()
     uint32_t num_frees = 0;
     auto const gpu_epoch = mImpl->mGpuEpochTracker._cached_epoch_gpu;
 
-    mImpl->mCacheGraphicsPSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
-        ++num_frees;
-        mBackend->free(pso);
-    });
-    mImpl->mCacheComputePSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
-        ++num_frees;
-        mBackend->free(pso);
-    });
+    mImpl->mCacheGraphicsPSOs.cull_all(gpu_epoch,
+                                       [&](phi::handle::pipeline_state pso)
+                                       {
+                                           ++num_frees;
+                                           mBackend->free(pso);
+                                       });
+    mImpl->mCacheComputePSOs.cull_all(gpu_epoch,
+                                      [&](phi::handle::pipeline_state pso)
+                                      {
+                                          ++num_frees;
+                                          mBackend->free(pso);
+                                      });
 
     return num_frees;
 }
@@ -741,7 +747,6 @@ void Context::internalInitialize(cc::allocator* alloc, bool ownsBackend)
     mImpl->mShaderCompiler.initialize();
     mImpl->mDeferredQueue.initialize(alloc);
 
-    mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
 }
 
