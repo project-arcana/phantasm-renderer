@@ -129,7 +129,7 @@ void raii::Frame::present_after_submit(const texture& backbuffer, swapchain sc)
     mPresentAfterSubmitRequest = sc.handle;
 }
 
-void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset, size_t dest_offset, size_t num_bytes)
+void raii::Frame::copy(const buffer& src, const buffer& dest, uint32_t src_offset, uint32_t dest_offset, uint32_t num_bytes)
 {
     auto const& srcDesc = mCtx->get_backend().getResourceBufferDescription(src.handle);
     auto const& destDesc = mCtx->get_backend().getResourceBufferDescription(dest.handle);
@@ -138,7 +138,7 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
 
-    size_t const num_copied_bytes = num_bytes > 0 ? num_bytes : cc::min(srcDesc.size_bytes, destDesc.size_bytes);
+    uint32_t const num_copied_bytes = num_bytes > 0 ? num_bytes : cc::min(srcDesc.size_bytes, destDesc.size_bytes);
     CC_ASSERT(num_copied_bytes + src_offset <= srcDesc.size_bytes && num_copied_bytes + dest_offset <= destDesc.size_bytes && "Buffer Copy OOB");
 
     phi::cmd::copy_buffer ccmd;
@@ -146,7 +146,7 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, size_t src_offset,
     mWriter.add_command(ccmd);
 }
 
-void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset, uint32_t dest_mip_index, uint32_t dest_array_index)
+void raii::Frame::copy(const buffer& src, const texture& dest, uint32_t src_offset, uint32_t dest_mip_index, uint32_t dest_array_index)
 {
     auto const& destDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
     transition(src, pr::state::copy_src);
@@ -160,7 +160,7 @@ void raii::Frame::copy(const buffer& src, const texture& dest, size_t src_offset
     mWriter.add_command(ccmd);
 }
 
-void pr::raii::Frame::copy(texture const& src, buffer const& dest, size_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
+void pr::raii::Frame::copy(texture const& src, buffer const& dest, uint32_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
 {
     auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
     transition(src, pr::state::copy_src);
@@ -259,7 +259,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     command.dest_mip_index = 0;
 
     std::byte* const upload_buffer_map = mCtx->map_buffer(upload_buffer, 0, 0); // no invalidate
-    size_t accumulated_offset_bytes = 0u;
+    uint32_t accumulated_offset_bytes = 0u;
 
     for (auto a = 0u; a < dest_texture_desc.depth_or_array_size; ++a)
     {
@@ -306,7 +306,7 @@ void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer
     pr::cached_buffer upload_buffer = mCtx->get_upload_buffer(ceil_to_1mb(uint32_t(data.size())), 0u);
 
     mCtx->write_to_buffer_raw(upload_buffer, data);
-    this->copy(upload_buffer, dest_buffer, 0, 0, data.size());
+    this->copy(upload_buffer, dest_buffer, 0, 0, uint32_t(data.size()));
 
     free_to_cache_after_submit(upload_buffer.disown());
 }
