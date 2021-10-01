@@ -78,15 +78,15 @@ public:
     // commands
 
     /// copy buffer to buffer
-    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
+    void copy(buffer const& src, buffer const& dest, uint32_t src_offset = 0, uint32_t dest_offset = 0, uint32_t num_bytes = 0);
 
     /// copy buffer to texture
     /// writes the specified MIP level of the specified array element
-    void copy(buffer const& src, texture const& dest, size_t src_offset = 0, uint32_t dest_mip_index = 0, uint32_t dest_array_index = 0);
+    void copy(buffer const& src, texture const& dest, uint32_t src_offset = 0, uint32_t dest_mip_index = 0, uint32_t dest_array_index = 0);
 
     /// copy texture to buffer
     /// reads the specified MIP level of the specified array element
-    void copy(texture const& src, buffer const& dest, size_t dest_offset = 0, uint32_t src_mip_index = 0, uint32_t src_array_index = 0);
+    void copy(texture const& src, buffer const& dest, uint32_t dest_offset = 0, uint32_t src_mip_index = 0, uint32_t src_array_index = 0);
 
     /// copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, uint32_t mip_index = 0);
