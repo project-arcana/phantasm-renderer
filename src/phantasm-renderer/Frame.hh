@@ -85,13 +85,24 @@ public:
     void copy(buffer const& src, texture const& dest, uint32_t src_offset = 0, uint32_t dest_mip_index = 0, uint32_t dest_array_index = 0);
 
     /// copy texture to buffer
-    /// reads the specified MIP level of the specified array element
+    /// reads an entire MIP level of a specified array element
     void copy(texture const& src, buffer const& dest, uint32_t dest_offset = 0, uint32_t src_mip_index = 0, uint32_t src_array_index = 0);
+
+    /// copy texture to buffer
+    /// reads the specified MIP level of the specified array element
+    /// only copies a specified section of the MIP, size given in texels
+    void copy(texture const& src,
+              buffer const& dest,
+              tg::uvec3 src_offset_texels,
+              tg::uvec3 src_extent_texels,
+              uint32_t dest_offset = 0,
+              uint32_t src_mip_index = 0,
+              uint32_t src_array_index = 0);
 
     /// copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, uint32_t mip_index = 0);
 
-    /// copy textures specifying all details of the operation
+    /// copy textures specifying source and destination MIP, array element, size and slice count
     void copy_subsection(texture const& src,
                          texture const& dest,
                          uint32_t src_mip_index,
@@ -101,7 +112,7 @@ public:
                          uint32_t num_array_slices,
                          tg::isize2 dest_size);
 
-    /// resolve a multisampled texture
+    /// resolve a multisampled texture (to a regular one)
     void resolve(texture const& src, texture const& dest);
 
     /// write a timestamp to a query in a given (timestamp) query range

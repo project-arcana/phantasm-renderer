@@ -175,6 +175,21 @@ void pr::raii::Frame::copy(texture const& src, buffer const& dest, uint32_t dest
     mWriter.add_command(ccmd);
 }
 
+void pr::raii::Frame::copy(texture const& src, buffer const& dest, tg::uvec3 src_offset_texels, tg::uvec3 src_extent_pixels, uint32_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
+{
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
+    flushPendingTransitions();
+
+    phi::cmd::copy_texture_to_buffer ccmd;
+    ccmd.init(src.handle, dest.handle, src_extent_pixels.x, src_extent_pixels.y, dest_offset, src_mip_index, src_array_index);
+    ccmd.src_offset_x = src_offset_texels.x;
+    ccmd.src_offset_y = src_offset_texels.y;
+    ccmd.src_offset_z = src_offset_texels.z;
+    ccmd.src_depth = src_extent_pixels.z;
+    mWriter.add_command(ccmd);
+}
+
 void raii::Frame::copy(const texture& src, const texture& dest, uint32_t mip_index)
 {
     auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
