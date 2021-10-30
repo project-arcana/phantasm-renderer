@@ -76,6 +76,13 @@ struct PR_API resource_view_info
     return res;
 }
 
+[[nodiscard]] inline resource_view_info resource_view_byte_address_buffer(buffer const& buf, uint32_t num_bytes, uint32_t offset_bytes = 0)
+{
+    resource_view_info res;
+    res.rv.init_as_byte_address_buffer(buf.handle, num_bytes, offset_bytes);
+    return res;
+}
+
 // an argument allows on-the-fly binding of arbitrary resources to a graphics- or compute pass
 // it creates or looks up a cached phi::handle::shader_view when binding
 struct PR_API argument
