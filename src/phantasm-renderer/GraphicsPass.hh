@@ -1,6 +1,7 @@
 #pragma once
 
 #include <phantasm-hardware-interface/commands.hh>
+#include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/common/api.hh>
@@ -14,46 +15,52 @@ class Frame;
 class PR_API GraphicsPass
 {
 public:
-    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv)
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument sv, buffer constant_buffer = {}, uint32_t constant_buffer_offset = 0)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, phi::handle::null_resource, 0);
-        return p;
+        return bind(sv._sv, constant_buffer.handle, constant_buffer_offset);
     }
 
-    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument sv, phi::buffer_address constant_buffer)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, constant_buffer.handle, constant_buffer_offset);
-        return p;
+        return bind(sv._sv, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // CBV only
-    [[nodiscard]] GraphicsPass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
-        return p;
+        return bind(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
+    }
+
+    [[nodiscard]] GraphicsPass bind(phi::buffer_address constant_buffer)
+    {
+        return bind(phi::handle::null_shader_view, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // raw phi
-    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0)
+    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::handle::resource cbv = {}, uint32_t cbv_offset = 0)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_argument(sv, cbv, cbv_offset);
         return p;
     }
 
-    // cache-access variants
-    // hits a OS mutex
-    [[nodiscard]] GraphicsPass bind(argument& arg, phi::handle::resource constant_buffer = phi::handle::null_resource, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::buffer_address cbv)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer, constant_buffer_offset);
+        p.add_argument(sv, cbv.buffer, cbv.offset_bytes);
         return p;
     }
 
-    [[nodiscard]] GraphicsPass bind(argument& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    // cache-access variants
+    // hits a OS mutex
+    [[nodiscard]] GraphicsPass bind(argument& arg, phi::buffer_address constant_buffer = {})
+    {
+        GraphicsPass p = {mParent, mCmd, mArgNum};
+        p.add_cached_argument(arg, constant_buffer.buffer, constant_buffer.offset_bytes);
+        return p;
+    }
+
+    [[nodiscard]] GraphicsPass bind(argument& arg, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_cached_argument(arg, constant_buffer.handle, constant_buffer_offset);
@@ -143,10 +150,7 @@ private:
 
 // inline implementation
 
-inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, uint32_t offset)
-{
-    set_constant_buffer(constant_buffer.handle, offset);
-}
+inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, uint32_t offset) { set_constant_buffer(constant_buffer.handle, offset); }
 
 inline void GraphicsPass::set_constant_buffer(phi::handle::resource raw_cbv, uint32_t offset)
 {

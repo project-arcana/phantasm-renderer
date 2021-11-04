@@ -16,6 +16,10 @@ namespace pr
 
 struct resource
 {
+    // resource() = default;
+    // resource(phi::handle::resource h) : handle(h) {}
+    // operator phi::handle::resource() const noexcept { return handle; }
+
     phi::handle::resource handle = phi::handle::null_resource;
 
     bool is_valid() const { return handle.is_valid(); }
