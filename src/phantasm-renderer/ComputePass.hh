@@ -14,46 +14,52 @@ class Frame;
 class PR_API ComputePass
 {
 public:
-    [[nodiscard]] ComputePass bind(prebuilt_argument const& sv)
+    [[nodiscard]] ComputePass bind(prebuilt_argument sv, buffer constant_buffer = {}, uint32_t constant_buffer_offset = 0)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, phi::handle::null_resource, 0);
-        return p;
+        return bind(sv._sv, constant_buffer.handle, constant_buffer_offset);
     }
 
-    [[nodiscard]] ComputePass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] ComputePass bind(prebuilt_argument sv, phi::buffer_address constant_buffer)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, constant_buffer.handle, constant_buffer_offset);
-        return p;
+        return bind(sv._sv, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // CBV only
-    [[nodiscard]] ComputePass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] ComputePass bind(buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
-        return p;
+        return bind(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
+    }
+
+    [[nodiscard]] ComputePass bind(phi::buffer_address constant_buffer)
+    {
+        return bind(phi::handle::null_shader_view, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // raw phi
-    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0)
+    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::handle::resource cbv = {}, uint32_t cbv_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_argument(sv, cbv, cbv_offset);
         return p;
     }
 
-    // cache-access variants
-    // hits a OS mutex
-    [[nodiscard]] ComputePass bind(argument& arg)
+    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::buffer_address cbv)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, phi::handle::null_resource, 0);
+        p.add_argument(sv, cbv.buffer, cbv.offset_bytes);
         return p;
     }
 
-    [[nodiscard]] ComputePass bind(argument& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    // cache-access variants
+    // hits a OS mutex
+    [[nodiscard]] ComputePass bind(argument& arg, phi::buffer_address cbv = {})
+    {
+        ComputePass p = {mParent, mCmd, mArgNum};
+        p.add_cached_argument(arg, cbv.buffer, cbv.offset_bytes);
+        return p;
+    }
+
+    [[nodiscard]] ComputePass bind(argument& arg, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_cached_argument(arg, constant_buffer.handle, constant_buffer_offset);

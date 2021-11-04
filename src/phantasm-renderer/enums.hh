@@ -37,6 +37,8 @@ using clear_value = phi::rt_clear_value;
 
 // type passthroughs
 using phi::blend_state;
+using phi::buffer_address;
+using phi::buffer_range;
 using phi::pipeline_config;
 using phi::sampler_config;
 }
