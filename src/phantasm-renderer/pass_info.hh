@@ -249,6 +249,12 @@ public:
         return *this;
     }
 
+    framebuffer_info& config(phi::arg::framebuffer_config const& conf)
+    {
+        _storage.get() = conf;
+        return *this;
+    }
+
     uint64_t get_hash() const { return _storage.get_xxhash(); }
 
     hashable_storage<phi::arg::framebuffer_config> _storage;
