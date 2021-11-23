@@ -69,15 +69,16 @@ void raii::GraphicsPass::draw_indirect(phi::handle::resource argument_buffer, ph
 {
     CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at drawcall submission");
 
-    phi::cmd::draw_indirect dcmd;
+    phi::cmd::draw_indirect dcmd = {};
     std::memcpy(dcmd.root_constants, mCmd.root_constants, sizeof(dcmd.root_constants));
     std::memcpy(dcmd.shader_arguments.data(), mCmd.shader_arguments.data(), sizeof(dcmd.shader_arguments));
     dcmd.pipeline_state = mCmd.pipeline_state;
-    dcmd.indirect_argument_buffer = argument_buffer;
-    dcmd.argument_buffer_offset_bytes = arg_buffer_offset_bytes;
-    dcmd.num_arguments = num_args;
+    dcmd.indirect_argument.buffer = argument_buffer;
+    dcmd.indirect_argument.offset_bytes = arg_buffer_offset_bytes;
+    dcmd.max_num_arguments = num_args;
     dcmd.vertex_buffers[0] = vertex_buffer;
     dcmd.index_buffer = index_buffer;
+    dcmd.argument_type = index_buffer.is_valid() ? phi::indirect_command_type::draw_indexed : phi::indirect_command_type::draw;
 
     mParent->write_raw_cmd(dcmd);
 }
