@@ -194,7 +194,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
     {
         auto lg = std::lock_guard(mImpl->mMutexShaderCompilation); // unsynced, mutex: compilation
         bin = mImpl->mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output, dxcw::shader_model::sm_use_default,
-                                                    build_debug, nullptr, nullptr, {}, scratch_alloc);
+                                                    build_debug, {}, nullptr, {}, scratch_alloc);
     }
 
     if (bin.data == nullptr)
