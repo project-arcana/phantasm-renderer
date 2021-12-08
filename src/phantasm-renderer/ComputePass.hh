@@ -69,10 +69,17 @@ public:
     void dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1);
 
     // dispatch for a given work size
+    // example: dispatch2D(4096, 64);
+    void dispatch1D(uint32_t sizeX, uint32_t groupSizeX = 64)
+    {
+        dispatch(cc::int_div_ceil(sizeX, groupSizeX), 1u, 1u);
+    }
+
+    // dispatch for a given work size
     // example: dispatch2D(1920, 1080, 8, 8);
     void dispatch2D(uint32_t sizeX, uint32_t sizeY, uint32_t groupSizeX = 8, uint32_t groupSizeY = 8)
     {
-        dispatch(cc::int_div_ceil(sizeX, groupSizeX), cc::int_div_ceil(sizeY, groupSizeY));
+        dispatch(cc::int_div_ceil(sizeX, groupSizeX), cc::int_div_ceil(sizeY, groupSizeY), 1u);
     }
 
     void dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments = 1, uint32_t offset_bytes = 0);
