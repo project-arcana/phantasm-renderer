@@ -14,4 +14,3 @@
 #include "argument.hh"
 #include "pass_info.hh"
 
-#include "default_config.hh"

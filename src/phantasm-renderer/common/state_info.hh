@@ -33,7 +33,7 @@ struct shader_view_info
 
 struct graphics_pass_info_data
 {
-    phi::pipeline_config graphics_config = {};
+    phi::arg::pipeline_config graphics_config = {};
     uint32_t vertex_size_bytes = 0;
     bool has_root_consts = false;
     phi::flat_vector<phi::vertex_attribute_info, 8> vertex_attributes;

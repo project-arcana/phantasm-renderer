@@ -77,7 +77,7 @@ public:
     }
 
     /// Set the pipeline config
-    graphics_pass_info& config(phi::pipeline_config const& config)
+    graphics_pass_info& config(phi::arg::pipeline_config const& config)
     {
         _storage.get().graphics_config = config;
         return *this;
@@ -176,7 +176,7 @@ public:
 };
 
 template <class VertT, class... ShaderTs>
-[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+[[nodiscard]] graphics_pass_info graphics_pass(phi::arg::pipeline_config const& config, ShaderTs const&... shaders)
 {
     graphics_pass_info res;
     res.config(config);
@@ -186,7 +186,7 @@ template <class VertT, class... ShaderTs>
 }
 
 template <class... ShaderTs>
-[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+[[nodiscard]] graphics_pass_info graphics_pass(phi::arg::pipeline_config const& config, ShaderTs const&... shaders)
 {
     graphics_pass_info res;
     res.config(config);
@@ -221,14 +221,14 @@ public:
     }
 
     /// Add a render target with blend state
-    framebuffer_info& target(pr::format format, pr::blend_state blend_state)
+    framebuffer_info& target(pr::format format, phi::arg::blend_state blend_state)
     {
-        _storage.get().render_targets.push_back(phi::render_target_config{format, true, blend_state});
+        _storage.get().render_targets.push_back(phi::arg::render_target_config{format, true, blend_state});
         return *this;
     }
 
     /// Add a render target with blend configuration
-    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::render_target_config config)
+    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::arg::render_target_config config)
     {
         _storage.get().render_targets.push_back(config);
         return *this;
