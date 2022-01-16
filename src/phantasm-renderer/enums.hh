@@ -1,5 +1,6 @@
 #pragma once
 
+#include <phantasm-hardware-interface/arguments.hh>
 #include <phantasm-hardware-interface/types.hh>
 
 namespace pr
@@ -36,9 +37,9 @@ using shader_flags = phi::shader_stage_flags_t;
 using clear_value = phi::rt_clear_value;
 
 // type passthroughs
-using phi::blend_state;
+using blend_state = phi::arg::blend_state;
 using phi::buffer_address;
 using phi::buffer_range;
-using phi::pipeline_config;
+using pipeline_config = phi::arg::pipeline_config;
 using phi::sampler_config;
 }

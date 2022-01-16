@@ -244,12 +244,20 @@ auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_in
 {
     auto const& gp = gp_wrap._storage.get();
 
-    phi::arg::vertex_format vert_format;
-    vert_format.attributes = gp.vertex_attributes;
-    vert_format.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
+    phi::arg::graphics_pipeline_state_description desc = {};
+    desc.config = gp.graphics_config;
+    desc.framebuffer = fb._storage.get();
+    desc.vertices.attributes = gp.vertex_attributes;
+    desc.vertices.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
+    desc.root_signature.shader_arg_shapes = gp.arg_shapes;
+    desc.root_signature.has_root_constants = gp.has_root_consts;
 
-    return auto_graphics_pipeline_state{
-        {{mBackend->createPipelineState(vert_format, fb._storage.get(), gp.arg_shapes, gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}}, this};
+    for (auto const& shader : gp_wrap._shaders)
+    {
+        desc.shader_binaries.push_back(shader);
+    }
+
+    return auto_graphics_pipeline_state{{{mBackend->createPipelineState(desc)}}, this};
 }
 
 auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
@@ -814,8 +822,21 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphic
     if (!pso.is_valid())
     {
         graphics_pass_info_data const& info = gp._storage.get();
-        pso = mBackend->createPipelineState({info.vertex_attributes, info.vertex_size_bytes}, fb._storage.get(), info.arg_shapes,
-                                            info.has_root_consts, gp._shaders, info.graphics_config);
+
+        phi::arg::graphics_pipeline_state_description desc = {};
+        desc.config = info.graphics_config;
+        desc.framebuffer = fb._storage.get();
+        desc.vertices.attributes = info.vertex_attributes;
+        desc.vertices.vertex_sizes_bytes[0] = info.vertex_size_bytes;
+        desc.root_signature.shader_arg_shapes = info.arg_shapes;
+        desc.root_signature.has_root_constants = info.has_root_consts;
+
+        for (auto const& shader : gp._shaders)
+        {
+            desc.shader_binaries.push_back(shader);
+        }
+
+        pso = mBackend->createPipelineState(desc);
 
         mImpl->mCacheGraphicsPSOs.insert(pso, hash);
     }
