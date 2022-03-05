@@ -7,7 +7,8 @@
 #include <clean-core/atomic_linked_pool.hh>
 #include <clean-core/map.hh>
 #include <clean-core/span.hh>
-#include <clean-core/threadsafe_allocators.hh>
+
+#include <clean-core/allocators/synced_tlsf_allocator.hh>
 
 #include <phantasm-renderer/common/circular_buffer.hh>
 #include <phantasm-renderer/common/resource_info.hh>
