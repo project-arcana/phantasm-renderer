@@ -915,7 +915,7 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, uint
 uint32_t pr::Context::calculate_texture_upload_size(const texture& texture, uint32_t num_mips) const
 {
     auto const& texDesc = mBackend->getResourceTextureDescription(texture.handle);
-    return calculate_texture_upload_size({texDesc.width, texDesc.height, int(texDesc.depth_or_array_size)}, texDesc.fmt, num_mips);
+    return calculate_texture_upload_size({texDesc.width, texDesc.height, int(texDesc.depth_or_array_size)}, texDesc.fmt, num_mips == 0 ? texDesc.num_mips : num_mips);
 }
 
 uint32_t pr::Context::calculate_texture_upload_size(int32_t width, format fmt, uint32_t num_mips) const
