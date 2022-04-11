@@ -595,7 +595,7 @@ uint32_t Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt
 
 uint32_t Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const
 {
-    return phi::util::get_texture_pixel_byte_offset(size, fmt, pixel, mBackendType == pr::backend::d3d12);
+    return phi::util::get_texture_pixel_byte_offset_on_gpu(size, fmt, pixel, mBackendType == pr::backend::d3d12);
 }
 
 bool pr::Context::is_shutting_down() const { return mImpl->mIsShuttingDown.load(std::memory_order_relaxed); }
