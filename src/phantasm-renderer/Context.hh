@@ -26,7 +26,9 @@ public:
     //
 
     /// start a frame, allowing command recording
-    [[nodiscard]] raii::Frame make_frame(size_t initial_size = 2048, cc::allocator* alloc = cc::system_allocator);
+    [[nodiscard]] raii::Frame make_frame(queue_type queue = queue_type::direct,
+                                         cc::allocator* alloc = cc::system_allocator,
+                                         phi::cmd::set_global_profile_scope const* opt_global_profile_scope = nullptr);
 
     //
     // textures

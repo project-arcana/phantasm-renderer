@@ -37,10 +37,6 @@ public:
     /// this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] GraphicsPass make_pass(graphics_pass_info const& gp) &;
 
-    /// sort previously recorded drawcalls by PSO - advanced feature
-    /// requires #num_drawcalls contiguously recorded drawcalls
-    void sort_drawcalls_by_pso(unsigned num_drawcalls);
-
     /// returns the parent frame
     Frame& get_frame() const { return *mParent; }
 

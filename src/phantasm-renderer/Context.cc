@@ -87,7 +87,11 @@ struct pr::Context::Implementation
 #endif
 };
 
-raii::Frame Context::make_frame(size_t initial_size, cc::allocator* alloc) { return pr::raii::Frame{this, initial_size, alloc}; }
+raii::Frame Context::make_frame(queue_type queue, cc::allocator* alloc, phi::cmd::set_global_profile_scope const* opt_global_profile_scope)
+{
+    phi::handle::live_command_list const liveList = mBackend->openLiveCommandList(queue, opt_global_profile_scope);
+    return pr::raii::Frame{this, liveList, alloc};
+}
 
 auto_texture Context::make_texture(int32_t width, phi::format format, uint32_t num_mips, bool allow_uav, char const* debug_name)
 {
@@ -463,17 +467,9 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
-    if (frame.is_empty())
-    {
-        return CompiledFrame(phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources),
-                             cc::move(frame.mCacheFreeResources), phi::handle::null_swapchain);
-    }
-    else
-    {
-        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), cc::move(frame.mCacheFreeResources),
-                             frame.mPresentAfterSubmitRequest);
-    }
+    auto const cmdlist = mBackend->closeLiveCommandList(frame.mList);
+    return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), cc::move(frame.mCacheFreeResources),
+                         frame.mPresentAfterSubmitRequest);
 }
 
 gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::move(frame))); }

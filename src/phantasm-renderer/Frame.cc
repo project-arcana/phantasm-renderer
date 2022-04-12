@@ -1,13 +1,12 @@
 #include "Frame.hh"
 
-#include <algorithm> // std::sort
-
 #include <clean-core/hash_combine.hh>
 #include <clean-core/utility.hh>
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
 #include <phantasm-hardware-interface/common/format_size.hh>
+#include <phantasm-hardware-interface/types.hh>
 #include <phantasm-hardware-interface/util.hh>
 
 #include <phantasm-renderer/Context.hh>
@@ -21,22 +20,24 @@ namespace
 CC_FORCE_INLINE uint32_t ceil_to_1mb(uint32_t value) { return cc::align_up(value, 1024 * 1024); }
 }
 
-using namespace pr;
-
-raii::Framebuffer raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command, bool auto_transition) &
+pr::raii::Framebuffer pr::raii::Frame::make_framebuffer(const phi::cmd::begin_render_pass& raw_command, bool auto_transition) &
 {
     return buildFramebuffer(raw_command, -1, nullptr, auto_transition);
 }
 
-raii::Frame& raii::Frame::operator=(raii::Frame&& rhs) noexcept
+pr::raii::Frame& pr::raii::Frame::operator=(raii::Frame&& rhs) noexcept
 {
     if (this != &rhs)
     {
         internalDestroy();
-        mCtx = rhs.mCtx;
-        mWriter = cc::move(rhs.mWriter);
+
+        mBackend = rhs.mBackend;
+        mList = rhs.mList;
         mPendingTransitionCommand = rhs.mPendingTransitionCommand;
         mFreeables = cc::move(rhs.mFreeables);
+        mDeferredFreeResources = cc::move(rhs.mDeferredFreeResources);
+        mCacheFreeResources = cc::move(rhs.mCacheFreeResources);
+        mCtx = rhs.mCtx;
         mFramebufferActive = rhs.mFramebufferActive;
         mPresentAfterSubmitRequest = rhs.mPresentAfterSubmitRequest;
         rhs.mCtx = nullptr;
@@ -45,20 +46,20 @@ raii::Frame& raii::Frame::operator=(raii::Frame&& rhs) noexcept
     return *this;
 }
 
-raii::ComputePass raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
+pr::raii::ComputePass pr::raii::Frame::make_pass(const compute_pass_info& cp) & { return {this, acquireComputePSO(cp)}; }
 
-void raii::Frame::transition(const buffer& res, pr::state target, shader_flags dependency)
+void pr::raii::Frame::transition(const buffer& res, pr::state target, shader_flags dependency)
 {
-    auto const& resDesc = mCtx->get_backend().getResourceBufferDescription(res.handle);
+    auto const& resDesc = mBackend->getResourceBufferDescription(res.handle);
     if (resDesc.heap != resource_heap::gpu) // mapped buffers are never transitioned
         return;
 
     transition(res.handle, target, dependency);
 }
 
-void raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency) { transition(res.handle, target, dependency); }
+void pr::raii::Frame::transition(const texture& res, pr::state target, shader_flags dependency) { transition(res.handle, target, dependency); }
 
-void raii::Frame::transition(phi::handle::resource raw_resource, pr::state target, shader_flags dependency)
+void pr::raii::Frame::transition(phi::handle::resource raw_resource, pr::state target, shader_flags dependency)
 {
     if (mPendingTransitionCommand.transitions.size() == phi::limits::max_resource_transitions)
         flushPendingTransitions();
@@ -69,33 +70,42 @@ void raii::Frame::transition(phi::handle::resource raw_resource, pr::state targe
 void pr::raii::Frame::barrier_uav(cc::span<phi::handle::resource const> resources)
 {
     phi::cmd::barrier_uav bcmd;
+    if (resources.empty())
+    {
+        // empty UAV barrier list is valid as well
+        mBackend->cmdBarrierUAV(mList, bcmd);
+        return;
+    }
 
     for (phi::handle::resource const res : resources)
     {
         if (bcmd.resources.full())
         {
-            write_raw_cmd(bcmd);
+            mBackend->cmdBarrierUAV(mList, bcmd);
             bcmd.resources.clear();
         }
 
         bcmd.resources.push_back(res);
     }
 
-    // empty UAV barrier list is valid as well
-    write_raw_cmd(bcmd);
+    if (!bcmd.resources.empty())
+    {
+        // epilogue
+        mBackend->cmdBarrierUAV(mList, bcmd);
+    }
 }
 
-void raii::Frame::present_after_submit(const texture& backbuffer, swapchain sc)
+void pr::raii::Frame::present_after_submit(const texture& backbuffer, swapchain sc)
 {
     CC_ASSERT(!mPresentAfterSubmitRequest.is_valid() && "only one present_after_submit per pr::raii::Frame allowed");
     transition(backbuffer, state::present);
     mPresentAfterSubmitRequest = sc.handle;
 }
 
-void raii::Frame::copy(const buffer& src, const buffer& dest, uint32_t src_offset, uint32_t dest_offset, uint32_t num_bytes)
+void pr::raii::Frame::copy(const buffer& src, const buffer& dest, uint32_t src_offset, uint32_t dest_offset, uint32_t num_bytes)
 {
-    auto const& srcDesc = mCtx->get_backend().getResourceBufferDescription(src.handle);
-    auto const& destDesc = mCtx->get_backend().getResourceBufferDescription(dest.handle);
+    auto const& srcDesc = mBackend->getResourceBufferDescription(src.handle);
+    auto const& destDesc = mBackend->getResourceBufferDescription(dest.handle);
 
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
@@ -106,12 +116,13 @@ void raii::Frame::copy(const buffer& src, const buffer& dest, uint32_t src_offse
 
     phi::cmd::copy_buffer ccmd;
     ccmd.init(src.handle, dest.handle, num_copied_bytes, src_offset, dest_offset);
-    mWriter.add_command(ccmd);
+
+    mBackend->cmdCopyBuffer(mList, ccmd);
 }
 
-void raii::Frame::copy(const buffer& src, const texture& dest, uint32_t src_offset, uint32_t dest_mip_index, uint32_t dest_array_index)
+void pr::raii::Frame::copy(const buffer& src, const texture& dest, uint32_t src_offset, uint32_t dest_mip_index, uint32_t dest_array_index)
 {
-    auto const& destDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
+    auto const& destDesc = mBackend->getResourceTextureDescription(dest.handle);
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
@@ -120,12 +131,13 @@ void raii::Frame::copy(const buffer& src, const texture& dest, uint32_t src_offs
     phi::cmd::copy_buffer_to_texture ccmd;
     ccmd.init(src.handle, dest.handle, uint32_t(destDesc.width) / (1 + dest_mip_index), uint32_t(destDesc.height) / (1 + dest_mip_index), src_offset,
               dest_mip_index, dest_array_index);
-    mWriter.add_command(ccmd);
+
+    mBackend->cmdCopyBufferToTexture(mList, ccmd);
 }
 
 void pr::raii::Frame::copy(texture const& src, buffer const& dest, uint32_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
 {
-    auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
+    auto const& srcDesc = mBackend->getResourceTextureDescription(src.handle);
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
     flushPendingTransitions();
@@ -135,7 +147,8 @@ void pr::raii::Frame::copy(texture const& src, buffer const& dest, uint32_t dest
     auto const mipWidth = uint32_t(phi::util::get_mip_size(srcDesc.width, src_mip_index));
     auto const mipHeight = uint32_t(phi::util::get_mip_size(srcDesc.height, src_mip_index));
     ccmd.init(src.handle, dest.handle, mipWidth, mipHeight, dest_offset, src_mip_index, src_array_index);
-    mWriter.add_command(ccmd);
+
+    mBackend->cmdCopyTextureToBuffer(mList, ccmd);
 }
 
 void pr::raii::Frame::copy(texture const& src, buffer const& dest, tg::uvec3 src_offset_texels, tg::uvec3 src_extent_pixels, uint32_t dest_offset, uint32_t src_mip_index, uint32_t src_array_index)
@@ -150,27 +163,27 @@ void pr::raii::Frame::copy(texture const& src, buffer const& dest, tg::uvec3 src
     ccmd.src_offset_y = src_offset_texels.y;
     ccmd.src_offset_z = src_offset_texels.z;
     ccmd.src_depth = src_extent_pixels.z;
-    mWriter.add_command(ccmd);
+    mBackend->cmdCopyTextureToBuffer(mList, ccmd);
 }
 
-void raii::Frame::copy(const texture& src, const texture& dest, uint32_t mip_index)
+void pr::raii::Frame::copy(const texture& src, const texture& dest, uint32_t mip_index)
 {
-    auto const& srcDesc = mCtx->get_backend().getResourceTextureDescription(src.handle);
-    auto const& destDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
+    auto const& srcDesc = mBackend->getResourceTextureDescription(src.handle);
+    auto const& destDesc = mBackend->getResourceTextureDescription(dest.handle);
     CC_ASSERT(srcDesc.width == destDesc.width && "copy size mismatch");
     CC_ASSERT(srcDesc.height == destDesc.height && "copy size mismatch");
     CC_ASSERT(mip_index < destDesc.num_mips && mip_index < srcDesc.num_mips && "mip index out of bounds");
     copyTextureInternal(src.handle, dest.handle, destDesc.width, destDesc.height, mip_index, 0, destDesc.depth_or_array_size);
 }
 
-void raii::Frame::copy_subsection(const texture& src,
-                                  const texture& dest,
-                                  uint32_t src_mip_index,
-                                  uint32_t src_array_index,
-                                  uint32_t dest_mip_index,
-                                  uint32_t dest_array_index,
-                                  uint32_t num_array_slices,
-                                  tg::isize2 dest_size)
+void pr::raii::Frame::copy_subsection(const texture& src,
+                                      const texture& dest,
+                                      uint32_t src_mip_index,
+                                      uint32_t src_array_index,
+                                      uint32_t dest_mip_index,
+                                      uint32_t dest_array_index,
+                                      uint32_t num_array_slices,
+                                      tg::isize2 dest_size)
 {
     // TODO: OOB asserts
     transition(src, pr::state::copy_src);
@@ -187,16 +200,16 @@ void raii::Frame::copy_subsection(const texture& src,
     ccmd.width = uint32_t(dest_size.width);
     ccmd.height = uint32_t(dest_size.height);
     ccmd.num_array_slices = num_array_slices;
-    mWriter.add_command(ccmd);
+    mBackend->cmdCopyTexture(mList, ccmd);
 }
 
-void raii::Frame::resolve(const texture& src, const texture& dest)
+void pr::raii::Frame::resolve(const texture& src, const texture& dest)
 {
-    auto const& texDesc = mCtx->get_backend().getResourceTextureDescription(dest.handle);
+    auto const& texDesc = mBackend->getResourceTextureDescription(dest.handle);
     resolveTextureInternal(src.handle, dest.handle, texDesc.width, texDesc.height);
 }
 
-void raii::Frame::write_timestamp(const query_range& query_range, uint32_t index)
+void pr::raii::Frame::write_timestamp(const query_range& query_range, uint32_t index)
 {
     CC_ASSERT(query_range.type == query_type::timestamp && "Expected timestamp query range to write a timestamp to");
     CC_ASSERT(index < query_range.num && "OOB query write");
@@ -204,23 +217,27 @@ void raii::Frame::write_timestamp(const query_range& query_range, uint32_t index
     phi::cmd::write_timestamp wcmd;
     wcmd.index = index;
     wcmd.query_range = query_range.handle;
-    mWriter.add_command(wcmd);
+    mBackend->cmdWriteTimestamp(mList, wcmd);
 }
 
-void raii::Frame::resolve_queries(const query_range& src, const buffer& dest, uint32_t first_query, uint32_t num_queries, uint32_t dest_offset_bytes)
+void pr::raii::Frame::resolve_queries(const query_range& src, const buffer& dest, uint32_t first_query, uint32_t num_queries, uint32_t dest_offset_bytes)
 {
     CC_ASSERT(first_query + num_queries <= src.num && "OOB query resolve read");
     flushPendingTransitions();
 
     phi::cmd::resolve_queries rcmd;
     rcmd.init(dest.handle, src.handle, first_query, num_queries, dest_offset_bytes);
-    mWriter.add_command(rcmd);
+    mBackend->cmdResolveQueries(mList, rcmd);
 }
 
-void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, const buffer& upload_buffer, const texture& dest_texture)
+void pr::raii::Frame::begin_debug_label(char const* label) { mBackend->cmdBeginDebugLabel(mList, phi::cmd::begin_debug_label{label}); }
+
+void pr::raii::Frame::end_debug_label() { mBackend->cmdEndDebugLabel(mList, phi::cmd::end_debug_label{}); }
+
+void pr::raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, const buffer& upload_buffer, const texture& dest_texture)
 {
-    auto const& upload_buffer_desc = this->mCtx->get_backend().getResourceBufferDescription(upload_buffer.handle);
-    auto const& dest_texture_desc = this->mCtx->get_backend().getResourceTextureDescription(dest_texture.handle);
+    auto const& upload_buffer_desc = this->mBackend->getResourceBufferDescription(upload_buffer.handle);
+    auto const& dest_texture_desc = this->mBackend->getResourceTextureDescription(dest_texture.handle);
     CC_ASSERT(dest_texture_desc.depth_or_array_size == 1 && "array upload unimplemented");
 
     transition(dest_texture, pr::state::copy_dest);
@@ -244,7 +261,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
         command.dest_array_index = a;
         command.source.offset_bytes = accumulated_offset_bytes;
 
-        mWriter.add_command(command);
+        mBackend->cmdCopyBufferToTexture(mList, command);
 
         auto const row_size_bytes = bytes_per_pixel * command.dest_width;
         auto row_stride_bytes = row_size_bytes;
@@ -274,7 +291,7 @@ void raii::Frame::upload_texture_data(cc::span<const std::byte> texture_data, co
     mCtx->unmap_buffer(upload_buffer); // full flush
 }
 
-void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_data, const texture& dest_texture)
+void pr::raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_data, const texture& dest_texture)
 {
     // ceil size to 1 MB to make cache hits more likely
     pr::cached_buffer upload_buffer = mCtx->get_upload_buffer(ceil_to_1mb(mCtx->calculate_texture_upload_size(dest_texture, 1u)), 0u);
@@ -284,7 +301,7 @@ void raii::Frame::auto_upload_texture_data(cc::span<const std::byte> texture_dat
     free_to_cache_after_submit(upload_buffer.disown());
 }
 
-void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer)
+void pr::raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer)
 {
     // ceil size to 1 MB to make cache hits more likely
     pr::cached_buffer upload_buffer = mCtx->get_upload_buffer(ceil_to_1mb(uint32_t(data.size())), 0u);
@@ -295,16 +312,16 @@ void raii::Frame::auto_upload_buffer_data(cc::span<std::byte const> data, buffer
     free_to_cache_after_submit(upload_buffer.disown());
 }
 
-size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
-                                               uint32_t row_size_bytes,
-                                               const buffer& upload_buffer,
-                                               uint32_t buffer_offset_bytes,
-                                               const texture& dest_texture,
-                                               uint32_t dest_mip_index,
-                                               uint32_t dest_array_index)
+size_t pr::raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture_data,
+                                                   uint32_t row_size_bytes,
+                                                   const buffer& upload_buffer,
+                                                   uint32_t buffer_offset_bytes,
+                                                   const texture& dest_texture,
+                                                   uint32_t dest_mip_index,
+                                                   uint32_t dest_array_index)
 {
-    auto const& upbufDesc = mCtx->get_backend().getResourceBufferDescription(upload_buffer.handle);
-    auto const& texDesc = mCtx->get_backend().getResourceTextureDescription(dest_texture.handle);
+    auto const& upbufDesc = mBackend->getResourceBufferDescription(upload_buffer.handle);
+    auto const& texDesc = mBackend->getResourceTextureDescription(dest_texture.handle);
 
     flushPendingTransitions();
 
@@ -318,7 +335,7 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     command.dest_height = uint32_t(mip_resolution.height);
     command.dest_mip_index = dest_mip_index;
     command.dest_array_index = dest_array_index;
-    mWriter.add_command(command);
+    mBackend->cmdCopyBufferToTexture(mList, command);
 
     bool const use_d3d12_per_row_alignment = mCtx->get_backend_type() == pr::backend::d3d12;
     auto row_stride_bytes = row_size_bytes;
@@ -346,7 +363,7 @@ size_t raii::Frame::upload_texture_subresource(cc::span<const std::byte> texture
     return last_offset;
 }
 
-void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)
+void pr::raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_slices::slice_transition_info> slices)
 {
     flushPendingTransitions();
 
@@ -355,7 +372,7 @@ void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_sl
     {
         if (tcmd.transitions.full())
         {
-            mWriter.add_command(tcmd);
+            mBackend->cmdTransitionImageSlices(mList, tcmd);
             tcmd.transitions.clear();
         }
 
@@ -363,12 +380,20 @@ void raii::Frame::transition_slices(cc::span<const phi::cmd::transition_image_sl
     }
 
     if (!tcmd.transitions.empty())
-        mWriter.add_command(tcmd);
+    {
+        mBackend->cmdTransitionImageSlices(mList, tcmd);
+    }
 }
 
-void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, const texture& rt)
+void pr::raii::Frame::transition_slices(phi::cmd::transition_image_slices const& tcmd)
 {
-    auto const& texDesc = mCtx->get_backend().getResourceTextureDescription(rt.handle);
+    flushPendingTransitions();
+    mBackend->cmdTransitionImageSlices(mList, tcmd);
+}
+
+void pr::raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, const texture& rt)
+{
+    auto const& texDesc = mBackend->getResourceTextureDescription(rt.handle);
     bcmd.viewport.width = cc::min(bcmd.viewport.width, texDesc.width);
     bcmd.viewport.height = cc::min(bcmd.viewport.height, texDesc.height);
 
@@ -379,7 +404,7 @@ void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd
 
     if (phi::util::is_depth_format(texDesc.fmt))
     {
-        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to raii::Frame::make_framebuffer");
+        CC_ASSERT(!bcmd.depth_target.rv.resource.is_valid() && "passed multiple depth targets to pr::raii::Frame::make_framebuffer");
         bcmd.set_2d_depth_stencil(rt.handle, texDesc.fmt, phi::rt_clear_type::clear, texDesc.num_samples > 1);
     }
     else
@@ -388,17 +413,17 @@ void raii::Frame::addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd
     }
 }
 
-void raii::Frame::flushPendingTransitions()
+void pr::raii::Frame::flushPendingTransitions()
 {
     if (!mPendingTransitionCommand.transitions.empty())
     {
-        CC_ASSERT(!mFramebufferActive && "No transitions allowed during active raii::Framebuffers");
-        mWriter.add_command(mPendingTransitionCommand);
+        CC_ASSERT(!mFramebufferActive && "No transitions allowed during active pr::raii::Framebuffers");
+        mBackend->cmdTransitionResources(mList, mPendingTransitionCommand);
         mPendingTransitionCommand.transitions.clear();
     }
 }
 
-void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, uint32_t mip_index, uint32_t first_array_index, uint32_t num_array_slices)
+void pr::raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, uint32_t mip_index, uint32_t first_array_index, uint32_t num_array_slices)
 {
     transition(src, pr::state::copy_src);
     transition(dest, pr::state::copy_dest);
@@ -406,10 +431,10 @@ void raii::Frame::copyTextureInternal(phi::handle::resource src, phi::handle::re
 
     phi::cmd::copy_texture ccmd;
     ccmd.init_symmetric(src, dest, uint32_t(w), uint32_t(h), mip_index, first_array_index, num_array_slices);
-    mWriter.add_command(ccmd);
+    mBackend->cmdCopyTexture(mList, ccmd);
 }
 
-void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
+void pr::raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h)
 {
     transition(src, pr::state::resolve_src);
     transition(dest, pr::state::resolve_dest);
@@ -417,10 +442,10 @@ void raii::Frame::resolveTextureInternal(phi::handle::resource src, phi::handle:
 
     phi::cmd::resolve_texture ccmd;
     ccmd.init_symmetric(src, dest, uint32_t(w), uint32_t(h));
-    mWriter.add_command(ccmd);
+    mBackend->cmdResolveTexture(mList, ccmd);
 }
 
-phi::handle::pipeline_state raii::Frame::acquireComputePSO(const compute_pass_info& cp)
+phi::handle::pipeline_state pr::raii::Frame::acquireComputePSO(const compute_pass_info& cp)
 {
     auto const cp_hash = cp.get_hash();
     auto const res = mCtx->acquire_compute_pso(cp_hash, cp);
@@ -428,7 +453,7 @@ phi::handle::pipeline_state raii::Frame::acquireComputePSO(const compute_pass_in
     return res;
 }
 
-void raii::Frame::internalDestroy()
+void pr::raii::Frame::internalDestroy()
 {
     if (mCtx != nullptr)
     {
@@ -437,7 +462,10 @@ void raii::Frame::internalDestroy()
     }
 }
 
-raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd, int num_samples, const phi::arg::framebuffer_config* blendstate_override, bool auto_transition)
+pr::raii::Framebuffer pr::raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pass& bcmd,
+                                                        int num_samples,
+                                                        const phi::arg::framebuffer_config* blendstate_override,
+                                                        bool auto_transition)
 {
     if (auto_transition)
     {
@@ -455,7 +483,7 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     flushPendingTransitions();
 
     mFramebufferActive = true;
-    mWriter.add_command(bcmd);
+    mBackend->cmdBeginRenderPass(mList, bcmd);
 
     bool const has_blendstate_overrides = blendstate_override != nullptr;
     // construct framebuffer info for future cache access inside of Framebuffer
@@ -490,28 +518,15 @@ raii::Framebuffer raii::Frame::buildFramebuffer(const phi::cmd::begin_render_pas
     return {this, fb_info, num_samples, has_blendstate_overrides};
 }
 
-void raii::Frame::framebufferOnJoin(const raii::Framebuffer&)
+void pr::raii::Frame::framebufferOnJoin(const pr::raii::Framebuffer&)
 {
     phi::cmd::end_render_pass ecmd;
-    mWriter.add_command(ecmd);
+
+    mBackend->cmdEndRenderPass(mList, ecmd);
     mFramebufferActive = false;
 }
 
-void raii::Frame::framebufferOnSortByPSO(uint32_t num_drawcalls)
-{
-    // sort previously recorded draw commands by PSO, directly in the command buffer
-    // requires strictly NOTHING but drawcalls recorded, but will catch any misuse
-    std::byte* const drawcall_start = mWriter.buffer_head() - sizeof(phi::cmd::draw) * num_drawcalls;
-    cc::span<phi::cmd::draw> const drawcalls_as_span = {reinterpret_cast<phi::cmd::draw*>(drawcall_start), num_drawcalls};
-    std::sort(drawcalls_as_span.begin(), drawcalls_as_span.end(),
-              [](phi::cmd::draw const& a, phi::cmd::draw const& b)
-              {
-                  CC_ASSERT(a.s_internal_type == phi::cmd::detail::cmd_type::draw && "draw calls interleaved or different amount recorded");
-                  return uint32_t(a.pipeline_state._value) < uint32_t(b.pipeline_state._value);
-              });
-}
-
-phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
+phi::handle::pipeline_state pr::raii::Frame::framebufferAcquireGraphicsPSO(const graphics_pass_info& gp, const framebuffer_info& fb, int fb_inferred_num_samples)
 {
     CC_ASSERT((fb_inferred_num_samples == -1 || fb_inferred_num_samples == gp._storage.get().graphics_config.samples)
               && "graphics_pass_info has incorrect amount of samples configured");
@@ -521,15 +536,13 @@ phi::handle::pipeline_state raii::Frame::framebufferAcquireGraphicsPSO(const gra
     return res;
 }
 
-void raii::Frame::passOnDraw(const phi::cmd::draw& dcmd) { mWriter.add_command(dcmd); }
-
-void raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
+void pr::raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
 {
     flushPendingTransitions();
-    mWriter.add_command(dcmd);
+    mBackend->cmdDispatch(mList, dcmd);
 }
 
-phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(argument& arg)
+phi::handle::shader_view pr::raii::Frame::passAcquireGraphicsShaderView(argument& arg)
 {
     arg._fixup_incomplete_resource_views(mCtx);
     auto const hash = arg._info.get_xxhash();
@@ -538,7 +551,7 @@ phi::handle::shader_view raii::Frame::passAcquireGraphicsShaderView(argument& ar
     return res;
 }
 
-phi::handle::shader_view raii::Frame::passAcquireComputeShaderView(argument& arg)
+phi::handle::shader_view pr::raii::Frame::passAcquireComputeShaderView(argument& arg)
 {
     arg._fixup_incomplete_resource_views(mCtx);
     auto const hash = arg._info.get_xxhash();
@@ -547,28 +560,64 @@ phi::handle::shader_view raii::Frame::passAcquireComputeShaderView(argument& arg
     return res;
 }
 
-void raii::Frame::finalize() { flushPendingTransitions(); }
+void pr::raii::Frame::finalize() { flushPendingTransitions(); }
 
-void raii::Frame::consume_other_frame(Frame& other)
+pr::raii::Frame::Frame(pr::Context* ctx, phi::handle::live_command_list list, cc::allocator* alloc)
+  : mBackend(&ctx->get_backend()), mList(list), mFreeables(alloc), mDeferredFreeResources(alloc), mCacheFreeResources(alloc), mCtx(ctx)
 {
-    // copy raw commands
-    other.finalize();
-    std::byte* const writePtr = write_raw_bytes(other.mWriter.size());
-    std::memcpy(writePtr, other.mWriter.buffer(), other.mWriter.size());
-    other.mWriter.reset();
+}
 
-    // copy and consume free-requested items
-    mFreeables.push_back_range(other.mFreeables);
-    mDeferredFreeResources.push_back_range(other.mDeferredFreeResources);
-    mCacheFreeResources.push_back_range(other.mCacheFreeResources);
-    other.mFreeables.clear();
-    other.mDeferredFreeResources.clear();
-    other.mCacheFreeResources.clear();
+pr::raii::Frame::Frame(Frame&& rhs) noexcept
+  : mBackend(rhs.mBackend),
+    mList(rhs.mList),
+    mPendingTransitionCommand(rhs.mPendingTransitionCommand),
+    mFreeables(cc::move(rhs.mFramebufferActive)),
+    mDeferredFreeResources(cc::move(rhs.mDeferredFreeResources)),
+    mCacheFreeResources(cc::move(rhs.mCacheFreeResources)),
+    mCtx(rhs.mCtx),
+    mFramebufferActive(rhs.mFramebufferActive),
+    mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
+{
+    rhs.mCtx = nullptr;
+}
 
-    // overtake present request
-    if (other.mPresentAfterSubmitRequest.is_valid())
-    {
-        mPresentAfterSubmitRequest = other.mPresentAfterSubmitRequest;
-        other.mPresentAfterSubmitRequest.invalidate();
-    }
+
+void pr::raii::Frame::begin_profile_scope(phi::cmd::begin_profile_scope const& bps) { mBackend->cmdBeginProfileScope(mList, bps); }
+
+void pr::raii::Frame::end_profile_scope() { mBackend->cmdEndProfileScope(mList, phi::cmd::end_profile_scope{}); }
+
+void pr::raii::Frame::raw_draw(phi::cmd::draw const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDraw(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_draw_indirect(phi::cmd::draw_indirect const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDrawIndirect(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_dipatch(phi::cmd::dispatch const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDispatch(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDispatchIndirect(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_dispatch_rays(phi::cmd::dispatch_rays const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDispatchRays(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_clear_textures(phi::cmd::clear_textures const& ccmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdClearTextures(mList, ccmd);
 }
