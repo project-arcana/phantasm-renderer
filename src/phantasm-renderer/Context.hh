@@ -325,6 +325,11 @@ public:
     /// discard a previously compiled frame
     void discard(CompiledFrame&& frame);
 
+    /// advanced usage: finalizes a previously compiled frame
+    /// returns a raw command list handle that can be submitted with more elaborate settings
+    /// (batched, non-direct queue, with fence signals / waits)
+    phi::handle::command_list finalize_and_get_command_list(CompiledFrame&& frame);
+
     //
     // swapchain API
     //
