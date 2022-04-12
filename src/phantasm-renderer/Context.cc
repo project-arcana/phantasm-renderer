@@ -537,6 +537,29 @@ void Context::discard(CompiledFrame&& frame)
     frame.invalidate();
 }
 
+phi::handle::command_list pr::Context::finalize_and_get_command_list(CompiledFrame&& frame)
+{
+    CC_ASSERT(!mImpl->mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit frames during global shutdown");
+    CC_ASSERT(frame.is_valid() && "submitted an invalid CompiledFrame");
+    CC_ASSERT(!frame._present_after_submit_swapchain.is_valid() && "using present_after_submit is not possible when manually finalizing a frame");
+
+    auto const res = frame._cmdlist;
+
+    free_all(frame._freeables);
+
+    if (!frame._deferred_free_resources.empty())
+        mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
+
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
+
+    frame.invalidate();
+
+    return res;
+}
+
 void Context::present(swapchain const& sc)
 {
 #ifdef CC_ENABLE_ASSERTIONS
