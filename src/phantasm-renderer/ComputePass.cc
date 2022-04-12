@@ -2,6 +2,8 @@
 
 #include <clean-core/assert.hh>
 
+#include <phantasm-hardware-interface/Backend.hh>
+
 #include "Frame.hh"
 
 void pr::raii::ComputePass::dispatch(uint32_t x, uint32_t y, uint32_t z)
@@ -12,7 +14,8 @@ void pr::raii::ComputePass::dispatch(uint32_t x, uint32_t y, uint32_t z)
     mCmd.dispatch_y = y;
     mCmd.dispatch_z = z;
 
-    mParent->passOnDispatch(mCmd);
+    mParent->flushPendingTransitions();
+    mParent->mBackend->cmdDispatch(mParent->mList, mCmd);
 }
 
 void pr::raii::ComputePass::dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments, uint32_t offset_bytes)
@@ -27,7 +30,8 @@ void pr::raii::ComputePass::dispatch_indirect(buffer const& argument_buffer, uin
     dcmd.argument_buffer_addr.offset_bytes = offset_bytes;
     dcmd.num_arguments = num_arguments;
 
-    mParent->write_raw_cmd(dcmd);
+    mParent->flushPendingTransitions();
+    mParent->mBackend->cmdDispatchIndirect(mParent->mList, dcmd);
 }
 
 void pr::raii::ComputePass::add_cached_argument(pr::argument& arg, phi::handle::resource constant_buffer, uint32_t constant_buffer_offset)

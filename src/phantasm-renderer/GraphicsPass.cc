@@ -38,7 +38,7 @@ void pr::raii::GraphicsPass::draw(phi::handle::resource vertex_buffer, phi::hand
     mCmd.index_offset = index_offset;
     mCmd.vertex_offset = vertex_offset;
 
-    mParent->passOnDraw(mCmd);
+    mParent->mBackend->cmdDraw(mParent->mList, mCmd);
 }
 
 void pr::raii::GraphicsPass::draw(cc::span<phi::handle::resource const> vertex_buffers,
@@ -59,7 +59,7 @@ void pr::raii::GraphicsPass::draw(cc::span<phi::handle::resource const> vertex_b
     mCmd.index_offset = index_offset;
     mCmd.vertex_offset = vertex_offset;
 
-    mParent->passOnDraw(mCmd);
+    mParent->mBackend->cmdDraw(mParent->mList, mCmd);
 
     // invalidate buffers beyond the first one for subsequent draws
     mCmd.vertex_buffers[1] = phi::handle::null_resource;
@@ -80,7 +80,7 @@ void raii::GraphicsPass::draw_indirect(phi::handle::resource argument_buffer, ph
     dcmd.index_buffer = index_buffer;
     dcmd.argument_type = index_buffer.is_valid() ? phi::indirect_command_type::draw_indexed : phi::indirect_command_type::draw;
 
-    mParent->write_raw_cmd(dcmd);
+    mParent->mBackend->cmdDrawIndirect(mParent->mList, dcmd);
 }
 
 void pr::raii::GraphicsPass::draw_indirect(const pr::buffer& argument_buffer, const pr::buffer& vertex_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes)
