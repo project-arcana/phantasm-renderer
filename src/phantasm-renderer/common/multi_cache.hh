@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include <clean-core/alloc_vector.hh>
+#include <clean-core/alloc_array.hh>
 #include <clean-core/atomic_linked_pool.hh>
 #include <clean-core/map.hh>
 #include <clean-core/span.hh>
@@ -21,7 +22,9 @@ namespace pr
 template <class KeyT>
 struct ResourceCache
 {
+private:
     struct Bucket;
+public:
     struct CachedResource
     {
         phi::handle::resource handle = phi::handle::null_resource;
@@ -190,7 +193,7 @@ struct ResourceCache
                 {
                     freeFunc(res.handle);
                     mPool.release(handle);
-                    elem.cachedResources.remove_at_unordered(i);
+                    val.cachedResources.remove_at_unordered(i);
                     continue;
                 }
 
@@ -204,7 +207,7 @@ struct ResourceCache
     template <class F>
     void iterateAllResources(F&& func)
     {
-        auto lg = std::lock_guard(_mutex);
+        auto lg = std::lock_guard(mMutex);
         mPool.iterate_allocated_nodes([&](CachedResource& node) { func(node.handle); });
     }
 
