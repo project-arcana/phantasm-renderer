@@ -141,6 +141,12 @@ public:
         return *this;
     }
 
+    [[nodiscard]] framebuffer_builder& set_scissor(int left, int top, int right, int bot)
+    {
+        _cmd.scissor = tg::iaabb2({left, top}, {right, bot});
+        return *this;
+    }
+
     /// disable automatical transitions of render and depth targets into fitting states
     [[nodiscard]] framebuffer_builder& no_transitions()
     {
