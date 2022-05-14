@@ -114,6 +114,44 @@ pr::raii::framebuffer_builder& pr::raii::framebuffer_builder::cleared_target(
     return *this;
 }
 
+pr::raii::framebuffer_builder& pr::raii::framebuffer_builder::add_render_target(
+    phi::resource_view const& rv, phi::rt_clear_type clear_type, float clear_r, float clear_g, float clear_b, float clear_a)
+{
+    CC_ASSERT(rv.dimension != phi::resource_view_dimension::none);
+    CC_ASSERT(rv.dimension != phi::resource_view_dimension::buffer && rv.dimension != phi::resource_view_dimension::raw_buffer
+              && "Cannot use a buffer as a render target");
+    CC_ASSERT(!phi::util::is_depth_format(rv.texture_info.pixel_format) && "Called add_render_target with a depth target (use set_depth_target)");
+
+    auto& new_target = _cmd.render_targets.emplace_back();
+    new_target.rv = rv;
+    new_target.clear_type = clear_type;
+    new_target.clear_value[0] = clear_r;
+    new_target.clear_value[1] = clear_g;
+    new_target.clear_value[2] = clear_b;
+    new_target.clear_value[3] = clear_a;
+
+    adjust_config_for_render_target(pr::texture{rv.resource});
+
+    return *this;
+}
+
+pr::raii::framebuffer_builder& pr::raii::framebuffer_builder::set_depth_target(phi::resource_view const& rv, phi::rt_clear_type clear_type, float clear_depth, uint8_t clear_stencil)
+{
+    CC_ASSERT(rv.dimension != phi::resource_view_dimension::none);
+    CC_ASSERT(rv.dimension != phi::resource_view_dimension::buffer && rv.dimension != phi::resource_view_dimension::raw_buffer
+              && "Cannot use a buffer as a render target");
+    CC_ASSERT(phi::util::is_depth_format(rv.texture_info.pixel_format) && "Called set_depth_target with a non-depth target (use add_render_target)");
+
+    _cmd.depth_target.rv = rv;
+    _cmd.depth_target.clear_value_depth = clear_depth;
+    _cmd.depth_target.clear_value_stencil = clear_stencil;
+    _cmd.depth_target.clear_type = clear_type;
+
+    adjust_config_for_render_target(pr::texture{rv.resource});
+
+    return *this;
+}
+
 pr::raii::Framebuffer pr::raii::framebuffer_builder::make()
 {
     return _parent->buildFramebuffer(_cmd, _num_samples, _has_custom_blendstate ? &_blendstate_overrides : nullptr, _wants_auto_transitions);
