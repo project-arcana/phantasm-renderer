@@ -114,6 +114,11 @@ public:
                                                       uint32_t mip_index = 0u,
                                                       uint32_t array_index = 0u);
 
+    [[nodiscard]] framebuffer_builder& add_render_target(
+        phi::resource_view const& rv, phi::rt_clear_type clear_type, float clear_r = 0.f, float clear_g = 0.f, float clear_b = 0.f, float clear_a = 1.f);
+
+    [[nodiscard]] framebuffer_builder& set_depth_target(phi::resource_view const& rv, phi::rt_clear_type clear_type, float clear_depth = 1.f, uint8_t clear_stencil = 0);
+
     /// Set and enable the blend logic operation
     /// NOTE: only applies to cached PSOs created from the framebuffer
     [[nodiscard]] framebuffer_builder& logic_op(pr::blend_logic_op op)
