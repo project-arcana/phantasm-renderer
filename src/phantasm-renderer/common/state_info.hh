@@ -26,8 +26,8 @@ struct freeable_cached_obj
 // for economic reasons, SRVs, UAVs and Samplers are limited for cache-access shader views
 struct shader_view_info
 {
-    phi::flat_vector<phi::resource_view, 4> srvs;
-    phi::flat_vector<phi::resource_view, 4> uavs;
+    phi::flat_vector<phi::resource_view, 5> srvs;
+    phi::flat_vector<phi::resource_view, 5> uavs;
     phi::flat_vector<phi::sampler_config, 2> samplers;
 };
 
