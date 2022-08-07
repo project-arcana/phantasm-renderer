@@ -42,7 +42,6 @@ using cached_texture = auto_destroyer<texture, auto_mode::cache>;
 struct graphics_pass_info;
 struct compute_pass_info;
 struct framebuffer_info;
-struct shader_view_info;
 struct graphics_pass_info_data;
 struct compute_pass_info_data;
 struct freeable_cached_obj;
@@ -63,6 +62,7 @@ using auto_query_range = auto_destroyer<query_range, auto_mode::guard>;
 using auto_swapchain = auto_destroyer<swapchain, auto_mode::guard>;
 
 // shader arguments
+struct view;
 struct argument;
 struct prebuilt_argument;
 struct argument_builder;

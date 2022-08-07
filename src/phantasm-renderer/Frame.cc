@@ -498,16 +498,16 @@ pr::raii::Framebuffer pr::raii::Frame::buildFramebuffer(const phi::cmd::begin_re
     if (has_blendstate_overrides)
     {
         // framebuffer_info was provided with additional blendstate information, override into fb_info
-        fb_info._storage.get().logic_op_enable = blendstate_override->logic_op_enable;
-        fb_info._storage.get().logic_op = blendstate_override->logic_op;
+        fb_info._storage.logic_op_enable = blendstate_override->logic_op_enable;
+        fb_info._storage.logic_op = blendstate_override->logic_op;
 
-        CC_ASSERT(fb_info._storage.get().render_targets.size() == blendstate_override->render_targets.size() && "inconsistent blendstate override");
+        CC_ASSERT(fb_info._storage.render_targets.size() == blendstate_override->render_targets.size() && "inconsistent blendstate override");
 
         for (uint8_t i = 0u; i < blendstate_override->render_targets.size(); ++i)
         {
             if (blendstate_override->render_targets[i].blend_enable)
             {
-                auto& target_rt = fb_info._storage.get().render_targets[i];
+                auto& target_rt = fb_info._storage.render_targets[i];
 
                 target_rt.blend_enable = true;
                 target_rt.state = blendstate_override->render_targets[i].state;
@@ -542,21 +542,15 @@ void pr::raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
     mBackend->cmdDispatch(mList, dcmd);
 }
 
-phi::handle::shader_view pr::raii::Frame::passAcquireGraphicsShaderView(argument& arg)
+phi::handle::shader_view pr::raii::Frame::passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute)
 {
-    arg._fixup_incomplete_resource_views(mCtx);
-    auto const hash = arg._info.get_xxhash();
-    auto const res = mCtx->acquire_graphics_sv(hash, arg._info);
-    mFreeables.push_back({freeable_cached_obj::graphics_sv, hash});
-    return res;
-}
+    fixup_incomplete_views(mCtx, srvs, uavs);
 
-phi::handle::shader_view pr::raii::Frame::passAcquireComputeShaderView(argument& arg)
-{
-    arg._fixup_incomplete_resource_views(mCtx);
-    auto const hash = arg._info.get_xxhash();
-    auto const res = mCtx->acquire_compute_sv(hash, arg._info);
-    mFreeables.push_back({freeable_cached_obj::compute_sv, hash});
+    uint64_t hash = 0;
+    auto const res = mCtx->acquire_shader_view(compute, &hash, srvs, uavs, samplers);
+
+    mFreeables.push_back({compute ? freeable_cached_obj::compute_sv : freeable_cached_obj::graphics_sv, hash});
+
     return res;
 }
 

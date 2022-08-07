@@ -24,6 +24,8 @@ struct resource
 
     bool is_valid() const { return handle.is_valid(); }
     void invalidate() { handle.invalidate(); }
+
+    constexpr operator phi::handle::resource() const { return handle; }
 };
 
 struct buffer : public resource
