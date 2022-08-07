@@ -53,17 +53,20 @@ public:
 
     // cache-access variants
     // hits a OS mutex
-    [[nodiscard]] GraphicsPass bind(argument& arg, phi::buffer_address constant_buffer = {})
+    [[nodiscard]] GraphicsPass bind(argument& arg, phi::buffer_address cbv = {})
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer.buffer, constant_buffer.offset_bytes);
-        return p;
+        return bind(arg.srvs, arg.uavs, arg.samplers, {cbv.buffer}, cbv.offset_bytes);
     }
 
     [[nodiscard]] GraphicsPass bind(argument& arg, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
+        return bind(arg.srvs, arg.uavs, arg.samplers, constant_buffer, constant_buffer_offset);
+    }
+
+    [[nodiscard]] GraphicsPass bind(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer.handle, constant_buffer_offset);
+        p.add_cached_argument(srvs, uavs, samplers, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
@@ -140,7 +143,7 @@ private:
 
     // cache-access variant
     // hits a OS mutex
-    void add_cached_argument(argument& arg, phi::handle::resource cbv, uint32_t cbv_offset);
+    void add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset);
 
     Frame* mParent = nullptr;
     phi::cmd::draw mCmd;

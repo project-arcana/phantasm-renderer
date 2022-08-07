@@ -565,8 +565,7 @@ private:
     phi::handle::pipeline_state acquire_graphics_pso(uint64_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
     phi::handle::pipeline_state acquire_compute_pso(uint64_t hash, const compute_pass_info& cp);
 
-    phi::handle::shader_view acquire_graphics_sv(uint64_t hash, hashable_storage<shader_view_info> const& info_storage);
-    phi::handle::shader_view acquire_compute_sv(uint64_t hash, hashable_storage<shader_view_info> const& info_storage);
+    phi::handle::shader_view acquire_shader_view(bool compute, uint64_t* pOutHash, cc::span<phi::resource_view const> srvs, cc::span<phi::resource_view const> uavs, cc::span<phi::sampler_config const> samplers);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 

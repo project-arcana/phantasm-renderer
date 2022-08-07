@@ -218,13 +218,13 @@ public:
     [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
 
     // frame must not be discarded while framebuffers/passes are alive
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
     template <class... RTs>
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
     template <class T, auto_mode M>
     [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
@@ -276,8 +276,7 @@ private:
 
     void passOnDispatch(phi::cmd::dispatch const& dcmd);
 
-    phi::handle::shader_view passAcquireGraphicsShaderView(pr::argument& arg);
-    phi::handle::shader_view passAcquireComputeShaderView(pr::argument& arg);
+    phi::handle::shader_view passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute);
 
     // Context-side API
 private:

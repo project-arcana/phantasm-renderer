@@ -12,6 +12,7 @@
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
 #include <phantasm-hardware-interface/common/format_size.hh>
+#include <phantasm-hardware-interface/common/sse_hash.hh>
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/util.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
@@ -216,9 +217,8 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
 auto_prebuilt_argument Context::make_graphics_argument(argument& arg)
 {
-    arg._fixup_incomplete_resource_views(this);
-    auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false)}, this};
+    fixup_incomplete_views(this, arg.srvs, arg.uavs);
+    return {prebuilt_argument{mBackend->createShaderView(arg.srvs, arg.uavs, arg.samplers, false)}, this};
 }
 
 auto_prebuilt_argument Context::make_graphics_argument(cc::span<const phi::resource_view> srvs,
@@ -230,9 +230,8 @@ auto_prebuilt_argument Context::make_graphics_argument(cc::span<const phi::resou
 
 auto_prebuilt_argument Context::make_compute_argument(argument& arg)
 {
-    arg._fixup_incomplete_resource_views(this);
-    auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true)}, this};
+    fixup_incomplete_views(this, arg.srvs, arg.uavs);
+    return {prebuilt_argument{mBackend->createShaderView(arg.srvs, arg.uavs, arg.samplers, true)}, this};
 }
 
 auto_prebuilt_argument Context::make_compute_argument(cc::span<const phi::resource_view> srvs,
@@ -250,7 +249,7 @@ auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_in
 
     phi::arg::graphics_pipeline_state_description desc = {};
     desc.config = gp.graphics_config;
-    desc.framebuffer = fb._storage.get();
+    desc.framebuffer = fb._storage;
     desc.vertices.attributes = gp.vertex_attributes;
     desc.vertices.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
     desc.root_signature.shader_arg_shapes = gp.arg_shapes;
@@ -485,7 +484,9 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
         mImpl->mGpuEpochTracker._cached_epoch_gpu = mImpl->mGpuEpochTracker.get_current_epoch_gpu(mBackend);
 
         // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
-        phi::fence_operation signal_op = {mImpl->mGpuEpochTracker._fence, mImpl->mGpuEpochTracker._current_epoch_cpu};
+        phi::fence_operation signal_op;
+        signal_op.fence = mImpl->mGpuEpochTracker._fence;
+        signal_op.value = mImpl->mGpuEpochTracker._current_epoch_cpu;
 
         {
             // unsynced, mutex: submission
@@ -844,7 +845,7 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphic
 
         phi::arg::graphics_pipeline_state_description desc = {};
         desc.config = info.graphics_config;
-        desc.framebuffer = fb._storage.get();
+        desc.framebuffer = fb._storage;
         desc.vertices.attributes = info.vertex_attributes;
         desc.vertices.vertex_sizes_bytes[0] = info.vertex_size_bytes;
         desc.root_signature.shader_arg_shapes = info.arg_shapes;
@@ -874,26 +875,25 @@ phi::handle::pipeline_state Context::acquire_compute_pso(uint64_t hash, const co
     return pso;
 }
 
-phi::handle::shader_view Context::acquire_graphics_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_shader_view(bool compute,
+                                                      uint64_t* pOutHash,
+                                                      cc::span<phi::resource_view const> srvs,
+                                                      cc::span<phi::resource_view const> uavs,
+                                                      cc::span<phi::sampler_config const> samplers)
 {
-    phi::handle::shader_view sv = mImpl->mCacheGraphicsSVs.acquire(hash);
-    if (!sv.is_valid())
-    {
-        shader_view_info const& info = info_storage.get();
-        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false);
-        mImpl->mCacheGraphicsSVs.insert(sv, hash);
-    }
-    return sv;
-}
+    auto& cache = compute ? mImpl->mCacheComputeSVs : mImpl->mCacheGraphicsSVs;
 
-phi::handle::shader_view Context::acquire_compute_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
-{
-    phi::handle::shader_view sv = mImpl->mCacheComputeSVs.acquire(hash);
+    uint64_t hash0 = phi::util::sse_hash_type(srvs.data(), srvs.size());
+    uint64_t hash1 = phi::util::sse_hash_type(uavs.data(), uavs.size(), hash0 * 6364136223846793005ULL);
+    uint64_t hash2 = phi::util::sse_hash_type(samplers.data(), samplers.size(), hash1 * 6364136223846793005ULL);
+
+    *pOutHash = hash2;
+
+    phi::handle::shader_view sv = cache.acquire(hash2);
     if (!sv.is_valid())
     {
-        shader_view_info const& info = info_storage.get();
-        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true);
-        mImpl->mCacheComputeSVs.insert(sv, hash);
+        sv = mBackend->createShaderView(srvs, uavs, samplers, compute);
+        cache.insert(sv, hash2);
     }
     return sv;
 }

@@ -71,37 +71,6 @@ void pr::argument::fill_default_uav(pr::Context* ctx, phi::resource_view& new_rv
     fill_default_srv(ctx, new_rv, buf, element_start);
 }
 
-void pr::argument::_fixup_incomplete_resource_views(pr::Context* ctx)
-{
-    for (auto& srv : this->_info.get().srvs)
-    {
-        if (uint8_t(srv.dimension) == e_incomplete_rv_dim_texture)
-        {
-            auto const tex = pr::texture{{srv.resource}};
-            fill_default_srv(ctx, srv, tex, srv.texture_info.mip_start, srv.texture_info.mip_size);
-        }
-        else if (uint8_t(srv.dimension) == e_incomplete_rv_dim_buffer)
-        {
-            auto const buf = pr::buffer{{srv.resource}};
-            fill_default_srv(ctx, srv, buf, srv.buffer_info.element_start);
-        }
-    }
-
-    for (auto& uav : this->_info.get().uavs)
-    {
-        if (uint8_t(uav.dimension) == e_incomplete_rv_dim_texture)
-        {
-            auto const tex = pr::texture{{uav.resource}};
-            fill_default_srv(ctx, uav, tex, uav.texture_info.mip_start, uav.texture_info.mip_size);
-        }
-        else if (uint8_t(uav.dimension) == e_incomplete_rv_dim_buffer)
-        {
-            auto const buf = pr::buffer{{uav.resource}};
-            fill_default_srv(ctx, uav, buf, uav.buffer_info.element_start);
-        }
-    }
-}
-
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
 {
     return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, false)}, _parent};
@@ -110,4 +79,35 @@ pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
 pr::auto_prebuilt_argument pr::argument_builder::make_compute()
 {
     return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true)}, _parent};
+}
+
+void pr::fixup_incomplete_views(pr::Context* pCtx, cc::span<pr::view> srvs, cc::span<pr::view> uavs)
+{
+    for (auto& srv : srvs)
+    {
+        if (uint32_t(srv.dimension) == e_incomplete_rv_dim_texture)
+        {
+            auto const tex = pr::texture{{srv.resource}};
+            argument::fill_default_srv(pCtx, srv, tex, srv.texture_info.mip_start, srv.texture_info.mip_size);
+        }
+        else if (uint32_t(srv.dimension) == e_incomplete_rv_dim_buffer)
+        {
+            auto const buf = pr::buffer{{srv.resource}};
+            argument::fill_default_srv(pCtx, srv, buf, srv.buffer_info.element_start);
+        }
+    }
+
+    for (auto& uav : uavs)
+    {
+        if (uint32_t(uav.dimension) == e_incomplete_rv_dim_texture)
+        {
+            auto const tex = pr::texture{{uav.resource}};
+            argument::fill_default_uav(pCtx, uav, tex, uav.texture_info.mip_start, uav.texture_info.mip_size);
+        }
+        else if (uint32_t(uav.dimension) == e_incomplete_rv_dim_buffer)
+        {
+            auto const buf = pr::buffer{{uav.resource}};
+            argument::fill_default_uav(pCtx, uav, buf, uav.buffer_info.element_start);
+        }
+    }
 }
