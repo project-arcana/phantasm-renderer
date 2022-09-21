@@ -93,12 +93,15 @@ public:
     // shaders
 
     /// create a shader from binary data (only hashes the data)
-    [[nodiscard]] auto_shader_binary make_shader(cc::span<std::byte const> data, pr::shader stage);
+    [[nodiscard]] auto_shader_binary make_shader(cc::span<std::byte const> data, pr::shader_stage stage);
 
     /// create a shader by compiling it live from text
     /// build_debug: compile without optimizations and embed debug symbols/PDB info (/Od /Zi /Qembed_debug) - required for shader debugging in Rdoc, PIX etc
-    [[nodiscard]] auto_shader_binary make_shader(
-        cc::string_view code, cc::string_view entrypoint, pr::shader stage, bool build_debug = false, cc::allocator* scratch_alloc = cc::system_allocator);
+    [[nodiscard]] auto_shader_binary make_shader(cc::string_view code,
+                                                 cc::string_view entrypoint,
+                                                 pr::shader_stage stage,
+                                                 bool build_debug = false,
+                                                 cc::allocator* scratch_alloc = cc::system_allocator);
 
     //
     // prebuilt arguments (shader views)
@@ -565,7 +568,11 @@ private:
     phi::handle::pipeline_state acquire_graphics_pso(uint64_t hash, const graphics_pass_info& gp, const framebuffer_info& fb);
     phi::handle::pipeline_state acquire_compute_pso(uint64_t hash, const compute_pass_info& cp);
 
-    phi::handle::shader_view acquire_shader_view(bool compute, uint64_t* pOutHash, cc::span<phi::resource_view const> srvs, cc::span<phi::resource_view const> uavs, cc::span<phi::sampler_config const> samplers);
+    phi::handle::shader_view acquire_shader_view(bool compute,
+                                                 uint64_t* pOutHash,
+                                                 cc::span<phi::resource_view const> srvs,
+                                                 cc::span<phi::resource_view const> uavs,
+                                                 cc::span<phi::sampler_config const> samplers);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 
