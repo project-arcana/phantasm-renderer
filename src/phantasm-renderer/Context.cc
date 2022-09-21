@@ -175,7 +175,7 @@ auto_buffer pr::Context::make_buffer_clone(buffer const& clone_source, char cons
     return make_buffer(mBackend->getResourceBufferDescription(clone_source.handle), debug_name);
 }
 
-auto_shader_binary Context::make_shader(cc::span<std::byte const> data, phi::shader_stage stage)
+auto_shader_binary Context::make_shader(cc::span<std::byte const> data, pr::shader_stage stage)
 {
     CC_ASSERT(data.data() != nullptr);
 
@@ -189,7 +189,7 @@ auto_shader_binary Context::make_shader(cc::span<std::byte const> data, phi::sha
     return {res, this};
 }
 
-auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
+auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
 {
     dxcw::binary bin;
 

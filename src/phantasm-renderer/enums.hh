@@ -12,7 +12,9 @@ enum class backend
 };
 
 // enum renames
-using shader = phi::shader_stage;
+using shader_stage = phi::shader_stage;
+using shader = phi::shader_stage_flags;
+using shader_flags = phi::shader_stage_flags_t;
 using format = phi::format;
 using state = phi::resource_state;
 
@@ -33,7 +35,6 @@ using phi::sampler_compare_func;
 using phi::sampler_filter;
 
 // type renames
-using shader_flags = phi::shader_stage_flags_t;
 using clear_value = phi::rt_clear_value;
 
 // type passthroughs
