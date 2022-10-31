@@ -279,7 +279,13 @@ auto_query_range Context::make_query_range(phi::query_type type, uint32_t num_qu
 
 auto_swapchain Context::make_swapchain(const phi::window_handle& window_handle, tg::isize2 initial_size, pr::present_mode mode, uint32_t num_backbuffers)
 {
-    return {{mBackend->createSwapchain(window_handle, initial_size, mode, num_backbuffers)}, this};
+    phi::arg::swapchain_description desc = {};
+    desc.handle = window_handle;
+    desc.initial_width = initial_size.width;
+    desc.initial_height = initial_size.height;
+    desc.mode = mode;
+    desc.num_backbuffers = num_backbuffers;
+    return {{mBackend->createSwapchain(desc, nullptr)}, this};
 }
 
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
@@ -627,7 +633,6 @@ void Context::set_debug_name(phi::handle::resource raw_res, cc::string_view name
 texture Context::acquire_backbuffer(swapchain const& sc)
 {
     auto const backbuffer = mBackend->acquireBackbuffer(sc.handle);
-    auto const size = mBackend->getBackbufferSize(sc.handle);
 
 #ifdef CC_ENABLE_ASSERTIONS
     mImpl->mSafetyState.did_acquire_before_present = true;
