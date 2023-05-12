@@ -166,6 +166,31 @@ void pr::raii::Frame::copy(texture const& src, buffer const& dest, tg::uvec3 src
     mBackend->cmdCopyTextureToBuffer(mList, ccmd);
 }
 
+void pr::raii::Frame::copy_all_subresources(texture const& src, buffer const& dest)
+{
+    transition(src, pr::state::copy_src);
+    transition(dest, pr::state::copy_dest);
+    flushPendingTransitions();
+
+    auto const& texInfo = context().get_texture_info(src);
+    uint32_t const numSlices = texInfo.get_array_size();
+    uint32_t const texDepth = texInfo.get_depth();
+    bool const bIsD3D12 = context().get_backend_type() == backend::d3d12;
+
+    uint32_t bufferOffset = 0;
+    for (uint32_t slice = 0; slice < numSlices; ++slice)
+    {
+        for (uint32_t mip = 0; mip < texInfo.num_mips; ++mip)
+        {
+            this->copy(src, dest, bufferOffset, mip, slice);
+
+            auto const subresSizeBytes
+                = phi::util::get_texture_subresource_size_bytes_on_gpu(texInfo.fmt, texInfo.width, texInfo.height, texDepth, mip, bIsD3D12);
+            bufferOffset += cc::align_up(subresSizeBytes, 512);
+        }
+    }
+}
+
 void pr::raii::Frame::copy(const texture& src, const texture& dest, uint32_t mip_index)
 {
     auto const& srcDesc = mBackend->getResourceTextureDescription(src.handle);
