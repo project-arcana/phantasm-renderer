@@ -77,7 +77,7 @@ public:
     }
 
     /// Set the pipeline config
-    graphics_pass_info& config(phi::pipeline_config const& config)
+    graphics_pass_info& config(phi::arg::pipeline_config const& config)
     {
         _storage.get().graphics_config = config;
         return *this;
@@ -176,7 +176,7 @@ public:
 };
 
 template <class VertT, class... ShaderTs>
-[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+[[nodiscard]] graphics_pass_info graphics_pass(phi::arg::pipeline_config const& config, ShaderTs const&... shaders)
 {
     graphics_pass_info res;
     res.config(config);
@@ -186,7 +186,7 @@ template <class VertT, class... ShaderTs>
 }
 
 template <class... ShaderTs>
-[[nodiscard]] graphics_pass_info graphics_pass(phi::pipeline_config const& config, ShaderTs const&... shaders)
+[[nodiscard]] graphics_pass_info graphics_pass(phi::arg::pipeline_config const& config, ShaderTs const&... shaders)
 {
     graphics_pass_info res;
     res.config(config);
@@ -216,42 +216,48 @@ public:
     /// Add a render target based on format only
     framebuffer_info& target(pr::format format)
     {
-        _storage.get().add_render_target(format);
+        _storage.add_render_target(format);
         return *this;
     }
 
     /// Add a render target with blend state
-    framebuffer_info& target(pr::format format, pr::blend_state blend_state)
+    framebuffer_info& target(pr::format format, phi::arg::blend_state blend_state)
     {
-        _storage.get().render_targets.push_back(phi::render_target_config{format, true, blend_state});
+        _storage.render_targets.push_back(phi::arg::render_target_config{format, true, blend_state});
         return *this;
     }
 
     /// Add a render target with blend configuration
-    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::render_target_config config)
+    [[deprecated("Use target(format, blend_state) overload")]] framebuffer_info& target(phi::arg::render_target_config config)
     {
-        _storage.get().render_targets.push_back(config);
+        _storage.render_targets.push_back(config);
         return *this;
     }
 
     /// Set and enable the blend logic operation
     framebuffer_info& logic_op(phi::blend_logic_op op)
     {
-        _storage.get().logic_op = op;
-        _storage.get().logic_op_enable = true;
+        _storage.logic_op = op;
+        _storage.logic_op_enable = true;
         return *this;
     }
 
     /// Add a depth render target based on format only
     framebuffer_info& depth(pr::format format)
     {
-        _storage.get().set_depth_target(format);
+        _storage.set_depth_target(format);
         return *this;
     }
 
-    uint64_t get_hash() const { return _storage.get_xxhash(); }
+    framebuffer_info& config(phi::arg::framebuffer_config const& conf)
+    {
+        _storage = conf;
+        return *this;
+    }
 
-    hashable_storage<phi::arg::framebuffer_config> _storage;
+    uint64_t get_hash() const;
+
+    phi::arg::framebuffer_config _storage;
 };
 
 template <class... FormatTs>

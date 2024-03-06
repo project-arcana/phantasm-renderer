@@ -26,7 +26,7 @@ public:
     //
     // framebuffer RAII API
 
-    /// create a framebuffer by supplying render targets (all cleared, viewport minimum of sizes)
+    // create a framebuffer by supplying render targets (all cleared, viewport minimum of sizes)
     template <class... RTs>
     [[nodiscard]] Framebuffer make_framebuffer(RTs const&... targets) &
     {
@@ -44,22 +44,22 @@ public:
         return buildFramebuffer(bcmd, num_samples, nullptr, true);
     }
 
-    /// create a framebuffer from a raw phi command
+    // create a framebuffer from a raw phi command
     [[nodiscard]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const& raw_command, bool auto_transition = true) &;
 
-    /// create a framebuffer using a builder with more configuration options
+    // create a framebuffer using a builder with more configuration options
     [[nodiscard]] framebuffer_builder build_framebuffer() & { return {this}; }
 
     //
     // pass RAII API (compute only, graphics passes are in Framebuffer)
 
-    /// start a compute pass from persisted PSO
-    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline._handle}; }
+    // start a compute pass from persisted PSO
+    [[nodiscard]] ComputePass make_pass(compute_pipeline_state const& compute_pipeline) & { return {this, compute_pipeline.handle}; }
 
-    /// start a compute pass from a raw phi PSO
+    // start a compute pass from a raw phi PSO
     [[nodiscard]] ComputePass make_pass(phi::handle::pipeline_state raw_pso) & { return {this, raw_pso}; }
 
-    /// fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
+    // fetch a PSO from cache - this hits a OS mutex and might have to build a PSO (expensive)
     [[nodiscard]] ComputePass make_pass(compute_pass_info const& cp) &;
 
     //
@@ -69,50 +69,67 @@ public:
     void transition(texture const& res, state target, shader_flags dependency = {});
     void transition(phi::handle::resource raw_resource, state target, shader_flags dependency = {});
 
+    // create a UAV barrier to synchronize GPU-GPU access
+    // if no resources are specified, the barrier is global
     void barrier_uav(cc::span<phi::handle::resource const> resources);
 
-    /// transition the backbuffer to present state and trigger a Context::present after this frame is submitted
+    // transition the backbuffer to present state and trigger a Context::present after this frame is submitted
     void present_after_submit(texture const& backbuffer, swapchain sc);
 
     //
     // commands
 
-    /// copy buffer to buffer
-    void copy(buffer const& src, buffer const& dest, size_t src_offset = 0, size_t dest_offset = 0, size_t num_bytes = 0);
+    // copy buffer to buffer
+    void copy(buffer const& src, buffer const& dest, uint32_t src_offset = 0, uint32_t dest_offset = 0, uint32_t num_bytes = 0);
 
-    /// copy buffer to texture
-    void copy(buffer const& src, texture const& dest, size_t src_offset = 0, unsigned dest_mip_index = 0, unsigned dest_array_index = 0);
+    // copy buffer to texture
+    // writes the specified MIP level of the specified array element
+    void copy(buffer const& src, texture const& dest, uint32_t src_offset = 0, uint32_t dest_mip_index = 0, uint32_t dest_array_index = 0);
 
-    /// copy texture to buffer
-    void copy(texture const& src, buffer const& dest, size_t dest_offset = 0);
+    // copy texture to buffer
+    // reads an entire MIP level of a specified array element
+    void copy(texture const& src, buffer const& dest, uint32_t dest_offset = 0, uint32_t src_mip_index = 0, uint32_t src_array_index = 0);
 
-    /// copies all array slices at the given MIP level from src to dest
-    void copy(texture const& src, texture const& dest, unsigned mip_index = 0);
+    // copy texture to buffer
+    // reads the specified MIP level of the specified array element
+    // only copies a specified section of the MIP, size given in texels
+    void copy(texture const& src,
+              buffer const& dest,
+              tg::uvec3 src_offset_texels,
+              tg::uvec3 src_extent_texels,
+              uint32_t dest_offset = 0,
+              uint32_t src_mip_index = 0,
+              uint32_t src_array_index = 0);
 
-    /// copy textures specifying all details of the operation
+    // copy texture to texture
+    // copies all array slices at the given MIP level from src to dest
+    void copy(texture const& src, texture const& dest, uint32_t mip_index = 0);
+
+    // copy texture to texture
+    // copy textures specifying source and destination MIP, array element, size and slice count
     void copy_subsection(texture const& src,
                          texture const& dest,
-                         unsigned src_mip_index,
-                         unsigned src_array_index,
-                         unsigned dest_mip_index,
-                         unsigned dest_array_index,
-                         unsigned num_array_slices,
+                         uint32_t src_mip_index,
+                         uint32_t src_array_index,
+                         uint32_t dest_mip_index,
+                         uint32_t dest_array_index,
+                         uint32_t num_array_slices,
                          tg::isize2 dest_size);
 
-    /// resolve a multisampled texture
+    // resolve a multisampled texture (to a regular one)
     void resolve(texture const& src, texture const& dest);
 
-    /// write a timestamp to a query in a given (timestamp) query range
-    void write_timestamp(query_range const& query_range, unsigned index);
+    // write a timestamp to a query in a given (timestamp) query range
+    void write_timestamp(query_range const& query_range, uint32_t index);
 
-    /// resolve one or more queries in a range and write their contents to a buffer
-    void resolve_queries(query_range const& src, buffer const& dest, unsigned first_query, unsigned num_queries, unsigned dest_offset_bytes = 0);
+    // resolve one or more queries in a range and write their contents to a buffer
+    void resolve_queries(query_range const& src, buffer const& dest, uint32_t first_query, uint32_t num_queries, uint32_t dest_offset_bytes = 0);
 
-    /// begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
-    void begin_debug_label(char const* label) { write_raw_cmd(phi::cmd::begin_debug_label{label}); }
-    void end_debug_label() { write_raw_cmd(phi::cmd::end_debug_label{}); }
+    // begin a debug label region (visible in renderdoc, nsight, gpa, pix, etc.)
+    void begin_debug_label(char const* label);
+    void end_debug_label();
 
-    /// begin a debug label region and end it automatically with a RAII helper
+    // begin a debug label region and end it automatically with a RAII helper
     [[nodiscard]] auto scoped_debug_label(char const* label)
     {
         begin_debug_label(label);
@@ -122,95 +139,115 @@ public:
     //
     // specials
 
-    /// uploads texture data correctly to a destination texture, respecting rowwise alignment
-    /// transition cmd + copy_buf_to_tex cmd
-    /// expects upload buffer with sufficient size (see Context::calculate_texture_upload_size)
+    // uploads texture data correctly to a destination texture, respecting rowwise alignment
+    // transition cmd + copy_buf_to_tex cmd
+    // expects an upload buffer with sufficient size (see Context::calculate_texture_upload_size)
     void upload_texture_data(cc::span<std::byte const> texture_data, buffer const& upload_buffer, texture const& dest_texture);
 
-    /// creates a suitable upload buffer and calls upload_texture_data
-    /// (deferred freeing it afterwards)
+    // creates a suitable temporary upload buffer and calls upload_texture_data
     void auto_upload_texture_data(cc::span<std::byte const> texture_data, texture const& dest_texture);
 
     size_t upload_texture_subresource(cc::span<std::byte const> texture_data,
-                                      unsigned row_size_bytes,
+                                      uint32_t row_size_bytes,
                                       buffer const& upload_buffer,
-                                      unsigned buffer_offset_bytes,
+                                      uint32_t buffer_offset_bytes,
                                       texture const& dest_texture,
-                                      unsigned dest_subres_index);
+                                      uint32_t dest_mip_index,
+                                      uint32_t dest_array_index);
 
-    /// creates a suitable temporary upload buffer and copies data to the destination buffer
+    // creates a suitable temporary upload buffer and copies data to the destination buffer
     void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
 
-    /// free a buffer once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.res.handle); }
-
-    /// free a texture once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.res.handle); }
-
-    /// free a resource once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(raw_resource const& res) { free_deferred_after_submit(res.handle); }
-
-    /// free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
-    void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
+    // copy texture to buffer
+    // copies all MIP levels and all array slices in canonical ordering (contiguous in MIPs) to the buffer
+    // subresources have 512 byte-aligned offsets
+    // buffer must have sufficient space (use Context::calculate_texture_upload_size)
+    void copy_all_subresources(texture const& src, buffer const& dest);
 
     //
-    // raw phi commands
+    // deferred free
 
-    /// write a raw phi command
-    template <class CmdT>
-    void write_raw_cmd(CmdT const& cmd)
-    {
-        flushPendingTransitions();
-        mWriter.add_command(cmd);
-    }
+    // free a buffer once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.handle); }
 
-    /// get a pointer to a buffer in order to write raw commands, must be written to immediately (before other writes)
-    [[nodiscard]] std::byte* write_raw_bytes(size_t num_bytes)
-    {
-        flushPendingTransitions();
-        return mWriter.write_raw_bytes(num_bytes);
-    }
+    // free a texture once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(texture const& tex) { free_deferred_after_submit(tex.handle); }
 
-    /// write multiple resource slice transitions - no state tracking
+    // free a resource once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(resource const& res) { free_deferred_after_submit(res.handle); }
+
+    // free raw PHI resources once no longer in flight AFTER this frame was submitted/discarded
+    void free_deferred_after_submit(phi::handle::resource res) { mDeferredFreeResources.push_back(res); }
+
+    // free a buffer to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(buffer const& buf) { free_to_cache_after_submit(buf.handle); }
+
+    // free a texture to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(texture const& tex) { free_to_cache_after_submit(tex.handle); }
+
+    // free a resource to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(resource const& res) { free_to_cache_after_submit(res.handle); }
+
+    // free raw PHI resources to the cache AFTER this frame was submitted/discarded
+    void free_to_cache_after_submit(phi::handle::resource res) { mCacheFreeResources.push_back(res); }
+
+    // write multiple resource slice transitions - no state tracking
     void transition_slices(cc::span<phi::cmd::transition_image_slices::slice_transition_info const> slices);
+    void transition_slices(phi::cmd::transition_image_slices const& tcmd);
+
+    void begin_profile_scope(phi::cmd::begin_profile_scope const& bps);
+
+    void end_profile_scope();
+
+    //
+    // raw command submission - advanced usage
+
+    void raw_draw(phi::cmd::draw const& dcmd);
+
+    void raw_draw_indirect(phi::cmd::draw_indirect const& dcmd);
+
+    void raw_dipatch(phi::cmd::dispatch const& dcmd);
+
+    void raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dcmd);
+
+    void raw_dispatch_rays(phi::cmd::dispatch_rays const& dcmd);
+
+    void raw_clear_textures(phi::cmd::clear_textures const& ccmd);
 
     Context& context() { return *mCtx; }
 
-    bool is_empty() const { return mWriter.is_empty(); }
+    phi::handle::live_command_list get_list_handle() const { return mList; }
+
+    size_t get_num_deferred_free_resources() const { return mDeferredFreeResources.size(); }
+
+    size_t get_num_cache_free_resources() const { return mCacheFreeResources.size(); }
 
 public:
     // redirect intuitive misuses
 
-    /// (graphics passes can only be created from framebuffers)
+    // (graphics passes can only be created from framebuffers)
     [[deprecated("did you mean .make_framebuffer(..).make_pass(..)?")]] void make_pass(graphics_pipeline_state const&) = delete;
 
-    /// frame must not be discarded while framebuffers/passes are alive
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
+    // frame must not be discarded while framebuffers/passes are alive
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pipeline_state const&) && = delete;
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(phi::handle::pipeline_state) && = delete;
+    [[deprecated("Frame must stay alive while passes are used")]] ComputePass make_pass(compute_pass_info const&) && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(phi::cmd::begin_render_pass const&) && = delete;
     template <class... RTs>
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
-    [[deprecated("pr::raii::Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] Framebuffer make_framebuffer(RTs const&...) && = delete;
+    [[deprecated("Frame must stay alive while framebuffers are used")]] framebuffer_builder build_framebuffer() && = delete;
 
     template <class T, auto_mode M>
     [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_deferred_after_submit(auto_destroyer<T, M> const&)
+        = delete;
+    template <class T, auto_mode M>
+    [[deprecated("auto_ types must not be explicitly freed, use .disown() for manual management")]] void free_to_cache_deferred_after_submit(auto_destroyer<T, M> const&)
         = delete;
 
 public:
     Frame(Frame const&) = delete;
     Frame& operator=(Frame const&) = delete;
-    Frame(Frame&& rhs) noexcept
-      : mCtx(rhs.mCtx),
-        mWriter(cc::move(rhs.mWriter)),
-        mPendingTransitionCommand(rhs.mPendingTransitionCommand),
-        mFreeables(cc::move(rhs.mFramebufferActive)),
-        mDeferredFreeResources(cc::move(rhs.mDeferredFreeResources)),
-        mFramebufferActive(rhs.mFramebufferActive),
-        mPresentAfterSubmitRequest(rhs.mPresentAfterSubmitRequest)
-    {
-        rhs.mCtx = nullptr;
-    }
+    Frame(Frame&& rhs) noexcept;
 
     Frame& operator=(Frame&& rhs) noexcept;
 
@@ -219,11 +256,11 @@ public:
 
     // private
 private:
-    static void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, texture const& rt);
+    void addRenderTargetToFramebuffer(phi::cmd::begin_render_pass& bcmd, int& num_samples, texture const& rt);
 
     void flushPendingTransitions();
 
-    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, unsigned mip_index, unsigned first_array_index, unsigned num_array_slices);
+    void copyTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h, uint32_t mip_index, uint32_t first_array_index, uint32_t num_array_slices);
     void resolveTextureInternal(phi::handle::resource src, phi::handle::resource dest, int w, int h);
 
     phi::handle::pipeline_state acquireComputePSO(compute_pass_info const& cp);
@@ -239,7 +276,7 @@ private:
 private:
     friend class Framebuffer;
     void framebufferOnJoin(Framebuffer const&);
-    void framebufferOnSortByPSO(unsigned num_drawcalls);
+    // void framebufferOnSortByPSO(uint32_t num_drawcalls);
 
     phi::handle::pipeline_state framebufferAcquireGraphicsPSO(pr::graphics_pass_info const& gp, pr::framebuffer_info const& fb, int fb_inferred_num_samples);
 
@@ -248,31 +285,35 @@ private:
     friend class GraphicsPass;
     friend class ComputePass;
 
-    void passOnDraw(phi::cmd::draw const& dcmd);
     void passOnDispatch(phi::cmd::dispatch const& dcmd);
 
-    phi::handle::shader_view passAcquireGraphicsShaderView(pr::argument const& arg);
-    phi::handle::shader_view passAcquireComputeShaderView(pr::argument const& arg);
+    phi::handle::shader_view passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute);
 
     // Context-side API
 private:
     friend Context;
-    explicit Frame(Context* ctx, size_t size, cc::allocator* alloc)
-      : mCtx(ctx), mWriter(size, alloc), mFreeables(alloc), mDeferredFreeResources(alloc)
-    {
-    }
+    explicit Frame(Context* ctx, phi::handle::live_command_list list, cc::allocator* alloc);
 
     void finalize();
-    std::byte* getMemory() const { return mWriter.buffer(); }
-    size_t getSize() const { return mWriter.size(); }
 
     // members
 private:
-    Context* mCtx = nullptr;
-    growing_writer mWriter;
+    phi::Backend* mBackend = nullptr;
+    phi::handle::live_command_list mList = {};
+
     phi::cmd::transition_resources mPendingTransitionCommand;
+
+    // cached objects (PSOs or SVs) to free once this frame is submitted or discarded
     cc::alloc_vector<freeable_cached_obj> mFreeables;
+
+    // resources that should get deferred-freed once this frame is submitted or discarded
     cc::alloc_vector<phi::handle::resource> mDeferredFreeResources;
+
+    // resources that should get freed-to-cache once this frame is submitted or discarde
+    cc::alloc_vector<phi::handle::resource> mCacheFreeResources;
+
+    Context* mCtx = nullptr;
+
     bool mFramebufferActive = false;
     phi::handle::swapchain mPresentAfterSubmitRequest = phi::handle::null_swapchain;
 };

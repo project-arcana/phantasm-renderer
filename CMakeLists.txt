@@ -23,3 +23,10 @@ target_link_libraries(phantasm-renderer PUBLIC
     reflector
     dxc-wrapper
 )
+
+# =========================================
+# set up compile flags
+
+if (MSVC)
+    target_compile_options(phantasm-renderer PRIVATE /WX)
+endif()

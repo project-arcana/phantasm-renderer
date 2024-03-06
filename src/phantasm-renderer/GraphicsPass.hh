@@ -1,6 +1,7 @@
 #pragma once
 
 #include <phantasm-hardware-interface/commands.hh>
+#include <phantasm-hardware-interface/types.hh>
 
 #include <phantasm-renderer/argument.hh>
 #include <phantasm-renderer/common/api.hh>
@@ -14,49 +15,58 @@ class Frame;
 class PR_API GraphicsPass
 {
 public:
-    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv)
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument sv, buffer constant_buffer = {}, uint32_t constant_buffer_offset = 0)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, phi::handle::null_resource, 0);
-        return p;
+        return bind(sv._sv, constant_buffer.handle, constant_buffer_offset);
     }
 
-    [[nodiscard]] GraphicsPass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(prebuilt_argument sv, phi::buffer_address constant_buffer)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, constant_buffer.res.handle, constant_buffer_offset);
-        return p;
+        return bind(sv._sv, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // CBV only
-    [[nodiscard]] GraphicsPass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
-        GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_argument(phi::handle::null_shader_view, constant_buffer.res.handle, constant_buffer_offset);
-        return p;
+        return bind(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
+    }
+
+    [[nodiscard]] GraphicsPass bind(phi::buffer_address constant_buffer)
+    {
+        return bind(phi::handle::null_shader_view, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // raw phi
-    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0)
+    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::handle::resource cbv = {}, uint32_t cbv_offset = 0)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
         p.add_argument(sv, cbv, cbv_offset);
         return p;
     }
 
-    // cache-access variants
-    // hits a OS mutex
-    [[nodiscard]] GraphicsPass bind(argument const& arg, phi::handle::resource constant_buffer = phi::handle::null_resource, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] GraphicsPass bind(phi::handle::shader_view sv, phi::buffer_address cbv)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer, constant_buffer_offset);
+        p.add_argument(sv, cbv.buffer, cbv.offset_bytes);
         return p;
     }
 
-    [[nodiscard]] GraphicsPass bind(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    // cache-access variants
+    // hits a OS mutex
+    [[nodiscard]] GraphicsPass bind(argument& arg, phi::buffer_address cbv = {})
+    {
+        return bind(arg.srvs, arg.uavs, arg.samplers, {cbv.buffer}, cbv.offset_bytes);
+    }
+
+    [[nodiscard]] GraphicsPass bind(argument& arg, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
+        return bind(arg.srvs, arg.uavs, arg.samplers, constant_buffer, constant_buffer_offset);
+    }
+
+    [[nodiscard]] GraphicsPass bind(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         GraphicsPass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer.res.handle, constant_buffer_offset);
+        p.add_cached_argument(srvs, uavs, samplers, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
@@ -64,16 +74,21 @@ public:
     void draw(uint32_t num_vertices, uint32_t num_instances = 1);
 
     // draw vertices
-    void draw(buffer const& vertex_buffer, uint32_t num_instances = 1);
+    void draw(buffer const& vertex_buffer, uint32_t num_instances = 1, int vertex_offset = 0);
 
     // indexed draw
-    void draw(buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_instances = 1);
+    void draw(buffer const& vertex_buffer, buffer const& index_buffer, uint32_t num_instances = 1, int vertex_offset = 0, uint32_t index_offset = 0);
 
     // indexed draw with raw handles
-    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1);
+    void draw(phi::handle::resource vertex_buffer, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1, int vertex_offset = 0, uint32_t index_offset = 0);
 
     // indexed draw with raw handles and up to 4 vertex buffers
-    void draw(cc::span<phi::handle::resource const> vertex_buffers, phi::handle::resource index_buffer, uint32_t num_indices, uint32_t num_instances = 1);
+    void draw(cc::span<phi::handle::resource const> vertex_buffers,
+              phi::handle::resource index_buffer,
+              uint32_t num_indices,
+              uint32_t num_instances = 1,
+              int vertex_offset = 0,
+              uint32_t index_offset = 0);
 
     // indirect draw
     void draw_indirect(buffer const& argument_buffer, buffer const& vertex_buffer, uint32_t num_args, uint32_t arg_buffer_offset_bytes = 0);
@@ -87,8 +102,6 @@ public:
                        phi::handle::resource index_buffer,
                        uint32_t num_args,
                        uint32_t arg_buffer_offset_bytes = 0);
-
-    void set_offset(int vertex_offset, uint32_t index_offset = 0);
 
     void set_scissor(tg::iaabb2 scissor) { mCmd.scissor = scissor; }
     void set_scissor(int left, int top, int right, int bot) { mCmd.scissor = tg::iaabb2({left, top}, {right, bot}); }
@@ -130,7 +143,7 @@ private:
 
     // cache-access variant
     // hits a OS mutex
-    void add_cached_argument(argument const& arg, phi::handle::resource cbv, uint32_t cbv_offset);
+    void add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset);
 
     Frame* mParent = nullptr;
     phi::cmd::draw mCmd;
@@ -140,16 +153,7 @@ private:
 
 // inline implementation
 
-inline void GraphicsPass::set_offset(int vertex_offset, uint32_t index_offset)
-{
-    mCmd.vertex_offset = vertex_offset;
-    mCmd.index_offset = index_offset;
-}
-
-inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, uint32_t offset)
-{
-    set_constant_buffer(constant_buffer.res.handle, offset);
-}
+inline void GraphicsPass::set_constant_buffer(const buffer& constant_buffer, uint32_t offset) { set_constant_buffer(constant_buffer.handle, offset); }
 
 inline void GraphicsPass::set_constant_buffer(phi::handle::resource raw_cbv, uint32_t offset)
 {

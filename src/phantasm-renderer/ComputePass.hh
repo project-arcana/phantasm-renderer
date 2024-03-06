@@ -14,53 +14,80 @@ class Frame;
 class PR_API ComputePass
 {
 public:
-    [[nodiscard]] ComputePass bind(prebuilt_argument const& sv)
+    [[nodiscard]] ComputePass bind(prebuilt_argument sv, buffer constant_buffer = {}, uint32_t constant_buffer_offset = 0)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, phi::handle::null_resource, 0);
-        return p;
+        return bind(sv._sv, constant_buffer.handle, constant_buffer_offset);
     }
 
-    [[nodiscard]] ComputePass bind(prebuilt_argument const& sv, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] ComputePass bind(prebuilt_argument sv, phi::buffer_address constant_buffer)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(sv._sv, constant_buffer.res.handle, constant_buffer_offset);
-        return p;
+        return bind(sv._sv, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // CBV only
-    [[nodiscard]] ComputePass bind(buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    [[nodiscard]] ComputePass bind(buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
-        ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_argument(phi::handle::null_shader_view, constant_buffer.res.handle, constant_buffer_offset);
-        return p;
+        return bind(phi::handle::null_shader_view, constant_buffer.handle, constant_buffer_offset);
+    }
+
+    [[nodiscard]] ComputePass bind(phi::buffer_address constant_buffer)
+    {
+        return bind(phi::handle::null_shader_view, constant_buffer.buffer, constant_buffer.offset_bytes);
     }
 
     // raw phi
-    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::handle::resource cbv = phi::handle::null_resource, uint32_t cbv_offset = 0)
+    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::handle::resource cbv = {}, uint32_t cbv_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
         p.add_argument(sv, cbv, cbv_offset);
         return p;
     }
 
-    // cache-access variants
-    // hits a OS mutex
-    [[nodiscard]] ComputePass bind(argument const& arg)
+    [[nodiscard]] ComputePass bind(phi::handle::shader_view sv, phi::buffer_address cbv)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, phi::handle::null_resource, 0);
+        p.add_argument(sv, cbv.buffer, cbv.offset_bytes);
         return p;
     }
 
-    [[nodiscard]] ComputePass bind(argument const& arg, buffer const& constant_buffer, uint32_t constant_buffer_offset = 0)
+    // cache-access variants
+    // hits a OS mutex
+    [[nodiscard]] ComputePass bind(argument& arg, phi::buffer_address cbv = {})
+    {
+        return bind(arg.srvs, arg.uavs, arg.samplers, {cbv.buffer}, cbv.offset_bytes);
+    }
+
+    [[nodiscard]] ComputePass bind(argument& arg, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
+    {
+        return bind(arg.srvs, arg.uavs, arg.samplers, constant_buffer, constant_buffer_offset);
+    }
+
+    [[nodiscard]] ComputePass bind(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(arg, constant_buffer.res.handle, constant_buffer_offset);
+        p.add_cached_argument(srvs, uavs, samplers, constant_buffer.handle, constant_buffer_offset);
         return p;
     }
 
     void dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1);
+
+    // dispatch for a given work size
+    // example: dispatch2D(4096, 64);
+    void dispatch1D(uint32_t sizeX, uint32_t groupSizeX = 64) { dispatch(cc::int_div_ceil(sizeX, groupSizeX), 1u, 1u); }
+
+    // dispatch for a given work size
+    // example: dispatch2D(1920, 1080, 8, 8);
+    void dispatch2D(uint32_t sizeX, uint32_t sizeY, uint32_t groupSizeX = 8, uint32_t groupSizeY = 8)
+    {
+        dispatch(cc::int_div_ceil(sizeX, groupSizeX), cc::int_div_ceil(sizeY, groupSizeY), 1u);
+    }
+
+    // dispatch for a given work size
+    // example: dispatch2D(512, 512, 512, 8, 8, 8);
+    void dispatch3D(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, uint32_t groupSizeX = 8, uint32_t groupSizeY = 8, uint32_t groupSizeZ = 8)
+    {
+        dispatch(cc::int_div_ceil(sizeX, groupSizeX), cc::int_div_ceil(sizeY, groupSizeY), cc::int_div_ceil(sizeZ, groupSizeZ));
+    }
 
     void dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments = 1, uint32_t offset_bytes = 0);
 
@@ -91,7 +118,7 @@ private:
 
     // cache-access variant
     // hits a OS mutex
-    void add_cached_argument(argument const& arg, phi::handle::resource cbv, uint32_t cbv_offset);
+    void add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset);
 
     Frame* mParent = nullptr;
     phi::cmd::dispatch mCmd;
@@ -101,10 +128,7 @@ private:
 
 // inline implementation
 
-inline void ComputePass::set_constant_buffer(const buffer& constant_buffer, unsigned offset)
-{
-    set_constant_buffer(constant_buffer.res.handle, offset);
-}
+inline void ComputePass::set_constant_buffer(const buffer& constant_buffer, unsigned offset) { set_constant_buffer(constant_buffer.handle, offset); }
 
 inline void ComputePass::set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset)
 {
