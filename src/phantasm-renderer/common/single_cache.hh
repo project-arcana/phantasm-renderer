@@ -36,14 +36,24 @@ public:
         return elem.val;
     }
 
-    void insert(ValT val, uint64_t key)
+    // returns true if the element was inserted
+    // returns false and writes to p_out_preexisting_val if the element already existed
+    bool try_insert(ValT val, uint64_t key, ValT* p_out_preexisting_val)
     {
         auto lg = std::lock_guard(_mutex);
         CC_ASSERT(val != invalid_val && "[single_cache] invalid value inserted");
         map_element& elem = _map[key];
+        if (elem.val != invalid_val)
+        {
+            *p_out_preexisting_val = elem.val;
+            ++elem.num_references;
+            return false;
+        }
+
         elem.val = val;
         elem.num_references = 1;
         elem.required_gpu_epoch = 0;
+        return true;
     }
 
     void free(uint64_t key, gpu_epoch_t current_cpu_epoch)

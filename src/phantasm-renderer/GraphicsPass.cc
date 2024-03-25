@@ -93,8 +93,9 @@ void pr::raii::GraphicsPass::draw_indirect(buffer const& argument_buffer, buffer
     draw_indirect(argument_buffer.handle, vertex_buffer.handle, index_buffer.handle, num_args, arg_buffer_offset_bytes);
 }
 
-void pr::raii::GraphicsPass::add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset)
+void pr::raii::GraphicsPass::add_cached_argument(
+    cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset, uint64_t* pOutHash, bool* pOutCacheHit)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(cbv, cbv_offset, mParent->passAcquireShaderView(srvs, uavs, samplers, false));
+    mCmd.add_shader_arg(cbv, cbv_offset, mParent->passAcquireShaderView(srvs, uavs, samplers, false, pOutHash, pOutCacheHit));
 }
