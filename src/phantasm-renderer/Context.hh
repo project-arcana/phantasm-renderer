@@ -442,10 +442,9 @@ public:
 
     /// returns the amount of bytes needed to store the contents of a texture (in a GPU buffer)
     /// ex. use case: allocating upload buffers of the right size to upload textures
-    uint32_t calculate_texture_upload_size(tg::isize3 size, format fmt, uint32_t num_mips = 1) const;
-    uint32_t calculate_texture_upload_size(tg::isize2 size, format fmt, uint32_t num_mips = 1) const;
-    uint32_t calculate_texture_upload_size(int32_t width, format fmt, uint32_t num_mips = 1) const;
+    /// set num_mips = 0 for the entire chain
     uint32_t calculate_texture_upload_size(texture const& texture, uint32_t num_mips = 1) const;
+    uint32_t calculate_texture_upload_size(tg::isize2 size, format fmt, uint32_t num_mips) const;
 
     /// returns the offset in bytes of the given pixel position in a texture of given size and format (in a GPU buffer)
     /// ex. use case: copying a render target to a readback buffer, then reading the pixel at this offset

@@ -101,9 +101,11 @@ public:
               uint32_t src_mip_index = 0,
               uint32_t src_array_index = 0);
 
+    // copy texture to texture
     // copies all array slices at the given MIP level from src to dest
     void copy(texture const& src, texture const& dest, uint32_t mip_index = 0);
 
+    // copy texture to texture
     // copy textures specifying source and destination MIP, array element, size and slice count
     void copy_subsection(texture const& src,
                          texture const& dest,
@@ -155,6 +157,15 @@ public:
 
     // creates a suitable temporary upload buffer and copies data to the destination buffer
     void auto_upload_buffer_data(cc::span<std::byte const> data, buffer const& dest_buffer);
+
+    // copy texture to buffer
+    // copies all MIP levels and all array slices in canonical ordering (contiguous in MIPs) to the buffer
+    // subresources have 512 byte-aligned offsets
+    // buffer must have sufficient space (use Context::calculate_texture_upload_size)
+    void copy_all_subresources(texture const& src, buffer const& dest);
+
+    //
+    // deferred free
 
     // free a buffer once no longer in flight AFTER this frame was submitted/discarded
     void free_deferred_after_submit(buffer const& buf) { free_deferred_after_submit(buf.handle); }

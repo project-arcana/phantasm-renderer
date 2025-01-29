@@ -614,11 +614,6 @@ pr::buffer_info const& Context::get_buffer_info(pr::buffer const& buf) const { r
 
 uint64_t pr::Context::get_gpu_timestamp_frequency() const { return mBackend->getGPUTimestampFrequency(); }
 
-uint32_t Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, uint32_t num_mips) const
-{
-    return phi::util::get_texture_size_bytes(size, fmt, num_mips, mBackendType == pr::backend::d3d12);
-}
-
 uint32_t Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const
 {
     return phi::util::get_texture_pixel_byte_offset_on_gpu(size, fmt, pixel, mBackendType == pr::backend::d3d12);
@@ -939,15 +934,11 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, uint
 uint32_t pr::Context::calculate_texture_upload_size(const texture& texture, uint32_t num_mips) const
 {
     auto const& texDesc = mBackend->getResourceTextureDescription(texture.handle);
-    return calculate_texture_upload_size({texDesc.width, texDesc.height, int(texDesc.depth_or_array_size)}, texDesc.fmt, num_mips == 0 ? texDesc.num_mips : num_mips);
-}
-
-uint32_t pr::Context::calculate_texture_upload_size(int32_t width, format fmt, uint32_t num_mips) const
-{
-    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
+    return phi::util::get_texture_size_bytes_on_gpu(texDesc, mBackendType == backend::d3d12, num_mips);
 }
 
 uint32_t pr::Context::calculate_texture_upload_size(tg::isize2 size, format fmt, uint32_t num_mips) const
 {
-    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
+    auto const texDesc = phi::arg::texture_description::create_tex(fmt, size, num_mips);
+    return phi::util::get_texture_size_bytes_on_gpu(texDesc, mBackendType == backend::d3d12);
 }
