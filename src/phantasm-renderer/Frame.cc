@@ -129,8 +129,8 @@ void pr::raii::Frame::copy(const buffer& src, const texture& dest, uint32_t src_
 
 
     phi::cmd::copy_buffer_to_texture ccmd;
-    ccmd.init(src.handle, dest.handle, uint32_t(destDesc.width) / (1 + dest_mip_index), uint32_t(destDesc.height) / (1 + dest_mip_index), src_offset,
-              dest_mip_index, dest_array_index);
+    ccmd.init(src.handle, dest.handle, uint32_t(phi::util::get_mip_size(destDesc.width, dest_mip_index)),
+              uint32_t(phi::util::get_mip_size(destDesc.height, dest_mip_index)), src_offset, dest_mip_index, dest_array_index);
 
     mBackend->cmdCopyBufferToTexture(mList, ccmd);
 }
