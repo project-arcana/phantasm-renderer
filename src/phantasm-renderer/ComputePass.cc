@@ -34,8 +34,14 @@ void pr::raii::ComputePass::dispatch_indirect(buffer const& argument_buffer, uin
     mParent->mBackend->cmdDispatchIndirect(mParent->mList, dcmd);
 }
 
-void pr::raii::ComputePass::add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource constant_buffer, uint32_t constant_buffer_offset)
+void pr::raii::ComputePass::add_cached_argument(cc::span<view> srvs,
+                                                cc::span<view> uavs,
+                                                cc::span<sampler_config const> samplers,
+                                                phi::handle::resource constant_buffer,
+                                                uint32_t constant_buffer_offset,
+                                                uint64_t* pOutHash,
+                                                bool* pOutCacheHit)
 {
     ++mArgNum;
-    mCmd.add_shader_arg(constant_buffer, constant_buffer_offset, mParent->passAcquireShaderView(srvs, uavs, samplers, true));
+    mCmd.add_shader_arg(constant_buffer, constant_buffer_offset, mParent->passAcquireShaderView(srvs, uavs, samplers, true, pOutHash, pOutCacheHit));
 }

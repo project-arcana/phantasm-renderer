@@ -287,7 +287,7 @@ private:
 
     void passOnDispatch(phi::cmd::dispatch const& dcmd);
 
-    phi::handle::shader_view passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute);
+    phi::handle::shader_view passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute, uint64_t* pOutHash, bool* bCacheHit);
 
     // Context-side API
 private:

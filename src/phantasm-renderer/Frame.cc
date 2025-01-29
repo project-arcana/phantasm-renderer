@@ -567,12 +567,19 @@ void pr::raii::Frame::passOnDispatch(const phi::cmd::dispatch& dcmd)
     mBackend->cmdDispatch(mList, dcmd);
 }
 
-phi::handle::shader_view pr::raii::Frame::passAcquireShaderView(cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute)
+phi::handle::shader_view pr::raii::Frame::passAcquireShaderView(
+    cc::span<view> srvs, cc::span<view> uavs, cc::span<phi::sampler_config const> samplers, bool compute, uint64_t* pOutHash, bool* pOutCacheHit)
 {
     fixup_incomplete_views(mCtx, srvs, uavs);
 
     uint64_t hash = 0;
-    auto const res = mCtx->acquire_shader_view(compute, &hash, srvs, uavs, samplers);
+    bool bCacheHit = false;
+    auto const res = mCtx->acquire_shader_view(compute, &hash, srvs, uavs, samplers, &bCacheHit);
+
+    if (pOutHash)
+        *pOutHash = hash;
+    if (pOutCacheHit)
+        *pOutCacheHit = bCacheHit;
 
     mFreeables.push_back({compute ? freeable_cached_obj::compute_sv : freeable_cached_obj::graphics_sv, hash});
 

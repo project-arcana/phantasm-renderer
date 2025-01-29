@@ -65,7 +65,7 @@ public:
     [[nodiscard]] ComputePass bind(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, buffer constant_buffer, uint32_t constant_buffer_offset = 0)
     {
         ComputePass p = {mParent, mCmd, mArgNum};
-        p.add_cached_argument(srvs, uavs, samplers, constant_buffer.handle, constant_buffer_offset);
+        p.add_cached_argument(srvs, uavs, samplers, constant_buffer.handle, constant_buffer_offset, nullptr, nullptr);
         return p;
     }
 
@@ -118,7 +118,13 @@ private:
 
     // cache-access variant
     // hits a OS mutex
-    void add_cached_argument(cc::span<view> srvs, cc::span<view> uavs, cc::span<sampler_config const> samplers, phi::handle::resource cbv, uint32_t cbv_offset);
+    void add_cached_argument(cc::span<view> srvs,
+                             cc::span<view> uavs,
+                             cc::span<sampler_config const> samplers,
+                             phi::handle::resource cbv,
+                             uint32_t cbv_offset,
+                             uint64_t* pOutHash,
+                             bool* pOutCacheHit);
 
     Frame* mParent = nullptr;
     phi::cmd::dispatch mCmd;

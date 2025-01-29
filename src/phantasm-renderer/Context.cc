@@ -836,10 +836,9 @@ void Context::freeCachedBuffer(const buffer_info& info, resource res)
 
 phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
-    phi::handle::pipeline_state pso = mImpl->mCacheGraphicsPSOs.acquire(hash);
+    phi::handle::pipeline_state hPSO = mImpl->mCacheGraphicsPSOs.acquire(hash);
 
-
-    if (!pso.is_valid())
+    if (!hPSO.is_valid())
     {
         graphics_pass_info_data const& info = gp._storage.get();
 
@@ -856,30 +855,50 @@ phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphic
             desc.shader_binaries.push_back(shader);
         }
 
-        pso = mBackend->createPipelineState(desc);
+        auto const hNewPSO = mBackend->createPipelineState(desc);
 
-        mImpl->mCacheGraphicsPSOs.insert(pso, hash);
+        if (mImpl->mCacheGraphicsPSOs.try_insert(hNewPSO, hash, &hPSO))
+        {
+            hPSO = hNewPSO;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewPSO);
+        }
     }
-    return pso;
+    return hPSO;
 }
 
 phi::handle::pipeline_state Context::acquire_compute_pso(uint64_t hash, const compute_pass_info& cp)
 {
-    phi::handle::pipeline_state pso = mImpl->mCacheComputePSOs.acquire(hash);
-    if (!pso.is_valid())
+    phi::handle::pipeline_state hPSO = mImpl->mCacheComputePSOs.acquire(hash);
+    if (!hPSO.is_valid())
     {
         compute_pass_info_data const& info = cp._storage.get();
-        pso = mBackend->createComputePipelineState(info.arg_shapes, cp._shader, info.has_root_consts);
-        mImpl->mCacheComputePSOs.insert(pso, hash);
+        auto const hNewPSO = mBackend->createComputePipelineState(info.arg_shapes, cp._shader, info.has_root_consts);
+
+        if (mImpl->mCacheComputePSOs.try_insert(hNewPSO, hash, &hPSO))
+        {
+            hPSO = hNewPSO;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewPSO);
+        }
     }
-    return pso;
+    return hPSO;
 }
 
 phi::handle::shader_view Context::acquire_shader_view(bool compute,
                                                       uint64_t* pOutHash,
                                                       cc::span<phi::resource_view const> srvs,
                                                       cc::span<phi::resource_view const> uavs,
-                                                      cc::span<phi::sampler_config const> samplers)
+                                                      cc::span<phi::sampler_config const> samplers,
+                                                      bool* pOutCacheHit)
 {
     auto& cache = compute ? mImpl->mCacheComputeSVs : mImpl->mCacheGraphicsSVs;
 
@@ -888,14 +907,28 @@ phi::handle::shader_view Context::acquire_shader_view(bool compute,
     uint64_t hash2 = phi::util::sse_hash_type(samplers.data(), samplers.size(), hash1 * 6364136223846793005ULL);
 
     *pOutHash = hash2;
+    *pOutCacheHit = true;
 
-    phi::handle::shader_view sv = cache.acquire(hash2);
-    if (!sv.is_valid())
+    phi::handle::shader_view hSV = cache.acquire(hash2);
+
+    if (!hSV.is_valid())
     {
-        sv = mBackend->createShaderView(srvs, uavs, samplers, compute);
-        cache.insert(sv, hash2);
+        auto const hNewSV = mBackend->createShaderView(srvs, uavs, samplers, compute);
+        if (cache.try_insert(hNewSV, hash2, &hSV))
+        {
+            // PR_LOG("Created SV {} SRVs {} UAVs {} Samplers (Hash {})", srvs.size(), uavs.size(), samplers.size(), hash2);
+            hSV = hNewSV;
+            *pOutCacheHit = false;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewSV);
+        }
     }
-    return sv;
+
+    return hSV;
 }
 
 void Context::free_all(cc::span<const freeable_cached_obj> freeables)

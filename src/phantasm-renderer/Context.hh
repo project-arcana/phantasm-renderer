@@ -571,7 +571,8 @@ private:
                                                  uint64_t* pOutHash,
                                                  cc::span<phi::resource_view const> srvs,
                                                  cc::span<phi::resource_view const> uavs,
-                                                 cc::span<phi::sampler_config const> samplers);
+                                                 cc::span<phi::sampler_config const> samplers,
+                                                 bool* pOutCacheHit);
 
     void free_all(cc::span<freeable_cached_obj const> freeables);
 
@@ -588,4 +589,5 @@ private:
     struct Implementation;
     Implementation* mImpl = nullptr;
 };
+
 }
