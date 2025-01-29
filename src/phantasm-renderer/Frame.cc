@@ -647,3 +647,15 @@ void pr::raii::Frame::raw_clear_textures(phi::cmd::clear_textures const& ccmd)
     flushPendingTransitions();
     mBackend->cmdClearTextures(mList, ccmd);
 }
+
+void pr::raii::Frame::raw_update_top_level(phi::cmd::update_top_level const& cmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdUpdateTopLevel(mList, cmd);
+}
+
+void pr::raii::Frame::raw_update_bottom_level(phi::cmd::update_bottom_level const& cmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdUpdateBottomLevel(mList, cmd);
+}

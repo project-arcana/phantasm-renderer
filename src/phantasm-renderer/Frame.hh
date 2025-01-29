@@ -214,6 +214,10 @@ public:
 
     void raw_clear_textures(phi::cmd::clear_textures const& ccmd);
 
+    void raw_update_top_level(phi::cmd::update_top_level const& cmd);
+
+    void raw_update_bottom_level(phi::cmd::update_bottom_level const& cmd);
+
     Context& context() { return *mCtx; }
 
     phi::handle::live_command_list get_list_handle() const { return mList; }

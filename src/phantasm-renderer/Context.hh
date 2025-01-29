@@ -245,6 +245,7 @@ public:
     void free_deferred(phi::handle::resource res);
     void free_deferred(phi::handle::shader_view sv);
     void free_deferred(phi::handle::pipeline_state pso);
+    void free_deferred(phi::handle::accel_struct as);
     void free_range_deferred(cc::span<phi::handle::resource const> res_range);
     void free_range_deferred(cc::span<phi::handle::shader_view const> sv_range);
 
