@@ -659,3 +659,9 @@ void pr::raii::Frame::raw_update_bottom_level(phi::cmd::update_bottom_level cons
     flushPendingTransitions();
     mBackend->cmdUpdateBottomLevel(mList, cmd);
 }
+
+void pr::raii::Frame::raw_update_bottom_level(phi::cmd::update_bottom_level_in_buffer const& cmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdUpdateBottomLevelInBuffer(mList, cmd);
+}

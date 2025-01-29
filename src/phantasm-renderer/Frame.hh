@@ -218,6 +218,8 @@ public:
 
     void raw_update_bottom_level(phi::cmd::update_bottom_level const& cmd);
 
+    void raw_update_bottom_level(phi::cmd::update_bottom_level_in_buffer const& cmd);
+
     Context& context() { return *mCtx; }
 
     phi::handle::live_command_list get_list_handle() const { return mList; }
