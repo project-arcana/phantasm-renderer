@@ -35,8 +35,12 @@ public:
 
     void initialize(cc::allocator* staticAlloc, uint32_t maxNumCachedResources, uint32_t expectedMaxNumKeys)
     {
-        mCachedResourceIndicesMemory.reset(staticAlloc, sizeof(uint32_t) * uint32_t(1.25f * float(maxNumCachedResources)));
-        mCachedResourceIndicesAllocator.initialize(mCachedResourceIndicesMemory);
+        // TLSF requires 8-byte aligned memory, alloc 7 additional bytes and align-up
+        uint32_t const MemSizeUnaligned = sizeof(uint32_t) * uint32_t(1.25f * float(maxNumCachedResources));
+        mCachedResourceIndicesMemory.reset(staticAlloc, 7u + MemSizeUnaligned);
+
+        mCachedResourceIndicesAllocator.initialize({cc::align_up(mCachedResourceIndicesMemory.data(), 8u), MemSizeUnaligned});
+
         mPool.initialize(maxNumCachedResources, staticAlloc);
         mMap.reserve(expectedMaxNumKeys);
     }
