@@ -488,23 +488,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
     if (frame._cmdlist.is_valid()) // CompiledFrame doesn't always hold a commandlist
     {
-        mImpl->mGpuEpochTracker._cached_epoch_gpu = mImpl->mGpuEpochTracker.get_current_epoch_gpu(mBackend);
-
-        // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
-        phi::fence_operation signal_op;
-        signal_op.fence = mImpl->mGpuEpochTracker._fence;
-        signal_op.value = mImpl->mGpuEpochTracker._current_epoch_cpu;
-
-        {
-            // unsynced, mutex: submission
-            auto const lg = std::lock_guard<std::mutex>(mImpl->mMutexSubmission);
-            mBackend->submit(cc::span{frame._cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
-        }
-
-        // increment CPU epoch after signalling
-        ++mImpl->mGpuEpochTracker._current_epoch_cpu;
-
-        res = mImpl->mGpuEpochTracker._current_epoch_cpu;
+        res = this->submit(cc::span{frame._cmdlist});
 
         if (frame._present_after_submit_swapchain.is_valid())
         {
@@ -525,6 +509,30 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     frame.invalidate();
 
     return res;
+}
+
+gpu_epoch_t pr::Context::submit(cc::span<phi::handle::command_list> cmdlists)
+{
+    CC_ASSERT(!mImpl->mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit command lists during global shutdown");
+    CC_ASSERT(cmdlists.size() > 0 && "submitted zero command lists");
+
+    mImpl->mGpuEpochTracker._cached_epoch_gpu = mImpl->mGpuEpochTracker.get_current_epoch_gpu(mBackend);
+
+    // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
+    phi::fence_operation signal_op;
+    signal_op.fence = mImpl->mGpuEpochTracker._fence;
+    signal_op.value = mImpl->mGpuEpochTracker._current_epoch_cpu;
+
+    {
+        // unsynced, mutex: submission
+        auto const lg = std::lock_guard<std::mutex>(mImpl->mMutexSubmission);
+        mBackend->submit(cmdlists, phi::queue_type::direct, {}, cc::span{signal_op});
+    }
+
+    // increment CPU epoch after signalling
+    ++mImpl->mGpuEpochTracker._current_epoch_cpu;
+
+    return mImpl->mGpuEpochTracker._current_epoch_cpu;
 }
 
 void Context::discard(CompiledFrame&& frame)

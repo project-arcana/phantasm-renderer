@@ -334,6 +334,11 @@ public:
     /// (batched, non-direct queue, with fence signals / waits)
     phi::handle::command_list finalize_and_get_command_list(CompiledFrame&& frame);
 
+    /// advanced usage: submits phi command lists to the direct queue
+    /// this is necessary if you're using other phi APIs but still rely on pr caching
+    /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
+    gpu_epoch_t submit(cc::span<phi::handle::command_list> cmdlists);
+
     //
     // swapchain API
     //
