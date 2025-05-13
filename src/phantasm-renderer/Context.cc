@@ -3,8 +3,6 @@
 #include <atomic>
 #include <mutex>
 
-#include <typed-geometry/tg.hh>
-
 #include <clean-core/xxHash.hh>
 
 #include <dxc-wrapper/compiler.hh>
