@@ -45,8 +45,15 @@ dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
         return dxcw::target::geometry;
     case phi::shader_stage::pixel:
         return dxcw::target::pixel;
+
     case phi::shader_stage::compute:
         return dxcw::target::compute;
+
+    case phi::shader_stage::amplification:
+        return dxcw::target::amplification;
+    case phi::shader_stage::mesh:
+        return dxcw::target::mesh;
+
     default:
         PR_LOG_WARN("Unsupported shader stage for online compilation");
         return dxcw::target::pixel;
