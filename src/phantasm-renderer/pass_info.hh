@@ -121,7 +121,7 @@ public:
 
     graphics_pass_info& topology(pr::primitive_topology topology)
     {
-        _storage.get().graphics_config.topology = topology;
+        _storage.get().topology = topology;
         return *this;
     }
 
