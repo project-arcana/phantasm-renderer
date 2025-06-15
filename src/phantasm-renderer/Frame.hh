@@ -210,6 +210,10 @@ public:
 
     void raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dcmd);
 
+    void raw_dispatch_mesh(phi::cmd::dispatch_mesh const& dcmd);
+
+    void raw_dispatch_mesh_indirect(phi::cmd::dispatch_mesh_indirect const& dcmd);
+
     void raw_dispatch_rays(phi::cmd::dispatch_rays const& dcmd);
 
     void raw_clear_textures(phi::cmd::clear_textures const& ccmd);

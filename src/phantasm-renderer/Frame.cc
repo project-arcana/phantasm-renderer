@@ -636,6 +636,18 @@ void pr::raii::Frame::raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dc
     mBackend->cmdDispatchIndirect(mList, dcmd);
 }
 
+void pr::raii::Frame::raw_dispatch_mesh(phi::cmd::dispatch_mesh const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDispatchMesh(mList, dcmd);
+}
+
+void pr::raii::Frame::raw_dispatch_mesh_indirect(phi::cmd::dispatch_mesh_indirect const& dcmd)
+{
+    flushPendingTransitions();
+    mBackend->cmdDispatchMeshIndirect(mList, dcmd);
+}
+
 void pr::raii::Frame::raw_dispatch_rays(phi::cmd::dispatch_rays const& dcmd)
 {
     flushPendingTransitions();
