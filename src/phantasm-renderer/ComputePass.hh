@@ -89,7 +89,12 @@ public:
         dispatch(cc::int_div_ceil(sizeX, groupSizeX), cc::int_div_ceil(sizeY, groupSizeY), cc::int_div_ceil(sizeZ, groupSizeZ));
     }
 
-    void dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments = 1, uint32_t offset_bytes = 0);
+    void dispatch_indirect(phi::buffer_address const& argument_buffer, uint32_t num_arguments = 1);
+
+    void dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments = 1, uint32_t offset_bytes = 0)
+    {
+        dispatch_indirect(phi::buffer_address{argument_buffer.handle, offset_bytes}, num_arguments);
+    }
 
     void set_constant_buffer(buffer const& constant_buffer, unsigned offset = 0);
     void set_constant_buffer(phi::handle::resource raw_cbv, unsigned offset = 0);

@@ -18,7 +18,7 @@ void pr::raii::ComputePass::dispatch(uint32_t x, uint32_t y, uint32_t z)
     mParent->mBackend->cmdDispatch(mParent->mList, mCmd);
 }
 
-void pr::raii::ComputePass::dispatch_indirect(buffer const& argument_buffer, uint32_t num_arguments, uint32_t offset_bytes)
+void pr::raii::ComputePass::dispatch_indirect(phi::buffer_address const& argument_buffer, uint32_t num_arguments)
 {
     CC_ASSERT(mCmd.pipeline_state.is_valid() && "PSO is invalid at dispatch submission");
 
@@ -26,8 +26,7 @@ void pr::raii::ComputePass::dispatch_indirect(buffer const& argument_buffer, uin
     std::memcpy(dcmd.root_constants, mCmd.root_constants, sizeof(dcmd.root_constants));
     std::memcpy(dcmd.shader_arguments.data(), mCmd.shader_arguments.data(), sizeof(dcmd.shader_arguments));
     dcmd.pipeline_state = mCmd.pipeline_state;
-    dcmd.argument_buffer_addr.buffer = argument_buffer.handle;
-    dcmd.argument_buffer_addr.offset_bytes = offset_bytes;
+    dcmd.argument_buffer_addr = argument_buffer;
     dcmd.num_arguments = num_arguments;
 
     mParent->flushPendingTransitions();
