@@ -95,6 +95,7 @@ public:
     /// create a shader from binary data (only hashes the data)
     [[nodiscard]] auto_shader_binary make_shader(cc::span<std::byte const> data, pr::shader_stage stage);
 
+#ifdef PR_HAS_DXC
     /// create a shader by compiling it live from text
     /// build_debug: compile without optimizations and embed debug symbols/PDB info (/Od /Zi /Qembed_debug) - required for shader debugging in Rdoc, PIX etc
     [[nodiscard]] auto_shader_binary make_shader(cc::string_view code,
@@ -102,6 +103,7 @@ public:
                                                  pr::shader_stage stage,
                                                  bool build_debug = false,
                                                  cc::allocator* scratch_alloc = cc::system_allocator);
+#endif // !PR_HAS_DXC
 
     //
     // prebuilt arguments (shader views)
@@ -560,7 +562,9 @@ private:
 private:
     friend struct detail::auto_destroy_proxy;
 
+#ifdef PR_HAS_DXC
     void freeShaderBinary(IDxcBlob* blob);
+#endif
     void freeShaderView(phi::handle::shader_view sv);
     void freePipelineState(phi::handle::pipeline_state ps);
 

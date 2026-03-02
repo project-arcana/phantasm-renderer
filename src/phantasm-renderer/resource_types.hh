@@ -43,8 +43,12 @@ struct shader_binary
 {
     std::byte const* _data = nullptr;
     size_t _size = 0;
+
+#ifdef PR_HAS_DXC
     IDxcBlob* _owning_blob = nullptr; ///< if non-null, shader was compiled online and must be freed via dxc
-    uint64_t _hash = 0;               ///< xxhash64 over _data, for caching of PSOs using this shader
+#endif
+
+    uint64_t _hash = 0; ///< xxhash64 over _data, for caching of PSOs using this shader
     phi::shader_stage _stage = phi::shader_stage::none;
 };
 

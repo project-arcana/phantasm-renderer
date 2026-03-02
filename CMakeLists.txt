@@ -6,6 +6,11 @@ if (NOT TARGET clean-core)
 endif()
 
 # =========================================
+# options
+
+option(PR_ENABLE_SHADER_COMPILATION "If enabled, allow runtime shader compilation by linking to DXC" ON)
+
+# =========================================
 # define library
 
 file(GLOB_RECURSE SOURCES "src/*.cc")
@@ -21,8 +26,12 @@ target_link_libraries(phantasm-renderer PUBLIC
     typed-geometry
     rich-log
     reflector
-    dxc-wrapper
 )
+
+if (PR_ENABLE_SHADER_COMPILATION)
+    target_link_libraries(phantasm-renderer PUBLIC dxc-wrapper)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_HAS_DXC)
+endif()
 
 # =========================================
 # set up compile flags

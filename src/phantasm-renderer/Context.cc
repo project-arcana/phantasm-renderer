@@ -5,7 +5,9 @@
 
 #include <clean-core/xxHash.hh>
 
+#ifdef PR_HAS_DXC
 #include <dxc-wrapper/compiler.hh>
+#endif
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
@@ -31,6 +33,7 @@ using namespace pr;
 
 namespace
 {
+#ifdef PR_HAS_DXC
 dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
 {
     switch (stage)
@@ -59,6 +62,7 @@ dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
         return dxcw::target::pixel;
     }
 }
+#endif
 }
 
 struct pr::Context::Implementation
@@ -67,7 +71,9 @@ struct pr::Context::Implementation
     bool mOwnsBackend = false;
 
     // components
+#ifdef PR_HAS_DXC
     dxcw::compiler mShaderCompiler;
+#endif
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
@@ -184,16 +190,21 @@ auto_shader_binary Context::make_shader(cc::span<std::byte const> data, pr::shad
 {
     CC_ASSERT(data.data() != nullptr);
 
-    shader_binary res;
+    shader_binary res = {};
     res._stage = stage;
     res._data = data.data();
     res._size = data.size();
+
+#ifdef PR_HAS_DXC
     res._owning_blob = nullptr;
+#endif
+
     res._hash = cc::hash_xxh3({res._data, res._size}, 31);
 
     return {res, this};
 }
 
+#ifdef PR_HAS_DXC
 auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
 {
     dxcw::binary bin;
@@ -219,6 +230,7 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
         return res;
     }
 }
+#endif // PR_HAS_DXC
 
 auto_prebuilt_argument Context::make_graphics_argument(argument& arg)
 {
@@ -309,8 +321,10 @@ void Context::free(compute_pipeline_state const& pso) { freePipelineState(pso.ha
 void Context::free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
 void Context::free(shader_binary const& shader)
 {
+#ifdef PR_HAS_DXC
     if (shader._owning_blob != nullptr)
         freeShaderBinary(shader._owning_blob);
+#endif
 }
 void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
@@ -756,7 +770,9 @@ void Context::destroy()
 
             // destroy other components
             mImpl->mGpuEpochTracker.destroy(mBackend);
+#ifdef PR_HAS_DXC
             mImpl->mShaderCompiler.destroy();
+#endif
             mImpl->mDeferredQueue.destroy(*this);
 
             // if onwing mBackend, destroy and free it
@@ -787,7 +803,9 @@ void Context::internalInitialize(cc::allocator* alloc, bool ownsBackend)
     mImpl->mGpuEpochTracker.initialize(mBackend);
     mImpl->mCacheBuffers.reserve(256);
     mImpl->mCacheTextures.reserve(256);
+#ifdef PR_HAS_DXC
     mImpl->mShaderCompiler.initialize();
+#endif
     mImpl->mDeferredQueue.initialize(alloc);
 
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
@@ -829,10 +847,12 @@ buffer Context::acquireBuffer(const buffer_info& info)
     }
 }
 
+#ifdef PR_HAS_DXC
 void Context::freeShaderBinary(IDxcBlob* blob)
 {
     dxcw::destroy_blob(blob); // intern. synced
 }
+#endif
 
 void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }
 
