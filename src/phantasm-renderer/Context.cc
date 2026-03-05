@@ -530,7 +530,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     return res;
 }
 
-gpu_epoch_t pr::Context::submit(cc::span<phi::handle::command_list> cmdlists)
+gpu_epoch_t pr::Context::submit(cc::span<phi::handle::command_list const> cmdlists)
 {
     CC_ASSERT(!mImpl->mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit command lists during global shutdown");
     CC_ASSERT(cmdlists.size() > 0 && "submitted zero command lists");

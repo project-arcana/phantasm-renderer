@@ -339,7 +339,7 @@ public:
     /// advanced usage: submits phi command lists to the direct queue
     /// this is necessary if you're using other phi APIs but still rely on pr caching
     /// returns an epoch that can be tested using Context::is_gpu_epoch_reached
-    gpu_epoch_t submit(cc::span<phi::handle::command_list> cmdlists);
+    gpu_epoch_t submit(cc::span<phi::handle::command_list const> cmdlists);
 
     //
     // swapchain API
