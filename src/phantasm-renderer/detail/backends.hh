@@ -4,9 +4,10 @@
 
 #include <phantasm-hardware-interface/fwd.hh>
 
+#include <phantasm-renderer/common/api.hh>
 #include <phantasm-renderer/enums.hh>
 
 namespace pr::detail
 {
-[[nodiscard]] phi::Backend* make_backend(backend type, cc::allocator* alloc);
+PR_API phi::Backend* make_backend(backend type, cc::allocator* alloc);
 }

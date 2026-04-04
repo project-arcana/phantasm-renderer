@@ -4,10 +4,12 @@
 
 #include "Context.hh"
 
-void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
+void pr::argument::fill_default_srv(pr::Context* ctx, phi::resource_view& new_rv, const pr::texture& img, uint32_t mip_start, uint32_t mip_size)
 {
-    new_rv.resource = img.res.handle;
-    new_rv.texture_info.pixel_format = img.info.fmt;
+    auto const& texDesc = ctx->get_backend().getResourceTextureDescription(img.handle);
+
+    new_rv.resource = img.handle;
+    new_rv.texture_info.pixel_format = texDesc.fmt;
     new_rv.texture_info.mip_start = mip_start;
 
     if (mip_size != unsigned(-1))
@@ -17,40 +19,56 @@ void pr::argument::fill_default_srv(phi::resource_view& new_rv, const pr::textur
     else
     {
         // automatic, but attempt to derive from info
-        new_rv.texture_info.mip_size = img.info.num_mips == 0 ? unsigned(-1) : img.info.num_mips;
+        new_rv.texture_info.mip_size = texDesc.num_mips == 0 ? unsigned(-1) : texDesc.num_mips;
     }
 
-    if (img.info.dim == phi::texture_dimension::t1d)
+    if (texDesc.dim == phi::texture_dimension::t1d)
     {
         new_rv.dimension = phi::resource_view_dimension::texture1d;
 
         new_rv.texture_info.array_size = 1;
         new_rv.texture_info.array_start = 0;
     }
-    else if (img.info.dim == phi::texture_dimension::t2d)
+    else if (texDesc.dim == phi::texture_dimension::t2d)
     {
-        if (img.info.depth_or_array_size == 6)
+        if (texDesc.depth_or_array_size == 6)
             new_rv.dimension = phi::resource_view_dimension::texturecube;
-        else if (img.info.num_samples > 1)
-            new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_ms_array : phi::resource_view_dimension::texture2d_ms;
+        else if (texDesc.num_samples > 1)
+            new_rv.dimension = texDesc.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_ms_array : phi::resource_view_dimension::texture2d_ms;
         else
-            new_rv.dimension = img.info.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
+            new_rv.dimension = texDesc.depth_or_array_size > 1 ? phi::resource_view_dimension::texture2d_array : phi::resource_view_dimension::texture2d;
 
-        new_rv.texture_info.array_size = img.info.depth_or_array_size;
+        new_rv.texture_info.array_size = texDesc.depth_or_array_size;
         new_rv.texture_info.array_start = 0;
     }
     else /* (== phi::texture_dimension::t3d) */
     {
         new_rv.dimension = phi::resource_view_dimension::texture3d;
-        new_rv.texture_info.array_size = img.info.depth_or_array_size;
+        new_rv.texture_info.array_size = texDesc.depth_or_array_size;
         new_rv.texture_info.array_start = 0;
     }
 }
 
-void pr::argument::fill_default_uav(phi::resource_view& new_rv, const pr::texture& img, unsigned mip_start, unsigned mip_size)
+void pr::argument::fill_default_srv(pr::Context* ctx, phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start)
+{
+    auto const& bufDesc = ctx->get_backend().getResourceBufferDescription(buf.handle);
+
+    CC_ASSERT(bufDesc.stride_bytes > 0 && "buffer used as SRV has no stride, pass a stride during creation");
+    uint32_t const num_elems = bufDesc.size_bytes / bufDesc.stride_bytes;
+    CC_ASSERT(element_start < num_elems && "element_start is OOB");
+    new_rv.init_as_structured_buffer(buf.handle, num_elems - element_start, bufDesc.stride_bytes, element_start);
+}
+
+void pr::argument::fill_default_uav(pr::Context* ctx, phi::resource_view& new_rv, const pr::texture& img, uint32_t mip_start, uint32_t mip_size)
 {
     // no difference in handling right now
-    fill_default_srv(new_rv, img, mip_start, mip_size);
+    fill_default_srv(ctx, new_rv, img, mip_start, mip_size);
+}
+
+void pr::argument::fill_default_uav(pr::Context* ctx, phi::resource_view& new_rv, pr::buffer const& buf, uint32_t element_start)
+{
+    // no difference in handling right now
+    fill_default_srv(ctx, new_rv, buf, element_start);
 }
 
 pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
@@ -61,4 +79,35 @@ pr::auto_prebuilt_argument pr::argument_builder::make_graphics()
 pr::auto_prebuilt_argument pr::argument_builder::make_compute()
 {
     return {prebuilt_argument{_parent->get_backend().createShaderView(_srvs, _uavs, _samplers, true)}, _parent};
+}
+
+void pr::fixup_incomplete_views(pr::Context* pCtx, cc::span<pr::view> srvs, cc::span<pr::view> uavs)
+{
+    for (auto& srv : srvs)
+    {
+        if (uint32_t(srv.dimension) == e_incomplete_rv_dim_texture)
+        {
+            auto const tex = pr::texture{{srv.resource}};
+            argument::fill_default_srv(pCtx, srv, tex, srv.texture_info.mip_start, srv.texture_info.mip_size);
+        }
+        else if (uint32_t(srv.dimension) == e_incomplete_rv_dim_buffer)
+        {
+            auto const buf = pr::buffer{{srv.resource}};
+            argument::fill_default_srv(pCtx, srv, buf, srv.buffer_info.element_start);
+        }
+    }
+
+    for (auto& uav : uavs)
+    {
+        if (uint32_t(uav.dimension) == e_incomplete_rv_dim_texture)
+        {
+            auto const tex = pr::texture{{uav.resource}};
+            argument::fill_default_uav(pCtx, uav, tex, uav.texture_info.mip_start, uav.texture_info.mip_size);
+        }
+        else if (uint32_t(uav.dimension) == e_incomplete_rv_dim_buffer)
+        {
+            auto const buf = pr::buffer{{uav.resource}};
+            argument::fill_default_uav(pCtx, uav, buf, uav.buffer_info.element_start);
+        }
+    }
 }

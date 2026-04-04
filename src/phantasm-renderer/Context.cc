@@ -3,15 +3,16 @@
 #include <atomic>
 #include <mutex>
 
-#include <typed-geometry/tg.hh>
-
 #include <clean-core/xxHash.hh>
 
+#ifdef PR_HAS_DXC
 #include <dxc-wrapper/compiler.hh>
+#endif
 
 #include <phantasm-hardware-interface/Backend.hh>
 #include <phantasm-hardware-interface/common/byte_util.hh>
 #include <phantasm-hardware-interface/common/format_size.hh>
+#include <phantasm-hardware-interface/common/sse_hash.hh>
 #include <phantasm-hardware-interface/config.hh>
 #include <phantasm-hardware-interface/util.hh>
 #include <phantasm-hardware-interface/window_handle.hh>
@@ -32,6 +33,7 @@ using namespace pr;
 
 namespace
 {
+#ifdef PR_HAS_DXC
 dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
 {
     switch (stage)
@@ -46,13 +48,21 @@ dxcw::target stage_to_dxcw_target(phi::shader_stage stage)
         return dxcw::target::geometry;
     case phi::shader_stage::pixel:
         return dxcw::target::pixel;
+
     case phi::shader_stage::compute:
         return dxcw::target::compute;
+
+    case phi::shader_stage::amplification:
+        return dxcw::target::amplification;
+    case phi::shader_stage::mesh:
+        return dxcw::target::mesh;
+
     default:
         PR_LOG_WARN("Unsupported shader stage for online compilation");
         return dxcw::target::pixel;
     }
 }
+#endif
 }
 
 struct pr::Context::Implementation
@@ -61,11 +71,12 @@ struct pr::Context::Implementation
     bool mOwnsBackend = false;
 
     // components
+#ifdef PR_HAS_DXC
     dxcw::compiler mShaderCompiler;
+#endif
     std::mutex mMutexSubmission;
     std::mutex mMutexShaderCompilation;
     gpu_epoch_tracker mGpuEpochTracker;
-    std::atomic<uint64_t> mResourceGUID = {1}; // GUID 0 is invalid
     std::atomic<bool> mIsShuttingDown = {false};
     deferred_destruction_queue mDeferredQueue;
 
@@ -88,7 +99,11 @@ struct pr::Context::Implementation
 #endif
 };
 
-raii::Frame Context::make_frame(size_t initial_size, cc::allocator* alloc) { return pr::raii::Frame{this, initial_size, alloc}; }
+raii::Frame Context::make_frame(queue_type queue, cc::allocator* alloc, phi::cmd::set_global_profile_scope const* opt_global_profile_scope)
+{
+    phi::handle::live_command_list const liveList = mBackend->openLiveCommandList(queue, opt_global_profile_scope);
+    return pr::raii::Frame{this, liveList, alloc};
+}
 
 auto_texture Context::make_texture(int32_t width, phi::format format, uint32_t num_mips, bool allow_uav, char const* debug_name)
 {
@@ -128,6 +143,12 @@ auto_texture Context::make_texture_array(tg::isize2 size, uint32_t num_elems, ph
 
 auto_texture Context::make_texture(const texture_info& info, char const* debug_name) { return {createTexture(info, debug_name), this}; }
 
+
+auto_texture pr::Context::make_texture_clone(texture const& clone_source, char const* debug_name)
+{
+    return make_texture(get_backend().getResourceTextureDescription(clone_source.handle), debug_name);
+}
+
 auto_texture Context::make_target(tg::isize2 size, phi::format format, uint32_t num_samples, uint32_t array_size, char const* debug_name)
 {
     auto const info = texture_info::create_rt(format, size, num_samples, array_size);
@@ -160,21 +181,31 @@ auto_buffer Context::make_readback_buffer(uint32_t size, uint32_t stride, char c
 
 auto_buffer Context::make_buffer(const buffer_info& info, char const* debug_name) { return {createBuffer(info, debug_name), this}; }
 
-auto_shader_binary Context::make_shader(cc::span<std::byte const> data, phi::shader_stage stage)
+auto_buffer pr::Context::make_buffer_clone(buffer const& clone_source, char const* debug_name)
+{
+    return make_buffer(mBackend->getResourceBufferDescription(clone_source.handle), debug_name);
+}
+
+auto_shader_binary Context::make_shader(cc::span<std::byte const> data, pr::shader_stage stage)
 {
     CC_ASSERT(data.data() != nullptr);
 
-    shader_binary res;
+    shader_binary res = {};
     res._stage = stage;
     res._data = data.data();
     res._size = data.size();
+
+#ifdef PR_HAS_DXC
     res._owning_blob = nullptr;
+#endif
+
     res._hash = cc::hash_xxh3({res._data, res._size}, 31);
 
     return {res, this};
 }
 
-auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, phi::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
+#ifdef PR_HAS_DXC
+auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view entrypoint, pr::shader_stage stage, bool build_debug, cc::allocator* scratch_alloc)
 {
     dxcw::binary bin;
 
@@ -183,7 +214,8 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
 
     {
         auto lg = std::lock_guard(mImpl->mMutexShaderCompilation); // unsynced, mutex: compilation
-        bin = mImpl->mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output, build_debug, nullptr, nullptr, {}, scratch_alloc);
+        bin = mImpl->mShaderCompiler.compile_shader(code.data(), entrypoint.data(), sc_target, sc_output, dxcw::shader_model::sm_use_default,
+                                                    build_debug, {}, nullptr, {}, scratch_alloc);
     }
 
     if (bin.data == nullptr)
@@ -198,11 +230,12 @@ auto_shader_binary Context::make_shader(cc::string_view code, cc::string_view en
         return res;
     }
 }
+#endif // PR_HAS_DXC
 
-auto_prebuilt_argument Context::make_graphics_argument(const argument& arg)
+auto_prebuilt_argument Context::make_graphics_argument(argument& arg)
 {
-    auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false)}, this};
+    fixup_incomplete_views(this, arg.srvs, arg.uavs);
+    return {prebuilt_argument{mBackend->createShaderView(arg.srvs, arg.uavs, arg.samplers, false)}, this};
 }
 
 auto_prebuilt_argument Context::make_graphics_argument(cc::span<const phi::resource_view> srvs,
@@ -212,10 +245,10 @@ auto_prebuilt_argument Context::make_graphics_argument(cc::span<const phi::resou
     return {prebuilt_argument{mBackend->createShaderView(srvs, uavs, samplers, false)}, this};
 }
 
-auto_prebuilt_argument Context::make_compute_argument(const argument& arg)
+auto_prebuilt_argument Context::make_compute_argument(argument& arg)
 {
-    auto const& info = arg._info.get();
-    return {prebuilt_argument{mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true)}, this};
+    fixup_incomplete_views(this, arg.srvs, arg.uavs);
+    return {prebuilt_argument{mBackend->createShaderView(arg.srvs, arg.uavs, arg.samplers, true)}, this};
 }
 
 auto_prebuilt_argument Context::make_compute_argument(cc::span<const phi::resource_view> srvs,
@@ -231,12 +264,20 @@ auto_graphics_pipeline_state Context::make_pipeline_state(const graphics_pass_in
 {
     auto const& gp = gp_wrap._storage.get();
 
-    phi::arg::vertex_format vert_format;
-    vert_format.attributes = gp.vertex_attributes;
-    vert_format.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
+    phi::arg::graphics_pipeline_state_description desc = {};
+    desc.config = gp.graphics_config;
+    desc.framebuffer = fb._storage;
+    desc.vertices.attributes = gp.vertex_attributes;
+    desc.vertices.vertex_sizes_bytes[0] = gp.vertex_size_bytes;
+    desc.root_signature.shader_arg_shapes = gp.arg_shapes;
+    desc.root_signature.has_root_constants = gp.has_root_consts;
 
-    return auto_graphics_pipeline_state{
-        {{mBackend->createPipelineState(vert_format, fb._storage.get(), gp.arg_shapes, gp.has_root_consts, gp_wrap._shaders, gp.graphics_config)}}, this};
+    for (auto const& shader : gp_wrap._shaders)
+    {
+        desc.shader_binaries.push_back(shader);
+    }
+
+    return auto_graphics_pipeline_state{{{mBackend->createPipelineState(desc)}}, this};
 }
 
 auto_compute_pipeline_state Context::make_pipeline_state(const compute_pass_info& cp_wrap)
@@ -255,7 +296,13 @@ auto_query_range Context::make_query_range(phi::query_type type, uint32_t num_qu
 
 auto_swapchain Context::make_swapchain(const phi::window_handle& window_handle, tg::isize2 initial_size, pr::present_mode mode, uint32_t num_backbuffers)
 {
-    return {{mBackend->createSwapchain(window_handle, initial_size, mode, num_backbuffers)}, this};
+    phi::arg::swapchain_description desc = {};
+    desc.handle = window_handle;
+    desc.initial_width = initial_size.width;
+    desc.initial_height = initial_size.height;
+    desc.mode = mode;
+    desc.num_backbuffers = num_backbuffers;
+    return {{mBackend->createSwapchain(desc, nullptr)}, this};
 }
 
 void Context::free_untyped(phi::handle::resource resource) { mBackend->free(resource); }
@@ -269,53 +316,66 @@ void Context::free_range(cc::span<const prebuilt_argument> arg_range)
 
 void Context::free_range(cc::span<const phi::handle::shader_view> sv_range) { mBackend->freeRange(sv_range); }
 
-void Context::free(graphics_pipeline_state const& pso) { freePipelineState(pso._handle); }
-void Context::free(compute_pipeline_state const& pso) { freePipelineState(pso._handle); }
+void Context::free(graphics_pipeline_state const& pso) { freePipelineState(pso.handle); }
+void Context::free(compute_pipeline_state const& pso) { freePipelineState(pso.handle); }
 void Context::free(prebuilt_argument const& arg) { freeShaderView(arg._sv); }
 void Context::free(shader_binary const& shader)
 {
+#ifdef PR_HAS_DXC
     if (shader._owning_blob != nullptr)
         freeShaderBinary(shader._owning_blob);
+#endif
 }
 void Context::free(const fence& f) { mBackend->free(cc::span{f.handle}); }
 void Context::free(const query_range& q) { mBackend->free(q.handle); }
 void Context::free(swapchain const& sc) { mBackend->free(sc.handle); }
 
-void Context::free_deferred(buffer const& buf) { free_deferred(buf.res.handle); }
-void Context::free_deferred(texture const& tex) { free_deferred(tex.res.handle); }
-void Context::free_deferred(raw_resource const& res) { free_deferred(res.handle); }
-void Context::free_deferred(graphics_pipeline_state const& gpso) { free_deferred(gpso._handle); }
-void Context::free_deferred(compute_pipeline_state const& cpso) { free_deferred(cpso._handle); }
+void Context::free_deferred(buffer const& buf) { free_deferred(buf.handle); }
+void Context::free_deferred(texture const& tex) { free_deferred(tex.handle); }
+void Context::free_deferred(resource const& res) { free_deferred(res.handle); }
+void Context::free_deferred(graphics_pipeline_state const& gpso) { free_deferred(gpso.handle); }
+void Context::free_deferred(compute_pipeline_state const& cpso) { free_deferred(cpso.handle); }
 
 void Context::free_deferred(phi::handle::resource res) { mImpl->mDeferredQueue.free(*this, res); }
 void Context::free_deferred(phi::handle::shader_view sv) { mImpl->mDeferredQueue.free(*this, sv); }
 void Context::free_deferred(phi::handle::pipeline_state pso) { mImpl->mDeferredQueue.free(*this, pso); }
+void Context::free_deferred(phi::handle::accel_struct as) { mImpl->mDeferredQueue.free(*this, as); }
 
 void Context::free_range_deferred(cc::span<const phi::handle::resource> res_range) { mImpl->mDeferredQueue.free_range(*this, res_range); }
 void Context::free_range_deferred(cc::span<const phi::handle::shader_view> sv_range) { mImpl->mDeferredQueue.free_range(*this, sv_range); }
 
-void Context::free_to_cache_untyped(const raw_resource& resource, const generic_resource_info& info)
+// void Context::free_to_cache_deferred(phi::handle::resource res) { mImpl->mDeferredQueue.free_to_cache(*this, res); }
+//
+// void Context::free_range_deferred_to_cache(cc::span<phi::handle::resource const> res_range)
+//{
+//    mImpl->mDeferredQueue.free_range_to_cache(*this, res_range);
+//}
+
+void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(mBackend->getResourceBufferDescription(buffer.handle), buffer); }
+
+void Context::free_to_cache(const texture& texture) { freeCachedTexture(mBackend->getResourceTextureDescription(texture.handle), texture); }
+
+void Context::free_to_cache_untyped(const resource& resource)
 {
-    switch (info.type)
+    auto const resDesc = mBackend->getResourceDescription(resource.handle);
+    switch (resDesc.type)
     {
     case phi::arg::resource_description::e_resource_texture:
-        return freeCachedTexture(info.info_texture, resource);
+        return freeCachedTexture(resDesc.info_texture, resource);
     case phi::arg::resource_description::e_resource_buffer:
-        return freeCachedBuffer(info.info_buffer, resource);
+        return freeCachedBuffer(resDesc.info_buffer, resource);
     default:
         CC_ASSERT(false && "invalid type");
     }
     CC_UNREACHABLE("invalid type");
 }
 
-void Context::free_to_cache(const buffer& buffer) { freeCachedBuffer(buffer.info, buffer.res); }
-
-void Context::free_to_cache(const texture& texture) { freeCachedTexture(texture.info, texture.res); }
 
 void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const> data, size_t offset_in_buffer)
 {
-    CC_ASSERT(buffer.info.heap == phi::resource_heap::upload && "Attempted to write to non-upload buffer");
-    CC_ASSERT(buffer.info.size_bytes >= data.size_bytes() + offset_in_buffer && "Buffer write out of bounds");
+    auto const& bufferDesc = mBackend->getResourceBufferDescription(buffer.handle);
+    CC_ASSERT(bufferDesc.heap == phi::resource_heap::upload && "Attempted to write to non-upload buffer");
+    CC_ASSERT(bufferDesc.size_bytes >= data.size_bytes() + offset_in_buffer && "Buffer write out of bounds");
 
     int32_t const map_begin = int(offset_in_buffer);
     int32_t const map_end = int(offset_in_buffer + data.size_bytes());
@@ -327,8 +387,9 @@ void Context::write_to_buffer_raw(const buffer& buffer, cc::span<std::byte const
 
 void Context::read_from_buffer_raw(const buffer& buffer, cc::span<std::byte> out_data, size_t offset_in_buffer)
 {
-    CC_ASSERT(buffer.info.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
-    CC_ASSERT(buffer.info.size_bytes >= out_data.size_bytes() + offset_in_buffer && "Buffer read out of bounds");
+    auto const& bufferDesc = mBackend->getResourceBufferDescription(buffer.handle);
+    CC_ASSERT(bufferDesc.heap == phi::resource_heap::readback && "Attempted to read from non-readback buffer");
+    CC_ASSERT(bufferDesc.size_bytes >= out_data.size_bytes() + offset_in_buffer && "Buffer read out of bounds");
 
     int32_t const map_begin = int(offset_in_buffer);
     int32_t const map_end = int(offset_in_buffer + out_data.size_bytes());
@@ -346,12 +407,20 @@ uint64_t Context::get_fence_value(const fence& fence) { return mBackend->getFenc
 
 std::byte* Context::map_buffer(const buffer& buffer, int32_t invalidate_begin, int32_t invalidate_end)
 {
-    return mBackend->mapBuffer(buffer.res.handle, invalidate_begin, invalidate_end);
+    return mBackend->mapBuffer(buffer.handle, invalidate_begin, invalidate_end);
+}
+
+/// map a buffer and return a span of the mapped memory (instead of just a pointer)
+
+cc::span<std::byte> pr::Context::map_buffer_as_span(buffer const& buffer, int32_t invalidate_begin, int32_t invalidate_end)
+{
+    auto const& bufferDesc = mBackend->getResourceBufferDescription(buffer.handle);
+    return {map_buffer(buffer, invalidate_begin, invalidate_end), bufferDesc.size_bytes};
 }
 
 void Context::unmap_buffer(const buffer& buffer, int32_t flush_begin, int32_t flush_end)
 {
-    mBackend->unmapBuffer(buffer.res.handle, flush_begin, flush_end);
+    mBackend->unmapBuffer(buffer.handle, flush_begin, flush_end);
 }
 
 cached_texture Context::get_target(tg::isize2 size, phi::format format, uint32_t num_samples, uint32_t array_size)
@@ -388,14 +457,14 @@ cached_buffer Context::get_buffer(const buffer_info& info) { return {acquireBuff
 
 cached_texture Context::get_texture(const texture_info& info) { return {acquireTexture(info), this}; }
 
-raw_resource Context::make_untyped_unlocked(const generic_resource_info& info, const char* debug_name)
+resource Context::make_untyped_unlocked(const generic_resource_info& info, const char* debug_name)
 {
     switch (info.type)
     {
     case phi::arg::resource_description::e_resource_texture:
-        return createTexture(info.info_texture, debug_name).res;
+        return createTexture(info.info_texture, debug_name);
     case phi::arg::resource_description::e_resource_buffer:
-        return createBuffer(info.info_buffer, debug_name).res;
+        return createBuffer(info.info_buffer, debug_name);
     default:
         CC_ASSERT(false && "invalid type");
         return {};
@@ -403,14 +472,14 @@ raw_resource Context::make_untyped_unlocked(const generic_resource_info& info, c
     CC_UNREACHABLE("invalid type");
 }
 
-raw_resource Context::get_untyped_unlocked(const generic_resource_info& info)
+resource Context::get_untyped_unlocked(const generic_resource_info& info)
 {
     switch (info.type)
     {
     case phi::arg::resource_description::e_resource_texture:
-        return acquireTexture(info.info_texture).res;
+        return acquireTexture(info.info_texture);
     case phi::arg::resource_description::e_resource_buffer:
-        return acquireBuffer(info.info_buffer).res;
+        return acquireBuffer(info.info_buffer);
     default:
         CC_ASSERT(false && "invalid type");
         return {};
@@ -423,15 +492,9 @@ CompiledFrame Context::compile(raii::Frame&& frame)
 {
     frame.finalize();
 
-    if (frame.is_empty())
-    {
-        return CompiledFrame(phi::handle::null_command_list, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), phi::handle::null_swapchain);
-    }
-    else
-    {
-        auto const cmdlist = mBackend->recordCommandList(frame.getMemory(), frame.getSize()); // intern. synced
-        return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), frame.mPresentAfterSubmitRequest);
-    }
+    auto const cmdlist = mBackend->closeLiveCommandList(frame.mList);
+    return CompiledFrame(cmdlist, cc::move(frame.mFreeables), cc::move(frame.mDeferredFreeResources), cc::move(frame.mCacheFreeResources),
+                         frame.mPresentAfterSubmitRequest);
 }
 
 gpu_epoch_t Context::submit(raii::Frame&& frame) { return submit(compile(cc::move(frame))); }
@@ -444,21 +507,7 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
 
     if (frame._cmdlist.is_valid()) // CompiledFrame doesn't always hold a commandlist
     {
-        mImpl->mGpuEpochTracker._cached_epoch_gpu = mImpl->mGpuEpochTracker.get_current_epoch_gpu(mBackend);
-
-        // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
-        phi::fence_operation signal_op = {mImpl->mGpuEpochTracker._fence, mImpl->mGpuEpochTracker._current_epoch_cpu};
-
-        {
-            // unsynced, mutex: submission
-            auto const lg = std::lock_guard<std::mutex>(mImpl->mMutexSubmission);
-            mBackend->submit(cc::span{frame._cmdlist}, phi::queue_type::direct, {}, cc::span{signal_op});
-        }
-
-        // increment CPU epoch after signalling
-        ++mImpl->mGpuEpochTracker._current_epoch_cpu;
-
-        res = mImpl->mGpuEpochTracker._current_epoch_cpu;
+        res = this->submit(cc::span{frame._cmdlist});
 
         if (frame._present_after_submit_swapchain.is_valid())
         {
@@ -471,21 +520,79 @@ gpu_epoch_t Context::submit(CompiledFrame&& frame)
     if (!frame._deferred_free_resources.empty())
         mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
+
     frame.invalidate();
 
     return res;
+}
+
+gpu_epoch_t pr::Context::submit(cc::span<phi::handle::command_list const> cmdlists)
+{
+    CC_ASSERT(!mImpl->mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit command lists during global shutdown");
+    CC_ASSERT(cmdlists.size() > 0 && "submitted zero command lists");
+
+    mImpl->mGpuEpochTracker._cached_epoch_gpu = mImpl->mGpuEpochTracker.get_current_epoch_gpu(mBackend);
+
+    // phi::fence_operation wait_op = {mGpuEpochTracker._fence, mGpuEpochTracker._current_epoch_cpu - 1};
+    phi::fence_operation signal_op;
+    signal_op.fence = mImpl->mGpuEpochTracker._fence;
+    signal_op.value = mImpl->mGpuEpochTracker._current_epoch_cpu;
+
+    {
+        // unsynced, mutex: submission
+        auto const lg = std::lock_guard<std::mutex>(mImpl->mMutexSubmission);
+        mBackend->submit(cmdlists, phi::queue_type::direct, {}, cc::span{signal_op});
+    }
+
+    // increment CPU epoch after signalling
+    ++mImpl->mGpuEpochTracker._current_epoch_cpu;
+
+    return mImpl->mGpuEpochTracker._current_epoch_cpu;
 }
 
 void Context::discard(CompiledFrame&& frame)
 {
     if (frame._cmdlist.is_valid())
         mBackend->discard(cc::span{frame._cmdlist});
+
     free_all(frame._freeables);
 
     if (!frame._deferred_free_resources.empty())
         mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
 
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
+
     frame.invalidate();
+}
+
+phi::handle::command_list pr::Context::finalize_and_get_command_list(CompiledFrame&& frame)
+{
+    CC_ASSERT(!mImpl->mIsShuttingDown.load(std::memory_order_relaxed) && "attempted to submit frames during global shutdown");
+    CC_ASSERT(frame.is_valid() && "submitted an invalid CompiledFrame");
+    CC_ASSERT(!frame._present_after_submit_swapchain.is_valid() && "using present_after_submit is not possible when manually finalizing a frame");
+
+    auto const res = frame._cmdlist;
+
+    free_all(frame._freeables);
+
+    if (!frame._deferred_free_resources.empty())
+        mImpl->mDeferredQueue.free_range(*this, frame._deferred_free_resources);
+
+    for (phi::handle::resource const res : frame._cache_free_resources)
+    {
+        free_to_cache_untyped({res});
+    }
+
+    frame.invalidate();
+
+    return res;
 }
 
 void Context::present(swapchain const& sc)
@@ -503,8 +610,6 @@ void Context::present(swapchain const& sc)
 
 void Context::flush() { mBackend->flushGPU(); }
 
-/// returns whether the epoch was reached on the GPU
-
 bool pr::Context::is_gpu_epoch_reached(gpu_epoch_t epoch) const { return mImpl->mGpuEpochTracker._cached_epoch_gpu >= epoch; }
 
 void Context::flush_and_shutdown()
@@ -516,11 +621,6 @@ void Context::flush_and_shutdown()
 
 bool Context::start_capture() { return mBackend->startForcedDiagnosticCapture(); }
 bool Context::stop_capture() { return mBackend->endForcedDiagnosticCapture(); }
-
-/// uint64 incremented after every finished commandlist, GPU timeline, always less or equal to CPU
-
-
-/// uint64 incremented on every submit, always greater or equal to GPU
 
 gpu_epoch_t pr::Context::get_current_cpu_epoch() const { return mImpl->mGpuEpochTracker._current_epoch_cpu; }
 
@@ -536,32 +636,32 @@ phi::format Context::get_backbuffer_format(swapchain const& sc) const { return m
 
 uint32_t Context::get_num_backbuffers(swapchain const& sc) const { return mBackend->getNumBackbuffers(sc.handle); }
 
-uint32_t Context::calculate_texture_upload_size(tg::isize3 size, phi::format fmt, uint32_t num_mips) const
-{
-    return phi::util::get_texture_size_bytes(size, fmt, num_mips, mBackendType == pr::backend::d3d12);
-}
+pr::texture_info const& Context::get_texture_info(pr::texture const& tex) const { return mBackend->getResourceTextureDescription(tex.handle); }
+
+pr::buffer_info const& Context::get_buffer_info(pr::buffer const& buf) const { return mBackend->getResourceBufferDescription(buf.handle); }
+
+uint64_t pr::Context::get_gpu_timestamp_frequency() const { return mBackend->getGPUTimestampFrequency(); }
 
 uint32_t Context::calculate_texture_pixel_offset(tg::isize2 size, format fmt, tg::ivec2 pixel) const
 {
-    return phi::util::get_texture_pixel_byte_offset(size, fmt, pixel, mBackendType == pr::backend::d3d12);
+    return phi::util::get_texture_pixel_byte_offset_on_gpu(size, fmt, pixel, mBackendType == pr::backend::d3d12);
 }
 
 bool pr::Context::is_shutting_down() const { return mImpl->mIsShuttingDown.load(std::memory_order_relaxed); }
 
-void Context::set_debug_name(const texture& tex, cc::string_view name) { mBackend->setDebugName(tex.res.handle, name); }
-void Context::set_debug_name(const buffer& buf, cc::string_view name) { mBackend->setDebugName(buf.res.handle, name); }
+void Context::set_debug_name(const texture& tex, cc::string_view name) { mBackend->setDebugName(tex.handle, name); }
+void Context::set_debug_name(const buffer& buf, cc::string_view name) { mBackend->setDebugName(buf.handle, name); }
 void Context::set_debug_name(phi::handle::resource raw_res, cc::string_view name) { mBackend->setDebugName(raw_res, name); }
 
 texture Context::acquire_backbuffer(swapchain const& sc)
 {
     auto const backbuffer = mBackend->acquireBackbuffer(sc.handle);
-    auto const size = mBackend->getBackbufferSize(sc.handle);
 
 #ifdef CC_ENABLE_ASSERTIONS
     mImpl->mSafetyState.did_acquire_before_present = true;
 #endif
 
-    return {{backbuffer, backbuffer.is_valid() ? acquireGuid() : 0}, texture_info::create_rt(mBackend->getBackbufferFormat(sc.handle), size)};
+    return {{backbuffer}};
 }
 
 uint32_t Context::clear_resource_caches()
@@ -597,14 +697,18 @@ uint32_t Context::clear_pipeline_state_cache()
     uint32_t num_frees = 0;
     auto const gpu_epoch = mImpl->mGpuEpochTracker._cached_epoch_gpu;
 
-    mImpl->mCacheGraphicsPSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
-        ++num_frees;
-        mBackend->free(pso);
-    });
-    mImpl->mCacheComputePSOs.cull_all(gpu_epoch, [&](phi::handle::pipeline_state pso) {
-        ++num_frees;
-        mBackend->free(pso);
-    });
+    mImpl->mCacheGraphicsPSOs.cull_all(gpu_epoch,
+                                       [&](phi::handle::pipeline_state pso)
+                                       {
+                                           ++num_frees;
+                                           mBackend->free(pso);
+                                       });
+    mImpl->mCacheComputePSOs.cull_all(gpu_epoch,
+                                      [&](phi::handle::pipeline_state pso)
+                                      {
+                                          ++num_frees;
+                                          mBackend->free(pso);
+                                      });
 
     return num_frees;
 }
@@ -666,7 +770,9 @@ void Context::destroy()
 
             // destroy other components
             mImpl->mGpuEpochTracker.destroy(mBackend);
+#ifdef PR_HAS_DXC
             mImpl->mShaderCompiler.destroy();
+#endif
             mImpl->mDeferredQueue.destroy(*this);
 
             // if onwing mBackend, destroy and free it
@@ -697,24 +803,22 @@ void Context::internalInitialize(cc::allocator* alloc, bool ownsBackend)
     mImpl->mGpuEpochTracker.initialize(mBackend);
     mImpl->mCacheBuffers.reserve(256);
     mImpl->mCacheTextures.reserve(256);
+#ifdef PR_HAS_DXC
     mImpl->mShaderCompiler.initialize();
+#endif
     mImpl->mDeferredQueue.initialize(alloc);
 
-    mGPUTimestampFrequency = mBackend->getGPUTimestampFrequency();
     mBackendType = mBackend->getBackendType() == phi::backend_type::d3d12 ? pr::backend::d3d12 : pr::backend::vulkan;
 }
 
-texture Context::createTexture(const texture_info& info, const char* dbg_name)
-{
-    return {{mBackend->createTexture(info, dbg_name), acquireGuid()}, info};
-}
+texture Context::createTexture(const texture_info& info, const char* dbg_name) { return {{mBackend->createTexture(info, dbg_name)}}; }
 
 buffer Context::createBuffer(const buffer_info& info, char const* dbg_name)
 {
     CC_ASSERT((info.allow_uav ? info.heap == phi::resource_heap::gpu : true) && "mapped buffers cannot be created with UAV support");
 
     phi::handle::resource handle = mBackend->createBuffer(info, dbg_name);
-    return {{handle, acquireGuid()}, info};
+    return {{handle}};
 }
 
 texture Context::acquireTexture(const texture_info& info)
@@ -722,7 +826,7 @@ texture Context::acquireTexture(const texture_info& info)
     auto lookup = mImpl->mCacheTextures.acquire(info, mImpl->mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
-        return {lookup, info};
+        return {lookup};
     }
     else
     {
@@ -735,7 +839,7 @@ buffer Context::acquireBuffer(const buffer_info& info)
     auto lookup = mImpl->mCacheBuffers.acquire(info, mImpl->mGpuEpochTracker._cached_epoch_gpu);
     if (lookup.handle.is_valid())
     {
-        return {lookup, info};
+        return {lookup};
     }
     else
     {
@@ -743,77 +847,122 @@ buffer Context::acquireBuffer(const buffer_info& info)
     }
 }
 
+#ifdef PR_HAS_DXC
 void Context::freeShaderBinary(IDxcBlob* blob)
 {
     dxcw::destroy_blob(blob); // intern. synced
 }
+#endif
 
 void Context::freeShaderView(phi::handle::shader_view sv) { mBackend->free(sv); }
 
 void Context::freePipelineState(phi::handle::pipeline_state ps) { mBackend->free(ps); }
 
-uint64_t Context::acquireGuid() { return mImpl->mResourceGUID.fetch_add(1); }
-
-void Context::freeCachedTexture(const texture_info& info, raw_resource res)
+void Context::freeCachedTexture(const texture_info& info, resource res)
 {
     mImpl->mCacheTextures.free(res, info, mImpl->mGpuEpochTracker.get_current_epoch_cpu());
 }
 
-void Context::freeCachedBuffer(const buffer_info& info, raw_resource res)
+void Context::freeCachedBuffer(const buffer_info& info, resource res)
 {
     mImpl->mCacheBuffers.free(res, info, mImpl->mGpuEpochTracker.get_current_epoch_cpu());
 }
 
 phi::handle::pipeline_state Context::acquire_graphics_pso(uint64_t hash, graphics_pass_info const& gp, framebuffer_info const& fb)
 {
-    phi::handle::pipeline_state pso = mImpl->mCacheGraphicsPSOs.acquire(hash);
+    phi::handle::pipeline_state hPSO = mImpl->mCacheGraphicsPSOs.acquire(hash);
 
-
-    if (!pso.is_valid())
+    if (!hPSO.is_valid())
     {
         graphics_pass_info_data const& info = gp._storage.get();
-        pso = mBackend->createPipelineState({info.vertex_attributes, info.vertex_size_bytes}, fb._storage.get(), info.arg_shapes,
-                                            info.has_root_consts, gp._shaders, info.graphics_config);
 
-        mImpl->mCacheGraphicsPSOs.insert(pso, hash);
+        phi::arg::graphics_pipeline_state_description desc = {};
+        desc.config = info.graphics_config;
+        desc.framebuffer = fb._storage;
+        desc.vertices.attributes = info.vertex_attributes;
+        desc.vertices.vertex_sizes_bytes[0] = info.vertex_size_bytes;
+        desc.root_signature.shader_arg_shapes = info.arg_shapes;
+        desc.root_signature.has_root_constants = info.has_root_consts;
+
+        for (auto const& shader : gp._shaders)
+        {
+            desc.shader_binaries.push_back(shader);
+        }
+
+        auto const hNewPSO = mBackend->createPipelineState(desc);
+
+        if (mImpl->mCacheGraphicsPSOs.try_insert(hNewPSO, hash, &hPSO))
+        {
+            hPSO = hNewPSO;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewPSO);
+        }
     }
-    return pso;
+    return hPSO;
 }
 
 phi::handle::pipeline_state Context::acquire_compute_pso(uint64_t hash, const compute_pass_info& cp)
 {
-    phi::handle::pipeline_state pso = mImpl->mCacheComputePSOs.acquire(hash);
-    if (!pso.is_valid())
+    phi::handle::pipeline_state hPSO = mImpl->mCacheComputePSOs.acquire(hash);
+    if (!hPSO.is_valid())
     {
         compute_pass_info_data const& info = cp._storage.get();
-        pso = mBackend->createComputePipelineState(info.arg_shapes, cp._shader, info.has_root_consts);
-        mImpl->mCacheComputePSOs.insert(pso, hash);
+        auto const hNewPSO = mBackend->createComputePipelineState(info.arg_shapes, cp._shader, info.has_root_consts);
+
+        if (mImpl->mCacheComputePSOs.try_insert(hNewPSO, hash, &hPSO))
+        {
+            hPSO = hNewPSO;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewPSO);
+        }
     }
-    return pso;
+    return hPSO;
 }
 
-phi::handle::shader_view Context::acquire_graphics_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
+phi::handle::shader_view Context::acquire_shader_view(bool compute,
+                                                      uint64_t* pOutHash,
+                                                      cc::span<phi::resource_view const> srvs,
+                                                      cc::span<phi::resource_view const> uavs,
+                                                      cc::span<phi::sampler_config const> samplers,
+                                                      bool* pOutCacheHit)
 {
-    phi::handle::shader_view sv = mImpl->mCacheGraphicsSVs.acquire(hash);
-    if (!sv.is_valid())
-    {
-        shader_view_info const& info = info_storage.get();
-        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, false);
-        mImpl->mCacheGraphicsSVs.insert(sv, hash);
-    }
-    return sv;
-}
+    auto& cache = compute ? mImpl->mCacheComputeSVs : mImpl->mCacheGraphicsSVs;
 
-phi::handle::shader_view Context::acquire_compute_sv(uint64_t hash, const hashable_storage<shader_view_info>& info_storage)
-{
-    phi::handle::shader_view sv = mImpl->mCacheComputeSVs.acquire(hash);
-    if (!sv.is_valid())
+    uint64_t hash0 = phi::util::sse_hash_type(srvs.data(), srvs.size());
+    uint64_t hash1 = phi::util::sse_hash_type(uavs.data(), uavs.size(), hash0 * 6364136223846793005ULL);
+    uint64_t hash2 = phi::util::sse_hash_type(samplers.data(), samplers.size(), hash1 * 6364136223846793005ULL);
+
+    *pOutHash = hash2;
+    *pOutCacheHit = true;
+
+    phi::handle::shader_view hSV = cache.acquire(hash2);
+
+    if (!hSV.is_valid())
     {
-        shader_view_info const& info = info_storage.get();
-        sv = mBackend->createShaderView(info.srvs, info.uavs, info.samplers, true);
-        mImpl->mCacheComputeSVs.insert(sv, hash);
+        auto const hNewSV = mBackend->createShaderView(srvs, uavs, samplers, compute);
+        if (cache.try_insert(hNewSV, hash2, &hSV))
+        {
+            // PR_LOG("Created SV {} SRVs {} UAVs {} Samplers (Hash {})", srvs.size(), uavs.size(), samplers.size(), hash2);
+            hSV = hNewSV;
+            *pOutCacheHit = false;
+        }
+        else
+        {
+            // insertion failed, someone raced the creation
+            // use the preexisting value instead
+            mBackend->free(hNewSV);
+        }
     }
-    return sv;
+
+    return hSV;
 }
 
 void Context::free_all(cc::span<const freeable_cached_obj> freeables)
@@ -851,15 +1000,12 @@ auto_buffer pr::Context::make_upload_buffer_for_texture(const texture& tex, uint
 
 uint32_t pr::Context::calculate_texture_upload_size(const texture& texture, uint32_t num_mips) const
 {
-    return calculate_texture_upload_size({texture.info.width, texture.info.height, int(texture.info.depth_or_array_size)}, texture.info.fmt, num_mips);
-}
-
-uint32_t pr::Context::calculate_texture_upload_size(int32_t width, format fmt, uint32_t num_mips) const
-{
-    return calculate_texture_upload_size({width, 1, 1}, fmt, num_mips);
+    auto const& texDesc = mBackend->getResourceTextureDescription(texture.handle);
+    return phi::util::get_texture_size_bytes_on_gpu(texDesc, mBackendType == backend::d3d12, num_mips);
 }
 
 uint32_t pr::Context::calculate_texture_upload_size(tg::isize2 size, format fmt, uint32_t num_mips) const
 {
-    return calculate_texture_upload_size({size.width, size.height, 1}, fmt, num_mips);
+    auto const texDesc = phi::arg::texture_description::create_tex(fmt, size, num_mips);
+    return phi::util::get_texture_size_bytes_on_gpu(texDesc, mBackendType == backend::d3d12);
 }
