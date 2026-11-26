@@ -206,9 +206,9 @@ public:
 
     void raw_draw_indirect(phi::cmd::draw_indirect const& dcmd);
 
-    void raw_dipatch(phi::cmd::dispatch const& dcmd);
+    void raw_dispatch(phi::cmd::dispatch const& dcmd);
 
-    void raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dcmd);
+    void raw_dispatch_indirect(phi::cmd::dispatch_indirect const& dcmd);
 
     void raw_dispatch_mesh(phi::cmd::dispatch_mesh const& dcmd);
 

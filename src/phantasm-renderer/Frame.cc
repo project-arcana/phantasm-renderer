@@ -624,13 +624,13 @@ void pr::raii::Frame::raw_draw_indirect(phi::cmd::draw_indirect const& dcmd)
     mBackend->cmdDrawIndirect(mList, dcmd);
 }
 
-void pr::raii::Frame::raw_dipatch(phi::cmd::dispatch const& dcmd)
+void pr::raii::Frame::raw_dispatch(phi::cmd::dispatch const& dcmd)
 {
     flushPendingTransitions();
     mBackend->cmdDispatch(mList, dcmd);
 }
 
-void pr::raii::Frame::raw_dipatch_indirect(phi::cmd::dispatch_indirect const& dcmd)
+void pr::raii::Frame::raw_dispatch_indirect(phi::cmd::dispatch_indirect const& dcmd)
 {
     flushPendingTransitions();
     mBackend->cmdDispatchIndirect(mList, dcmd);
