@@ -1,9 +1,14 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.18)
 project(PhantasmRenderer)
 
 if (NOT TARGET clean-core)
     message(FATAL_ERROR "[phantasm-renderer] clean-core must be available")
 endif()
+
+# =========================================
+# options
+
+option(PR_ENABLE_SHADER_COMPILATION "If enabled, allow runtime shader compilation by linking to DXC" ON)
 
 # =========================================
 # define library
@@ -21,5 +26,16 @@ target_link_libraries(phantasm-renderer PUBLIC
     typed-geometry
     rich-log
     reflector
-    dxc-wrapper
 )
+
+if (PR_ENABLE_SHADER_COMPILATION)
+    target_link_libraries(phantasm-renderer PUBLIC dxc-wrapper)
+    target_compile_definitions(phantasm-renderer PUBLIC PR_HAS_DXC)
+endif()
+
+# =========================================
+# set up compile flags
+
+if (MSVC)
+    target_compile_options(phantasm-renderer PRIVATE /WX)
+endif()

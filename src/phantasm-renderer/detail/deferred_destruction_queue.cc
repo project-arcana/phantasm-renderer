@@ -28,6 +28,13 @@ void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::pipelin
     pending_psos_new.push_back(pso);
 }
 
+void pr::deferred_destruction_queue::free(pr::Context& ctx, phi::handle::accel_struct as)
+{
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
+    pending_as_new.push_back(as);
+}
+
 void pr::deferred_destruction_queue::free_range(pr::Context& ctx, cc::span<const phi::handle::resource> res_range)
 {
     auto lg = std::lock_guard(mutex);
@@ -48,6 +55,22 @@ void pr::deferred_destruction_queue::free_range(pr::Context& ctx, cc::span<const
     }
 }
 
+void pr::deferred_destruction_queue::free_to_cache(pr::Context& ctx, phi::handle::resource res)
+{
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
+    pending_cached_res_new.push_back(res);
+}
+
+void pr::deferred_destruction_queue::free_range_to_cache(pr::Context& ctx, cc::span<phi::handle::resource const> res_range)
+{
+    auto lg = std::lock_guard(mutex);
+    _free_pending_unsynced(ctx);
+    if (res_range.size() > 0)
+    {
+        pending_cached_res_new.push_back_range(res_range);
+    }
+}
 
 unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
 {
@@ -55,14 +78,18 @@ unsigned pr::deferred_destruction_queue::free_all_pending(pr::Context& ctx)
     return _free_pending_unsynced(ctx);
 }
 
-void pr::deferred_destruction_queue::initialize(cc::allocator* alloc, unsigned num_reserved_svs, unsigned num_reserved_res, unsigned num_reserved_psos)
+void pr::deferred_destruction_queue::initialize(cc::allocator* alloc, unsigned num_reserved_svs, unsigned num_reserved_res, unsigned num_reserved_psos, unsigned num_reserved_as)
 {
     pending_svs_old.reset_reserve(alloc, num_reserved_svs);
     pending_svs_new.reset_reserve(alloc, num_reserved_svs);
     pending_psos_old.reset_reserve(alloc, num_reserved_psos);
-    pending_psos_old.reset_reserve(alloc, num_reserved_psos);
+    pending_psos_new.reset_reserve(alloc, num_reserved_psos);
+    pending_as_old.reset_reserve(alloc, num_reserved_as);
+    pending_as_new.reset_reserve(alloc, num_reserved_as);
     pending_res_old.reset_reserve(alloc, num_reserved_res);
     pending_res_new.reset_reserve(alloc, num_reserved_res);
+    pending_cached_res_old.reset_reserve(alloc, num_reserved_res);
+    pending_cached_res_new.reset_reserve(alloc, num_reserved_res);
 }
 
 void pr::deferred_destruction_queue::destroy(pr::Context& ctx)
@@ -72,6 +99,10 @@ void pr::deferred_destruction_queue::destroy(pr::Context& ctx)
     ctx.get_backend().freeRange(pending_svs_new);
     ctx.get_backend().freeRange(pending_res_old);
     ctx.get_backend().freeRange(pending_res_new);
+    ctx.get_backend().freeRange(pending_cached_res_old);
+    ctx.get_backend().freeRange(pending_cached_res_new);
+    ctx.get_backend().freeRange(pending_as_old);
+    ctx.get_backend().freeRange(pending_as_new);
     for (auto pso : pending_psos_old)
     {
         ctx.get_backend().free(pso);
@@ -86,6 +117,8 @@ void pr::deferred_destruction_queue::destroy(pr::Context& ctx)
     pending_psos_old = {};
     pending_res_old = {};
     pending_res_new = {};
+    pending_cached_res_old = {};
+    pending_cached_res_new = {};
 }
 
 unsigned pr::deferred_destruction_queue::_free_pending_unsynced(pr::Context& ctx)
@@ -112,6 +145,16 @@ unsigned pr::deferred_destruction_queue::_free_pending_unsynced(pr::Context& ctx
             num_freed += unsigned(pending_res_old.size());
             ctx.get_backend().freeRange(pending_res_old);
         }
+        if (pending_as_old.size() > 0)
+        {
+            num_freed += unsigned(pending_as_old.size());
+            ctx.get_backend().freeRange(pending_as_old);
+        }
+        for (auto cres : pending_cached_res_old)
+        {
+            ++num_freed;
+            ctx.free_to_cache_untyped({cres});
+        }
         for (auto pso : pending_psos_old)
         {
             ++num_freed;
@@ -121,9 +164,14 @@ unsigned pr::deferred_destruction_queue::_free_pending_unsynced(pr::Context& ctx
         cc::swap(pending_svs_old, pending_svs_new);
         cc::swap(pending_res_old, pending_res_new);
         cc::swap(pending_psos_old, pending_psos_new);
+        cc::swap(pending_as_old, pending_as_new);
+        cc::swap(pending_cached_res_old, pending_cached_res_new);
+
         pending_svs_new.clear();
         pending_res_new.clear();
         pending_psos_new.clear();
+        pending_as_new.clear();
+        pending_cached_res_new.clear();
 
         gpu_epoch_old = gpu_epoch_new;
         // PR_LOG("freed {} elements as GPU progressed enough", num_freed);
